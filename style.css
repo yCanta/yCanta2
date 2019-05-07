@@ -1,0 +1,209 @@
+*{box-sizing: border-box;transition: all .25s;}
+html, body, .container {
+  height: 100%; 
+  margin: 0;
+}
+a {
+  text-decoration: none;
+  color: black;
+}
+[contenteditable='true']{
+  border: 1px gray dashed;
+  background-color: lightgray;
+}
+.edit-icon {
+  display: inline-block;
+  transform: rotateZ(90deg);
+}
+.icon-fl-right {
+  float: right;
+  width: 1.5rem;
+  height: 1.5rem;
+  text-align: center;
+  margin-right: 1em;
+}
+li:hover:after {
+  content: '☆';
+  float: right;
+  width: 1.5rem;
+  height: 1.5rem;
+  text-align: center;
+  margin-right: 1em;
+}
+.close-icon {
+  border: 1px solid black;
+  border-radius: 5em;
+}
+body {
+  margin: 0 .5em 0 .5em;
+
+/*flexy stuff*/
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  align-items: stretch;
+  align-content: stretch;
+}
+main {
+  flex: 0 1 auto;
+  display: flex;
+  background-color: lightgray;
+  overflow-y: auto;
+}
+body main #songbookList {
+  background-color: lightyellow;
+  flex: 0 1 300px;
+  z-index: 1;
+}
+body main #songList {
+  background-color: lightsalmon;
+  flex: 0 0 0px;
+  z-index: 2;
+}
+body main #song {
+  background-color: lightblue;
+  flex: 0 0 0px;
+  z-index: 3;
+}
+body main #edit {
+  flex: 0 0 0px;
+  padding: 0;
+  border: 0;
+  z-index: 4;
+}
+footer {
+  flex: 0 0 40px;
+  width: 100%;
+  background-color: lightgreen;
+  border-top: ridge 5px black;
+  border-left: double 3px black;
+  border-right: double 3px black;
+}
+footer:hover{
+  flex: 0 0 180px;
+}
+
+/*Styling!*/
+.navigation {
+  height: 2em;
+  border: 3px double black;
+  border-bottom: 5px ridge black;
+}
+.selected {
+  background-color: rgba(0, 0, 0, 0.2);
+}
+.column#songList, .column#song {
+  display: flex;
+}
+.subcolumn {
+  flex: 1 1 400px;
+  z-index: 5;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.subcolumn#edit {
+  flex: 0 0 0px;
+}
+.column, body.edit #edit {
+  box-shadow: 0px 0 40px 10px rgba(0, 0, 0, 0.8);
+  border-left: 1.5px solid gray;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.column:hover {
+  z-index: 6 !important;
+}
+.column > div {
+  padding: 0 1rem 0 1rem;
+}
+html body .subcolumn#edit {
+  box-shadow: none;
+}
+#songbookList, #songList, #song {
+  width: 100%;
+}
+
+/*Focus modes - Drop Shadows and FLexyness
+/Focus songbookList*/
+body.songbookList #songbookList {
+  z-index: 5;
+  flex: 0 0 300px;
+}
+body.songbookList #song {
+  z-index: 1;
+}
+
+/*Focus songList*/
+body.songList #songList {
+  z-index: 5;
+  flex: 0 0 400px;
+}
+body.songList #songbookList {
+  flex: 0 1 300px;
+}
+
+/*Focus song*/
+body.song #song{
+  flex: 0 0 400px;
+}
+body.song #songList {
+  flex: 0 1 400px;
+}
+body.song #songbookList {
+  flex: 0 1 300px;
+}
+body.edit.song #songList #edit {
+  flex: 0 0 0 !important;
+}
+
+/*Focus edit*/
+body.edit #edit{
+  background-color: lightgray;
+  z-index: 5;
+  flex: 0 0 240px;
+}
+body.edit.song #song, body.edit.songList #songList {
+  flex: 0 .2 700px; /*in mobile view it shrinks upper tabs more than desirable*/
+}
+
+/*For Mobile devices only*/
+@media only screen and (max-width: 700px) {
+  .navigation {
+    
+  }
+  body {
+    margin: 0;
+  }
+  body main {
+    flex-direction: column;
+  }
+  body.songbookList #songbookList, 
+  body.songList #songList, 
+  body.song #song,
+  body.edit #edit  {
+    flex-grow: 4;
+    flex-shrink: 0.2;
+  }
+
+  /*Focus songList*/
+  body.songList #songbookList {
+    flex: 0 1 2rem;
+    overflow: hidden;
+  }
+
+  /*Focus song*/
+  body.song #songList {
+    flex: 0 1 2rem;
+    overflow: hidden;
+  }
+  body.song #songList .subcolumn {
+    overflow: hidden;
+  }
+  body.song #songbookList {
+    flex: 0 1 2rem;
+    overflow: hidden;
+  }
+}
