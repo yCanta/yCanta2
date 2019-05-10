@@ -1,20 +1,19 @@
-<!doctype html>
+<!DOCTYPE html5>
 <html lang="en">
   <head>
-    <script 
-      src="https://code.jquery.com/jquery-3.4.0.min.js" 
-      integrity="sha256-BJeo0qm959uMBGb65z40ejJYGSgR7REI4+CW1fNKwOg="
-      crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.4.0.min.js" integrity="sha256-BJeo0qm959uMBGb65z40ejJYGSgR7REI4+CW1fNKwOg="crossorigin="anonymous">
     </script>
-    <script src="jquery.toTextarea.js">
+    <script src="https://cdn.jsdelivr.net/npm/pouchdb@7.0.0/dist/pouchdb.min.js">
     </script>
+    <script src="db.js"></script>
+    <script src="jquery.toTextarea.js"></script>
     <link rel="stylesheet" type="text/css" href="style.css">
     <title>yCanta2: TodosCantas > All Creatures of Our God and King</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
   </head>
   <body class="songbookList">
     <header>
-      <h2>yCanta2! - rev __________</h2>
+      <h2>yCanta2!</h2>
       <div class="navigation"><a href="#" onclick="$('body').attr('class','songbookList')">Reset</a>
       </div>
     </header>
@@ -192,6 +191,7 @@ let it shine, let it shine, let it shine!
       </div>
     </main>
     <footer>
+      <span style="float: right;">rev __________ 1</span>    
     </footer>
     <script>
       $('.column').click(function(){
@@ -211,8 +211,53 @@ let it shine, let it shine, let it shine!
         }
         closeEdit = function (elm) {
           $(elm).closest('.column').first().find('.content').children().attr('contenteditable', 'false');
+          saveSong(elm.txt());
         }
-      });      
+
+        // URL navigation implementing
+        window.addEventListener("hashchange", hashchanged, false);
+
+        // Trigger the event (useful on page load).
+        hashchanged();
+
+
+        //fun little function for counting syllables.  Need to create breaks in the line instead... if we were to use this for Chord positioning.
+        var count = function(word) {
+          word = word.toLowerCase(); 
+          word = word.replace(/(?:[^laeiouy]|ed|[^laeiouy]e)$/, ''); 
+          word = word.replace(/^y/, ''); 
+          //return word.match(/[aeiouy]{1,2}/g).length; 
+          var syl = word.match(/[aeiouy]{1,2}/g);
+          console.log(syl);
+          if(syl) {
+            //console.log(syl);
+            return syl.length;
+          }
+        }
+        //alert(count('yolo'));
+      });   
+      function hashchanged(){
+        var hash = location.hash.replace( /^#/, '' );
+        //alert(hash);
+
+        //if blank - should have to do nothing
+
+        //if songbook
+          //load songbook
+
+        //if song
+          //check if songbook is loaded
+          //load song
+
+        //if songbook edit
+          //Initiate songbook edit
+
+        //if song edit
+          //check if songbook is loaded
+          //Initiate song edit
+
+
+      }
     </script>
   </body>
 </html>
