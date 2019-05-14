@@ -28,7 +28,6 @@ function saveSong(song_id) {
     }
   });
 }
-
 function loadSong(song_id) {
 
 }
@@ -36,7 +35,6 @@ function loadSong(song_id) {
 function loadSongbook(songbook_id) {
   function buildSongbookList (result) {
     var songbook = document.createDocumentFragment();
-      //title
       var title = document.createElement('h3');
       title.innerHTML = 'todosCantas';
       songbook.appendChild(title);
@@ -57,7 +55,6 @@ function loadSongbook(songbook_id) {
       var songbook_content = document.getElementById("songbook_content");
       songbook_content.innerHTML = '';
       songbook_content.append(songbook);
-      console.log(songbook);
     return 
   }
   if(songbook_id == undefined) {
@@ -74,7 +71,7 @@ function loadSongbook(songbook_id) {
     })
   }
   else {
-    //we need to load the songbook 
+    //we need to load the songbook - mostly same as above.
   }
   $('body').attr('class','songList');
 }
