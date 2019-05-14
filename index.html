@@ -9,6 +9,7 @@
     <script src="db.js" type="text/javascript"></script>
     <script src="jquery.toTextarea.js"></script>
     <link rel="stylesheet" type="text/css" href="style.css">
+    <link rel="stylesheet" type="text/css" href="2html.css">
     <title>yCanta2: TodosCantas > All Creatures of Our God and King</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
   </head>
@@ -95,7 +96,7 @@
       <div class="column" id="song">
         <div class="subcolumn">
           <div class="content">
-<song format-version="0.1" ><stitle>This Little Light Of Mine</stitle><author>author unknown</author><scripture_ref /><introduction /><key>C</key><categories>Aspiration/Desire, Commitment, Dedication/Devotion, Evangelism</categories><cclis /><chunk type="verse"><line><c>C</c>This little light of mine,</line><line>I'm gonna let it shine!</line><line><c>F</c>This little light of mine,</line><line>I'm gonna let it <c>C</c>shine,</line><line>Let it shine, let it <c>G</c>shine, </line><line>Let it <c>C</c>shine.</line></chunk><chunk type="verse"><line><c>C</c>Hide it under a bushel, no!</line><line>I'm gonna let it shine!</line><line><c>F</c>Hide it under a bushel, no!</line><line>I'm gonna let it <c>C</c>shine,</line><line>Let it shine, let it <c>G</c>shine, </line><line>Let it <c>C</c>shine.</line></chunk><chunk type="verse"><line><c>C</c>Won't let Satan blow it out!</line><line>I'm gonna let it shine!</line><line><c>F</c>Won't let Satan blow it out!</line><line>I'm gonna let it <c>C</c>shine,</line><line>Let it shine, let it <c>G</c>shine, </line><line>Let it <c>C</c>shine.</line></chunk><chunk type="verse"><line><c>C</c>Let it shine all over the world!</line><line>I'm gonna let it shine!</line><line><c>F</c>Let it shine all over the world!</line><line>I'm gonna let it <c>C</c>shine,</line><line>Let it shine, let it <c>G</c>shine, </line><line>Let it <c>C</c>shine.</line></chunk><chunk type="verse"><line><c>C</c>Let it shine 'till Jesus comes!</line><line>I'm gonna let it shine!</line><line><c>F</c>Let it shine 'till Jesus comes!</line><line>I'm gonna let it <c>C</c>shine,</line><line>Let it shine, let it <c>G</c>shine, </line><line>Let it <c>C</c>shine.</line></chunk><copyright>Public Domain</copyright></song>
+<song format-version="0.1" ><stitle>This Little Light Of Mine</stitle><author>author unknown</author><key>C</key><categories>Aspiration/Desire, Commitment, Dedication/Devotion, Evangelism</categories><chunk type="verse"><line><c>C</c>This little light of mine,</line><line>I'm gonna let it shine!</line><line><c>F</c>This little light of mine,</line><line>I'm gonna let it <c>C</c>shine,</line><line>Let it shine, let it <c>G</c>shine, </line><line>Let it <c>C</c>shine.</line></chunk><chunk type="verse"><line><c>C</c>Hide it under a bushel, no!</line><line>I'm gonna let it shine!</line><line><c>F</c>Hide it under a bushel, no!</line><line>I'm gonna let it <c>C</c>shine,</line><line>Let it shine, let it <c>G</c>shine, </line><line>Let it <c>C</c>shine.</line></chunk><chunk type="verse"><line><c>C</c>Won't let Satan blow it out!</line><line>I'm gonna let it shine!</line><line><c>F</c>Won't let Satan blow it out!</line><line>I'm gonna let it <c>C</c>shine,</line><line>Let it shine, let it <c>G</c>shine, </line><line>Let it <c>C</c>shine.</line></chunk><chunk type="verse"><line><c>C</c>Let it shine all over the world!</line><line>I'm gonna let it shine!</line><line><c>F</c>Let it shine all over the world!</line><line>I'm gonna let it <c>C</c>shine,</line><line>Let it shine, let it <c>G</c>shine, </line><line>Let it <c>C</c>shine.</line></chunk><chunk type="verse"><line><c>C</c>Let it shine 'till Jesus comes!</line><line>I'm gonna let it shine!</line><line><c>F</c>Let it shine 'till Jesus comes!</line><line>I'm gonna let it <c>C</c>shine,</line><line>Let it shine, let it <c>G</c>shine, </line><line>Let it <c>C</c>shine.</line></chunk><copyright>Public Domain</copyright></song>
           </div>
         </div>
         <div class="subcolumn" id="edit">
@@ -174,6 +175,7 @@
         //if song
         else if(hash.search('&s-') != -1) {
           closeEdit();
+          loadSongbook();
           $('body').attr('class','song');
           //check if songbook is loaded
           //load song
