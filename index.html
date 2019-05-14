@@ -14,7 +14,7 @@
   <body class="songbookList">
     <header>
       <h2>yCanta2!</h2>
-      <div class="navigation"><a href="#" onclick="$('body').attr('class','songbookList')">Reset</a>
+      <div class="navigation"><a href="#">Reset</a>
       </div>
     </header>
     <main class="container">
@@ -22,7 +22,7 @@
         <div style="width: 300px;" >
           <h3>Songbooks &#x1F50D;</h3>
           <ul>
-            <a href="#" onclick="$('body').attr('class','songList')"><li class="selected">todosCantas</li></a>
+            <a href="#songbooks/aSongbook.xml"><li class="selected">todosCantas</li></a>
             <li>Black Book<a href="#" class="icon-fl-right">★</a></li>
             <li>  4/21/19 - Easter<a href="#" class="icon-fl-right">★</a>  </li>
             <hr>
@@ -78,9 +78,9 @@
       <div class="column" id="songList">
         <div class="subcolumn">
           <div style="width:400px;">
-            <h3>todosCantas <a href="#"  onclick="$('body').removeClass('song').addClass('songList edit');" class="edit-icon">&#9998;</a></h3>
+            <h3>todosCantas <a href="#songbooks/aSongbook.xml&edit" class="edit-icon">&#9998;</a></h3>
             <ol>
-            <a href="#"  onclick="$('body').attr('class','song')"><li class="selected">This little light of mine!</li></a>
+            <a href="#songbooks/aSongbook.xml&songs/aSong.song"><li class="selected">This little light of mine!</li></a>
             <li>All Hail the Power</li>
             <li>  A Faithful Man  </li>
   <li>  A Faithful Man (Shortened)  </li>
@@ -122,7 +122,7 @@
         </div>
         <div class="subcolumn" id="edit">
           <div>
-            <h3>Add a song?<a href="#" onclick="$('body').removeClass('edit')" class="icon-fl-right close-icon">x</a></h3>
+            <h3>Add a song?<a href="#songbooks/aSongbook.xml" class="icon-fl-right close-icon">x</a></h3>
             <ul>
               <li>This little light of mine!</li>
               <li>All Hail the Power</li>
@@ -133,7 +133,7 @@
       <div class="column" id="song">
         <div class="subcolumn">
           <div class="content">
-            <h3>This little light of mine <a href="#"  onclick="$('body').addClass('edit'); editSong(this)" class="edit-icon">&#9998;</a></h3>
+            <h3>This little light of mine <a href="#songbooks/aSongbook.xml&songs/aSong.song&edit"  class="edit-icon">&#9998;</a></h3>
             <pre>
 This Little light of mine
 I'm going to let it shine!
@@ -180,7 +180,7 @@ let it shine, let it shine, let it shine!
         </div>
         <div class="subcolumn" id="edit">
           <div>
-            <h3>Add a song Category?<a href="#" onclick="$('body').removeClass('edit'); closeEdit(this);" class="icon-fl-right close-icon">x</a></h3>
+            <h3>Add a song Category?<a href="#songbooks/aSongbook.xml/&songs/aSong.song" class="icon-fl-right close-icon">x</a></h3>
             <ul>
               <li>God</li>
               <li>Holy Spirit</li>
@@ -200,8 +200,9 @@ let it shine, let it shine, let it shine!
         }
       });
       $(function () {
-        editSong = function (elm) {
-          $(elm).closest('.subcolumn').find('.content').children().attr('contenteditable', 'true').toTextarea({
+        editSong = function () {
+          var elm = 
+          $('#song').first('.subcolumn').find('.content').children().attr('contenteditable', 'true').toTextarea({
             allowHTML: false,//allow HTML formatting with CTRL+b, CTRL+i, etc.
             allowImg: false,//allow drag and drop images
             singleLine: false,//make a single line so it will only expand horizontally
@@ -209,9 +210,9 @@ let it shine, let it shine, let it shine!
             placeholder: false//a placeholder when no text is entered. This can also be set by a placeholder="..." or data-placeholder="..." attribute
           });
         }
-        closeEdit = function (elm) {
-          $(elm).closest('.column').first().find('.content').children().attr('contenteditable', 'false');
-          saveSong(elm.txt());
+        closeEdit = function () {
+          $('#song').first('.column').find('.content').children().attr('contenteditable', 'false');
+          //saveSong(elm.txt());
         }
 
         // URL navigation implementing
@@ -237,26 +238,36 @@ let it shine, let it shine, let it shine!
         //alert(count('yolo'));
       });   
       function hashchanged(){
-        var hash = location.hash.replace( /^#/, '' );
+        var hash = location.hash;
         //alert(hash);
-
         //if blank - should have to do nothing
-
-        //if songbook
-          //load songbook
-
-        //if song
-          //check if songbook is loaded
-          //load song
-
-        //if songbook edit
-          //Initiate songbook edit
-
+        if(hash == ''){
+         $('body').attr('class','songbookList');
+        }
         //if song edit
+        else if((hash.search('&songs/') != -1) && (hash.search('&edit') != -1)) {
           //check if songbook is loaded
           //Initiate song edit
-
-
+          $('body').attr('class', 'song edit');
+          editSong();
+        }
+        //if song
+        else if(hash.search('&songs/') != -1) {
+          closeEdit();
+          $('body').attr('class','song');
+          //check if songbook is loaded
+          //load song
+        }
+        //if songbook edit
+        else if((hash.search('#songbooks/') != -1) && (hash.search('&edit') != -1)) {
+          //Initiate songbook edit
+          $('body').attr('class', 'songList edit');
+        }
+        //if songbook
+        else if(hash.search('#songbooks/') != -1) {
+          //load songbook
+          $('body').attr('class','songList');
+        }
       }
     </script>
   </body>
