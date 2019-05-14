@@ -1,11 +1,12 @@
 <!DOCTYPE html5>
 <html lang="en">
   <head>
+    <meta charset="utf-8"/>
     <script src="https://code.jquery.com/jquery-3.4.0.min.js" integrity="sha256-BJeo0qm959uMBGb65z40ejJYGSgR7REI4+CW1fNKwOg="crossorigin="anonymous">
     </script>
     <script src="https://cdn.jsdelivr.net/npm/pouchdb@7.0.0/dist/pouchdb.min.js">
     </script>
-    <script src="db.js"></script>
+    <script src="db.js" type="text/javascript"></script>
     <script src="jquery.toTextarea.js"></script>
     <link rel="stylesheet" type="text/css" href="style.css">
     <title>yCanta2: TodosCantas > All Creatures of Our God and King</title>
@@ -22,7 +23,7 @@
         <div style="width: 300px;" >
           <h3>Songbooks &#x1F50D;</h3>
           <ul>
-            <a href="#songbooks/aSongbook.xml"><li class="selected">todosCantas</li></a>
+            <a href="#sb-aSongbook.xml"><li class="selected">todosCantas</li></a>
             <li>Black Book<a href="#" class="icon-fl-right">★</a></li>
             <li>  4/21/19 - Easter<a href="#" class="icon-fl-right">★</a>  </li>
             <hr>
@@ -77,52 +78,13 @@
       </div>
       <div class="column" id="songList">
         <div class="subcolumn">
-          <div style="width:400px;">
-            <h3>todosCantas <a href="#songbooks/aSongbook.xml&edit" class="edit-icon">&#9998;</a></h3>
-            <ol>
-            <a href="#songbooks/aSongbook.xml&songs/aSong.song"><li class="selected">This little light of mine!</li></a>
-            <li>All Hail the Power</li>
-            <li>  A Faithful Man  </li>
-  <li>  A Faithful Man (Shortened)  </li>
-  <li>  A Joyful Heart Is Good Medicine </li>
-  <li>  A Mighty Fortress (Keep Our Eyes On You)  </li>
-  <li>  A Mighty Fortress Is Our God  </li>
-  <li>  A New Commandment </li>
-  <li>  A New Creation  </li>
-  <li>  A Reflection Of Your Love </li>
-  <li>  A Shelter In The Time Of Storm  </li>
-  <li>  A Time Will Come For Singing  </li>
-  <li>  Abide With Me </li>
-  <li>  Above All Powers  </li>
-  <li>  Absolutely  </li>
-  <li>  Acknowledgment (Poem) </li>
-  <li>  Agnus Dei </li>
-  <li>  Ah, Lord God  </li>
-  <li>  Ain't Jesus Good  </li>
-  <li>  Alabare! Alabare! (Spanish/English) </li>
-  <li>  Alas! And Did My Savior Bleed?  </li>
-  <li>  All Consuming Fire  </li>
-  <li>  All Creation Is Waiting </li>
-  <li>  All Creatures Of Our God And King </li>
-  <li>  All Glory Be To Christ  </li>
-  <li>  All Hail King Jesus (English/Spanish) </li>
-  <li>  All Hail The Power Of Jesus Name  </li>
-  <li>  All Hail, King Jesus  </li>
-  <li>  All Heaven Declares </li>
-  <li>  All His Commandments  </li>
-  <li>  All I Have Is Christ  </li>
-  <li>  All My Hope Is In Jesus </li>
-  <li>  All That I Can Do </li>
-  <li>  All The People Said Amen  </li>
-  <li>  All The Trees Of The Field  </li>
-  <li>  All The Valleys Are Filled  </li>
-  <li>  All The Way </li>
-  </ol>
+          <div style="width:400px;" id="songbook_content">
+            <h3>todosCantas <a href="#sb-aSongbook.xml&edit" class="edit-icon">&#9998;</a></h3>
           </div>
         </div>
         <div class="subcolumn" id="edit">
           <div>
-            <h3>Add a song?<a href="#songbooks/aSongbook.xml" class="icon-fl-right close-icon">x</a></h3>
+            <h3>Add a song?<a href="#sb-aSongbook.xml" class="icon-fl-right close-icon">x</a></h3>
             <ul>
               <li>This little light of mine!</li>
               <li>All Hail the Power</li>
@@ -133,54 +95,12 @@
       <div class="column" id="song">
         <div class="subcolumn">
           <div class="content">
-            <h3>This little light of mine <a href="#songbooks/aSongbook.xml&songs/aSong.song&edit"  class="edit-icon">&#9998;</a></h3>
-            <pre>
-This Little light of mine
-I'm going to let it shine!
-This little light of mine,
-I'm going to let it shine, 
-let it shine, let it shine, let it shine!
-</pre>
-<pre>
-This Little light of mine
-I'm going to let it shine!
-This little light of mine,
-I'm going to let it shine, 
-let it shine, let it shine, let it shine!
-</pre>
-<pre>
-This Little light of mine
-I'm going to let it shine!
-This little light of mine,
-I'm going to let it shine, 
-let it shine, let it shine, let it shine!
-</pre>
-<pre>
-This Little light of mine
-I'm going to let it shine!
-This little light of mine,
-I'm going to let it shine, 
-let it shine, let it shine, let it shine!
-</pre>
-<pre>
-This Little light of mine
-I'm going to let it shine!
-This little light of mine,
-I'm going to let it shine, 
-let it shine, let it shine, let it shine!
-</pre>
-<pre>
-This Little light of mine
-I'm going to let it shine!
-This little light of mine,
-I'm going to let it shine, 
-let it shine, let it shine, let it shine!
-            </pre>
+<song format-version="0.1" ><stitle>This Little Light Of Mine</stitle><author>author unknown</author><scripture_ref /><introduction /><key>C</key><categories>Aspiration/Desire, Commitment, Dedication/Devotion, Evangelism</categories><cclis /><chunk type="verse"><line><c>C</c>This little light of mine,</line><line>I'm gonna let it shine!</line><line><c>F</c>This little light of mine,</line><line>I'm gonna let it <c>C</c>shine,</line><line>Let it shine, let it <c>G</c>shine, </line><line>Let it <c>C</c>shine.</line></chunk><chunk type="verse"><line><c>C</c>Hide it under a bushel, no!</line><line>I'm gonna let it shine!</line><line><c>F</c>Hide it under a bushel, no!</line><line>I'm gonna let it <c>C</c>shine,</line><line>Let it shine, let it <c>G</c>shine, </line><line>Let it <c>C</c>shine.</line></chunk><chunk type="verse"><line><c>C</c>Won't let Satan blow it out!</line><line>I'm gonna let it shine!</line><line><c>F</c>Won't let Satan blow it out!</line><line>I'm gonna let it <c>C</c>shine,</line><line>Let it shine, let it <c>G</c>shine, </line><line>Let it <c>C</c>shine.</line></chunk><chunk type="verse"><line><c>C</c>Let it shine all over the world!</line><line>I'm gonna let it shine!</line><line><c>F</c>Let it shine all over the world!</line><line>I'm gonna let it <c>C</c>shine,</line><line>Let it shine, let it <c>G</c>shine, </line><line>Let it <c>C</c>shine.</line></chunk><chunk type="verse"><line><c>C</c>Let it shine 'till Jesus comes!</line><line>I'm gonna let it shine!</line><line><c>F</c>Let it shine 'till Jesus comes!</line><line>I'm gonna let it <c>C</c>shine,</line><line>Let it shine, let it <c>G</c>shine, </line><line>Let it <c>C</c>shine.</line></chunk><copyright>Public Domain</copyright></song>
           </div>
         </div>
         <div class="subcolumn" id="edit">
           <div>
-            <h3>Add a song Category?<a href="#songbooks/aSongbook.xml/&songs/aSong.song" class="icon-fl-right close-icon">x</a></h3>
+            <h3>Add a song Category?<a href="#sb-aSongbook.xml/&s-aSong.song" class="icon-fl-right close-icon">x</a></h3>
             <ul>
               <li>God</li>
               <li>Holy Spirit</li>
@@ -212,7 +132,7 @@ let it shine, let it shine, let it shine!
         }
         closeEdit = function () {
           $('#song').first('.column').find('.content').children().attr('contenteditable', 'false');
-          //saveSong(elm.txt());
+          saveSong();
         }
 
         // URL navigation implementing
@@ -245,28 +165,28 @@ let it shine, let it shine, let it shine!
          $('body').attr('class','songbookList');
         }
         //if song edit
-        else if((hash.search('&songs/') != -1) && (hash.search('&edit') != -1)) {
+        else if((hash.search('&s-') != -1) && (hash.search('&edit') != -1)) {
           //check if songbook is loaded
           //Initiate song edit
           $('body').attr('class', 'song edit');
           editSong();
         }
         //if song
-        else if(hash.search('&songs/') != -1) {
+        else if(hash.search('&s-') != -1) {
           closeEdit();
           $('body').attr('class','song');
           //check if songbook is loaded
           //load song
         }
         //if songbook edit
-        else if((hash.search('#songbooks/') != -1) && (hash.search('&edit') != -1)) {
+        else if((hash.search('#sb-') != -1) && (hash.search('&edit') != -1)) {
           //Initiate songbook edit
           $('body').attr('class', 'songList edit');
         }
         //if songbook
-        else if(hash.search('#songbooks/') != -1) {
+        else if(hash.search('#sb-') != -1) {
           //load songbook
-          $('body').attr('class','songList');
+          loadSongbook();
         }
       }
     </script>
