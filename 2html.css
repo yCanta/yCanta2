@@ -5,8 +5,10 @@ stitle, categories, cclis {
   display: block;
 }
 stitle {
-  font-size: 1.4em;
+  font-size: 1.17em;/*h3 STYLING*/
   font-weight: bold;
+  margin-block-start: 1em;/*h3 STYLING*/
+  margin-block-end: 1em;/*h3 STYLING*/
 }
 line {
   display: block;

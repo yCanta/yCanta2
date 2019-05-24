@@ -15,12 +15,46 @@ a {
   display: inline-block;
   transform: rotateZ(90deg);
 }
+.icon-rotate {
+  transform: rotateZ(45deg);
+}
 .icon-fl-right {
   float: right;
   width: 1.5rem;
   height: 1.5rem;
   text-align: center;
   margin-right: 1em;
+}
+.active .float-menu {
+  opacity: 1;
+}
+.column:hover .float-menu{
+  opacity: 1;
+}
+.float-menu {
+  opacity: 0;
+  position: absolute;
+  right: 2em;
+  bottom: 1em;
+}
+.float-menu-item {
+  white-space: pre;
+  margin-top: .5em;
+  display: block;
+  font-weight: 600;
+  vertical-align: middle;
+  text-align: right;
+}
+.float-menu-icon {
+  text-align: center;
+  display: inline-block;
+  font-size: 1.25em;
+  width: 2em;
+  height: 2em;
+  line-height: 2em;
+  background-color: lightgray;
+  border-radius: 20em;
+  border: 1px solid gray;
 }
 li:hover:after {
   content: '☆';
@@ -112,6 +146,7 @@ footer:hover{
   padding: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  position: relative; /*this is done for the content bubbles - float menu*/
 }
 .column:hover {
   z-index: 6 !important;
@@ -167,6 +202,52 @@ body.edit #edit{
 }
 body.edit.song #song, body.edit.songList #songList {
   flex: 0 .2 700px; /*in mobile view it shrinks upper tabs more than desirable*/
+}
+
+
+
+
+
+
+/*normalize*/
+button,
+input,
+optgroup,
+select,
+textarea {
+  font-family: inherit; /* 1 */
+  font-size: 100%; /* 1 */
+  line-height: 1.15; /* 1 */
+  margin: 0; /* 2 */
+}
+button,
+input { /* 1 */
+  overflow: visible;
+}
+button,
+select { /* 1 */
+  text-transform: none;
+}
+button,
+[type="button"],
+[type="reset"],
+[type="submit"] {
+  -webkit-appearance: button;
+  cursor: pointer;
+  outline: none;
+}
+button::-moz-focus-inner {
+   border: 0;
+}
+button {
+  margin: 0;
+  padding: 0;
+  white-space: normal;
+  display: inline;
+  background: none;
+  outline: none;
+  border: none;
+  text-align: left;
 }
 
 /*For Mobile devices only*/
