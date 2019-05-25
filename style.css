@@ -127,7 +127,7 @@ footer:hover{
 .selected {
   background-color: rgba(0, 0, 0, 0.2);
 }
-.column#songList, .column#song {
+.column, .subcolumn {
   display: flex;
 }
 .subcolumn {
