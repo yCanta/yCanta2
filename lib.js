@@ -55,11 +55,10 @@ function expand_chord(line){
   }
 
   var expanded_line = chord_line + '\n' + line.trimEnd();
-  return expanded_line
+  return expanded_line;
 }
 function combine(chord, text) {
   //make text at least as long a chord length
-  //chord = unicode(chord, 'utf-8') - do we need this?
   if (text.length < chord.length) {
     text += ' '.repeat(chord.length - text.length);
   }
@@ -68,21 +67,17 @@ function combine(chord, text) {
   var chords = {};
   var re = /[\S]+/g;
   while ((match = re.exec(chord)) != null) {
-    //console.log("match found at " + match.index + match);
     chords[match.index] = chord.substring(match.index,(match.index + match[0].length));
   }
 
   //combine
-  //line = unicode(xml.sax.saxutils.escape(text), 'utf-8') -not sure about needing this?
   var line = text;
-
   var chord_keys = Object.keys(chords);
   chord_keys.sort((a, b) => b - a)
   for (key in chord_keys) {
-    //line = line[:offset] + '<c>' + chords[offset] + '</c>' + line[offset:]
     line = line.substring(0,chord_keys[key])+'<c>'+chords[chord_keys[key]] + '</c>' + line.substring(chord_keys[key],line.length);
   }
-  return line //.encode('utf-8')
+  return line;
 }
 
 
@@ -93,6 +88,7 @@ $(function () {
     $(this).children('.float-menu-icon').toggleClass('icon-rotate');
     $(this).siblings().slideToggle('fast');
   });
+  //float menu close on click
   /*$('body').on('click', '.float-menu-item:not(:last-child)', function() {
     $(this).closest('.float-menu').find('.float-menu-toggle').siblings().slideToggle('fast');
   });*/
