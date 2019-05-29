@@ -19,6 +19,44 @@ function isChord(line) {
     return false;
   }
 }
+function is_chord_line(line) {
+  if(line.search('<c>') != -1) {
+    return true;
+  }
+  else {
+    return false;
+  }
+}
+function expand_chord(line){
+  var CHORD_SPACE_RATIO = 0.45;
+  var tmp = document.createElement('line');
+  tmp.innerHTML = line;
+  
+  var old_line = Array.from(tmp.childNodes);
+  line = '';
+  var chord_line = '';
+  old_line.forEach(function(item){
+    if(item.nodeName === 'C'){
+      chord_line += item.innerText;
+    }
+    else if(item.nodeName == '#text'){
+      line += item.wholeText;
+      chord_line += ' '.repeat(line.length - chord_line.length);
+    }
+  });
+  
+  // Add space to the end of the chord line to make the chord recognized as a chord when reimporting.
+  var w = chord_line.count(' ');
+  var char = chord_line.length - w;
+
+  var w_ad = parseInt(((CHORD_SPACE_RATIO * char)/(1-CHORD_SPACE_RATIO) - w) + 1);
+  if (w_ad > 0) {
+    chord_line += ' '.repeat(w_ad);
+  }
+
+  var expanded_line = chord_line + '\n' + line.trimEnd();
+  return expanded_line
+}
 function combine(chord, text) {
   //make text at least as long a chord length
   //chord = unicode(chord, 'utf-8') - do we need this?
@@ -63,5 +101,4 @@ $(function () {
   $('body').on('click', '.toggle-chords', function() {
     $('#song').toggleClass('nochords');
   });
-  combine('Am   C      D     Em                                                    C', 'the quickest and fastest route is west');
 });
