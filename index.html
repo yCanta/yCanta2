@@ -10,6 +10,7 @@
     <script src="lib.js" type="text/javascript"></script>
     <script src="jquery.myTransposer.js" type="text/javascript"></script>
     <script src="jquery.toTextarea.js"></script>
+    <script src="list.min.js"></script>
     <link rel="stylesheet" type="text/css" href="style.css">
     <link rel="stylesheet" type="text/css" href="2html.css">
     <title>yCanta2: TodosCantas > All Creatures of Our God and King</title>
@@ -88,7 +89,9 @@
       <div class="column" id="songList">
         <div class="subcolumn">
           <div style="width:400px;" id="songbook_content">
-            <h3>todosCantas <a href="#sb-aSongbook.xml&edit" class="edit-icon">&#9998;</a></h3>
+            <h3 id="songbook_title"></h3>
+            <input class="search" type="text" data-target="#songbook_content" data-trigger="change" placeholder="Search">
+            <ul class="list"></ul>
           </div>
           <div class="float-menu">
             <a href="#sb-aSongbook.xml&s-aSong.song&edit" class="float-menu-item"><span class="float-menu-icon">+</span> Add Song</a>
@@ -97,6 +100,21 @@
             <a href="#sb-aSongbook.xml&s-aSong.song&edit" class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>
             <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>
           </div>
+          <span style="display:none">
+            <li id="song-item-template" 
+                data-song-id=""
+                data-song-title=""
+                data-song-authors=""
+                data-song-scripture=""
+                data-song-introduction=""
+                data-song-key=""
+                data-song-categories=""
+                data-song-cclis=""
+                data-song-content=""
+                data-song-copyright="">
+              <a href="" class="link name" ></a>
+            </li>
+          </span>
         </div>
         <div class="subcolumn" id="edit">
           <div>
@@ -204,12 +222,13 @@
         //if song
         else if(hash.search('&s-') != -1) {
           closeEdit();
+          //Need to check check if songbook is loaded
           loadSongbook();
+          //Need to load song
+
           $('body').attr('class','song');
           $('.active').removeClass('active');
-          $('#song').addClass('active');
-          //check if songbook is loaded
-          //load song
+          $('#song').addClass('active');          
         }
         //if songbook edit
         else if((hash.search('#sb-') != -1) && (hash.search('&edit') != -1)) {
