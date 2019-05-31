@@ -1,4 +1,4 @@
-stitle, categories, cclis {
+stitle, categories, cclis, author, key {
   margin-bottom: 1em;
 }
 stitle, categories, cclis {
@@ -7,14 +7,16 @@ stitle, categories, cclis {
 stitle {
   font-size: 1.17em;/*h3 STYLING*/
   font-weight: bold;
-  margin-block-start: 1em;/*h3 STYLING*/
-  margin-block-end: 1em;/*h3 STYLING*/
+}
+chunk {
+  display: block;
+  margin-left: 2em;
+  margin-bottom: 1em;
 }
 line {
   display: block;
   position: relative;
   padding-top: 1em;
-  margin-left: 2em;
   bottom: 1em;
 }
 .nochords line {
@@ -31,13 +33,16 @@ c {
 
 /*counter stuff  */
 song {
+ display: block;
+ margin-block-start: 1em;/*h3 STYLING*/
+ margin-block-end: 1em;/*h3 STYLING*/
  white-space: pre-wrap;
  counter-reset: verse_n; 
 }
 [type=verse]:before {
  position: relative;
  top: 1.3em;
- right: 0em;
+ right: 2em;
  content: counter(verse_n) ")";
  counter-increment: verse_n;
 }
@@ -81,6 +86,12 @@ song {
 .nochords [type=comment]:before {
  content: '\A Comment:';
 }
+.nochords chunk {
+  margin-bottom: 0em;
+}
+.edit chunk {
+  margin-bottom: 1em;
+}
 [type=comment] line {
  color: #555;
  font-style: italic;
@@ -89,15 +100,33 @@ chunk:before {
  content: ' ';
 }
 key:not(:empty):before {content: 'Key: '}
-author, introduction {margin-right: 1em;}
+author, introduction {margin-right: 1em; display: inline-block;}
 copyright:before {
- content: '\A ';
+ content: '';
 }
 copyright {
  margin-top: 1em;
 }
 introduction:before {
- content: '\A'; 
+ content: ''; 
 }
 cclis:not(:empty):before {content: 'CCLI'; visibility: visible;}
 cclis {visibility: hidden;}
+stitle[contentEditable=true]:empty:not(:focus):before{
+  content: 'Title: ';
+}
+key[contentEditable=true]:empty:not(:focus):before{
+  content: 'Key: ';
+}
+author[contentEditable=true]:empty:not(:focus):before{
+  content: 'Author: ';
+}
+scripture[contentEditable=true]:empty:not(:focus):before{
+  content: 'Scripture: ';
+}
+categories[contentEditable=true]:empty:not(:focus):before{
+  content: 'Categories: ';
+}
+copyright[contentEditable=true]:empty:not(:focus):before{
+  content: 'Copyright: ';
+}

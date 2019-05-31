@@ -17,6 +17,7 @@ function saveSong(song_id) {
     categories: song_html.find('categories').text(),
     cclis: song_html.find('cclis').text(),
     content: song_html.find('chunk').text(),
+    copyright: song_html.find('copyright').text()
   };
 
   db.put(song, function callback(err, result) {

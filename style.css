@@ -10,6 +10,14 @@ a {
 [contenteditable='true']{
   border: 1px gray dashed;
   background-color: lightgray;
+  outline: none;
+}
+[contentEditable=true]:empty:not(:focus):before{
+  color:grey;
+  font-style:italic;
+}
+.pre {
+  font-family: monospace;
 }
 .edit-icon {
   display: inline-block;
