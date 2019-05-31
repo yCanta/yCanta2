@@ -1,7 +1,7 @@
 stitle, categories, cclis, author, key {
   margin-bottom: 1em;
 }
-stitle, categories, cclis {
+stitle, categories, cclis, copyright {
   display: block;
 }
 stitle {
