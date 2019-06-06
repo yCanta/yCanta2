@@ -1,4 +1,4 @@
-stitle, categories, cclis, author, key {
+stitle, categories, cclis, authors, key {
   margin-bottom: 1em;
 }
 stitle, categories, cclis, copyright {
@@ -50,6 +50,9 @@ song {
 
 [type=chorus]:before {
  content: '\A Chorus: \A\A';
+ position: relative;
+ right: 2em;
+
 }
 [type=pre-chorus]:before {
  content: '\A Pre-Chorus:\A\A';
@@ -100,7 +103,7 @@ chunk:before {
  content: ' ';
 }
 key:not(:empty):before {content: 'Key: '}
-author, introduction {margin-right: 1em; display: inline-block;}
+authors, introduction {margin-right: 1em; display: inline-block;}
 copyright:before {
  content: '';
 }
@@ -118,7 +121,7 @@ stitle[contentEditable=true]:empty:not(:focus):before{
 key[contentEditable=true]:empty:not(:focus):before{
   content: 'Key: ';
 }
-author[contentEditable=true]:empty:not(:focus):before{
+authors[contentEditable=true]:empty:not(:focus):before{
   content: 'Author: ';
 }
 scripture[contentEditable=true]:empty:not(:focus):before{

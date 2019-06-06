@@ -129,7 +129,6 @@
       <div class="column" id="song">
         <div class="subcolumn">
           <div class="content">
-<song format-version="0.1" ><stitle>This Little Light Of Mine</stitle><author>author unknown</author><key>C</key><categories>Aspiration/Desire, Commitment, Dedication/Devotion, Evangelism</categories><chunk type="verse"><line><c>C</c>This little light of mine,</line><line>I'm gonna let it shine!</line><line><c>F</c>This little light of mine,</line><line>I'm gonna let it <c>C</c>shine,</line><line>Let it shine, let it <c>G</c>shine, </line><line>Let it <c>C</c>shine.</line></chunk><chunk type="verse"><line><c>C</c>Hide it under a bushel, no!</line><line>I'm gonna let it shine!</line><line><c>F</c>Hide it under a bushel, no!</line><line>I'm gonna let it <c>C</c>shine,</line><line>Let it shine, let it <c>G</c>shine, </line><line>Let it <c>C</c>shine.</line></chunk><chunk type="verse"><line><c>C</c>Won't let Satan blow it out!</line><line>I'm gonna let it shine!</line><line><c>F</c>Won't let Satan blow it out!</line><line>I'm gonna let it <c>C</c>shine,</line><line>Let it shine, let it <c>G</c>shine, </line><line>Let it <c>C</c>shine.</line></chunk><chunk type="verse"><line><c>C</c>Let it shine all over the world!</line><line>I'm gonna let it shine!</line><line><c>F</c>Let it shine all over the world!</line><line>I'm gonna let it <c>C</c>shine,</line><line>Let it shine, let it <c>G</c>shine, </line><line>Let it <c>C</c>shine.</line></chunk><chunk type="verse"><line><c>C</c>Let it shine 'till Jesus comes!</line><line>I'm gonna let it shine!</line><line><c>F</c>Let it shine 'till Jesus comes!</line><line>I'm gonna let it <c>C</c>shine,</line><line>Let it shine, let it <c>G</c>shine, </line><line>Let it <c>C</c>shine.</line></chunk><copyright>Public Domain</copyright></song>
           </div>
           <div class="float-menu">
             <span class="float-menu-item"><span class="float-menu-icon icon-rotate">&#9021;</span> Delete</span>
@@ -141,7 +140,7 @@
         </div>
         <div class="subcolumn" id="edit">
           <div>
-            <h3>Add a song Category?<a href="#sb-aSongbook.xml/&s-aSong.song" class="icon-fl-right close-icon">x</a></h3>
+            <h3>Add a song Category?<a href="#sb-aSongbook.xml&s-aSong.song" class="icon-fl-right close-icon">x</a></h3>
             <ul>
               <li>God</li>
               <li>Holy Spirit</li>
@@ -204,7 +203,7 @@
             })
             $(this).html(content);
           }).removeClass('pre');
-          saveSong();
+          saveSong(parseHash('s-'));
         };
 
         // URL navigation implementing
@@ -227,8 +226,6 @@
             return syl.length;
           }
         }
-        saveSong();
-        //alert(count('yolo'));
       });   
       function hashchanged(){
         var hash = location.hash;
@@ -256,6 +253,7 @@
           //Need to check check if songbook is loaded
           loadSongbook();
           //Need to load song
+          loadSong(parseHash('s-'));
 
           $('body').attr('class','song');
           $('.active').removeClass('active');

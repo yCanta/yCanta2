@@ -122,9 +122,9 @@ footer {
   border-left: double 3px black;
   border-right: double 3px black;
 }
-footer:hover{
+/*footer:hover{
   flex: 0 0 180px;
-}
+}*/
 
 /*Styling!*/
 .navigation {

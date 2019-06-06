@@ -79,6 +79,16 @@ function combine(chord, text) {
   }
   return line;
 }
+function parseHash(part) {
+  var parts = location.hash.substr(1).split('&');
+  //this is not failsafe
+  if(part == 's-') {
+    return parts[1];
+  }
+  else {
+    return parts
+  }
+}
 
 
 $(function () {
