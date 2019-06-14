@@ -93,10 +93,9 @@ function parseHash(part) {
 
 $(function () {
   //float menu activation
-  $('.float-menu-toggle').siblings().slideToggle('fast');
   $('body').on('click', '.float-menu-toggle', function() {
     $(this).children('.float-menu-icon').toggleClass('icon-rotate');
-    $(this).siblings().slideToggle('fast');
+    $(this).siblings().toggleClass('uncollapsed');
   });
   //float menu close on click
   /*$('body').on('click', '.float-menu-item:not(:last-child)', function() {
