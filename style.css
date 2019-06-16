@@ -135,12 +135,11 @@ footer {
   padding: 0;
   height: 100%;
 }
-.column, .subcolumn {
-}
 .column {
   display: flex;
   flex-direction: column;
   flex-wrap: nowrap;
+  max-height: 100%;
 }
 .subcolumn {
   height: 100%;
