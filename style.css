@@ -38,8 +38,6 @@ a {
   opacity: 1;
 }
 .float-menu {
-  z-index: 6;
-  position: sticky;
 }
 .float-menu-item {
   opacity: 0;
@@ -163,9 +161,6 @@ footer {
   overflow-y: auto;
   overflow-x: hidden;
 }
-.column:hover {
-  z-index: 6 !important;
-}
 
 html body .subcolumn#edit {
   box-shadow: none;
@@ -271,7 +266,6 @@ button {
   body main {
     flex-direction: column;
     position: relative; /*this is done for the content bubbles - float menu*/
-
   }
   body.songbookList #songbookList, 
   body.songList #songList, 
@@ -354,6 +348,9 @@ button {
   }
   .float-menu-item:not(:nth-last-child(2)):after {
     content: ' //';
+  }
+  .column:hover {
+    z-index: 6 !important;
   }
 }
 
