@@ -115,6 +115,10 @@ footer {
   border-top: ridge 5px black;
   border-left: double 3px black;
   border-right: double 3px black;
+  max-height: 3em;
+  overflow-y: scroll;
+}
+#debugDiv {
 }
 /*footer:hover{
   flex: 0 0 180px;

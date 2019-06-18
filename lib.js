@@ -107,3 +107,16 @@ $(function () {
     $('#song').toggleClass('nochords');
   });
 });
+
+//initial logging of alerts... probably better not to have it be the console ultimately?
+if (typeof console  != "undefined") 
+    if (typeof console.log != 'undefined')
+        console.olog = console.log;
+    else
+        console.olog = function() {};
+
+console.log = function(message) {
+    console.olog(message);
+    $('#debugDiv').prepend('<p>' + message + '</p>');
+};
+console.error = console.debug = console.info =  console.log
