@@ -9,6 +9,5 @@
   ],
   "start_url": "/yCanta2/index.html",
   "background_color": "#d3d3d3",
-  "theme_color":"#FFFFE0",
   "display": "standalone"
 }
