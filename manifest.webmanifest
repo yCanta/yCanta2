@@ -5,6 +5,6 @@
         "sizes": "64x64",
         "type": "image/jpg"
       }],
-  "start_url": "yCanta2/index.html",
+  "start_url": "/yCanta2/index.html",
   "orientation": "portrait"
 }
