@@ -54,6 +54,7 @@ function loadSong(song_id) {
   console.log(song_id);
   //song_id = 's-aSong.song';
   db.get(song_id).then(function(song){
+    window.song_id = song._id;
     var song_html = '<song data-rev="' + song._rev + '" data-id="' + song._id + '">' + '<stitle>' + song.title + '</stitle>' + '<authors>' + song.authors + '</authors>' + '<scripture_ref>' + song.scripture_ref + '</scripture_ref>' + '<introduction>' + song.introduction + '</introduction>' + '<key>' + song.key + '</key>' + '<categories>' + song.categories + '</categories>' + '<cclis>' + song.cclis + '</cclis>';
     song.content.forEach(function(chunk){
       song_html += '<chunk type="' + chunk[0].type + '">';
@@ -67,6 +68,7 @@ function loadSong(song_id) {
     $('#song .content').html(song_html);
   }).catch(function (err) {
     console.log(err);
+    //should add a redirect to URL explaining what's up.
   });  
 }
 
@@ -136,6 +138,7 @@ function loadSongbook(songbook_id) {
     }).then(function(result){
       //handle result
       buildSongbookList(result);
+      window.songbook_id = songbook_id;
     }).catch(function(err){
       console.log(err);
     })
@@ -144,6 +147,7 @@ function loadSongbook(songbook_id) {
     //we need to load the songbook - mostly same as above.
   }
   $('#songbook_title').text('todosCantas');  // Need to change for other songbooks.
+  $('#songbook_title').parent().attr('href','#'+songbook_id);
   $('body').attr('class','songList');
 }
 

@@ -1,0 +1,11 @@
+{
+  "name": "yCanta2",
+  "icons": [{
+        "src": "icon.jpg",
+        "sizes": "64x64",
+        "type": "image/jpg"
+      }],
+  "start_url": "/index.html",
+  "display": "fullscreen",
+  "orientation": "portrait"
+}
