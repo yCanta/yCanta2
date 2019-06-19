@@ -189,8 +189,9 @@
           $('#song').first('.subcolumn').find('song').children().attr('contenteditable', 'true').toTextarea({
             allowHTML: false,//allow HTML formatting with CTRL+b, CTRL+i, etc.
             allowImg: false,//allow drag and drop images
+            doubleEnter: true,//make a single line so it will only expand horizontally
             singleLine: false,//make a single line so it will only expand horizontally
-            pastePlainText: true,//paste text without styling as source
+            pastePlainText: false,//paste text without styling as source
             placeholder: true//a placeholder when no text is entered. This can also be set by a placeholder="..." or data-placeholder="..." attribute
           });
         }

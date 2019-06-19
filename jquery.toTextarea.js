@@ -3,7 +3,7 @@
  * License: MIT
  * Version: 0.4.0
  */
-
+/*doubleEnter option added by Carl Hempel 6/19/2019*/
 ;
 (function ($, window, document, undefined) {
 	// modified from http://stackoverflow.com/a/12924488/806777
@@ -251,12 +251,15 @@
 				allowHTML: false,
 				allowImg: false,
 				singleLine: false,
+				doubleEnter: false,
 				pastePlainText: true,
 				placeholder: false
 			};
 			if ($.isPlainObject(options)) {
 				$.extend(settings, options);
 			}
+			var cur_char = '';
+			var prev_char = ' ';
 			return this.each(function () {
 				var $this = $(this);
 				var isTextarea = $this.data().isTextarea || false;
@@ -273,6 +276,10 @@
 					var allowImg = settings.allowImg;
 					if (typeof settings.allowImg === "function") {
 						allowImg = settings.allowImg.call(this);
+					}
+					var doubleEnter = settings.doubleEnter;  //Added for splitting chunks automatically
+					if (typeof settings.doubleEnter === "function") {
+						doubleEnter = settings.doubleEnter.call(this);
 					}
 					var singleLine = settings.singleLine;
 					if (typeof settings.singleLine === "function") {
@@ -309,6 +316,70 @@
 						});
 					if (placeholder) {
 						$this.attr({ "data-placeholder": placeholder }).addClass("toTextarea-placeholder");
+					}
+					if (doubleEnter) {
+						$this
+						  .addClass("toTextarea-doubleEnter")
+						  .on("keydown.toTextarea", function (e) {
+						   	var chunk = $(this).closest('chunk');
+						   	prev_char = cur_char;
+						   	cur_char = e.which;
+
+                if (!$(this).data().disabled && e.which === 13 && chunk.length != 0) {
+                	//check if the last character is a "\n"
+                	//if current line is empty then clone the chunk and move all data after this point into that chunk
+                	if(cur_char == prev_char) { //change if to proper statement
+										e.preventDefault();
+										var selection = window.getSelection();
+
+										var rangeBefore = document.createRange();
+									  var rangeAfter = document.createRange();
+									  var r = selection.getRangeAt(0);
+
+									  rangeBefore.setStart(r.startContainer,0);
+									  rangeBefore.setEnd(r.startContainer,r.startOffset);
+
+									  rangeAfter.setStart(r.endContainer,r.endOffset);
+									  rangeAfter.setEnd(r.endContainer,r.endContainer.length);
+
+                		var new_chunk_text = rangeAfter.toString();
+                		var old_chunk_text = rangeBefore.toString();
+                    var new_chunk = chunk.clone().insertAfter(chunk);
+                		chunk.text(old_chunk_text);
+                    new_chunk.text(new_chunk_text).toTextarea({
+		                  doubleEnter: true,//make a single line so it will only expand horizontally
+		                  pastePlainText: false,//paste text without styling as source
+		                  placeholder: true//a placeholder when no text is entered. This can also be set by a placeholder="..." or data-placeholder="..." attribute
+					          });;
+					          //put the cursor positioned at the end of the new chunk
+										var range = document.createRange();
+										var sel = window.getSelection();
+										range.setStart(new_chunk[0].childNodes[0], 0);
+										range.collapse(true);
+										sel.removeAllRanges();
+										sel.addRange(range);
+                	}
+									return true;
+								}
+                if (!$(this).data().disabled && e.which === 8 && chunk.length != 0) {
+                	var prev_chunk = chunk.prev('chunk');
+                	//check if there are no characters prior to this one and there is a prev chunk
+                	if (window.getSelection().anchorOffset == '0' && prev_chunk.length != '0') {
+										e.preventDefault();
+                		var prev_chunk_length = prev_chunk.text().length;
+                		prev_chunk.text(prev_chunk.text().replace(/^\s+|\s+$/g, '') + '\n' + chunk.text());
+                		chunk.remove();
+                		//put the cursor positioned at the end of the old chunk
+										var range = document.createRange();
+										var sel = window.getSelection();
+										range.setStart(prev_chunk[0].childNodes[0], prev_chunk_length);
+										range.collapse(true);
+										sel.removeAllRanges();
+										sel.addRange(range);
+                	}
+									return true;
+								}
+						  });
 					}
 					if (singleLine) {
 						$this
