@@ -85,7 +85,7 @@ main {
   flex: 0 1 auto;
   display: flex;
   background-color: lightgray;
-  overflow-y: auto;
+  overflow-y: hidden;
 }
 body main #songbookList {
   background-color: lightyellow;
@@ -257,6 +257,21 @@ button {
   border: none;
   text-align: left;
 }
+.float-menu .float-menu-item.saveSong {
+  opacity: 0;
+  visibility: collapse;
+  width: 0;
+}
+.edit .float-menu .float-menu-item {
+  width: 0;
+  visibility: collapse;
+  opacity: 0;
+}
+.edit .float-menu .float-menu-item.saveSong {
+  width: auto;
+  visibility: visible;
+  opacity: 1;
+}
 
 /*For Mobile devices only*/
 @media only screen and (max-width: 700px) {
@@ -337,9 +352,27 @@ button {
     border-radius: 20em;
     border: 1px solid gray;
   }
+  .float-menu .float-menu-item.saveSong {
+    height: 0;
+    width: auto;
+  }
+  .edit .float-menu .float-menu-item.saveSong {
+    height: auto;
+  }
+  .edit .float-menu .float-menu-item {
+    height: 0;
+  }
+  .edit .float-menu {
+    left: 1em;
+    right: auto;
+    bottom: 0;
+  }
 }
 @media only screen and (min-width: 701px) {
   .float-menu {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
     width: 100%;
     top: 0;
     background-color: gray;
@@ -349,7 +382,7 @@ button {
   .float-menu-icon {
     display: none;
   }
-  .float-menu-item:not(:nth-last-child(2)):after {
+  .float-menu-item:not(:first-child):after {
     content: ' //';
   }
   .column:hover {
