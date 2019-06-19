@@ -9,6 +9,7 @@ stitle {
   font-weight: bold;
 }
 chunk {
+  position: relative;
   display: block;
   margin-left: 2em;
   margin-bottom: 1em;
@@ -17,11 +18,9 @@ line {
   display: block;
   position: relative;
   padding-top: 1em;
-  bottom: 1em;
 }
 .nochords line {
  padding-top: 0em;
- bottom: 0em;
 }
 c {
  position: absolute;
@@ -39,9 +38,12 @@ song {
  white-space: pre-wrap;
  counter-reset: verse_n; 
 }
+.nochords [type=verse]:before {
+  top: 1.2em;
+}
 [type=verse]:before {
  position: relative;
- top: 1.3em;
+ top: 2.1em;
  right: 2em;
  content: counter(verse_n) ")";
  counter-increment: verse_n;
@@ -95,6 +97,16 @@ song {
 .edit chunk {
   margin-bottom: 1em;
 }
+.edit chunk:before {
+  position: absolute;
+  top: 1.3em;
+  left: -2em;
+}
+.edit chunk[type=chorus]:before {
+  position: absolute;
+  top: -2.3em;
+  left: -2em;
+}
 [type=comment] line {
  color: #555;
  font-style: italic;
@@ -113,7 +125,10 @@ copyright {
 introduction:before {
  content: ''; 
 }
-cclis:not(:empty):before {content: 'CCLI'; visibility: visible;}
+cclis:not(:empty):before {
+  content: 'CCLI'; visibility: visible;
+  margin-bottom: 2em;
+}
 cclis {visibility: hidden;}
 stitle[contentEditable=true]:empty:not(:focus):before{
   content: 'Title: ';
