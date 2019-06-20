@@ -7,6 +7,15 @@ stitle, categories, cclis, copyright {
 stitle {
   font-size: 1.17em;/*h3 STYLING*/
   font-weight: bold;
+  position: sticky;
+  top: 0;
+  background-color: lightblue;
+  z-index: 10;
+}
+.edit stitle {
+  position: static;
+  top: auto;
+  z-index: auto;
 }
 chunk {
   position: relative;
