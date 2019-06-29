@@ -85,6 +85,9 @@ function parseHash(part) {
   if(part == 's-') {
     return parts[1];
   }
+  else if (part == 'sb-') {
+    return parts[0];
+  }
   else {
     return parts
   }

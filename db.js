@@ -51,104 +51,111 @@ function saveSong(song_id) {
 }
 
 function loadSong(song_id) {
-  console.log(song_id);
-  //song_id = 's-aSong.song';
-  db.get(song_id).then(function(song){
-    window.song_id = song._id;
-    var song_html = '<song data-rev="' + song._rev + '" data-id="' + song._id + '">' + '<stitle>' + song.title + '</stitle>' + '<authors>' + song.authors + '</authors>' + '<scripture_ref>' + song.scripture_ref + '</scripture_ref>' + '<introduction>' + song.introduction + '</introduction>' + '<key>' + song.key + '</key>' + '<categories>' + song.categories + '</categories>' + '<cclis>' + song.cclis + '</cclis>';
-    song.content.forEach(function(chunk){
-      song_html += '<chunk type="' + chunk[0].type + '">';
-      chunk[1].forEach(function(line){
-        song_html += '<line>' + line + '</line>';
+  return new Promise(function(resolve, reject) {
+    db.get(song_id).then(function(song){
+      window.song_id = song._id;
+      var song_html = '<song data-rev="' + song._rev + '" data-id="' + song._id + '">' + '<stitle>' + song.title + '</stitle>' + '<authors>' + song.authors + '</authors>' + '<scripture_ref>' + song.scripture_ref + '</scripture_ref>' + '<introduction>' + song.introduction + '</introduction>' + '<key>' + song.key + '</key>' + '<categories>' + song.categories + '</categories>' + '<cclis>' + song.cclis + '</cclis>';
+      song.content.forEach(function(chunk){
+        song_html += '<chunk type="' + chunk[0].type + '">';
+        chunk[1].forEach(function(line){
+          song_html += '<line>' + line + '</line>';
+        });
+        song_html += '</chunk>';
       });
-      song_html += '</chunk>';
-    });
-    song_html +=  '<copyright>' + song.copyright + '</copyright>' +
-                '</song>'
-    $('#song .content').html(song_html);
-  }).catch(function (err) {
-    console.log(err);
-    //should add a redirect to URL explaining what's up.
-  });  
+      song_html +=  '<copyright>' + song.copyright + '</copyright>' +
+                  '</song>'
+      $('#song .content').html(song_html);
+      resolve("song_loaded");
+     }).catch(function (err) {
+      console.log(err);
+      reject('got an error!');
+      //should load the songbook and explain what's up.
+    });  
+  });
 }
 
 function loadSongbook(songbook_id) {
-  function buildSongbookList (result) {
-    var options = {    
-      valueNames: [
-        { data: ['song-id'] },
-        { data: ['song-title'] },
-        { data: ['song-authors'] },
-        { data: ['song-scripture_ref'] },
-        { data: ['song-introduction'] },
-        { data: ['song-key'] },
-        { data: ['song-categories'] },
-        { data: ['song-cclis'] },
-        { data: ['song-content'] },
-        { data: ['song-copyright'] },
-        { name: 'link', attr: 'href'},
-        'name'
-      ],
-      item: 'song-item-template'
-    };
-    var values = [];   
-    result.rows.map(function (row) {
-      if(window.songbook_list != undefined){
-        if(window.songbook_list.get(row.doc._id)){
-          console.log("Skipping it!");
-          return
-        }
-        else {
-          console.log("We've got a new one!");
-        }
-      }
-      values.push(
-        { 'song-id': row.doc._id,
-          'song-title':        't:' + row.doc.title,
-          'song-authors':      'a:' + (row.doc.authors != '' ? row.doc.authors : '!a'),
-          'song-scripture_ref':'s:' + row.doc.scripture_ref,
-          'song-introduction': 'i:' + row.doc.introduction,
-          'song-key':          'k:' + row.doc.key,
-          'song-categories':   'c:' + row.doc.categories,
-          'song-copyright':    'c:' + (row.doc.copyright ? row.doc.copyright : '!c'),
-          'song-cclis': ((row.doc.cclis!='') ? 'cclis' : '!cclis'),
-          'song-content': row.doc.content,
-          'link': '#'+songbook_id+'&'+row.doc._id,
-          'name': row.doc.title
-      });
-    });
-    window.songbook_list = new List('songbook_content', options, values);
-    /*
-    var songbook = document.createDocumentFragment();
-      var title = document.createElement('h3');
-      title.innerHTML = 'todosCantas';
-      songbook.appendChild(title);
+  return new Promise(function(resolve, reject) {
 
-      var songbook_content = document.getElementById("songbook_content");
-      songbook_content.innerHTML = '';
-      songbook_content.append(songbook);*/
-    return 
-  }
-  if(songbook_id == undefined) {
-    songbook_id = 'sb-todosCantas';
-    db.allDocs({
-      include_docs: true,
-      startkey: 's-',
-      endkey: 's-\ufff0',
-    }).then(function(result){
-      //handle result
-      buildSongbookList(result);
-      window.songbook_id = songbook_id;
-    }).catch(function(err){
-      console.log(err);
-    })
-  }
-  else {
-    //we need to load the songbook - mostly same as above.
-  }
-  $('#songbook_title').text('todosCantas');  // Need to change for other songbooks.
-  $('#songbook_title').parent().attr('href','#'+songbook_id);
-  $('body').attr('class','songList');
+    function buildSongbookList (result) {
+      var options = {    
+        valueNames: [
+          { data: ['song-id'] },
+          { data: ['song-title'] },
+          { data: ['song-authors'] },
+          { data: ['song-scripture_ref'] },
+          { data: ['song-introduction'] },
+          { data: ['song-key'] },
+          { data: ['song-categories'] },
+          { data: ['song-cclis'] },
+          { data: ['song-content'] },
+          { data: ['song-copyright'] },
+          { name: 'link', attr: 'href'},
+          'name'
+        ],
+        item: 'song-item-template'
+      };
+      var values = [];   
+      result.rows.map(function (row) {
+        if(window.songbook_list != undefined){
+          if(window.songbook_list.get(row.doc._id)){
+            console.log("Skipping it!");
+            return
+          }
+          else {
+            console.log("We've got a new one!");
+          }
+        }
+        values.push(
+          { 'song-id': row.doc._id,
+            'song-title':        't:' + row.doc.title,
+            'song-authors':      'a:' + (row.doc.authors != '' ? row.doc.authors : '!a'),
+            'song-scripture_ref':'s:' + row.doc.scripture_ref,
+            'song-introduction': 'i:' + row.doc.introduction,
+            'song-key':          'k:' + row.doc.key,
+            'song-categories':   'c:' + row.doc.categories,
+            'song-copyright':    'c:' + (row.doc.copyright ? row.doc.copyright : '!c'),
+            'song-cclis': ((row.doc.cclis!='') ? 'cclis' : '!cclis'),
+            'song-content': row.doc.content,
+            'link': '#'+songbook_id+'&'+row.doc._id,
+            'name': row.doc.title
+        });
+      });
+      //Creates list.min.js list for viewing the songbook
+      window.songbook_list = new List('songbook_content', options, values);
+      /*
+      var songbook = document.createDocumentFragment();
+        var title = document.createElement('h3');
+        title.innerHTML = 'todosCantas';
+        songbook.appendChild(title);
+
+        var songbook_content = document.getElementById("songbook_content");
+        songbook_content.innerHTML = '';
+        songbook_content.append(songbook);*/
+      return 
+    }
+    if(songbook_id == undefined || songbook_id == 'sb-todosCantas') {
+      songbook_id = 'sb-todosCantas';
+      db.allDocs({
+        include_docs: true,
+        startkey: 's-',
+        endkey: 's-\ufff0',
+      }).then(function(result){
+        //handle result
+        buildSongbookList(result);
+        window.songbook_id = songbook_id;
+      }).catch(function(err){
+        console.log(err);
+      })
+    }
+    else {
+      //we need to load the songbook - mostly same as above.
+    }
+    $('#songbook_title').text('todosCantas');  // Need to change for other songbooks.
+    $('#songbook_title').parent().attr('href','#'+songbook_id);
+    $('body').attr('class','songList');
+    resolve('loaded songbook');
+  });
 }
 
 

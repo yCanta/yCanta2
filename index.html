@@ -35,7 +35,7 @@
             <div style="width: 300px;" >
               <a class="title_link" href="#"><h3>Songbooks &#x1F50D;</h3></a>
               <ul>
-                <a href="#sb-aSongbook.xml"><li class="selected">todosCantas</li></a>
+                <a href="#sb-todosCantas"><li class="selected">todosCantas</li></a>
                 <li>Black Book<a href="#" class="icon-fl-right">★</a></li>
                 <li>  4/21/19 - Easter<a href="#" class="icon-fl-right">★</a>  </li>
                 <hr>
@@ -193,14 +193,19 @@
         //if song edit
         else if((hash.search('&s-') != -1) && (hash.search('&edit') != -1)) {
           //check if songbook is loaded
-          //Initiate song edit
-          $('body').attr('class', 'song edit');
-          $('.active').removeClass('active');
-          $('#song').addClass('active');
-          editSong();
+          Promise.all([loadSongbook(), loadSong(parseHash('s-'))])
+            .then(function(values){
+              console.log(values);
+              //Initiate song edit
+              $('body').attr('class', 'song edit');
+              $('.active').removeClass('active');
+              $('#song').addClass('active');
+              editSong();
+          });
         }
         //if song
         else if(hash.search('&s-') != -1) {
+          //this should be removed/put higher up the if change
           if($('body').hasClass('edit')){
             closeEdit();
           }
@@ -222,9 +227,11 @@
         }
         //if songbook
         else if(hash.search('#sb-') != -1) {
-          loadSongbook();
-          $('.active').removeClass('active');
-          $('#songList').addClass('active');
+          Promise.resolve(loadSongbook(parseHash('sb-')))
+            .then(function() {
+              $('.active').removeClass('active');
+              $('#songList').addClass('active');
+          });
         }
       }
     </script>
