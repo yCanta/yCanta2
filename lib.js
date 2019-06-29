@@ -115,8 +115,68 @@ if (typeof console  != "undefined")
     else
         console.olog = function() {};
 
-console.log = function(message) {
+/*console.log = function(message) {
     console.olog(message);
     $('#debugDiv').prepend('<p>' + message + '</p>');
 };
 console.error = console.debug = console.info =  console.log
+*/
+
+editSong = function () {
+  $('chunk').each(function(index){
+    var content = [];
+    $(this).children('line').each(function(index){
+      if(is_chord_line($(this).html())){
+        content.push(expand_chord($(this).html()));
+      }
+      else {
+        content.push($(this).html());
+      }
+    });
+    $(this).html(content.join('\n')).addClass('pre');
+  });
+  $('#song').first('.subcolumn').find('song').children().attr('contenteditable', 'true').toTextarea({
+    allowHTML: false,//allow HTML formatting with CTRL+b, CTRL+i, etc.
+    allowImg: false,//allow drag and drop images
+    doubleEnter: true,//make a single line so it will only expand horizontally
+    singleLine: false,//make a single line so it will only expand horizontally
+    pastePlainText: false,//paste text without styling as source
+    placeholder: true//a placeholder when no text is entered. This can also be set by a placeholder="..." or data-placeholder="..." attribute
+  });
+}
+closeEdit = function () {
+  $('#song').first('.subcolumn').find('song').children().attr('contenteditable', 'false');
+  $('song chunk').each(function(index){
+    var lines = $(this).html().split('\n');
+    var prev_is_chord = false;
+    var content = '';
+    $(lines).each(function(index){
+      if(prev_is_chord){
+        content += '<line>'+combine(lines[index-1],this)+'</line>';
+        prev_is_chord = false;
+      }
+      else if(isChord(this)){
+        prev_is_chord = true;
+      }
+      else{  //we have a line
+        content += '<line>'+this+'</line>';
+      }
+    })
+    $(this).html(content);
+  }).removeClass('pre');
+  saveSong(parseHash('s-'));
+};
+
+//fun little function for counting syllables.  Need to create breaks in the line instead... if we were to use this for Chord positioning.
+var count = function(word) {
+  word = word.toLowerCase(); 
+  word = word.replace(/(?:[^laeiouy]|ed|[^laeiouy]e)$/, ''); 
+  word = word.replace(/^y/, ''); 
+  //return word.match(/[aeiouy]{1,2}/g).length; 
+  var syl = word.match(/[aeiouy]{1,2}/g);
+  console.log(syl);
+  if(syl) {
+    //console.log(syl);
+    return syl.length;
+  }
+}

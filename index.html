@@ -92,10 +92,12 @@
       </div>
       <div class="column" id="songList">
         <div class="float-menu">
-          <a href="#sb-aSongbook.xml&s-aSong.song&edit" class="float-menu-item"><span class="float-menu-icon">+</span> Add Song</a>
+          <a data-song-edit="new" href="#sb-aSongbook.xml&s-aSong.song&edit" class="float-menu-item"><span class="float-menu-icon">+</span> Add Song</a>
           <span class="float-menu-item"><span class="float-menu-icon icon-rotate">&#9021;</span> Delete</span>
           <span class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</span>
-          <a href="#sb-aSongbook.xml&s-aSong.song&edit" class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>
+          <a data-songbook href="#sb-aSongbook.xml" class="float-menu-item saveSong"><span class="float-menu-icon">&#128465;</span> Cancel</a>
+          <a data-songbook href="#sb-aSongbook.xml" class="float-menu-item saveSong"><span class="float-menu-icon">&#128427;</span> Save</a>
+          <a data-songbook-edit href="#sb-aSongbook.xml&edit" class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>
           <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>
         </div>
         <div class="row">
@@ -137,8 +139,9 @@
           <span class="float-menu-item"><span class="float-menu-icon icon-rotate">&#9021;</span> Delete</span>
           <button class="float-menu-item toggle-chords"><span class="float-menu-icon">&#9839;</span> Chords</button>
           <span class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</span>
-          <a href="#sb-aSongbook.xml&s-aSong.song" class="float-menu-item saveSong"><span class="float-menu-icon">&#128427;</span> Save</a>
-          <a href="#sb-aSongbook.xml&s-aSong.song&edit" class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>
+          <a data-song href="#sb-aSongbook.xml&s-aSong.song" class="float-menu-item saveSong"><span class="float-menu-icon">&#128465;</span> Cancel</a>
+          <a data-song href="#sb-aSongbook.xml&s-aSong.song" class="float-menu-item saveSong"><span class="float-menu-icon">&#128427;</span> Save</a>
+          <a data-song-edit href="#sb-aSongbook.xml&s-aSong.song&edit" class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>
           <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>
         </div>
         <div class="row">
@@ -173,71 +176,10 @@
         }
       });
       $(function () {
-        editSong = function () {
-          $('chunk').each(function(index){
-            var content = [];
-            $(this).children('line').each(function(index){
-              if(is_chord_line($(this).html())){
-                content.push(expand_chord($(this).html()));
-              }
-              else {
-                content.push($(this).html());
-              }
-            });
-            $(this).html(content.join('\n')).addClass('pre');
-          });
-          $('#song').first('.subcolumn').find('song').children().attr('contenteditable', 'true').toTextarea({
-            allowHTML: false,//allow HTML formatting with CTRL+b, CTRL+i, etc.
-            allowImg: false,//allow drag and drop images
-            doubleEnter: true,//make a single line so it will only expand horizontally
-            singleLine: false,//make a single line so it will only expand horizontally
-            pastePlainText: false,//paste text without styling as source
-            placeholder: true//a placeholder when no text is entered. This can also be set by a placeholder="..." or data-placeholder="..." attribute
-          });
-        }
-        closeEdit = function () {
-          $('#song').first('.subcolumn').find('song').children().attr('contenteditable', 'false');
-          $('song chunk').each(function(index){
-            var lines = $(this).html().split('\n');
-            var prev_is_chord = false;
-            var content = '';
-            $(lines).each(function(index){
-              if(prev_is_chord){
-                content += '<line>'+combine(lines[index-1],this)+'</line>';
-                prev_is_chord = false;
-              }
-              else if(isChord(this)){
-                prev_is_chord = true;
-              }
-              else{  //we have a line
-                content += '<line>'+this+'</line>';
-              }
-            })
-            $(this).html(content);
-          }).removeClass('pre');
-          saveSong(parseHash('s-'));
-        };
-
         // URL navigation implementing
         window.addEventListener("hashchange", hashchanged, false);
-
         // Trigger the event (useful on page load).
         hashchanged();
-
-
-        //fun little function for counting syllables.  Need to create breaks in the line instead... if we were to use this for Chord positioning.
-        var count = function(word) {
-          word = word.toLowerCase(); 
-          word = word.replace(/(?:[^laeiouy]|ed|[^laeiouy]e)$/, ''); 
-          word = word.replace(/^y/, ''); 
-          //return word.match(/[aeiouy]{1,2}/g).length; 
-          var syl = word.match(/[aeiouy]{1,2}/g);
-          console.log(syl);
-          if(syl) {
-            //console.log(syl);
-            return syl.length;
-          }
-        }
       });   
       function hashchanged(){
         var hash = location.hash;
