@@ -33,6 +33,8 @@ function saveSong(song_id) {
       }
     }).then(function(){
       loadSong(parseHash('s-'));
+    }).catch(function (err) {
+      console.log(err);
     });
   }
   //we've got a new song folks!
