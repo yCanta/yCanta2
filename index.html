@@ -95,8 +95,8 @@
           <a data-song-edit="new" href="#sb-aSongbook.xml&s-aSong.song&edit" class="float-menu-item"><span class="float-menu-icon">+</span> Add Song</a>
           <span class="float-menu-item"><span class="float-menu-icon icon-rotate">&#9021;</span> Delete</span>
           <span class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</span>
-          <a data-songbook href="#sb-aSongbook.xml" class="float-menu-item saveSong"><span class="float-menu-icon">&#128465;</span> Cancel</a>
-          <a data-songbook href="#sb-aSongbook.xml" class="float-menu-item saveSong"><span class="float-menu-icon">&#128427;</span> Save</a>
+          <a data-songbook href="#sb-aSongbook.xml" class="float-menu-item float-menu-editing"><span class="float-menu-icon">&#128465;</span> Cancel</a>
+          <a data-songbook href="#sb-aSongbook.xml" class="float-menu-item float-menu-editing"><span class="float-menu-icon">&#128427;</span> Save</a>
           <a data-songbook-edit href="#sb-aSongbook.xml&edit" class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>
           <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>
         </div>
@@ -139,8 +139,8 @@
           <span class="float-menu-item"><span class="float-menu-icon icon-rotate">&#9021;</span> Delete</span>
           <button class="float-menu-item toggle-chords"><span class="float-menu-icon">&#9839;</span> Chords</button>
           <span class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</span>
-          <a data-song href="#sb-aSongbook.xml&s-aSong.song" class="float-menu-item saveSong"><span class="float-menu-icon">&#128465;</span> Cancel</a>
-          <a data-song href="#sb-aSongbook.xml&s-aSong.song" class="float-menu-item saveSong"><span class="float-menu-icon">&#128427;</span> Save</a>
+          <button data-song href="#sb-aSongbook.xml&s-aSong.song" class="float-menu-item float-menu-editing" onclick="window.editing=false; window.location.hash=$(this).attr('href');"><span class="float-menu-icon">&#128465;</span> Cancel</button>
+          <button data-song href="#sb-aSongbook.xml&s-aSong.song" class="float-menu-item float-menu-editing" onclick="window.editing=false; prepSaveSong($(this));"><span class="float-menu-icon">&#128427;</span> Save</button>
           <a data-song-edit href="#sb-aSongbook.xml&s-aSong.song&edit" class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>
           <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>
         </div>
@@ -172,6 +172,15 @@
         var h = $(this).height();
         var w = $(this).width();
         if((h <= 200 && h > 0) || ( w <= 200 && w > 0)) {
+          if(window.editing){
+            if (confirm("If you leave this page you will lose your unsaved changes!")) {
+              window.editing=false;
+              //go ahead and set the value
+            } else {
+              //we don't set the hashValue and don't do anything!
+              return
+            }
+          }
           location.hash = $(this).find('.title_link').attr('href');
         }
       });
@@ -180,6 +189,28 @@
         window.addEventListener("hashchange", hashchanged, false);
         // Trigger the event (useful on page load).
         hashchanged();
+        // keep page from reloading if editing
+        window.onbeforeunload = function() {
+          return window.editing ? "If you leave this page you will lose your unsaved changes." : null;
+        }
+        // keep hash from changing if editing
+        $('body').on('click', 'a', function(e) {
+          e.preventDefault();
+          var $item = $(e.currentTarget), hashValue = $item.attr('href').slice(1);
+          // Check to see if we're editing
+          if(window.editing) {
+            if (confirm("If you leave this page you will lose your unsaved changes!")) {
+              window.editing=false;
+              //go ahead and set the value
+            } else {
+              //we don't set the hashValue and don't do anything!
+              return
+            }
+          }
+          //set the hash if necessary still
+          window.location.hash = hashValue;
+          return false;
+        });
       });   
       function hashchanged(){
         var hash = location.hash;
@@ -205,10 +236,6 @@
         }
         //if song
         else if(hash.search('&s-') != -1) {
-          //this should be removed/put higher up the if change
-          if($('body').hasClass('edit')){
-            closeEdit();
-          }
           //Need to check check if songbook is loaded
           loadSongbook();
           //Need to load song

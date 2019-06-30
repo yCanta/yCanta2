@@ -146,28 +146,37 @@ editSong = function () {
     pastePlainText: false,//paste text without styling as source
     placeholder: true//a placeholder when no text is entered. This can also be set by a placeholder="..." or data-placeholder="..." attribute
   });
+  window.editing = true;
 }
-closeEdit = function () {
-  $('#song').first('.subcolumn').find('song').children().attr('contenteditable', 'false');
-  $('song chunk').each(function(index){
-    var lines = $(this).html().split('\n');
-    var prev_is_chord = false;
-    var content = '';
-    $(lines).each(function(index){
-      if(prev_is_chord){
-        content += '<line>'+combine(lines[index-1],this)+'</line>';
-        prev_is_chord = false;
-      }
-      else if(isChord(this)){
-        prev_is_chord = true;
-      }
-      else{  //we have a line
-        content += '<line>'+this+'</line>';
-      }
-    })
-    $(this).html(content);
-  }).removeClass('pre');
-  saveSong(parseHash('s-'));
+prepSaveSong = function (element) {
+  return new Promise(function(resolve, reject) {
+    $('#song').first('.subcolumn').find('song').children().attr('contenteditable', 'false');
+    $('song chunk').each(function(index){
+      var lines = $(this).html().split('\n');
+      var prev_is_chord = false;
+      var content = '';
+      $(lines).each(function(index){
+        if(prev_is_chord){
+          content += '<line>'+combine(lines[index-1],this)+'</line>';
+          prev_is_chord = false;
+        }
+        else if(isChord(this)){
+          prev_is_chord = true;
+        }
+        else{  //we have a line
+          content += '<line>'+this+'</line>';
+        }
+      })
+      $(this).html(content);
+    });
+    resolve('song is prepped for saving');
+  }).then(function() {
+    return saveSong(parseHash('s-'));
+  }).then(function() {
+    window.location.hash=$(element).attr('href'); 
+  }).catch(function (err) {
+    console.log(err);
+  });
 };
 
 //fun little function for counting syllables.  Need to create breaks in the line instead... if we were to use this for Chord positioning.

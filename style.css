@@ -257,7 +257,7 @@ button {
   border: none;
   text-align: left;
 }
-.float-menu .float-menu-item.saveSong {
+.float-menu .float-menu-item.float-menu-editing {
   opacity: 0;
   visibility: collapse;
   width: 0;
@@ -267,7 +267,7 @@ button {
   visibility: collapse;
   opacity: 0;
 }
-.edit .float-menu .float-menu-item.saveSong {
+.edit .float-menu .float-menu-item.float-menu-editing {
   width: auto;
   visibility: visible;
   opacity: 1;
@@ -352,12 +352,14 @@ button {
     border-radius: 20em;
     border: 1px solid gray;
   }
-  .float-menu .float-menu-item.saveSong {
+  .float-menu .float-menu-item.float-menu-editing {
     height: 0;
+    display: none;
     width: auto;
   }
-  .edit .float-menu .float-menu-item.saveSong {
+  .edit .float-menu .float-menu-item.float-menu-editing {
     height: auto;
+    display: block;
   }
   .edit .float-menu .float-menu-item {
     height: 0;
