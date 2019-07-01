@@ -178,6 +178,41 @@ prepSaveSong = function (element) {
     console.log(err);
   });
 };
+//Making things work
+window.addEventListener('load', function(){
+ 
+    var box1 = document.getElementById('song');
+    var startx = 0;
+    var dist = 0;
+    var width = 0;
+ 
+    box1.addEventListener('touchstart', function(e){
+        var touchobj = e.changedTouches[0]; // reference first touch point (ie: first finger)
+        startx = parseInt(touchobj.clientX);
+        width = $(box1).find('.subcolumn#edit').width(); // get x position of touch point relative to left edge of browser
+//        box1.style.flex = 'flex: 0 0 '+ dist + 'px';
+
+        //e.preventDefault();
+    }, false);
+ 
+    box1.addEventListener('touchmove', function(e){
+        var touchobj = e.changedTouches[0]; // reference first touch point for this event
+        var dist = parseInt(touchobj.clientX) - startx;
+        // change distance
+
+        // if distance greater than 1/3rd screen switch to open predefined.  End touchevent.
+        $(box1).find('.subcolumn#edit').css('flex',' 0 0 '+ parseInt(width-dist) + 'px');
+        //e.preventDefault();
+    }, false);
+ 
+    box1.addEventListener('touchend', function(e){
+        var touchobj = e.changedTouches[0]; // reference first touch point for this event
+        box1.style.removeProperty('flex');
+        //e.preventDefault();
+    }, false);
+ 
+}, false)
+
 
 //fun little function for counting syllables.  Need to create breaks in the line instead... if we were to use this for Chord positioning.
 var count = function(word) {
