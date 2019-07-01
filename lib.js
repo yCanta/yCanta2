@@ -203,7 +203,7 @@ window.addEventListener('load', function(){
         // if distance greater than 1/3rd screen switch to open predefined.  End touchevent.
         // wait for distance to be greater than _____ 
 
-        $(box1).find('.subcolumn#edit').css('flex',' 0 0 '+ parseInt(width-dist) + 'px');
+        $(box1).find('.subcolumn#edit').css('flex',' 0 0 '+ parseInt((width-dist)*2) + 'px');
         //e.preventDefault();
     }, false);
  
