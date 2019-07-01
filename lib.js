@@ -201,13 +201,15 @@ window.addEventListener('load', function(){
         // change distance
 
         // if distance greater than 1/3rd screen switch to open predefined.  End touchevent.
+        // wait for distance to be greater than _____ 
+
         $(box1).find('.subcolumn#edit').css('flex',' 0 0 '+ parseInt(width-dist) + 'px');
         //e.preventDefault();
     }, false);
  
     box1.addEventListener('touchend', function(e){
         var touchobj = e.changedTouches[0]; // reference first touch point for this event
-        box1.style.removeProperty('flex');
+        $(box1).find('.subcolumn#edit').css('flex','');
         //e.preventDefault();
     }, false);
  
