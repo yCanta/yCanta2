@@ -12,11 +12,6 @@ stitle {
   background-color: lightblue;
   z-index: 10;
 }
-.edit stitle {
-  position: static;
-  top: auto;
-  z-index: auto;
-}
 chunk {
   position: relative;
   display: block;

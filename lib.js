@@ -182,6 +182,8 @@ prepSaveSong = function (element) {
 window.addEventListener('load', function(){
  
     var box1 = document.getElementById('song');
+    var move = document.getElementById('song-edit');
+    console.log(move.style.flexBasis);
     var startx = 0;
     var dist = 0;
     var width = 0;
@@ -189,9 +191,10 @@ window.addEventListener('load', function(){
     box1.addEventListener('touchstart', function(e){
         var touchobj = e.changedTouches[0]; // reference first touch point (ie: first finger)
         startx = parseInt(touchobj.clientX);
-        width = $(box1).find('.subcolumn#edit').width(); // get x position of touch point relative to left edge of browser
+        width = 240; // get x position of touch point relative to left edge of browser
 //        box1.style.flex = 'flex: 0 0 '+ dist + 'px';
-
+        move.style.transition = 'all 0s';
+        console.log(width);
         //e.preventDefault();
     }, false);
  
@@ -203,13 +206,15 @@ window.addEventListener('load', function(){
         // if distance greater than 1/3rd screen switch to open predefined.  End touchevent.
         // wait for distance to be greater than _____ 
 
-        $(box1).find('.subcolumn#edit').css('flex',' 0 0 '+ parseInt((width-dist)*2) + 'px');
+        move.style.flex = '0 0 '+ parseInt((width-dist)) + 'px';
+
         //e.preventDefault();
     }, false);
  
     box1.addEventListener('touchend', function(e){
         var touchobj = e.changedTouches[0]; // reference first touch point for this event
-        $(box1).find('.subcolumn#edit').css('flex','');
+        move.style.removeProperty('flex');
+        move.style.removeProperty('transition');
         //e.preventDefault();
     }, false);
  

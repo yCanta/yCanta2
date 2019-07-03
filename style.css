@@ -102,7 +102,7 @@ body main #song {
   flex: 0 0 0px;
   z-index: 3;
 }
-body main #edit {
+body main .sidebar {
   flex: 0 0 0px;
   padding: 0;
   border: 0;
@@ -153,10 +153,7 @@ footer {
   overflow-x: hidden;
   padding: 0 1rem 0 1rem;
 }
-.subcolumn #edit {
-  flex: 0 0 0px;
-}
-.column, body.edit #edit {
+.column, body.edit .sidebar {
   box-shadow: 0px 0 40px 10px rgba(0, 0, 0, 0.8);
   border-left: 1.5px solid gray;
   margin: 0;
@@ -165,7 +162,7 @@ footer {
   overflow-x: hidden;
 }
 
-html body .subcolumn#edit {
+html body .subcolumn.sidebar {
   box-shadow: none;
 }
 #songbookList, #songList, #song {
@@ -201,12 +198,12 @@ body.song #songList {
 body.song #songbookList {
   flex: 0 1 300px;
 }
-body.edit.song #songList #edit {
+body.edit.song #songList #songListEdit {
   flex: 0 0 0 !important;
 }
 
 /*Focus edit*/
-body.edit #edit{
+body.edit .sidebar {
   background-color: lightgray;
   z-index: 7;
   flex: 0 0 240px;
@@ -262,12 +259,12 @@ button {
   visibility: collapse;
   width: 0;
 }
-.edit .float-menu .float-menu-item {
+.edit .active .float-menu .float-menu-item {
   width: 0;
   visibility: collapse;
   opacity: 0;
 }
-.edit .float-menu .float-menu-item.float-menu-editing {
+.edit .active .float-menu .float-menu-item.float-menu-editing {
   width: auto;
   visibility: visible;
   opacity: 1;
@@ -288,7 +285,7 @@ button {
   body.songbookList #songbookList, 
   body.songList #songList, 
   body.song #song,
-  body.edit #edit  {
+  body.edit .sidebar  {
     flex-grow: 4;
     flex-shrink: 0.2;
   }
@@ -357,14 +354,14 @@ button {
     display: none;
     width: auto;
   }
-  .edit .float-menu .float-menu-item.float-menu-editing {
+  .edit .active .float-menu .float-menu-item.float-menu-editing {
     height: auto;
     display: block;
   }
-  .edit .float-menu .float-menu-item {
+  .edit .active .float-menu .float-menu-item {
     height: 0;
   }
-  .edit .float-menu {
+  .edit .active .float-menu {
     left: 1em;
     right: auto;
     bottom: 0;
