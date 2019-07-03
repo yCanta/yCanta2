@@ -104,7 +104,6 @@ body main #song {
 }
 body main .sidebar {
   flex: 0 0 0px;
-  padding: 0;
   border: 0;
   z-index: 4;
 }
@@ -135,8 +134,6 @@ footer {
   overflow: hidden;
   flex: 0 1 auto;
   display: flex;
-  margin: 0;
-  padding: 0;
   height: 100%;
 }
 .column {
@@ -151,13 +148,13 @@ footer {
   z-index: 5;
   overflow-y: auto;
   overflow-x: hidden;
+}
+.subcolumn div {
   padding: 0 1rem 0 1rem;
 }
 .column, body.edit .sidebar {
   box-shadow: 0px 0 40px 10px rgba(0, 0, 0, 0.8);
   border-left: 1.5px solid gray;
-  margin: 0;
-  padding: 0;
   overflow-y: auto;
   overflow-x: hidden;
 }
