@@ -203,6 +203,9 @@ body.edit.song #songList #songListEdit {
 body.edit .sidebar {
   background-color: lightgray;
   z-index: 7;
+  flex: 0 0 20px;
+}
+body.edit .sidebar-open {
   flex: 0 0 240px;
 }
 body.edit.song #song, body.edit.songList #songList {
@@ -281,8 +284,7 @@ button {
   }
   body.songbookList #songbookList, 
   body.songList #songList, 
-  body.song #song,
-  body.edit .sidebar  {
+  body.song #song {
     flex-grow: 4;
     flex-shrink: 0.2;
   }

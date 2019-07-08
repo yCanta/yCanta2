@@ -178,47 +178,70 @@ prepSaveSong = function (element) {
     console.log(err);
   });
 };
-//Making things work
+//Making things work with touch coolness
+function makeDraggable(dragCaptureEl, dragEl, dragSide, dragAction) {
+  var box1 = document.getElementById('song');
+  var move = document.getElementById('song-edit');
+  var startx = 0;
+  var starty = 0;
+  var dist = 0;
+  var disty = 0;
+  var width = 0;
+
+  box1.addEventListener('touchstart', function(e){
+    var touchobj = e.changedTouches[0]; // reference first touch point (ie: first finger)
+    startx = parseInt(touchobj.clientX);
+    starty = parseInt(touchobj.clientY);
+    width = $(move).width(); // get x position of touch point relative to left edge of browser
+
+    // only do stuff if in right place
+    if(window.editing && startx > box1.offsetLeft + box1.offsetWidth - width - 32) { 
+      move.style.transition = 'all 0s';
+      e.preventDefault();
+    }
+    else {
+      startx = false;
+    }
+  }, false);
+
+  box1.addEventListener('touchmove', function(e){
+    if(startx){
+      var touchobj = e.changedTouches[0]; // reference first touch point for this event
+      var dist = parseInt(touchobj.clientX) - startx;
+      var disty = parseInt(touchobj.clientY) - starty;
+      // change distance if dist > disty
+      if (Math.abs(dist) > 40 ) {
+        if(Math.abs(disty) > Math.abs(dist)) {
+          startx=false;
+        }
+      move.style.flex = '0 0 '+ parseInt((width-dist)) + 'px';
+      e.preventDefault();   
+      }
+    }
+  }, false);
+
+  box1.addEventListener('touchend', function(e){
+    move.style.removeProperty('flex');
+    move.style.removeProperty('transition');
+    var touchobj = e.changedTouches[0]; // reference first touch point for this event
+    var dist = Math.abs(parseInt(touchobj.clientX) - startx);
+
+    if(startx && dist > 100 ){ //make sure that distance isn't just accidental
+      dragAction($('#song-edit'), 'sidebar-open');
+      e.preventDefault(); 
+    }
+  }, false);
+};
+
+function sayHi(message) {
+  window.alert(message);
+}
+function dragToggleClass(el, toggleClass) {
+  $(el).toggleClass(toggleClass);
+}
 window.addEventListener('load', function(){
- 
-    var box1 = document.getElementById('song');
-    var move = document.getElementById('song-edit');
-    console.log(move.style.flexBasis);
-    var startx = 0;
-    var dist = 0;
-    var width = 0;
- 
-    box1.addEventListener('touchstart', function(e){
-        var touchobj = e.changedTouches[0]; // reference first touch point (ie: first finger)
-        startx = parseInt(touchobj.clientX);
-        width = 240; // get x position of touch point relative to left edge of browser
-//        box1.style.flex = 'flex: 0 0 '+ dist + 'px';
-        move.style.transition = 'all 0s';
-        console.log(width);
-        //e.preventDefault();
-    }, false);
- 
-    box1.addEventListener('touchmove', function(e){
-        var touchobj = e.changedTouches[0]; // reference first touch point for this event
-        var dist = parseInt(touchobj.clientX) - startx;
-        // change distance
-
-        // if distance greater than 1/3rd screen switch to open predefined.  End touchevent.
-        // wait for distance to be greater than _____ 
-
-        move.style.flex = '0 0 '+ parseInt((width-dist)) + 'px';
-
-        //e.preventDefault();
-    }, false);
- 
-    box1.addEventListener('touchend', function(e){
-        var touchobj = e.changedTouches[0]; // reference first touch point for this event
-        move.style.removeProperty('flex');
-        move.style.removeProperty('transition');
-        //e.preventDefault();
-    }, false);
- 
-}, false)
+  makeDraggable('','Hi!','', dragToggleClass);
+}, false);
 
 
 //fun little function for counting syllables.  Need to create breaks in the line instead... if we were to use this for Chord positioning.

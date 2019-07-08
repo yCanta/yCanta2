@@ -173,12 +173,12 @@ var song = {
   content: [[{type: 'chorus'},
     ["<c>E</c>Jesu, Jesu,",
     "Fill us with you <c>A</c>love,",
-    "Show us how to<c>E</c>serve",
+    "Show us how to <c>E</c>serve",
     "The neighbors we<c>B</c> have from <c>E</c>You."]],
     [{type: 'verse'},
     ["<c>E</c>Jesu, Jesu,",
     "Fill us with you <c>A</c>love,",
-    "Show us how to<c>E</c>serve",
+    "Show us how to <c>E</c>serve",
     "The neighbors we<c>B</c> have from <c>E</c>You."]]
     ],
   copyright: '© 1969 Hope Publishing Company'
