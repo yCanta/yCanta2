@@ -7,6 +7,9 @@ a {
   text-decoration: none;
   color: black;
 }
+stitle, cat, author, scripture_ref, key, copyright {
+  cursor: pointer;
+}
 [contenteditable='true']{
   border: 1px gray dashed;
   background-color: lightgray;

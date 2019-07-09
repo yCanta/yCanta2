@@ -56,7 +56,7 @@ function loadSong(song_id) {
   return new Promise(function(resolve, reject) {
     db.get(song_id).then(function(song){
       window.song_id = song._id;
-      var song_html = '<song data-rev="' + song._rev + '" data-id="' + song._id + '">' + '<stitle>' + song.title + '</stitle>' + '<authors>' + song.authors + '</authors>' + '<scripture_ref>' + song.scripture_ref + '</scripture_ref>' + '<introduction>' + song.introduction + '</introduction>' + '<key>' + song.key + '</key>' + '<categories>' + song.categories + '</categories>' + '<cclis>' + song.cclis + '</cclis>';
+      var song_html = '<song data-rev="' + song._rev + '" data-id="' + song._id + '">' + '<stitle>' + song.title + '</stitle>' + '<authors><author>' + song.authors.join('</author>, <author>') + '</author></authors>' + '<scripture_ref>' + song.scripture_ref + '</scripture_ref>' + '<introduction>' + song.introduction + '</introduction>' + '<key>' + song.key + '</key>' + '<categories><cat>' + song.categories.join('</cat>, <cat>') + '</cat></categories>' + '<cclis>' + song.cclis + '</cclis>';
       song.content.forEach(function(chunk){
         song_html += '<chunk type="' + chunk[0].type + '">';
         chunk[1].forEach(function(line){
@@ -67,6 +67,13 @@ function loadSong(song_id) {
       song_html +=  '<copyright>' + song.copyright + '</copyright>' +
                   '</song>'
       $('#song .content').html(song_html);
+      bindSearch('cat', 'c:');
+      bindSearch('author', 'a:');
+      bindSearch('scripture_ref', 's:');
+      bindSearch('stitle', 't:');
+      bindSearch('key', 'k:');
+      bindSearch('copyright', 'c:');
+        
       resolve("song_loaded");
      }).catch(function (err) {
       console.log(err);
@@ -111,11 +118,11 @@ function loadSongbook(songbook_id) {
         values.push(
           { 'song-id': row.doc._id,
             'song-title':        't:' + row.doc.title,
-            'song-authors':      'a:' + (row.doc.authors != '' ? row.doc.authors : '!a'),
+            'song-authors':      'a:' + (row.doc.authors != '' ? row.doc.authors.join(' a:') : '!a'),
             'song-scripture_ref':'s:' + row.doc.scripture_ref,
             'song-introduction': 'i:' + row.doc.introduction,
             'song-key':          'k:' + row.doc.key,
-            'song-categories':   'c:' + row.doc.categories,
+            'song-categories':   'c:' + row.doc.categories.join(' c:'),
             'song-copyright':    'c:' + (row.doc.copyright ? row.doc.copyright : '!c'),
             'song-cclis': ((row.doc.cclis!='') ? 'cclis' : '!cclis'),
             'song-content': row.doc.content,
@@ -164,7 +171,7 @@ function loadSongbook(songbook_id) {
 var song = {
   _id: 's-aSong.song',
   title: 'Jesu Jesu',
-  authors: ['Tom Colvin'],
+  authors: ['Tom Colvin', 'yolo'],
   scripture_ref: ['1 Cor 1:13'],
   introduction: '',
   key: 'E',

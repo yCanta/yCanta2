@@ -257,6 +257,13 @@ window.addEventListener('load', function(){
   makeDraggable('','Hi!','', dragToggleClass);
 }, false);
 
+function bindSearch(element, search_prefix) {
+  $('body').on('click', element, function() {
+      $('#songbook_content .search').val(search_prefix+$(this).text())[0]
+        .dispatchEvent(new KeyboardEvent("keyup"));
+  });
+}
+
 function confirmWhenEditing() {
   if(window.editing){
     if (confirm("If you leave this page you will lose your unsaved changes!")) {
