@@ -4,6 +4,7 @@
     <meta charset="utf-8"/>
 
     <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" type="image/x-icon" href="favicon.png" />"
 
     <script src="jquery-3.4.0.min.js"></script>
     <script src="pouchdb.min.js"></script>
@@ -209,7 +210,10 @@
       });   
       function hashchanged(){
         var hash = location.hash;
-        //alert(hash);
+        /*/doesn't yet prevent - but does let you know need to restore the hash.
+        if(window.editing){
+          confirmWhenEditing();
+        }*/
         //if blank - should have to do nothing
         if(hash == ''){
          $('body').attr('class','songbookList');
