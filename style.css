@@ -16,6 +16,13 @@ a {
   color:grey;
   font-style:italic;
 }
+.sticky {
+  position: sticky;
+  top: 0;
+  padding-top: 0.1px;
+  background-color: lightgray;
+  z-index: 10;
+}
 .pre {
   font-family: monospace;
 }
@@ -58,9 +65,17 @@ a {
 .float-menu-toggle {
   display: none;
 }
+ul {
+  position: relative;
+  padding: 0;
+}
+ul li {
+  list-style-type: none;
+}
 li:hover:after {
   content: '☆';
-  float: right;
+  position: absolute;
+  right: 1rem;
   width: 1.5rem;
   height: 1.5rem;
   text-align: center;
@@ -153,7 +168,7 @@ footer {
   overflow-y: auto;
   overflow-x: hidden;
 }
-.subcolumn div {
+.subcolumn > div {
   padding: 0 1rem 0 1rem;
 }
 .column, body.edit .sidebar {
@@ -276,6 +291,13 @@ button {
 
 /*For Mobile devices only*/
 @media only screen and (max-width: 700px) {
+  body.edit .sidebar {
+    overflow: hidden;
+  }
+  body.edit .sidebar-open {
+    overflow: auto;
+  }
+
   header h2 {
     padding: 0 1rem 0 1rem;
   }
@@ -298,7 +320,7 @@ button {
     flex: 0 0 0;
   }
   body.songList #songbookList {
-    flex: 0 0 3.5rem;
+    flex: 0 0 3.7rem;
     overflow: hidden;
   }
   body.songList #songbookList .subcolumn {
@@ -316,7 +338,7 @@ button {
     overflow: hidden;
   }
   body.song #songList {
-    flex: 0 0 3.5rem;
+    flex: 0 0 3.7rem;
     overflow: hidden;
   }
   /*float for mobile*/

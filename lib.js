@@ -147,6 +147,20 @@ editSong = function () {
     placeholder: true//a placeholder when no text is entered. This can also be set by a placeholder="..." or data-placeholder="..." attribute
   });
   window.editing = true;
+  //load categories
+  db.get('categories').then(function(categories) {
+    var options = {valueNames: ['name'], item: 'category-template'};
+    var values = [];   
+    categories.categories.map(function (cat) {
+      values.push({ 'name': cat});
+    });
+    new List('categories', options, values);
+
+  }).catch(function (err) {
+    console.log(err);
+    reject('got an error while working on categories');
+    //should load the songbook and explain what's up.
+  });  
 }
 prepSaveSong = function (element) {
   return new Promise(function(resolve, reject) {
@@ -197,7 +211,7 @@ function makeDraggable(dragCaptureEl, dragEl, dragSide, dragAction) {
     // only do stuff if in right place
     if(window.editing && startx > box1.offsetLeft + box1.offsetWidth - width - 32) { 
       move.style.transition = 'all 0s';
-      e.preventDefault();
+      //e.preventDefault();
     }
     else {
       startx = false;
@@ -214,8 +228,8 @@ function makeDraggable(dragCaptureEl, dragEl, dragSide, dragAction) {
         if(Math.abs(disty) > Math.abs(dist)) {
           startx=false;
         }
-      move.style.flex = '0 0 '+ parseInt((width-dist)) + 'px';
-      e.preventDefault();   
+        move.style.flex = '0 0 '+ parseInt((width-dist)) + 'px';
+        e.preventDefault();   
       }
     }
   }, false);

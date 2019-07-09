@@ -150,13 +150,21 @@
             </div>
           </div>
           <div class="subcolumn sidebar" id="song-edit">
-            <div style="width: 240px;">
-              <h3>Add a song Category?<a class="icon-fl-right close-icon">x</a></h3>
-              <ul>
-                <li>God</li>
-                <li>Holy Spirit</li>
-                <li>Christ's Return</li>
+            <div id="categories" style="width: 240px;">
+              <div class="sticky">
+                <h3>Song Categories<a class="icon-fl-right close-icon">x</a></h3>
+                <input class="search" type="text" data-target="#categories" data-trigger="change" placeholder="Search">
+              </div>
+              <ul class="list">
               </ul>
+              <span style="display:none">
+                <li id="category-template">
+                  <label>
+                    <input type="checkbox">
+                    <span class="name"></span>
+                  </label>
+                </li>
+              </span>
             </div>
           </div>
         </div>
