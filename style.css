@@ -10,6 +10,9 @@ a {
 stitle, cat, author, scripture_ref, key, copyright {
   cursor: pointer;
 }
+.edit stitle, .edit cat, .edit author, .edit scripture_ref, .edit key, .edit copyright {
+  cursor: text;
+}
 [contenteditable='true']{
   border: 1px gray dashed;
   background-color: lightgray;

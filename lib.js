@@ -259,8 +259,11 @@ window.addEventListener('load', function(){
 
 function bindSearch(element, search_prefix) {
   $('body').on('click', element, function() {
-      $('#songbook_content .search').val(search_prefix+$(this).text())[0]
-        .dispatchEvent(new KeyboardEvent("keyup"));
+    if(window.editing){
+      return
+    }
+    $('#songbook_content .search').val(search_prefix+$(this).text())[0]
+      .dispatchEvent(new KeyboardEvent("keyup"));
   });
 }
 
