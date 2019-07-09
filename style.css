@@ -1,5 +1,5 @@
 *{box-sizing: border-box;transition: all .25s;}
-html, body, main {
+html, body, main{
   height: 100%; 
   margin: 0;
 }
@@ -80,6 +80,10 @@ body {
   justify-content: flex-start;
   align-items: stretch;
   align-content: stretch;
+}
+header {
+  flex: 0 0 70px;
+  overflow: hidden;
 }
 main {
   flex: 0 1 auto;
@@ -290,8 +294,11 @@ button {
   }
 
   /*Focus songList*/
+  body.songlist header {
+    flex: 0 0 0;
+  }
   body.songList #songbookList {
-    flex: 0 1 2rem;
+    flex: 0 0 3.5rem;
     overflow: hidden;
   }
   body.songList #songbookList .subcolumn {
@@ -299,16 +306,17 @@ button {
   }
 
   /*Focus song*/
-  body.song #songList {
-    flex: 0 1 2rem;
+  body.song header,
+  body.song #songBookList {
+    flex: 0 0 0;
     overflow: hidden;
   }
   body.song #songList .subcolumn,
   body.song #songbookList .subcolumn {
     overflow: hidden;
   }
-  body.song #songbookList {
-    flex: 0 1 2rem;
+  body.song #songList {
+    flex: 0 0 3.5rem;
     overflow: hidden;
   }
   /*float for mobile*/
@@ -385,6 +393,9 @@ button {
   }
   .column:hover {
     z-index: 6 !important;
+  }
+  body.edit .sidebar {
+    flex: 0 0 240px;
   }
 }
 
