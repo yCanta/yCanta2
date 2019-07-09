@@ -227,11 +227,6 @@ body.edit .sidebar {
 body.edit .sidebar-open {
   flex: 0 0 240px;
 }
-body.edit.song #song, body.edit.songList #songList {
-  flex: 0 .2 700px; /*in mobile view it shrinks upper tabs more than desirable*/
-}
-
-
 
 /*normalize*/
 button,
@@ -291,6 +286,7 @@ button {
 
 /*For Mobile devices only*/
 @media only screen and (max-width: 700px) {
+  body .sidebar,
   body.edit .sidebar {
     overflow: hidden;
   }
@@ -418,6 +414,10 @@ button {
   }
   body.edit .sidebar {
     flex: 0 0 240px;
+  }
+  body.edit.song #song, 
+  body.edit.songList #songList {
+    flex: 0 .2 700px;
   }
 }
 

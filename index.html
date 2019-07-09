@@ -176,11 +176,12 @@
       </div>
     </footer>
     <script>
-      $('.column').click(function(){
+      $('.column').click(function(e){
         var h = $(this).height();
         var w = $(this).width();
         if((h <= 200 && h > 0) || ( w <= 200 && w > 0)) {
           e.preventDefault();
+          e.stopPropagation();
           if (confirmWhenEditing()) { return };
           location.hash = $(this).find('.title_link').attr('href');
         }
