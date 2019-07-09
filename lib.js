@@ -230,7 +230,7 @@ function makeDraggable(dragCaptureEl, dragEl, dragSide, dragAction) {
       dragAction($('#song-edit'), 'sidebar-open');
       e.preventDefault(); 
     }
-  }, false);
+  }, false); 
 };
 
 function sayHi(message) {
@@ -243,6 +243,16 @@ window.addEventListener('load', function(){
   makeDraggable('','Hi!','', dragToggleClass);
 }, false);
 
+function confirmWhenEditing() {
+  if(window.editing){
+    if (confirm("If you leave this page you will lose your unsaved changes!")) {
+      window.editing=false; //It's ok to lose changes
+      return false
+    } else { //we aren't leaving 
+      return true
+    }
+  }
+}
 
 //fun little function for counting syllables.  Need to create breaks in the line instead... if we were to use this for Chord positioning.
 var count = function(word) {

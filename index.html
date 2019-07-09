@@ -172,15 +172,8 @@
         var h = $(this).height();
         var w = $(this).width();
         if((h <= 200 && h > 0) || ( w <= 200 && w > 0)) {
-          if(window.editing){
-            if (confirm("If you leave this page you will lose your unsaved changes!")) {
-              window.editing=false;
-              //go ahead and set the value
-            } else {
-              //we don't set the hashValue and don't do anything!
-              return
-            }
-          }
+          e.preventDefault();
+          if (confirmWhenEditing()) { return };
           location.hash = $(this).find('.title_link').attr('href');
         }
       });
@@ -198,15 +191,8 @@
           e.preventDefault();
           var $item = $(e.currentTarget), hashValue = $item.attr('href').slice(1);
           // Check to see if we're editing
-          if(window.editing) {
-            if (confirm("If you leave this page you will lose your unsaved changes!")) {
-              window.editing=false;
-              //go ahead and set the value
-            } else {
-              //we don't set the hashValue and don't do anything!
-              return
-            }
-          }
+          if (confirmWhenEditing()) { return };
+          
           //set the hash if necessary still
           window.location.hash = hashValue;
           return false;
