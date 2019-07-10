@@ -388,6 +388,7 @@ button {
   .edit .active .float-menu .float-menu-item.float-menu-editing {
     height: auto;
     display: block;
+    max-height: inherit;
   }
   .edit .active .float-menu .float-menu-item {
     height: 0;
