@@ -93,12 +93,12 @@
       </div>
       <div class="column" id="songList">
         <div class="float-menu">
-          <a data-song-edit="new" href="#sb-aSongbook.xml&s-aSong.song&edit" class="float-menu-item"><span class="float-menu-icon">+</span> Add Song</a>
+          <a data-song-edit="new" class="float-menu-item"><span class="float-menu-icon">+</span> Add Song</a>
           <span class="float-menu-item"><span class="float-menu-icon icon-rotate">&#9021;</span> Delete</span>
           <span class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</span>
-          <a data-songbook href="#sb-aSongbook.xml" class="float-menu-item float-menu-editing"><span class="float-menu-icon">&#128465;</span> Cancel</a>
-          <a data-songbook href="#sb-aSongbook.xml" class="float-menu-item float-menu-editing"><span class="float-menu-icon">&#128427;</span> Save</a>
-          <a data-songbook-edit href="#sb-aSongbook.xml&edit" class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>
+          <a data-songbook class="float-menu-item float-menu-editing"><span class="float-menu-icon">&#128465;</span> Cancel</a>
+          <a data-songbook class="float-menu-item float-menu-editing"><span class="float-menu-icon">&#128427;</span> Save</a>
+          <a data-songbook-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>
           <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>
         </div>
         <div class="row">
@@ -140,9 +140,9 @@
           <span class="float-menu-item"><span class="float-menu-icon icon-rotate">&#9021;</span> Delete</span>
           <button class="float-menu-item toggle-chords"><span class="float-menu-icon">&#9839;</span> Chords</button>
           <span class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</span>
-          <button data-song href="#sb-aSongbook.xml&s-aSong.song" class="float-menu-item float-menu-editing" onclick="window.editing=false; window.location.hash=$(this).attr('href');"><span class="float-menu-icon">&#128465;</span> Cancel</button>
-          <button data-song href="#sb-aSongbook.xml&s-aSong.song" class="float-menu-item float-menu-editing" onclick="window.editing=false; prepSaveSong($(this));"><span class="float-menu-icon">&#128427;</span> Save</button>
-          <a data-song-edit href="#sb-aSongbook.xml&s-aSong.song&edit" class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>
+          <button data-song class="float-menu-item float-menu-editing" onclick="window.editing=false; window.location.hash=$(this).attr('href');"><span class="float-menu-icon">&#128465;</span> Cancel</button>
+          <button data-song class="float-menu-item float-menu-editing" onclick="window.editing=false; prepSaveSong($(this));"><span class="float-menu-icon">&#128427;</span> Save</button>
+          <a data-song-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>
           <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>
         </div>
         <div class="row">
@@ -218,7 +218,8 @@
         if(hash == ''){
          $('body').attr('class','songbookList');
          $('.active').removeClass('active');
-         $('#songbookList').addClass('active')
+         $('#songbookList').addClass('active');
+         updateAllLinks();
         }
         //if song edit
         else if((hash.search('&s-') != -1) && (hash.search('&edit') != -1)) {
@@ -231,18 +232,24 @@
               $('.active').removeClass('active');
               $('#song').addClass('active');
               editSong();
+              updateAllLinks();
           });
         }
         //if song
         else if(hash.search('&s-') != -1) {
+          console.log(hash.search('s-new-song'))
+          if(hash.search('s-new-song') != -1){
+            window.location.hash = '#'+window.songbook_id;
+            return
+          }
           //Need to check check if songbook is loaded
-          loadSongbook();
-          //Need to load song
-          loadSong(parseHash('s-'));
-
-          $('body').attr('class','song');
-          $('.active').removeClass('active');
-          $('#song').addClass('active');          
+          Promise.all([loadSongbook(), loadSong(parseHash('s-'))])
+            .then(function(values) {
+              $('body').attr('class','song');
+              $('.active').removeClass('active');
+              $('#song').addClass('active');  
+              updateAllLinks();
+          });          
         }
         //if songbook edit
         else if((hash.search('#sb-') != -1) && (hash.search('&edit') != -1)) {
@@ -250,6 +257,7 @@
           $('body').attr('class', 'songList edit');
           $('.active').removeClass('active');
           $('#songList').addClass('active');
+          updateAllLinks();
         }
         //if songbook
         else if(hash.search('#sb-') != -1) {
@@ -257,6 +265,7 @@
             .then(function() {
               $('.active').removeClass('active');
               $('#songList').addClass('active');
+              updateAllLinks();
           });
         }
       }

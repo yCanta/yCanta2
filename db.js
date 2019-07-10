@@ -1,60 +1,64 @@
 var db = new PouchDB('yCanta');
 
 function saveSong(song_id) {
-  var song_html = $('#song song');
-  function loadSongContent(song) {
-    song._id          = song_id;
-    song._rev         = song_html.attr('data-rev'); //need a _rev if updating a document
-    song.title        = song_html.find('stitle').text();
-    song.authors      = song_html.find('authors').text().split(',');
-    song.scripture_ref= song_html.find('scripture_ref').text().split(',');
-    song.introduction = song_html.find('introduction').text();
-    song.key          = song_html.find('key').text();
-    song.categories   = song_html.find('categories').text().split(',');
-    song.cclis        = song_html.find('cclis').text();
-    //Compile Song Content, a list of lists.  Chunks and lines
-    var chunks = [];
-    song_html.find('chunk').each(function(){
-      var lines = [];
-      $(this).children().each(function(){ //add line contents
-        lines.push($(this).html());
+  return new Promise(function(resolve, reject) {
+    var song_html = $('#song song');
+    function loadSongContent(song) {
+      if(song._rev != undefined) {
+        song._rev       = song_html.attr('data-rev'); //need a _rev if updating a document
+      }
+      song.title        = song_html.find('stitle').text();
+      song.authors      = song_html.find('authors').text().split(',');
+      song.scripture_ref= song_html.find('scripture_ref').text().split(',');
+      song.introduction = song_html.find('introduction').text();
+      song.key          = song_html.find('key').text();
+      song.categories   = song_html.find('categories').text().split(',');
+      song.cclis        = song_html.find('cclis').text();
+      //Compile Song Content, a list of lists.  Chunks and lines
+      var chunks = [];
+      song_html.find('chunk').each(function(){
+        var lines = [];
+        $(this).children().each(function(){ //add line contents
+          lines.push($(this).html());
+        });
+        chunks.push([{'type': $(this).attr('type')}, lines]);
       });
-      chunks.push([{'type': $(this).attr('type')}, lines]);
-    });
-    song.content      = chunks;
-    song.copyright    = song_html.find('copyright').text();
+      song.content      = chunks;
+      song.copyright    = song_html.find('copyright').text();
 
-    db.put(song, function callback(err, result) {
-      if (!err) {
-        console.log('Successfully saved a song!');
-      }
-      else {
+      db.put(song, function callback(err, result) {
+        if (!err) {
+          console.log('Successfully saved a song!');
+        }
+        else {
+          console.log(err);
+        }
+      }).then(function(){
+        window.location.hash = '#'+window.songbook_id+'&'+song._id;
+        resolve('all good!');
+      }).catch(function (err) {
         console.log(err);
-      }
-    }).then(function(){
-      loadSong(parseHash('s-'));
-    }).catch(function (err) {
-      console.log(err);
-    });
-  }
-  //we've got a new song folks!
-  if(song_id == undefined) {
-    song_id = 's-' /*new Date().toISOString()*/  + song_html.find('stitle').text();
-    var song = {_id: song_id};
-    loadSongContent(song);
-  }
-  else {  //existing song hopefully - need to make robust
-    db.get(song_id).then(function(song){
+      });
+    }
+    //we've got a new song folks!
+    if(song_id == 's-new-song') {
+      song_id = 's-' + new Date().getTime();  //  + song_html.find('stitle').text().replace(' ','');
+      var song = {_id: song_id};
       loadSongContent(song);
-    }).catch(function (err) {
-      console.log(err);
-    });  
-  }
+    }
+    else {  //existing song hopefully - need to make robust
+      db.get(song_id).then(function(song){
+        loadSongContent(song);
+      }).catch(function (err) {
+        console.log(err);
+      });  
+    }
+  });
 }
 
 function loadSong(song_id) {
   return new Promise(function(resolve, reject) {
-    db.get(song_id).then(function(song){
+    function createSongHtml(song) {
       window.song_id = song._id;
       var song_html = '<song data-rev="' + song._rev + '" data-id="' + song._id + '">' + '<stitle>' + song.title + '</stitle>' + '<authors><author>' + song.authors.join('</author>, <author>') + '</author></authors>' + '<scripture_ref>' + song.scripture_ref + '</scripture_ref>' + '<introduction>' + song.introduction + '</introduction>' + '<key>' + song.key + '</key>' + '<categories><cat>' + song.categories.join('</cat>, <cat>') + '</cat></categories>' + '<cclis>' + song.cclis + '</cclis>';
       song.content.forEach(function(chunk){
@@ -73,13 +77,35 @@ function loadSong(song_id) {
       bindSearch('stitle', 't:');
       bindSearch('key', 'k:');
       bindSearch('copyright', 'c:');
-        
+      
       resolve("song_loaded");
-     }).catch(function (err) {
-      console.log(err);
-      reject('got an error!');
-      //should load the songbook and explain what's up.
-    });  
+    }
+    if(song_id === 's-new-song'){
+      var song = {
+        _id: 's-new-song',
+        title: ' ',
+        authors: [' '],
+        scripture_ref: [' '],
+        introduction: ' ',
+        key: ' ',
+        categories: [" "],
+        cclis: false,
+        content: [[{type: 'verse'},
+          [" "]]
+          ],
+        copyright: ' '
+      };
+      createSongHtml(song)
+    }
+    else {
+      db.get(song_id).then(function(song){
+          createSongHtml(song);
+        }).catch(function (err) {
+        console.log(err);
+        reject('got an error!');
+        //should load the songbook and explain what's up.
+      });
+    }  
   });
 }
 
@@ -132,6 +158,7 @@ function loadSongbook(songbook_id) {
       });
       //Creates list.min.js list for viewing the songbook
       window.songbook_list = new List('songbook_content', options, values);
+
       /*
       var songbook = document.createDocumentFragment();
         var title = document.createElement('h3');
@@ -163,6 +190,8 @@ function loadSongbook(songbook_id) {
     $('#songbook_title').text('todosCantas');  // Need to change for other songbooks.
     $('#songbook_title').parent().attr('href','#'+songbook_id);
     $('body').attr('class','songList');
+    window.songbook_id = songbook_id;
+
     resolve('loaded songbook');
   });
 }

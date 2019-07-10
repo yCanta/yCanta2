@@ -92,6 +92,13 @@ function parseHash(part) {
     return parts
   }
 }
+function updateAllLinks(whichView='all') {
+  $('[data-song-edit]').attr('href','#'+window.songbook_id+'&'+window.song_id+'&edit');
+  $('[data-song-edit="new"]').attr('href','#'+window.songbook_id+'&s-new-song&edit');
+  $('[data-song]').attr('href','#'+window.songbook_id+'&'+window.song_id);
+  $('[data-songbook-edit]').attr('href','#'+window.songbook_id+'&edit');
+  $('[data-songbook]').attr('href','#'+window.songbook_id);
+}
 
 
 $(function () {
