@@ -241,4 +241,24 @@ db.put(categories, function callback(err, result) {
     console.log(err);
   }
 });
+db.get('age').then(function(age){
+  if(age.age < 190711) {
+    db.destroy().then(function () {
+      // database destroyed
+      window.location.reload();
+    }).catch(function (err) {
+      console.log(err);
+    });
+  }
+  }).catch(function(err){
+    db.put({_id: 'age', age: 190711}, function callback(err, result) {
+      if (!err) {
+        console.log('added age');
+      }
+      else {
+        console.log(err);
+      }
+    });
+  });
+
 
