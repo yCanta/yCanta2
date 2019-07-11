@@ -318,7 +318,7 @@ button {
   }
 
   /*Focus songList*/
-  body.songlist header {
+  body.songList header {
     flex: 0 0 0;
   }
   body.songList #songbookList {
@@ -331,7 +331,7 @@ button {
 
   /*Focus song*/
   body.song header,
-  body.song #songBookList {
+  body.song #songbookList {
     flex: 0 0 0;
     overflow: hidden;
   }
