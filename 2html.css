@@ -1,6 +1,10 @@
 stitle, categories, cclis, authors, key {
   margin-bottom: 1em;
 }
+authors, introduction, scripture_ref, key {
+  margin-right: 1em; 
+  display: inline-block;
+}
 stitle, categories, cclis, copyright {
   display: block;
 }
@@ -119,7 +123,6 @@ chunk:before {
  content: ' ';
 }
 key:not(:empty):before {content: 'Key: '}
-authors, introduction {margin-right: 1em; display: inline-block;}
 copyright:before {
  content: '';
 }
@@ -143,12 +146,23 @@ key[contentEditable=true]:empty:not(:focus):before{
 authors[contentEditable=true]:empty:not(:focus):before{
   content: 'Author: ';
 }
-scripture[contentEditable=true]:empty:not(:focus):before{
+scripture_ref[contentEditable=true]:empty:not(:focus):before{
   content: 'Scripture: ';
+}
+introduction[contentEditable=true]:empty:not(:focus):before{
+  content: 'Intro Chords: ';
 }
 categories[contentEditable=true]:empty:not(:focus):before{
   content: 'Categories: ';
 }
+chunk[contentEditable=true]:empty:not(:focus):before{
+  content: 'Verse/Chorus/Comment: ';
+  top: 0;
+  left: 0;
+}
 copyright[contentEditable=true]:empty:not(:focus):before{
   content: 'Copyright: ';
+}
+[contentEditable=true]:empty:focus {
+  min-width: 3rem;
 }

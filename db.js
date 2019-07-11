@@ -8,11 +8,11 @@ function saveSong(song_id) {
         song._rev       = song_html.attr('data-rev'); //need a _rev if updating a document
       }
       song.title        = song_html.find('stitle').text();
-      song.authors      = song_html.find('authors').text().split(',');
-      song.scripture_ref= song_html.find('scripture_ref').text().split(',');
+      song.authors      = song_html.find('authors').text().split(',').map(Function.prototype.call, String.prototype.trim);
+      song.scripture_ref= song_html.find('scripture_ref').text().split(',').map(Function.prototype.call, String.prototype.trim);
       song.introduction = song_html.find('introduction').text();
       song.key          = song_html.find('key').text();
-      song.categories   = song_html.find('categories').text().split(',');
+      song.categories   = song_html.find('categories').text().split(',').map(Function.prototype.call, String.prototype.trim);
       song.cclis        = song_html.find('cclis').text();
       //Compile Song Content, a list of lists.  Chunks and lines
       var chunks = [];
@@ -60,7 +60,7 @@ function loadSong(song_id) {
   return new Promise(function(resolve, reject) {
     function createSongHtml(song) {
       window.song_id = song._id;
-      var song_html = '<song data-rev="' + song._rev + '" data-id="' + song._id + '">' + '<stitle>' + song.title + '</stitle>' + '<authors><author>' + song.authors.join('</author>, <author>') + '</author></authors>' + '<scripture_ref>' + song.scripture_ref + '</scripture_ref>' + '<introduction>' + song.introduction + '</introduction>' + '<key>' + song.key + '</key>' + '<categories><cat>' + song.categories.join('</cat>, <cat>') + '</cat></categories>' + '<cclis>' + song.cclis + '</cclis>';
+      var song_html = '<song data-rev="' + song._rev + '" data-id="' + song._id + '">' + '<stitle>' + song.title + '</stitle>' + '<authors><author>' + song.authors.join('</author>, <author>') + '</author></authors>' + '<scripture_ref><scrip_ref>' + song.scripture_ref.join('</scrip_ref>, <scrip_ref>') + '</scrip_ref></scripture_ref>' + '<introduction>' + song.introduction + '</introduction>' + '<key>' + song.key + '</key>' + '<categories><cat>' + song.categories.join('</cat>, <cat>') + '</cat></categories>' + '<cclis>' + song.cclis + '</cclis>';
       song.content.forEach(function(chunk){
         song_html += '<chunk type="' + chunk[0].type + '">';
         chunk[1].forEach(function(line){
@@ -73,7 +73,7 @@ function loadSong(song_id) {
       $('#song .content').html(song_html);
       bindSearch('cat', 'c:');
       bindSearch('author', 'a:');
-      bindSearch('scripture_ref', 's:');
+      bindSearch('scrip_ref', 's:');
       bindSearch('stitle', 't:');
       bindSearch('key', 'k:');
       bindSearch('copyright', 'c:');
@@ -83,17 +83,17 @@ function loadSong(song_id) {
     if(song_id === 's-new-song'){
       var song = {
         _id: 's-new-song',
-        title: ' ',
-        authors: [' '],
-        scripture_ref: [' '],
-        introduction: ' ',
-        key: ' ',
-        categories: [" "],
+        title: '',
+        authors: [''],
+        scripture_ref: [''],
+        introduction: '',
+        key: '',
+        categories: [""],
         cclis: false,
         content: [[{type: 'verse'},
-          [" "]]
+          [""]]
           ],
-        copyright: ' '
+        copyright: ''
       };
       createSongHtml(song)
     }

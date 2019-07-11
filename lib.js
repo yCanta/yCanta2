@@ -145,13 +145,16 @@ editSong = function () {
     });
     $(this).html(content.join('\n')).addClass('pre');
   });
+  $('#song authors').html($('#song author').map(function(){return $(this).text()}).get().join(', '));
+  $('#song categories').html($('#song cat').map(function(){return $(this).text()}).get().join(', '));
+  $('#song scripture_ref').html($('#song cat').map(function(){return $(this).text()}).get().join(', '));
   $('#song').first('.subcolumn').find('song').children().attr('contenteditable', 'true').toTextarea({
     allowHTML: false,//allow HTML formatting with CTRL+b, CTRL+i, etc.
     allowImg: false,//allow drag and drop images
     doubleEnter: true,//make a single line so it will only expand horizontally
     singleLine: false,//make a single line so it will only expand horizontally
     pastePlainText: false,//paste text without styling as source
-    placeholder: true//a placeholder when no text is entered. This can also be set by a placeholder="..." or data-placeholder="..." attribute
+    placeholder: false//a placeholder when no text is entered. This can also be set by a placeholder="..." or data-placeholder="..." attribute
   });
   window.editing = true;
   //load categories
