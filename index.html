@@ -2,6 +2,8 @@
 <html lang="en">
   <head>
     <meta charset="utf-8"/>
+    <meta name="Description" content="yCanta: Offline-first web application for creating and presenting songs and songbooks">
+
 
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" type="image/x-icon" href="favicon.png">
@@ -110,7 +112,7 @@
           <div class="subcolumn">
             <div style="width:400px;" id="songbook_content">
               <a class="title_link" href="#"><h3 id="songbook_title"></h3></a>
-              <input class="search" type="text" data-target="#songbook_content" data-trigger="change" placeholder="Search">
+              <input aria-label="Search"class="search" type="text" data-target="#songbook_content" data-trigger="change" placeholder="Search">
               <ul class="list"></ul>
             </div>
             <span style="display:none">
@@ -159,7 +161,7 @@
             <div id="categories" style="width: 240px;">
               <div class="sticky">
                 <h3>Song Categories<a class="icon-fl-right close-icon">x</a></h3>
-                <input class="search" type="text" data-target="#categories" data-trigger="change" placeholder="Search">
+                <input aria-label="Search"class="search" type="text" data-target="#categories" data-trigger="change" placeholder="Search">
               </div>
               <ul class="list">
               </ul>

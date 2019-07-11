@@ -1,12 +1,19 @@
 {
   "name": "yCanta2",
+  "short_name": "yCanta",
   "icons": [
     {
       "src": "icon.png",
       "sizes": "192x192",
       "type": "image/png"
+    },
+    {
+      "src": "icon512.png",
+      "sizes": "512x512",
+      "type": "image/png"
     }
   ],
+  "theme_color": "lightblue",
   "start_url": "/yCanta2/index.html",
   "background_color": "#d3d3d3",
   "display": "standalone"

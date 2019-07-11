@@ -226,7 +226,7 @@ function makeDraggable(dragCaptureEl, dragEl, dragSide, dragAction) {
     else {
       startx = false;
     }
-  }, false);
+  }, {passive: true});
 
   box1.addEventListener('touchmove', function(e){
     if(startx){
