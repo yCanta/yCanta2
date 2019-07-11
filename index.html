@@ -1,17 +1,17 @@
-<!DOCTYPE html5>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="utf-8"/>
     <meta name="Description" content="yCanta: Offline-first web application for creating and presenting songs and songbooks">
-
+    <meta name="theme-color" content="lightblue">
 
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" type="image/x-icon" href="favicon.png">
 
     <script src="jquery-3.4.0.min.js"></script>
     <script src="pouchdb.min.js"></script>
-    <script src="db.js" type="text/javascript"></script>
-    <script src="lib.js" type="text/javascript"></script>
+    <script src="db.js"></script>
+    <script src="lib.js"></script>
     <script src="jquery.myTransposer.js" type="text/javascript"></script>
     <script src="jquery.toTextarea.js"></script>
     <script src="list.min.js"></script>
@@ -24,7 +24,7 @@
   <body class="songbookList">
     <header>
       <h2><a href="#">yCanta</a></h2>
-      <a href style="position: absolute; top:0;right:0" onclick="db.destroy().then(function () {
+      <a href="#" style="position: absolute; top:0;right:0" onclick="db.destroy().then(function () {
       window.location.reload();
     }).catch(function (err) {
       console.log(err);
@@ -111,11 +111,11 @@
         <div class="row">
           <div class="subcolumn">
             <div style="width:400px;" id="songbook_content">
-              <a class="title_link" href="#"><h3 id="songbook_title"></h3></a>
-              <input aria-label="Search"class="search" type="text" data-target="#songbook_content" data-trigger="change" placeholder="Search">
+              <a class="title_link" href="#"><h3 id="songbook_title">todosCantas</h3></a>
+              <input aria-label="Search" class="search" type="text" data-target="#songbook_content" data-trigger="change" placeholder="Search">
               <ul class="list"></ul>
             </div>
-            <span style="display:none">
+            <ul style="display:none">
               <li id="song-item-template" 
                   data-song-id=""
                   data-song-title=""
@@ -129,7 +129,7 @@
                   data-song-copyright="">
                 <a href="" class="link name" ></a>
               </li>
-            </span>
+            </ul>
           </div>
           <div class="subcolumn sidebar" id="songListEdit">
             <div>
@@ -161,18 +161,18 @@
             <div id="categories" style="width: 240px;">
               <div class="sticky">
                 <h3>Song Categories<a class="icon-fl-right close-icon">x</a></h3>
-                <input aria-label="Search"class="search" type="text" data-target="#categories" data-trigger="change" placeholder="Search">
+                <input aria-label="Search" class="search" type="text" data-target="#categories" data-trigger="change" placeholder="Search">
               </div>
               <ul class="list">
               </ul>
-              <span style="display:none">
+              <ul style="display:none">
                 <li id="category-template">
                   <label>
                     <input type="checkbox">
                     <span class="name"></span>
                   </label>
                 </li>
-              </span>
+              </ul>
             </div>
           </div>
         </div>
