@@ -112,10 +112,11 @@ function loadSong(song_id) {
 function loadSongbook(songbook_id) {
   return new Promise(function(resolve, reject) {
 
-    function buildSongbookList (result) {
+    function buildSongbookList(songs) {
       var options = {    
         valueNames: [
           { data: ['song-id'] },
+          { data: ['song-rev'] },
           { data: ['song-title'] },
           { data: ['song-authors'] },
           { data: ['song-scripture_ref'] },
@@ -131,18 +132,10 @@ function loadSongbook(songbook_id) {
         item: 'song-item-template'
       };
       var values = [];   
-      result.rows.map(function (row) {
-        if(window.songbook_list != undefined){
-          if(window.songbook_list.get(row.doc._id)){
-            console.log("Skipping it!");
-            return
-          }
-          else {
-            console.log("We've got a new one!");
-          }
-        }
-        values.push(
-          { 'song-id': row.doc._id,
+      songs.rows.map(function (row) {
+        function mapRowToValue(row) {
+          return { 'song-id':           row.doc._id,
+            'song-rev':                 row.doc._rev,
             'song-title':        't:' + row.doc.title,
             'song-authors':      'a:' + (row.doc.authors != '' ? row.doc.authors.join(' a:') : '!a'),
             'song-scripture_ref':'s:' + row.doc.scripture_ref,
@@ -154,7 +147,20 @@ function loadSongbook(songbook_id) {
             'song-content': row.doc.content,
             'link': '#'+songbook_id+'&'+row.doc._id,
             'name': row.doc.title
-        });
+          }
+        }
+        if(window.songbook_list != undefined){
+          var songIdInList = window.songbook_list.get('song-id',row.doc._id);
+          if(songIdInList.length > 0){
+            // we need to update if the revision is different.
+            var songRevInList = window.songbook_list.get('song-rev', row.doc._rev);
+            if(songRevInList < 1){
+              songIdInList[0].values(mapRowToValue(row));
+            }
+            return
+          }
+        }
+        values.push(mapRowToValue(row));
       });
       //Creates list.min.js list for viewing the songbook
       window.songbook_list = new List('songbook_content', options, values);
@@ -190,7 +196,6 @@ function loadSongbook(songbook_id) {
     $('#songbook_title').text('todosCantas');  // Need to change for other songbooks.
     $('#songbook_title').parent().attr('href','#'+songbook_id);
     $('body').attr('class','songList');
-    window.songbook_id = songbook_id;
 
     resolve('loaded songbook');
   });
