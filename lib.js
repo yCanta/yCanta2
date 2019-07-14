@@ -148,7 +148,7 @@ editSong = function () {
   $('#song authors').html($('#song author').map(function(){return $(this).text()}).get().join(', '));
   $('#song categories').html($('#song cat').map(function(){return $(this).text()}).get().join(', '));
   $('#song scripture_ref').html($('#song cat').map(function(){return $(this).text()}).get().join(', '));
-  $('#song').first('.subcolumn').find('song').children().attr('contenteditable', 'true').toTextarea({
+  $('#song').first('.subcolumn').find('song').children().not('categories').toTextarea({
     allowHTML: false,//allow HTML formatting with CTRL+b, CTRL+i, etc.
     allowImg: false,//allow drag and drop images
     doubleEnter: true,//make a single line so it will only expand horizontally
@@ -156,16 +156,50 @@ editSong = function () {
     pastePlainText: false,//paste text without styling as source
     placeholder: false//a placeholder when no text is entered. This can also be set by a placeholder="..." or data-placeholder="..." attribute
   });
+  $('#song categories').addClass('contenteditable-disabled').prop('tabindex',"0")
+    .on('click', function(){$('#song-edit').toggleClass('sidebar-open')
+    .find('.search').focus()});
   window.editing = true;
+
   //load categories
   db.get('categories').then(function(categories) {
     var options = {valueNames: ['name'], item: 'category-template'};
     var values = [];   
     categories.categories.map(function (cat) {
+      if(window.categories_list != undefined){
+        var catInList = window.categories_list.get('name',cat);
+        if(catInList.length > 0){
+          return
+        }
+      }
       values.push({ 'name': cat});
     });
-    new List('categories', options, values);
+    window.categories_list = new List('categories', options, values);
+    //set checkboxes
+    $('#song [type="checkbox"]').prop("checked", false);
+    $('categories').text().split(',').forEach(function(cat){
+      if(cat.trim()!= ''){
+        $('label span:contains("'+cat.trim()+'")').prev().prop("checked", true);
+      }
+    });
+    //!!!ERROR this gets bound every time you load song_edit.  Get multiple bindings and add multiple times each category clicked.
+    $('#song [type="checkbox"]').change(function() {
+      //add/remove categories as checkboxes are modified
+      var cats = $('categories').text().trim()
+      if(cats != ''){
+        cats = cats.split(',').map(Function.prototype.call, String.prototype.trim);
+      }
+      else {
+        cats = [];
+      }
 
+      if(this.checked) {
+        $('categories').text(cats.concat($(this).next().text()).sort().join(', '));
+      }
+      else{
+        $('categories').text(cats.filter(cat => cat != $(this).next().text()).sort().join(', '));
+      }
+    });
   }).catch(function (err) {
     console.log(err);
     reject('got an error while working on categories');

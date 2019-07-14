@@ -137,32 +137,32 @@ cclis:not(:empty):before {
   margin-bottom: 2em;
 }
 cclis {visibility: hidden;}
-stitle[contentEditable=true]:empty:not(:focus):before{
-  content: 'Title: ';
+stitle[contentEditable=true]:empty:before{
+  content: 'Title ';
 }
-key[contentEditable=true]:empty:not(:focus):before{
-  content: 'Key: ';
+key[contentEditable=true]:empty:before{
+  content: 'Key ';
 }
-authors[contentEditable=true]:empty:not(:focus):before{
-  content: 'Author: ';
+authors[contentEditable=true]:empty:before{
+  content: 'Author ';
 }
-scripture_ref[contentEditable=true]:empty:not(:focus):before{
-  content: 'Scripture: ';
+scripture_ref[contentEditable=true]:empty:before{
+  content: 'Scripture ';
 }
-introduction[contentEditable=true]:empty:not(:focus):before{
-  content: 'Intro Chords: ';
+introduction[contentEditable=true]:empty:before{
+  content: 'Intro Chords ';
 }
-categories[contentEditable=true]:empty:not(:focus):before{
-  content: 'Categories: ';
+categories[contentEditable=true]:empty:before{
+  content: 'Categories ';
 }
-chunk[contentEditable=true]:empty:not(:focus):before{
-  content: 'Verse/Chorus/Comment: ';
+chunk[contentEditable=true]:empty:before{
+  content: 'Verse/Chorus/Comment ';
   top: 0;
   left: 0;
 }
-copyright[contentEditable=true]:empty:not(:focus):before{
-  content: 'Copyright: ';
+copyright[contentEditable=true]:empty:before{
+  content: 'Copyright ';
 }
-[contentEditable=true]:empty:focus {
+[contentEditable=true]:focus {
   min-width: 3rem;
 }

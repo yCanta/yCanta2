@@ -60,7 +60,14 @@ function loadSong(song_id) {
   return new Promise(function(resolve, reject) {
     function createSongHtml(song) {
       window.song_id = song._id;
-      var song_html = '<song data-rev="' + song._rev + '" data-id="' + song._id + '">' + '<stitle>' + song.title + '</stitle>' + '<authors><author>' + song.authors.join('</author>, <author>') + '</author></authors>' + '<scripture_ref><scrip_ref>' + song.scripture_ref.join('</scrip_ref>, <scrip_ref>') + '</scrip_ref></scripture_ref>' + '<introduction>' + song.introduction + '</introduction>' + '<key>' + song.key + '</key>' + '<categories><cat>' + song.categories.join('</cat>, <cat>') + '</cat></categories>' + '<cclis>' + song.cclis + '</cclis>';
+      var song_html = '<song data-rev="' + song._rev + '" data-id="' + song._id + '">' + 
+        '<stitle>' + song.title + '</stitle>' + 
+        '<authors><author>' + song.authors.join('</author>, <author>') + '</author></authors>' + 
+        '<scripture_ref><scrip_ref>' + song.scripture_ref.join('</scrip_ref>, <scrip_ref>') + '</scrip_ref></scripture_ref>' + 
+        '<introduction>' + song.introduction + '</introduction>' + 
+        '<key>' + song.key + '</key>' + 
+        '<categories><cat>' + song.categories.sort().join('</cat>, <cat>') + '</cat></categories>' + 
+        '<cclis>' + song.cclis + '</cclis>';
       song.content.forEach(function(chunk){
         song_html += '<chunk type="' + chunk[0].type + '">';
         chunk[1].forEach(function(line){

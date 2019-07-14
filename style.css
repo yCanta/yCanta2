@@ -1,4 +1,4 @@
-*{box-sizing: border-box;transition: all .25s;}
+*{box-sizing: border-box;transition: all .25s; outline: none;}
 html, body, main{
   height: 100%; 
   margin: 0;
@@ -17,12 +17,17 @@ stitle, cat, author, scrip_ref, key, copyright {
 .edit stitle, .edit cat, .edit author, .edit scripture_ref, .edit key, .edit copyright {
   cursor: text;
 }
-[contenteditable='true']{
+[contenteditable='true'], .contenteditable-disabled {
   border: 1px gray dashed;
   background-color: lightgray;
   outline: none;
 }
-[contentEditable=true]:empty:not(:focus):before{
+[contenteditable='true']:focus, .contenteditable-disabled:focus {
+  border: 1px dashed darkblue;
+}
+.contenteditable-disabled {color: #555; cursor: pointer}
+.contenteditable-disabled:focus {color: #333; cursor: pointer; color: black;}
+[contenteditable=true]:empty:not(:focus):before{
   color:grey;
   font-style:italic;
 }
