@@ -182,24 +182,6 @@ editSong = function () {
         $('label span:contains("'+cat.trim()+'")').prev().prop("checked", true);
       }
     });
-    //!!!ERROR this gets bound every time you load song_edit.  Get multiple bindings and add multiple times each category clicked.
-    $('#song [type="checkbox"]').change(function() {
-      //add/remove categories as checkboxes are modified
-      var cats = $('categories').text().trim()
-      if(cats != ''){
-        cats = cats.split(',').map(Function.prototype.call, String.prototype.trim);
-      }
-      else {
-        cats = [];
-      }
-
-      if(this.checked) {
-        $('categories').text(cats.concat($(this).next().text()).sort().join(', '));
-      }
-      else{
-        $('categories').text(cats.filter(cat => cat != $(this).next().text()).sort().join(', '));
-      }
-    });
   }).catch(function (err) {
     console.log(err);
     reject('got an error while working on categories');
