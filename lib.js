@@ -132,6 +132,28 @@ if (typeof console  != "undefined")
 console.error = console.debug = console.info =  console.log
 */
 
+bindToEdit = function() {
+  $('#song').on('change', '[type="checkbox"]', function() {
+    //add/remove categories as checkboxes are modified
+    var cats = $('categories').text().trim()
+    if(cats != ''){
+      cats = cats.split(',').map(Function.prototype.call, String.prototype.trim);
+    }
+    else {
+      cats = [];
+    }
+    if(this.checked) {
+      $('categories').text(cats.concat($(this).next().text()).sort().join(', '));
+    }
+    else{
+      $('categories').text(cats.filter(cat => cat != $(this).next().text()).sort().join(', '));
+    }
+  });
+  $('#song').on('change', 'select', function(){
+    $(this).next().attr('type',$(this).find('option:selected').text());
+  });
+}
+
 editSong = function () {
   $('chunk').each(function(index){
     var content = [];
@@ -144,11 +166,16 @@ editSong = function () {
       }
     });
     $(this).html(content.join('\n')).addClass('pre');
+    var type = $(this).attr('type');
+    console.log(type)
+    $(this).wrap('<div></div>').parent().prepend('<select name="types" size="1"><option value="Verse">Verse</option><option value="Chorus">Chorus</option><optgroup label="Misc"><option value="Pre-Chorus">Pre-Chorus</option><option value="Final Chorus">Final Chorus</option><option value="Bridge">Bridge</option><option value="Ending">Ending</option><option value="No Label">No Label</option><option value="Indented No Label">Indented No Label</option><option value="Comment">Comment</option></optgroup></select>');
+    $(this).parent().find('option[value="'+type+'"]').attr('selected', '');
   });
+
   $('#song authors').html($('#song author').map(function(){return $(this).text()}).get().join(', '));
   $('#song categories').html($('#song cat').map(function(){return $(this).text()}).get().join(', '));
   $('#song scripture_ref').html($('#song cat').map(function(){return $(this).text()}).get().join(', '));
-  $('#song').first('.subcolumn').find('song').children().not('categories').toTextarea({
+  $('#song').first('.subcolumn').find('stitle,authors,scripture_ref,introduction,key,chunk,copyright').toTextarea({
     allowHTML: false,//allow HTML formatting with CTRL+b, CTRL+i, etc.
     allowImg: false,//allow drag and drop images
     doubleEnter: true,//make a single line so it will only expand horizontally

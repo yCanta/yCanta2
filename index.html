@@ -185,23 +185,7 @@
       </div>
     </footer>
     <script>
-      $('#song').on('change', '[type="checkbox"]', function() {
-        //add/remove categories as checkboxes are modified
-        var cats = $('categories').text().trim()
-        if(cats != ''){
-          cats = cats.split(',').map(Function.prototype.call, String.prototype.trim);
-        }
-        else {
-          cats = [];
-        }
-
-        if(this.checked) {
-          $('categories').text(cats.concat($(this).next().text()).sort().join(', '));
-        }
-        else{
-          $('categories').text(cats.filter(cat => cat != $(this).next().text()).sort().join(', '));
-        }
-      });
+      bindToEdit();
       $('.column').click(function(e){
         var h = $(this).height();
         var w = $(this).width();

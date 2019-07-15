@@ -110,10 +110,13 @@ song {
   top: 1.3em;
   left: -2em;
 }
-.edit chunk[type=chorus]:before {
-  position: absolute;
-  top: -2.3em;
-  left: -2em;
+.edit chunk[type='chorus']:before,
+.edit chunk[type='pre-chorus']:before,
+.edit chunk[type='final chorus']:before,
+.edit chunk[type='ending']:before,
+.edit chunk[type='comment']:before,
+.edit chunk[type='bridge']:before {
+  content:'';
 }
 [type=comment] line {
  color: #555;
