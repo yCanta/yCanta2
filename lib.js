@@ -167,7 +167,7 @@ editSong = function () {
     });
     $(this).html(content.join('\n')).addClass('pre');
     var type = $(this).attr('type');
-    $(this).wrap('<div class="wrap"></div>').parent().prepend('<select name="types" size="1"><option value="Verse">Verse</option><option value="Chorus">Chorus</option><optgroup label="Misc"><option value="Pre-Chorus">Pre-Chorus</option><option value="Final Chorus">Final Chorus</option><option value="Bridge">Bridge</option><option value="Ending">Ending</option><option value="No Label">No Label</option><option value="Indented No Label">Indented No Label</option><option value="Comment">Comment</option></optgroup></select>');
+    $(this).wrap('<div class="wrap"></div>').parent().prepend('<select name="types" size="1"><option value="verse">Verse</option><option value="chorus">Chorus</option><optgroup label="Misc"><option value="pre-chorus">Pre-Chorus</option><option value="final chorus">Final Chorus</option><option value="bridge">Bridge</option><option value="ending">Ending</option><option value="no label">No Label</option><option value="indented no label">Indented No Label</option><option value="comment">Comment</option></optgroup></select>');
     $(this).parent().find('select').val(type);
   });
 
