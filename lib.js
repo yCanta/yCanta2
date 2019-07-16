@@ -167,9 +167,8 @@ editSong = function () {
     });
     $(this).html(content.join('\n')).addClass('pre');
     var type = $(this).attr('type');
-    console.log(type)
-    $(this).wrap('<div></div>').parent().prepend('<select name="types" size="1"><option value="Verse">Verse</option><option value="Chorus">Chorus</option><optgroup label="Misc"><option value="Pre-Chorus">Pre-Chorus</option><option value="Final Chorus">Final Chorus</option><option value="Bridge">Bridge</option><option value="Ending">Ending</option><option value="No Label">No Label</option><option value="Indented No Label">Indented No Label</option><option value="Comment">Comment</option></optgroup></select>');
-    $(this).parent().find('option[value="'+type+'"]').attr('selected', '');
+    $(this).wrap('<div class="wrap"></div>').parent().prepend('<select name="types" size="1"><option value="Verse">Verse</option><option value="Chorus">Chorus</option><optgroup label="Misc"><option value="Pre-Chorus">Pre-Chorus</option><option value="Final Chorus">Final Chorus</option><option value="Bridge">Bridge</option><option value="Ending">Ending</option><option value="No Label">No Label</option><option value="Indented No Label">Indented No Label</option><option value="Comment">Comment</option></optgroup></select>');
+    $(this).parent().find('select').val(type);
   });
 
   $('#song authors').html($('#song author').map(function(){return $(this).text()}).get().join(', '));

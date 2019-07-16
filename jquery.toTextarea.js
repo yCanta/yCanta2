@@ -322,6 +322,7 @@
 						  .addClass("toTextarea-doubleEnter")
 						  .on("keydown.toTextarea", function (e) {
 						   	var chunk = $(this).closest('chunk');
+						   	var wrap = $(this).closest('.wrap');
 						   	prev_char = cur_char;
 						   	cur_char = e.which;
 
@@ -344,7 +345,9 @@
 
                 		var new_chunk_text = rangeAfter.toString();
                 		var old_chunk_text = rangeBefore.toString();
-                    var new_chunk = chunk.clone().insertAfter(chunk);
+                    var new_wrap = wrap.clone().insertAfter(wrap);
+                    new_wrap.find('select').val(wrap.find('select').val());
+                    var new_chunk = new_wrap.find('chunk');
                 		chunk.text(old_chunk_text);
                     new_chunk.text(new_chunk_text).toTextarea({
 		                  doubleEnter: true,//make a single line so it will only expand horizontally
@@ -362,13 +365,14 @@
 									return true;
 								}
                 if (!$(this).data().disabled && e.which === 8 && chunk.length != 0) {
-                	var prev_chunk = chunk.prev('chunk');
+                	var prev_wrap = wrap.prev('.wrap');
+                	var prev_chunk = prev_wrap.find('chunk');
                 	//check if there are no characters prior to this one and there is a prev chunk
-                	if (window.getSelection().anchorOffset == '0' && prev_chunk.length != '0') {
+                	if (window.getSelection().anchorOffset == '0' && prev_wrap.length != '0') {
 										e.preventDefault();
                 		var prev_chunk_length = prev_chunk.text().length;
                 		prev_chunk.text(prev_chunk.text().replace(/^\s+|\s+$/g, '') + '\n' + chunk.text());
-                		chunk.remove();
+                		wrap.remove();
                 		//put the cursor positioned at the end of the old chunk
 										var range = document.createRange();
 										var sel = window.getSelection();
