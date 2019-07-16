@@ -115,6 +115,19 @@ function loadSong(song_id) {
     }  
   });
 }
+function deleteSong(song_id) {
+  if (confirm("Are you sure you want to delete this song?")) {
+    db.get(window.song_id).then(function (doc) {
+      return db.remove(doc);
+    }).then(function(){
+      window.location.hash='#'+window.songbook_id
+    });
+    console.log('deleted: '+window.song_id);
+    return false
+  } else { //we aren't leaving 
+    return true
+  }
+}
 
 function loadSongbook(songbook_id) {
   return new Promise(function(resolve, reject) {
@@ -190,21 +203,33 @@ function loadSongbook(songbook_id) {
         startkey: 's-',
         endkey: 's-\ufff0',
       }).then(function(result){
-        //handle result
+        //first delete any songs no longer in the songbook
+        var sb_song_ids = result.rows.map(function (row) {
+          return row.doc._id
+        });
+        if(window.songbook_list != undefined){
+          window.songbook_list.items.forEach(function(old_song){
+            if(!sb_song_ids.includes(old_song.values()['song-id'])){
+              window.songbook_list.remove('song-id',old_song.values()['song-id']);
+            }
+          });
+        }
+        //then add and update the new ones
         buildSongbookList(result);
         window.songbook_id = songbook_id;
+        resolve('loaded songbook');
       }).catch(function(err){
         console.log(err);
       })
     }
     else {
+      resolve('loaded songbook');
       //we need to load the songbook - mostly same as above.
     }
     $('#songbook_title').text('todosCantas');  // Need to change for other songbooks.
     $('#songbook_title').parent().attr('href','#'+songbook_id);
     $('body').attr('class','songList');
 
-    resolve('loaded songbook');
   });
 }
 
