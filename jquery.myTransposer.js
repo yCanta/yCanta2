@@ -123,8 +123,7 @@
 
     var transposeSong = function (target, key) {
       var newKey = getKeyByName(key);
-      currentKey = getKeyByName($('input[name="key"]').val()) || newKey;
-
+      currentKey = getKeyByName($('key').text()) || newKey;
       if (currentKey.name == newKey.name) {
         return;
       }
@@ -132,9 +131,9 @@
       var delta = getDelta(currentKey.value, newKey.value);
      /*This is where we need to change the target for change.  Will also need to come up with way to fix spacing . . .    */
     
-      $('#songsOl textarea').each(function() {
+      $('#song chunk').each(function() {
         var output = [];
-        var lines = $(this).val().split("\n");
+        var lines = $(this).text().split("\n");
         var line = "";
         
         for (var i = 0; i < lines.length; i++) {
@@ -146,7 +145,7 @@
             output.push(line);
         };
 
-      $(this).val(output.join("\n"));
+      $(this).text(output.join("\n"));
         
       });
         
@@ -229,7 +228,7 @@
     
     return $(this).each(function() {
     
-      var startKey = $('input[name="key"]').val();
+      var startKey = $('key').text();
       if (!startKey || $.trim(startKey) == "") {
         startKey = "" 
       }
@@ -241,9 +240,9 @@
       var keyLinks = [];
       $(keys).each(function(i, key) {
           if (currentKey.name == key.name)
-              keyLinks.push("<a href='#' id='"+key.name.replace('#','_')+"' class='selected'>" + key.name + "</a>");
+              keyLinks.push("<a id='"+key.name.replace('#','_')+"' class='selected'>" + key.name + "</a>");
           else
-              keyLinks.push("<a href='#' id='"+key.name.replace('#','_')+"'>" + key.name + "</a>");
+              keyLinks.push("<a id='"+key.name.replace('#','_')+"'>" + key.name + "</a>");
       });
 
 
@@ -255,11 +254,11 @@
           transposeSong($this, $(this).text());
           $(".transpose-keys a").removeClass("selected");
           $(this).addClass("selected");
-          $('input[name="key"]').val($(this).text())
+          $('key').text($(this).text());
           return false;
       });
       
-      $(this).before(keysHtml);
+      $(this).after(keysHtml);
     });
   };
 

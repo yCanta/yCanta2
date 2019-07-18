@@ -186,6 +186,7 @@ editSong = function () {
     .on('click', function(){$('#song-edit').toggleClass('sidebar-open')
     .find('.search').focus()});
   window.editing = true;
+  $('#song key').transpose();
 
   //load categories
   db.get('categories').then(function(categories) {
