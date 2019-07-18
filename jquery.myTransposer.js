@@ -129,26 +129,28 @@
       }
 
       var delta = getDelta(currentKey.value, newKey.value);
-     /*This is where we need to change the target for change.  Will also need to come up with way to fix spacing . . .    */
-    
       $('#song chunk').each(function() {
-        var output = [];
-        var lines = $(this).text().split("\n");
-        var line = "";
-        
-        for (var i = 0; i < lines.length; i++) {
-          line = lines[i];
-
-          if (isChordLine(line))
-            output.push(transposeLine(line, delta, newKey)); // need to change this from a wrapping operation to a tranpose
-          else
-            output.push(line);
-        };
-
-      $(this).text(output.join("\n"));
-        
+        if(this.children.length==0){
+          var output = [];
+          var lines = $(this).text().split("\n");
+          var line = "";
+          for (var i = 0; i < lines.length; i++) {
+            line = lines[i];
+            if (isChordLine(line))
+              output.push(transposeLine(line, delta, newKey));
+            else
+              output.push(line);
+          };
+          $(this).text(output.join("\n"));
+        }
+        else{
+          $(this).find('c').each(function(){
+            transposeChord(this, delta, newKey);
+          });
+          $('key').css('background-color', 'salmon');
+          $('#song').removeClass('nochords');
+        }
       });
-        
       currentKey = newKey;
     };
     var transposeLine = function (line, delta, targetKey) {
@@ -185,12 +187,6 @@
         var newChordRoot = getNewKey(oldChordRoot, delta, targetKey);
         var newChord = newChordRoot.name + oldChord.substr(oldChordRoot.length);
         el.text(newChord);
-
-        var sib = el[0].nextSibling;
-        if (sib && sib.nodeType == 3 && sib.nodeValue.length > 0 && sib.nodeValue.charAt(0) != "/") {
-            var wsLength = getNewWhiteSpaceLength(oldChord.length, newChord.length, sib.nodeValue.length);
-            sib.nodeValue = makeString(" ", wsLength);
-        }
     };
 
     var getNewWhiteSpaceLength = function (a, b, c) {

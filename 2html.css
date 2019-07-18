@@ -155,8 +155,9 @@ scripture_ref[contentEditable=true]:empty:before{
 introduction[contentEditable=true]:empty:before{
   content: 'Intro Chords ';
 }
-categories[contentEditable=true]:empty:before{
-  content: 'Categories ';
+.edit categories:empty:before{
+  content: 'No category selected - add one! :)';
+  color: salmon;
 }
 chunk[contentEditable=true]:empty:before{
   content: 'Verse/Chorus/Comment ';

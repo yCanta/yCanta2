@@ -78,14 +78,15 @@ function loadSong(song_id) {
       song_html +=  '<copyright>' + song.copyright + '</copyright>' +
                   '</song>'
       $('#song .content').html(song_html);
+      resolve("song_loaded");
+
       bindSearch('cat', 'c:');
       bindSearch('author', 'a:');
       bindSearch('scrip_ref', 's:');
       bindSearch('stitle', 't:');
       bindSearch('key', 'k:');
-      bindSearch('copyright', 'c:');
-      
-      resolve("song_loaded");
+      bindSearch('copyright', 'c:');      
+      $('#song key').transpose();
     }
     if(song_id === 's-new-song'){
       var song = {
