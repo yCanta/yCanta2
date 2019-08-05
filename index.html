@@ -41,61 +41,19 @@
         </div>
         <div class="row">
           <div class="subcolumn">
-            <div style="width: 300px;" >
-              <a class="title_link" href="#"><h3>Songbooks &#x1F50D;</h3></a>
-              <ul>
-                <li class="selected"><a href="#sb-todosCantas">todosCantas</a></li>
-                <li>Black Book<a href="#" class="icon-fl-right">★</a></li>
-                <li>  4/21/19 - Easter<a href="#" class="icon-fl-right">★</a>  </li>
-                <hr>
-    <li>  ABIDE Songbook  </li>
-    <li>  Africa Worship  </li>
-    <li>  America Worship </li>
-    <li>  Arkansas River Trip </li>
-    <li>  Baby Dedication 12/15/17  </li>
-    <li>  Black Book  </li>
-    <li>  CA Song Book Wk 1 </li>
-    <li>  CA Song Book Wk 2 </li>
-    <li>  Campfire  </li>
-    <li>  Canaan Nominations  </li>
-    <li>  Canaan Worship: Noah  </li>
-    <li>  Carl's  </li>
-    <li>  Chandigarh Worship  </li>
-    <li>  Children's Songs Pamphlet </li>
-    <li>  Christmas11 </li>
-    <li>  Clermont Park Worship </li>
-    <li>  Coxsackie Chapel 20180729 </li>
-    <li>  Coxsackie Christmas Festival  </li>
-    <li>  Coxsackie Kairos #23  </li>
-    <li>  Coxsackie Kairos #29  </li>
-    <li>  Coxsackie28Spanish  </li>
-    <li>  Coxsackie_mass  </li>
-    <li>  David's Worship Songbook  </li>
-    <li>  DC Community Group  </li>
-    <li>  DC Worship  </li>
-    <li>  DC Worship 2  </li>
-    <li>  Debrief </li>
-    <li>  Espanol Canciones </li>
-    <li>  Fairborn songs  </li>
-    <li>  Friday Night Worship SAFB </li>
-    <li>  graveside </li>
-    <li>  Greene Kairos #3  </li>
-    <li>  Greene Kairos #4  </li>
-    <li>  Greene2Day2014  </li>
-    <li>  GreeneSatJuly26 </li>
-    <li>  Guys Night Mini </li>
-    <li>  Hempel/Anderson Wedding </li>
-    <li>  HempelHepworthWedding </li>
-    <li>  HempelHorstWedding  </li>
-    <li>  HempelLoseeWedding  </li>
-    <li>  HerricksChoices </li>
-    <li>  Himalaya Worship  </li>
-    <li>  Home Group 12/3 </li>
-    <li>  Ida Hempel funeral  </li>
-    <li>  India Worship </li>
-    <li>  JoannaCaseyWedding  </li>
-    </ul>
+            <div style="width:300px;" id="songbooks">
+              <a class="title_link" href="#"><h3>Songbooks</h3></a>
+              <input aria-label="Search" class="search" type="text" data-target="#songbooks" data-trigger="change" placeholder="Search">
+              <ul class="list"></ul>
             </div>
+            <ul style="display:none">
+              <li id="songbook-item-template" 
+                  data-songbook-id=""
+                  data-songbook-rev=""
+                  data-songbook-title="">
+                <a href="" class="link name" ></a>
+              </li>
+            </ul>
           </div>
         </div>
       </div>

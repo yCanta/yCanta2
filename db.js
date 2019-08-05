@@ -1,5 +1,70 @@
 var db = new PouchDB('yCanta');
 
+function initializeSongbooksList(){
+  db.allDocs({
+    include_docs: true,
+    startkey: 'sb-',
+    endkey: 'sb-\ufff0',
+  }).then(function(result){
+    if(window.songbooks_list != undefined){
+      window.songbooks_list.clear();
+    }
+    //then add and update the new ones
+    function buildSongbooksList(songbooks) {
+      var options = {    
+        valueNames: [
+          { data: ['songbook-id'] },
+          { data: ['songbook-rev'] },
+          { data: ['songbook-title'] },
+          //{ data: ['songbook-authors'] },
+          //{ data: ['songbook-categories'] },
+          //{ data: ['songbooks-songs'] },
+          //{ data: ['songbook-copyright'] },
+          { name: 'link', attr: 'href'},
+          'name'
+        ],
+        item: 'songbook-item-template'
+      };
+      var values = [{'songbook_id': 'sb-todosCantas', 
+                     'songbook-rev': 'n/a', 
+                     'songbook_title': 'todosCantas',            
+                     'link': '#sb-todosCantas',
+                     'name': 'todosCantas'}];   
+      songbooks.map(function(row) {
+        function mapRowToValue(row) {
+          return { 'songbook-id':           row.doc._id,
+            'songbook-rev':                 row.doc._rev,
+            'songbook-title':        't:' + row.doc.title,
+            'link': '#'+row.doc._id,
+            'name': row.doc.title
+          }
+        }
+        if(window.songbooks_list != undefined){
+          var songbookIdInList = window.songbooks_list.get('songbook-id',row.doc._id);
+          if(songbookIdInList.length > 0){
+            // we need to update if the revision is different.
+            var songbookRevInList = window.songbooks_list.get('songbook-rev', row.doc._rev);
+            if(songbookRevInList < 1){
+              songbookIdInList[0].values(mapRowToValue(row));
+            }
+            return
+          }
+        }
+        values.push(mapRowToValue(row));
+      });
+      //Creates list.min.js list for viewing all the songbooks
+      window.songbooks_list = new List('songbooks', options, values);
+
+      return 
+    }
+    buildSongbooksList(result.rows);
+  }).catch(function(err){
+    console.log(err);
+  });
+}
+
+initializeSongbooksList();
+
 function saveSong(song_id) {
   return new Promise(function(resolve, reject) {
     var song_html = $('#song song');
@@ -186,15 +251,6 @@ function loadSongbook(songbook_id) {
       //Creates list.min.js list for viewing the songbook
       window.songbook_list = new List('songbook_content', options, values);
 
-      /*
-      var songbook = document.createDocumentFragment();
-        var title = document.createElement('h3');
-        title.innerHTML = 'todosCantas';
-        songbook.appendChild(title);
-
-        var songbook_content = document.getElementById("songbook_content");
-        songbook_content.innerHTML = '';
-        songbook_content.append(songbook);*/
       return 
     }
     if(songbook_id == undefined || songbook_id == 'sb-todosCantas') {
@@ -204,10 +260,11 @@ function loadSongbook(songbook_id) {
         startkey: 's-',
         endkey: 's-\ufff0',
       }).then(function(result){
-        //first delete any songs no longer in the songbook
         var sb_song_ids = result.rows.map(function (row) {
           return row.doc._id
         });
+
+        //first delete any songs no longer in the songbook
         if(window.songbook_list != undefined){
           /*window.songbook_list.items.forEach(function(old_song){
             if(!sb_song_ids.includes(old_song.values()['song-id'])){
