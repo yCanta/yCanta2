@@ -153,7 +153,7 @@ function loadSongbook(songbook_id) {
         item: 'song-item-template'
       };
       var values = [];   
-      songs.rows.map(function (row) {
+      songs.map(function(row) {
         function mapRowToValue(row) {
           return { 'song-id':           row.doc._id,
             'song-rev':                 row.doc._rev,
@@ -209,26 +209,55 @@ function loadSongbook(songbook_id) {
           return row.doc._id
         });
         if(window.songbook_list != undefined){
-          window.songbook_list.items.forEach(function(old_song){
+          /*window.songbook_list.items.forEach(function(old_song){
             if(!sb_song_ids.includes(old_song.values()['song-id'])){
               window.songbook_list.remove('song-id',old_song.values()['song-id']);
             }
-          });
+          });*/
+          //^may be faster than the full wipe, but I need to figure out how to update urls
+          window.songbook_list.clear();
         }
         //then add and update the new ones
-        buildSongbookList(result);
+        buildSongbookList(result.rows);
         window.songbook_id = songbook_id;
+        $('#songbook_title').text('todosCantas');
         resolve('loaded songbook');
       }).catch(function(err){
         console.log(err);
-      })
+      });
     }
     else {
-      resolve('loaded songbook');
-      //we need to load the songbook - mostly same as above.
+      db.get(songbook_id).then(function(result){
+        var sb_song_ids = result.songrefs.map(function (row) {
+          return row.id
+        });
+        
+        //first delete any songs no longer in the songbook
+        if(window.songbook_list != undefined){
+          /*window.songbook_list.items.forEach(function(old_song){
+            if(!sb_song_ids.includes(old_song.values()['song-id'])){
+              window.songbook_list.remove('song-id',old_song.values()['song-id']);
+            }
+          });*/
+          //^may be faster than the full wipe, but I need to figure out how to update urls
+          window.songbook_list.clear();
+        }
+        //then add and update the new ones
+        db.allDocs({
+          include_docs: true,
+          keys: sb_song_ids,
+        }).then(function (result) {
+          buildSongbookList(result.rows);
+        }).catch(function (err) {
+          console.log(err);
+        });
+        window.songbook_id = songbook_id;
+        $('#songbook_title').text(result.title);
+        resolve('loaded songbook');
+      }).catch(function(err){
+        console.log(err);
+      });
     }
-    $('#songbook_title').text('todosCantas');  // Need to change for other songbooks.
-    $('#songbook_title').parent().attr('href','#'+songbook_id);
     $('body').attr('class','songList');
 
   });
@@ -261,6 +290,21 @@ var song = {
 db.put(song, function callback(err, result) {
   if (!err) {
     console.log('Successfully saved a song!');
+  }
+  else {
+    console.log(err);
+  }
+});
+
+var songbook = {
+  _id: 'sb-blackBook',
+  title: 'Black Book',
+  songrefs: [{id: 's-aSong.song', status: 'n', key: 'Am', comments: ['Hi']}]
+}
+
+db.put(songbook, function callback(err, result) {
+  if (!err) {
+    console.log('Successfully added the Black Book!');
   }
   else {
     console.log(err);

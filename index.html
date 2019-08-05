@@ -112,7 +112,7 @@
         <div class="row">
           <div class="subcolumn">
             <div style="width:400px;" id="songbook_content">
-              <a class="title_link" href="#"><h3 id="songbook_title">todosCantas</h3></a>
+              <a data-songbook class="title_link" href="#"><h3 id="songbook_title">todosCantas</h3></a>
               <input aria-label="Search" class="search" type="text" data-target="#songbook_content" data-trigger="change" placeholder="Search">
               <ul class="list"></ul>
             </div>
@@ -234,7 +234,7 @@
         //if song edit
         else if((hash.search('&s-') != -1) && (hash.search('&edit') != -1)) {
           //check if songbook is loaded
-          Promise.all([loadSongbook(), loadSong(parseHash('s-'))])
+          Promise.all([loadSongbook(parseHash('sb-')), loadSong(parseHash('s-'))])
             .then(function(values){
               console.log(values);
               //Initiate song edit
@@ -252,7 +252,7 @@
             return
           }
           //Need to check check if songbook is loaded
-          Promise.all([loadSongbook(), loadSong(parseHash('s-'))])
+          Promise.all([loadSongbook(parseHash('sb-')), loadSong(parseHash('s-'))])
             .then(function(values) {
               $('body').attr('class','song');
               $('.active').removeClass('active');
