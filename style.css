@@ -323,7 +323,6 @@ button {
   }
   body main {
     flex-direction: column;
-    position: relative; /*this is done for the content bubbles - float menu*/
   }
   body.songbookList #songbookList, 
   body.songList #songList, 
@@ -362,7 +361,7 @@ button {
   .float-menu {
     position: absolute;
     right: 1.5em;
-    bottom: 1em;
+    bottom: 3em;
     z-index: 6;
     text-align: right;
   }
@@ -411,7 +410,9 @@ button {
   .edit .active .float-menu {
     left: 1em;
     right: auto;
-    bottom: 0;
+  }
+  .edit song {
+    margin-bottom: 10rem;
   }
 }
 @media only screen and (min-width: 701px) {

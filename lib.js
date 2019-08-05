@@ -2,6 +2,12 @@ String.prototype.count=function(s1) {
     return (this.length - this.replace(new RegExp(s1,"g"), '').length) / s1.length;
 }
 
+window.addEventListener("resize", function(){
+  window.setTimeout(function(){
+    document.activeElement.scrollIntoView({block: 'start'});
+  },0);
+})
+
 function isChord(line) {
   var fraction = 0.45;
   var count = line.count(' ');

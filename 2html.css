@@ -45,6 +45,7 @@ song {
  margin-block-end: 1em;/*h3 STYLING*/
  white-space: pre-wrap;
  counter-reset: verse_n; 
+ margin-bottom: 3rem;
 }
 .nochords [type=verse]:before {
   top: 1.2em;
