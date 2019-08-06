@@ -92,11 +92,31 @@
             </ul>
           </div>
           <div class="subcolumn sidebar" id="songListEdit">
-            <div>
-              <h3>Add a song?<a href="#sb-aSongbook.xml" class="icon-fl-right close-icon">x</a></h3>
-              <ul>
-                <li>This little light of mine!</li>
-                <li>All Hail the Power</li>
+            <div id="songbook_edit_togglesongs">
+              <div class="sticky">
+                <h3>Add a song?<a class="icon-fl-right close-icon">x</a></h3>
+                <input aria-label="Search" class="search" type="text" data-target="#songbook_edit_togglesongs" data-trigger="change" placeholder="Search">
+              </div>
+              <ul class="list">
+              </ul>
+              <ul style="display:none">
+                <li id="song-item-template-edit" 
+                  data-song-id=""
+                  data-song-rev=""
+                  data-song-title=""
+                  data-song-authors=""
+                  data-song-scripture=""
+                  data-song-introduction=""
+                  data-song-key=""
+                  data-song-categories=""
+                  data-song-cclis=""
+                  data-song-content=""
+                  data-song-copyright="">
+                  <label>
+                    <input type="checkbox">
+                    <span class="name"></span>
+                  </label>
+                </li>
               </ul>
             </div>
           </div>
@@ -221,10 +241,14 @@
         //if songbook edit
         else if((hash.search('#sb-') != -1) && (hash.search('&edit') != -1)) {
           //Initiate songbook edit
-          $('body').attr('class', 'songList edit');
-          $('.active').removeClass('active');
-          $('#songList').addClass('active');
-          updateAllLinks();
+          Promise.resolve(loadSongbook(parseHash('sb-')))
+            .then(function() {
+              $('body').attr('class', 'songList edit');
+              $('.active').removeClass('active');
+              $('#songList').addClass('active');
+              editSongbook();
+              updateAllLinks();
+          });
         }
         //if songbook
         else if(hash.search('#sb-') != -1) {

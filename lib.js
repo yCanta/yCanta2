@@ -175,6 +175,95 @@ bindToEdit = function() {
   });
 }
 
+function buildSongbookList(songs, target_class='songbook_content', 
+                                  template='song-item-template', 
+                                  edit=false) {
+  var options = {    
+    valueNames: [
+      { data: ['song-id'] },
+      { data: ['song-rev'] },
+      { data: ['song-title'] },
+      { data: ['song-authors'] },
+      { data: ['song-scripture_ref'] },
+      { data: ['song-introduction'] },
+      { data: ['song-key'] },
+      { data: ['song-categories'] },
+      { data: ['song-cclis'] },
+      { data: ['song-content'] },
+      { data: ['song-copyright'] },
+      { name: 'link', attr: 'href'},
+      'name'
+    ],
+    item: template
+  };
+  var values = [];   
+  songs.map(function(row) {
+    function mapRowToValue(row) {
+      return { 'song-id':           row.doc._id,
+        'song-rev':                 row.doc._rev,
+        'song-title':        't:' + row.doc.title,
+        'song-authors':      'a:' + (row.doc.authors != '' ? row.doc.authors.join(' a:') : '!a'),
+        'song-scripture_ref':'s:' + row.doc.scripture_ref,
+        'song-introduction': 'i:' + row.doc.introduction,
+        'song-key':          'k:' + row.doc.key,
+        'song-categories':   'c:' + row.doc.categories.join(' c:'),
+        'song-copyright':    'c:' + (row.doc.copyright ? row.doc.copyright : '!c'),
+        'song-cclis': ((row.doc.cclis!='') ? 'cclis' : '!cclis'),
+        'song-content': row.doc.content,
+        'link': '#'+window.songbook_id+'&'+row.doc._id,
+        'name': row.doc.title
+      }
+    }
+
+    //I tried to use saved_list as a standin variable for the window object we save below - it never worked out so I'm using this clunky bit of code here.
+    if(edit != true) {
+      saved_list = window.songbook_list;
+    }
+    else {
+      saved_list = window.songbook_edit_togglesongs_list;
+    }
+
+    if(saved_list != undefined){
+      console.log(saved_list, 'Hiya!')
+      var songIdInList = saved_list.get('song-id',row.doc._id);
+      if(songIdInList.length > 0){
+        // we need to update if the revision is different.
+        var songRevInList = saved_list.get('song-rev', row.doc._rev);
+        if(songRevInList < 1){
+          songIdInList[0].values(mapRowToValue(row));
+        }
+        return
+      }
+    }
+    values.push(mapRowToValue(row));
+  });
+  
+  //Creates list.min.js list for viewing the songbook
+  if(edit != true) {
+    window.songbook_list = new List(target_class, options, values);
+  }
+  else{
+    window.songbook_edit_togglesongs_list = new List(target_class, options, values);
+  }
+  return 
+}
+
+function editSongbook() {
+  //load all the songs into song adder
+  db.allDocs({
+    include_docs: true,
+    startkey: 's-',
+    endkey: 's-\ufff0',
+  }).then(function(result){
+    buildSongbookList(result.rows, 
+      'songbook_edit_togglesongs', 
+      'song-item-template-edit', 
+      true);
+  }).catch(function(err){
+    console.log(err);
+  });
+}
+
 editSong = function () {
   $('chunk').each(function(index){
     var content = [];

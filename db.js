@@ -197,64 +197,9 @@ function deleteSong(song_id) {
 
 function loadSongbook(songbook_id) {
   return new Promise(function(resolve, reject) {
-
-    function buildSongbookList(songs) {
-      var options = {    
-        valueNames: [
-          { data: ['song-id'] },
-          { data: ['song-rev'] },
-          { data: ['song-title'] },
-          { data: ['song-authors'] },
-          { data: ['song-scripture_ref'] },
-          { data: ['song-introduction'] },
-          { data: ['song-key'] },
-          { data: ['song-categories'] },
-          { data: ['song-cclis'] },
-          { data: ['song-content'] },
-          { data: ['song-copyright'] },
-          { name: 'link', attr: 'href'},
-          'name'
-        ],
-        item: 'song-item-template'
-      };
-      var values = [];   
-      songs.map(function(row) {
-        function mapRowToValue(row) {
-          return { 'song-id':           row.doc._id,
-            'song-rev':                 row.doc._rev,
-            'song-title':        't:' + row.doc.title,
-            'song-authors':      'a:' + (row.doc.authors != '' ? row.doc.authors.join(' a:') : '!a'),
-            'song-scripture_ref':'s:' + row.doc.scripture_ref,
-            'song-introduction': 'i:' + row.doc.introduction,
-            'song-key':          'k:' + row.doc.key,
-            'song-categories':   'c:' + row.doc.categories.join(' c:'),
-            'song-copyright':    'c:' + (row.doc.copyright ? row.doc.copyright : '!c'),
-            'song-cclis': ((row.doc.cclis!='') ? 'cclis' : '!cclis'),
-            'song-content': row.doc.content,
-            'link': '#'+songbook_id+'&'+row.doc._id,
-            'name': row.doc.title
-          }
-        }
-        if(window.songbook_list != undefined){
-          var songIdInList = window.songbook_list.get('song-id',row.doc._id);
-          if(songIdInList.length > 0){
-            // we need to update if the revision is different.
-            var songRevInList = window.songbook_list.get('song-rev', row.doc._rev);
-            if(songRevInList < 1){
-              songIdInList[0].values(mapRowToValue(row));
-            }
-            return
-          }
-        }
-        values.push(mapRowToValue(row));
-      });
-      //Creates list.min.js list for viewing the songbook
-      window.songbook_list = new List('songbook_content', options, values);
-
-      return 
-    }
     if(songbook_id == undefined || songbook_id == 'sb-todosCantas') {
       songbook_id = 'sb-todosCantas';
+      window.songbook_id = songbook_id;  
       db.allDocs({
         include_docs: true,
         startkey: 's-',
@@ -276,7 +221,6 @@ function loadSongbook(songbook_id) {
         }
         //then add and update the new ones
         buildSongbookList(result.rows);
-        window.songbook_id = songbook_id;
         $('#songbook_title').text('todosCantas');
         resolve('loaded songbook');
       }).catch(function(err){
