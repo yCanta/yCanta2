@@ -1,8 +1,8 @@
-var cacheName = 'ycanta-cache-1';
+var cacheName = 'ycanta-cache-1.1';
 var prefetchedURLs = [
   'jquery-3.4.0.min.js',
-  'pouchdb.min.js',
-  'db.js',
+  'pouchdb.min.js'
+  /*'db.js',
   'lib.js',
   'sw.js',
   'jquery.myTransposer.js',
@@ -14,7 +14,7 @@ var prefetchedURLs = [
   'index.html',
   'favicon.png',
   'icon.png',
-  'icon512.png'
+  'icon512.png'*/
 ];
 const l = console.log
 
