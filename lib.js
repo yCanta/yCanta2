@@ -8,6 +8,21 @@ window.addEventListener("resize", function(){
   },0);
 })
 
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js', {
+    scope: './'
+  })
+  .then((serviceWorker) => {
+    console.log('service worker registration successful')
+  })
+  .catch((err) => {
+    console.error('service worker registration failed')
+    console.error(err);
+  });
+} else {
+  console.log('service worker unavailable');
+}
+
 function isChord(line) {
   var fraction = 0.45;
   var count = line.count(' ');
