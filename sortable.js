@@ -43,6 +43,7 @@ function dragEnter( e ) {
 function dragLeave( e ) {
 }
 function dragDrop( e ) {
+  e.preventDefault();
   var li = $(e.target).closest('li')[0] || e.target;
   if (e.stopPropagation) {
     e.stopPropagation(); // stops the browser from redirecting.
