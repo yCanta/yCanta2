@@ -270,6 +270,10 @@ function editSongbook() {
       song.addEventListener('drop', dragDrop, false);
       song.addEventListener('dragend', dragEnd, false);
     });
+    $('#songList ul.list').each(function(){
+      this.addEventListener('drop', dragDrop, false);
+      this.addEventListener('dragover', dragOver, false);
+    });
   }).catch(function(err){
     console.log(err);
   });

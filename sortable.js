@@ -43,15 +43,14 @@ function dragEnter( e ) {
 function dragLeave( e ) {
 }
 function dragDrop( e ) {
-  var li = $(e.target).closest('li')[0];
-  if(isVerboten(li)){
-    selected.remove();
-    return 
-  }
+  var li = $(e.target).closest('li')[0] || e.target;
   if (e.stopPropagation) {
     e.stopPropagation(); // stops the browser from redirecting.
   }
-  if(li.parentNode != selected.parentNode){
+  if(isVerboten(li)){
+    selected.remove();
+  }
+  else if(li.parentNode != selected.parentNode){
     song = selected.cloneNode(true);
     song.addEventListener('dragstart', dragStart, false);
     song.addEventListener('dragenter', dragEnter, false);
@@ -59,7 +58,10 @@ function dragDrop( e ) {
     song.addEventListener('dragleave', dragLeave, false);
     song.addEventListener('drop', dragDrop, false);
     song.addEventListener('dragend', dragEnd, false);
-    if (isBefore(selected, li)) {
+    if(li.nodeName === 'UL'){  //This catches empty lists
+      li.append(song);
+    }
+    else if(isBefore(selected, li)) {
       li.parentNode.insertBefore(song, li);
     } 
     else {

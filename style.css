@@ -44,6 +44,9 @@ stitle, cat, author, scrip_ref, key, copyright {
 .moving { 
   transform: scale(0.8); 
 }
+.list {
+  min-height: 2rem;
+}
 [contenteditable='true'], .contenteditable-disabled {
   border: 1px gray dashed;
   background-color: lightgray;
