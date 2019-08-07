@@ -254,11 +254,22 @@ function editSongbook() {
     startkey: 's-',
     endkey: 's-\ufff0',
   }).then(function(result){
-    buildSongbookList(result.rows, 
+    window.editing = true;
+    return buildSongbookList(result.rows, 
       'songbook_edit_togglesongs', 
       'song-item-template-edit', 
       true);
-    window.editing = true;
+  }).then(function(result) {
+    [].forEach.call(document.querySelectorAll('#songList ul li'), function (song) {
+      $(song).children().removeAttr('href');
+      song.setAttribute('draggable', 'true');  // Enable columns to be draggable.
+      song.addEventListener('dragstart', dragStart, false);
+      song.addEventListener('dragenter', dragEnter, false);
+      song.addEventListener('dragover', dragOver, false);
+      song.addEventListener('dragleave', dragLeave, false);
+      song.addEventListener('drop', dragDrop, false);
+      song.addEventListener('dragend', dragEnd, false);
+    });
   }).catch(function(err){
     console.log(err);
   });

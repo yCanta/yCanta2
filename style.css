@@ -24,6 +24,26 @@ stitle, cat, author, scrip_ref, key, copyright {
   background-color: lightgray;
   border: 1px gray dashed;
 }
+.edit #songbook_content ul {
+  background-color: lightgray;
+  border: 1px gray dashed;
+}
+.edit #songbook_content ul li{
+  border: 1px #EEE dashed;
+}
+.overt { 
+  border-top: 1px dashed #000 !important;
+  border-top-right-radius: 0;
+  border-top-left-radius: 0;
+}
+.overb { 
+  border-bottom: 1px dashed #000 !important; 
+  border-bottom-right-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.moving { 
+  color: red; transform: scale(0.8); 
+}
 [contenteditable='true'], .contenteditable-disabled {
   border: 1px gray dashed;
   background-color: lightgray;
@@ -418,6 +438,12 @@ button {
   }
 }
 @media only screen and (min-width: 701px) {
+  ul li {
+    border-left: 1px solid #EEE;
+    border-radius: 20px;
+    padding: 2px 5px 2px 5px;
+    margin: 2px 0 2px 0px;
+  }
   #column-filler {
     flex: 1 1 auto;
   }
