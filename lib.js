@@ -274,6 +274,8 @@ function editSongbook() {
       this.addEventListener('drop', dragDrop, false);
       this.addEventListener('dragover', dragOver, false);
     });
+    $('#songList #songbook_title').attr('contenteditable', 'true').parent().removeAttr('href');
+    $('#songList #songbook_content input.search').val('').addClass('disabled-hidden')[0].disabled=true;    
   }).catch(function(err){
     console.log(err);
   });

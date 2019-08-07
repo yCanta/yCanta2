@@ -15,20 +15,26 @@ a {
 stitle, cat, author, scrip_ref, key, copyright {
   cursor: pointer;
 }
-.edit stitle, .edit cat, .edit author, .edit scripture_ref, .edit key, .edit copyright {
+.song.edit stitle, .edit cat, .edit author, .edit scripture_ref, .edit key, .edit copyright {
   cursor: text;
 }
-.edit song select {
+.song.edit song select {
   margin-bottom: 1rem;
   margin-top: 1rem;
   background-color: lightgray;
   border: 1px gray dashed;
 }
-.edit #songbook_content ul {
+#songbook_header {
+  position: sticky;
+  top: 0;
+  background-color: lightsalmon;
+  z-index: 10;
+}
+.songList.edit #songbook_content ul {
   background-color: lightgray;
   border: 1px gray dashed;
 }
-.edit #songbook_content ul li{
+.songList.edit #songbook_content ul li{
   border: 1px #EEE dashed;
 }
 .overt { 
@@ -46,6 +52,11 @@ stitle, cat, author, scrip_ref, key, copyright {
 }
 .list {
   min-height: 2rem;
+}
+.disabled-hidden {
+  opacity: 0;
+  height: 0;
+  display:none;
 }
 [contenteditable='true'], .contenteditable-disabled {
   border: 1px gray dashed;
