@@ -29,6 +29,7 @@ function dragStart( e ) {
 function dragEnter( e ) {
   counter++;
   var li = $(e.target).closest('li')[0];
+  if(isVerboten(li)){ return }
   if(li !== selected) {
     if(isBefore(selected, li)) {
       li.classList.add('overt');
@@ -48,14 +49,40 @@ function dragLeave( e ) {
 }
 function dragDrop( e ) {
   var li = $(e.target).closest('li')[0];
+  if(isVerboten(li)){ return }
   if (e.stopPropagation) {
     e.stopPropagation(); // stops the browser from redirecting.
   }
-  if (isBefore(selected, li)) {
-    li.parentNode.insertBefore(selected, li)
-  } 
+  if(li.parentNode != selected.parentNode){
+    song = selected.cloneNode(true);
+    song.addEventListener('dragstart', dragStart, false);
+    song.addEventListener('dragenter', dragEnter, false);
+    song.addEventListener('dragover', dragOver, false);
+    song.addEventListener('dragleave', dragLeave, false);
+    song.addEventListener('drop', dragDrop, false);
+    song.addEventListener('dragend', dragEnd, false);
+    if (isBefore(selected, li)) {
+      li.parentNode.insertBefore(song, li);
+    } 
+    else {
+      li.parentNode.insertBefore(song, li.nextSibling);
+    }
+  }
   else {
-    li.parentNode.insertBefore(selected, li.nextSibling)
+    if (isBefore(selected, li)) {
+      li.parentNode.insertBefore(selected, li);
+    } 
+    else {
+      li.parentNode.insertBefore(selected, li.nextSibling);
+    }
+  }
+}
+function isVerboten(target) {
+  if ($(target).closest('#songListEdit').length == 0) {
+    return false
+  }
+  else {
+    return true
   }
 }
 
