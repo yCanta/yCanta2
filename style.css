@@ -109,7 +109,7 @@ body {
   align-content: stretch;
 }
 header {
-  flex: 0 0 71px;
+  flex: 0 0 48px;
   overflow: hidden;
 }
 main {
@@ -155,9 +155,6 @@ footer {
 }*/
 
 /*Styling!*/
-.navigation {
-  border-top: 3px double black;
-}
 .selected {
   background-color: rgba(0, 0, 0, 0.2);
 }
@@ -185,11 +182,12 @@ footer {
 }
 .column, body.edit .sidebar {
   box-shadow: 0px 0 40px 10px rgba(0, 0, 0, 0.8);
-  border-left: 1.5px solid gray;
   overflow-y: auto;
   overflow-x: hidden;
 }
-
+body.edit .sidebar {
+  border-left: 1.5px solid gray;
+}
 html body .subcolumn.sidebar {
   box-shadow: none;
 }
@@ -298,6 +296,9 @@ button {
 
 /*For Mobile devices only*/
 @media only screen and (max-width: 700px) {
+  header {
+    flex: 0 0 60px;
+  }
   body .sidebar,
   body.edit .sidebar {
     overflow: hidden;
@@ -354,6 +355,9 @@ button {
     border-top: 1px solid #EEE;
     border-bottom: 1px solid #EEE;
     border-radius: 20px;
+  }
+  .active .row {
+    border-top: 1px solid black;
   }
   /*float for mobile*/
   .float-menu {
@@ -414,15 +418,21 @@ button {
   }
 }
 @media only screen and (min-width: 701px) {
+  #column-filler {
+    flex: 1 1 auto;
+  }
+  .subcolumn, body.edit .sidebar {
+    border-left: 1.5px solid gray;
+  }
   .float-menu {
     display: flex;
     flex-direction: row-reverse;
-    justify-content: flex-end;
     width: 100%;
     top: 0;
-    background-color: gray;
-    border-bottom: 1px solid black;
+    background-color: white;
+    border-bottom: 2px solid black;
     height: 2.2em;
+    padding-right: 1rem;
   }
   .float-menu-icon {
     display: none;
@@ -430,7 +440,7 @@ button {
   .float-menu-item:not(:first-child):after {
     content: ' //';
   }
-  .column:hover {
+  .column:not(:last-child):hover {
     z-index: 6 !important;
   }
   body.edit .sidebar {

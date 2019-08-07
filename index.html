@@ -30,14 +30,14 @@
     }).catch(function (err) {
       console.log(err);
     });">Delete DB</a>
-      <div class="navigation">
-      </div>
     </header>
     <main>
       <div class="column active" id="songbookList">
         <div class="float-menu">
-          <span class="float-menu-item"><span class="float-menu-icon">+</span> Add SB</span>
-          <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>
+          <div>
+            <span class="float-menu-item"><span class="float-menu-icon">+</span> Add SB</span>
+            <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>
+          </div>
         </div>
         <div class="row">
           <div class="subcolumn">
@@ -87,7 +87,7 @@
                   data-song-cclis=""
                   data-song-content=""
                   data-song-copyright="">
-                <a href="" class="link name" ></a>
+                  <a href="" class="link name" ></a>
               </li>
             </ul>
           </div>
@@ -112,10 +112,7 @@
                   data-song-cclis=""
                   data-song-content=""
                   data-song-copyright="">
-                  <label>
-                    <input type="checkbox">
-                    <span class="name"></span>
-                  </label>
+                  <a href="" class="name" ></a>
                 </li>
               </ul>
             </div>
@@ -157,6 +154,11 @@
           </div>
         </div>
       </div>
+      <div class="column" id="column-filler">
+        <div class="float-menu">
+        </div>
+      </div>
+      
     </main>
     <footer>
       <span style="float: right;">rev __________ 1</span>    
