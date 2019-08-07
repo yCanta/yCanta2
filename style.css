@@ -42,7 +42,7 @@ stitle, cat, author, scrip_ref, key, copyright {
   border-bottom-left-radius: 0;
 }
 .moving { 
-  color: red; transform: scale(0.8); 
+  transform: scale(0.8); 
 }
 [contenteditable='true'], .contenteditable-disabled {
   border: 1px gray dashed;

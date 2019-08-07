@@ -1,5 +1,4 @@
 var selected
-var counter = 0;
 
 function dragOver( e ) {
     if (e.preventDefault) {
@@ -16,7 +15,6 @@ function dragEnd( e ) {
     song.classList.remove('overb');  
   });
   selected = null
-  counter = 0;
 }
 
 function dragStart( e ) {
@@ -27,9 +25,12 @@ function dragStart( e ) {
 
 }
 function dragEnter( e ) {
-  counter++;
   var li = $(e.target).closest('li')[0];
   if(isVerboten(li)){ return }
+  [].forEach.call(document.querySelectorAll('ul li'), function (song) {
+    song.classList.remove('overt');  
+    song.classList.remove('overb');  
+  });
   if(li !== selected) {
     if(isBefore(selected, li)) {
       li.classList.add('overt');
@@ -40,16 +41,13 @@ function dragEnter( e ) {
   }
 }
 function dragLeave( e ) {
-  counter--;
-  if(counter === 0){
-    var li = $(e.target).closest('li')[0];
-    li.classList.remove('overt');
-    li.classList.remove('overb');
-  }
 }
 function dragDrop( e ) {
   var li = $(e.target).closest('li')[0];
-  if(isVerboten(li)){ return }
+  if(isVerboten(li)){
+    selected.remove();
+    return 
+  }
   if (e.stopPropagation) {
     e.stopPropagation(); // stops the browser from redirecting.
   }
