@@ -62,8 +62,8 @@
           <a data-song-edit="new" class="float-menu-item"><span class="float-menu-icon">+</span> Add Song</a>
           <span class="float-menu-item"><span class="float-menu-icon icon-rotate">&#9021;</span> Delete</span>
           <span class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</span>
-          <a data-songbook class="float-menu-item float-menu-editing"><span class="float-menu-icon">&#128465;</span> Cancel</a>
-          <a data-songbook class="float-menu-item float-menu-editing"><span class="float-menu-icon">&#128427;</span> Save</a>
+          <button data-songbook class="float-menu-item float-menu-editing" onclick="window.editing=false; window.location.hash=$(this).attr('href');"><span class="float-menu-icon">&#128465;</span> Cancel</button>
+          <button data-songbook class="float-menu-item float-menu-editing" onclick="window.editing=false; prepSaveSongbook($(this));"><span class="float-menu-icon">&#128427;</span> Save</button>
           <a data-songbook-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>
           <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>
         </div>
@@ -92,7 +92,7 @@
             </ul>
           </div>
           <div class="subcolumn sidebar" id="songListEdit">
-            <div id="songbook_edit_togglesongs">
+            <div id="songbook_edit_togglesongs" style="width: 220px;">
               <div class="sticky">
                 <h3>Add a song?<a class="icon-fl-right close-icon">x</a></h3>
                 <input aria-label="Search" class="search" type="text" data-target="#songbook_edit_togglesongs" data-trigger="change" placeholder="Search">

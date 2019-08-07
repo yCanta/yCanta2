@@ -224,7 +224,6 @@ function buildSongbookList(songs, target_class='songbook_content',
     }
 
     if(saved_list != undefined){
-      console.log(saved_list, 'Hiya!')
       var songIdInList = saved_list.get('song-id',row.doc._id);
       if(songIdInList.length > 0){
         // we need to update if the revision is different.
@@ -259,6 +258,7 @@ function editSongbook() {
       'songbook_edit_togglesongs', 
       'song-item-template-edit', 
       true);
+    window.editing = true;
   }).catch(function(err){
     console.log(err);
   });
@@ -356,23 +356,21 @@ prepSaveSong = function (element) {
 };
 //Making things work with touch coolness
 function makeDraggable(dragCaptureEl, dragEl, dragSide, dragAction) {
-  var box1 = document.getElementById('song');
-  var move = document.getElementById('song-edit');
   var startx = 0;
   var starty = 0;
   var dist = 0;
   var disty = 0;
   var width = 0;
 
-  box1.addEventListener('touchstart', function(e){
+  dragCaptureEl.addEventListener('touchstart', function(e){
     var touchobj = e.changedTouches[0]; // reference first touch point (ie: first finger)
     startx = parseInt(touchobj.clientX);
     starty = parseInt(touchobj.clientY);
-    width = $(move).width(); // get x position of touch point relative to left edge of browser
+    width = $(dragEl).width(); // get x position of touch point relative to left edge of browser
 
     // only do stuff if in right place
-    if(window.editing && startx > box1.offsetLeft + box1.offsetWidth - width - 32) { 
-      move.style.transition = 'all 0s';
+    if(window.editing && startx > dragCaptureEl.offsetLeft + dragCaptureEl.offsetWidth - width - 32) { 
+      dragEl.style.transition = 'all 0s';
       //e.preventDefault();
     }
     else {
@@ -380,7 +378,7 @@ function makeDraggable(dragCaptureEl, dragEl, dragSide, dragAction) {
     }
   }, {passive: true});
 
-  box1.addEventListener('touchmove', function(e){
+  dragCaptureEl.addEventListener('touchmove', function(e){
     if(startx){
       var touchobj = e.changedTouches[0]; // reference first touch point for this event
       var dist = parseInt(touchobj.clientX) - startx;
@@ -390,20 +388,20 @@ function makeDraggable(dragCaptureEl, dragEl, dragSide, dragAction) {
         if(Math.abs(disty) > Math.abs(dist)) {
           startx=false;
         }
-        move.style.flex = '0 0 '+ parseInt((width-dist)) + 'px';
+        dragEl.style.flex = '0 0 '+ parseInt((width-dist)) + 'px';
         e.preventDefault();   
       }
     }
   }, false);
 
-  box1.addEventListener('touchend', function(e){
-    move.style.removeProperty('flex');
-    move.style.removeProperty('transition');
+  dragCaptureEl.addEventListener('touchend', function(e){
+    dragEl.style.removeProperty('flex');
+    dragEl.style.removeProperty('transition');
     var touchobj = e.changedTouches[0]; // reference first touch point for this event
     var dist = Math.abs(parseInt(touchobj.clientX) - startx);
 
     if(startx && dist > 100 ){ //make sure that distance isn't just accidental
-      dragAction($('#song-edit'), 'sidebar-open');
+      dragAction(dragEl, 'sidebar-open');
       e.preventDefault(); 
     }
   }, false); 
@@ -416,7 +414,14 @@ function dragToggleClass(el, toggleClass) {
   $(el).toggleClass(toggleClass);
 }
 window.addEventListener('load', function(){
-  makeDraggable('','Hi!','', dragToggleClass);
+  makeDraggable(document.getElementById('song'),
+                document.getElementById('song-edit'),
+                '', dragToggleClass);
+}, false);
+window.addEventListener('load', function(){
+  makeDraggable(document.getElementById('songList'),
+                document.getElementById('songListEdit'),
+                '', dragToggleClass);
 }, false);
 
 function bindSearch(element, search_prefix) {

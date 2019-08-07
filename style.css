@@ -438,7 +438,7 @@ button {
   }
   body.edit.song #song, 
   body.edit.songList #songList {
-    flex: 0 .2 700px;
+    flex: 0 .2 640px;
   }
 }
 
