@@ -48,7 +48,9 @@ function dragDrop( e ) {
     e.stopPropagation(); // stops the browser from redirecting.
   }
   if(isVerboten(li)){
-    selected.remove();
+    if(li.parentNode != selected.parentNode){
+      selected.remove();
+    }
   }
   else if(li.parentNode != selected.parentNode){
     song = selected.cloneNode(true);
