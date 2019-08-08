@@ -1,4 +1,7 @@
-*{box-sizing: border-box;transition: all .25s; outline: none;}
+*{box-sizing: border-box;transition: all .25s; outline: none;
+font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+"Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans",
+"Droid Sans", "Helvetica Neue", sans-serif;}
 .float-menu-icon:active{outline: none;}
 html, body, main{
   height: 100%; 
@@ -406,7 +409,7 @@ button {
     overflow: hidden;
   }
   ul li {
-    padding: 5px;
+    padding: 5px 10px 5px 10px;
     margin: 5px 0 5px 0px;
     border-top: 1px solid #EEE;
     border-bottom: 1px solid #EEE;
@@ -477,7 +480,7 @@ button {
   ul li {
     border-left: 1px solid #EEE;
     border-radius: 20px;
-    padding: 2px 5px 2px 5px;
+    padding: 2px 8px 2px 8px;
     margin: 2px 0 2px 0px;
   }
   #column-filler {
