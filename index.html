@@ -36,7 +36,7 @@
       <div class="column active" id="songbookList">
         <div class="float-menu">
           <div>
-            <span class="float-menu-item"><span class="float-menu-icon">+</span> Add SB</span>
+            <a data-songbook-edit="new" class="float-menu-item"><span class="float-menu-icon">+</span> Add SB</a>
             <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>
           </div>
         </div>
@@ -63,10 +63,10 @@
       <div class="column" id="songList">
         <div class="float-menu">
           <a data-song-edit="new" class="float-menu-item"><span class="float-menu-icon">+</span> Add Song</a>
-          <span class="float-menu-item"><span class="float-menu-icon icon-rotate">&#9021;</span> Delete</span>
+          <span class="float-menu-item delete"><span class="float-menu-icon icon-rotate">&#9021;</span> Delete</span>
           <span class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</span>
           <button data-songbook class="float-menu-item float-menu-editing" onclick="window.editing=false; window.location.hash=$(this).attr('href');"><span class="float-menu-icon">&#128465;</span> Cancel</button>
-          <button data-songbook class="float-menu-item float-menu-editing" onclick="window.editing=false; prepSaveSongbook($(this));"><span class="float-menu-icon">&#128427;</span> Save</button>
+          <button data-songbook class="float-menu-item float-menu-editing" onclick="window.editing=false; saveSongbook(parseHash('sb-'));"><span class="float-menu-icon">&#128427;</span> Save</button>
           <a data-songbook-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>
           <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>
         </div>

@@ -33,6 +33,12 @@ stitle, cat, author, scrip_ref, key, copyright {
   background-color: lightsalmon;
   z-index: 10;
 }
+#songbooks_header {
+  position: sticky;
+  top: 0;
+  background-color: lightyellow;
+  z-index: 10;
+}
 .songList.edit #songbook_content ul {
   background-color: lightgray;
   border: 1px gray dashed;
@@ -351,6 +357,9 @@ button {
   width: auto;
   visibility: visible;
   opacity: 1;
+}
+.edit #songbook_title[contentEditable=true]:empty:before{
+  content: 'Title ';
 }
 
 /*For Mobile devices only*/
