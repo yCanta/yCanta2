@@ -58,6 +58,28 @@ stitle, cat, author, scrip_ref, key, copyright {
   height: 0;
   display:none;
 }
+#songListEdit [data-xInBook] {
+  position: relative;
+  background-color: limegreen;
+}
+#songListEdit [data-xInBook]:before {
+  content: attr(data-xInBook);
+  position: absolute;
+  left: -.5rem;
+  top: -.2rem;
+  font-size: small;
+}
+#songListEdit a {
+  cursor: pointer;
+}
+.edit #songbook_content li {
+  cursor: move;
+  position: relative;
+}
+.edit #songbook_content li button {
+  position: absolute;
+  right: .5em;
+}
 [contenteditable='true'], .contenteditable-disabled {
   border: 1px gray dashed;
   background-color: lightgray;

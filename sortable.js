@@ -50,17 +50,19 @@ function dragDrop( e ) {
   }
   if(isVerboten(li)){
     if(li.parentNode != selected.parentNode){
+      dataxInBookUpdate(selected, true);
       selected.remove();
     }
   }
   else if(li.parentNode != selected.parentNode){
+    dataxInBookUpdate(selected);
     song = selected.cloneNode(true);
-    song.addEventListener('dragstart', dragStart, false);
-    song.addEventListener('dragenter', dragEnter, false);
-    song.addEventListener('dragover', dragOver, false);
-    song.addEventListener('dragleave', dragLeave, false);
-    song.addEventListener('drop', dragDrop, false);
-    song.addEventListener('dragend', dragEnd, false);
+    bind_songbook_edit(song);
+    $(song).find('a').after('<button>&#128465;</button>');
+    $(song).find('button')[0].addEventListener('click', function( e ) {
+      dataxInBookUpdate(song, true);
+      song.remove();
+    });
     if(li.nodeName === 'UL'){  //This catches empty lists
       li.append(song);
     }

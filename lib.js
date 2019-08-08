@@ -246,6 +246,36 @@ function buildSongbookList(songs, target_class='songbook_content',
   }
   return 
 }
+function dataxInBookUpdate(song, remove=false){
+  var songA = $('#songListEdit li[data-song-id="'+$(song).attr('data-song-id')+'"]')
+  var number=null;
+  if(remove){
+    number = parseInt(songA.attr('data-xInBook'))-1;
+  }
+  else if(songA.attr('data-xInBook') === undefined) {
+    number = 1;
+  }
+  else {
+    number = parseInt(songA.attr('data-xInBook'))+1;
+  }
+  
+  if(number===0){
+    songA.removeAttr('data-xInBook');
+  }
+  else {
+    songA.attr('data-xInBook',  number);
+  }
+}
+function bind_songbook_edit(song){
+  $(song).children().removeAttr('href');
+  song.setAttribute('draggable', 'true');  // Enable columns to be draggable.
+  song.addEventListener('dragstart', dragStart, false);
+  song.addEventListener('dragenter', dragEnter, false);
+  song.addEventListener('dragover', dragOver, false);
+  song.addEventListener('dragleave', dragLeave, false);
+  song.addEventListener('drop', dragDrop, false);
+  song.addEventListener('dragend', dragEnd, false);
+}
 
 function editSongbook() {
   //load all the songs into song adder
@@ -255,20 +285,39 @@ function editSongbook() {
     endkey: 's-\ufff0',
   }).then(function(result){
     window.editing = true;
+    //this cleanwipe might not be performant!
+    if(window.songbook_edit_togglesongs_list != undefined){
+      window.songbook_edit_togglesongs_list.clear();
+    }
     return buildSongbookList(result.rows, 
       'songbook_edit_togglesongs', 
       'song-item-template-edit', 
       true);
   }).then(function(result) {
-    [].forEach.call(document.querySelectorAll('#songList ul li'), function (song) {
-      $(song).children().removeAttr('href');
-      song.setAttribute('draggable', 'true');  // Enable columns to be draggable.
-      song.addEventListener('dragstart', dragStart, false);
-      song.addEventListener('dragenter', dragEnter, false);
-      song.addEventListener('dragover', dragOver, false);
-      song.addEventListener('dragleave', dragLeave, false);
-      song.addEventListener('drop', dragDrop, false);
-      song.addEventListener('dragend', dragEnd, false);
+    $('[data-xInBook]').removeAttr('data-xInBook');
+    [].forEach.call(document.querySelectorAll('#songList #songbook_content ul li'), function (song) {
+      bind_songbook_edit(song);
+      dataxInBookUpdate(song);
+      $(song).find('a').after('<button>&#128465;</button>');
+      $(song).find('button')[0].addEventListener('click', function( e ) {
+        dataxInBookUpdate(song, true);
+        song.remove();
+      });
+    });
+    [].forEach.call(document.querySelectorAll('#songList #songbook_edit_togglesongs ul li'), function (song) {
+      bind_songbook_edit(song);
+      song.addEventListener('click', function( e ) {
+        var copySong = $(e.target).closest('li')[0].cloneNode(true)
+        bind_songbook_edit(copySong);
+        dataxInBookUpdate(copySong);
+        $(copySong).find('a').after('<button>&#128465;</button>');
+        $(copySong).find('button')[0].addEventListener('click', function( e ) {
+          dataxInBookUpdate(copySong, true);
+          copySong.remove();
+        });
+        $('#songbook_content .list').append(copySong);
+        $('#songbook_content .list li:last-child')[0].scrollIntoView();
+      });
     });
     $('#songList ul.list').each(function(){
       this.addEventListener('drop', dragDrop, false);
