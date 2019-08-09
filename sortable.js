@@ -61,7 +61,7 @@ function dragDrop( e ) {
     $(song).find('a').after('<button>&#128465;</button>');
     $(song).find('button')[0].addEventListener('click', function( e ) {
       dataxInBookUpdate(song, true);
-      song.remove();
+      scaleRemove(song);
     });
     if(li.nodeName === 'UL'){  //This catches empty lists
       li.append(song);

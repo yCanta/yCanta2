@@ -23,6 +23,11 @@ if ('serviceWorker' in navigator) {
   console.log('service worker unavailable');
 }
 
+function scaleRemove(el, time=250) {
+  el.style = "transform: scale(1.2,0); background-color: orangered;";
+  setTimeout(function(){ el.remove() }, time);
+}
+
 function isChord(line) {
   var fraction = 0.45;
   var count = line.count(' ');
@@ -296,14 +301,16 @@ function editSongbook() {
       'song-item-template-edit', 
       true);
   }).then(function(result) {
+    //remove all counts
     $('[data-xInBook]').removeAttr('data-xInBook');
+    //bind events to the songbook list
     [].forEach.call(document.querySelectorAll('#songList #songbook_content ul li'), function (song) {
       bind_songbook_edit(song);
       dataxInBookUpdate(song);
       $(song).find('a').after('<button>&#128465;</button>');
       $(song).find('button')[0].addEventListener('click', function( e ) {
         dataxInBookUpdate(song, true);
-        song.remove();
+        scaleRemove(song);
       });
     });
     [].forEach.call(document.querySelectorAll('#songList #songbook_edit_togglesongs ul li'), function (song) {
@@ -315,7 +322,7 @@ function editSongbook() {
         $(copySong).find('a').after('<button>&#128465;</button>');
         $(copySong).find('button')[0].addEventListener('click', function( e ) {
           dataxInBookUpdate(copySong, true);
-          copySong.remove();
+          scaleRemove(copySong);
         });
         $('#songbook_content .list').append(copySong);
         $('#songbook_content .list li:last-child')[0].scrollIntoView();

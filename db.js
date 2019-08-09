@@ -289,7 +289,12 @@ function loadSongbook(songbook_id) {
           //^may be faster than the full wipe, but I need to figure out how to update urls
           window.songbook_list.clear();
         }
-        //then add and update the new ones
+        //Sort then add and update the new ones
+        result.rows.sort(function(a, b){
+          if(a.doc.title < b.doc.title) { return -1; }
+          if(a.doc.title > b.doc.title) { return 1; }
+          return 0;
+        });
         buildSongbookList(result.rows);
         $('#songbook_title').removeAttr('contenteditable');
         $('#songbook_content .search').removeAttr('disabled').removeClass('disabled-hidden');
