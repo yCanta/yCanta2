@@ -98,9 +98,9 @@
             </ul>
           </div>
           <div class="subcolumn sidebar" id="songListEdit">
-            <div id="songbook_edit_togglesongs" style="width: 220px;">
+            <div id="songbook_edit_togglesongs" style="width: 240px">
               <div class="sticky">
-                <h3>Add a song?<a class="icon-fl-right close-icon">x</a></h3>
+                <h3>Add a song?<button onclick="$(this).closest('.sidebar-open').removeClass('sidebar-open');" class="icon-fl-right close-icon">&times;</button></h3>
                 <input aria-label="Search" class="search" type="text" data-target="#songbook_edit_togglesongs" data-trigger="change" placeholder="Search">
               </div>
               <ul class="list">
@@ -142,9 +142,9 @@
             </div>
           </div>
           <div class="subcolumn sidebar" id="song-edit">
-            <div id="categories" style="width: 220px;">
+            <div id="categories" style="width: 240px;">
               <div class="sticky">
-                <h3>Song Categories<a class="icon-fl-right close-icon">x</a></h3>
+                <h3>Song Categories<button onclick="$(this).closest('#song-edit').removeClass('sidebar-open');" class="icon-fl-right close-icon">&times;</button></h3>
                 <input aria-label="Search" class="search" type="text" data-target="#categories" data-trigger="change" placeholder="Search">
               </div>
               <ul class="list">

@@ -122,10 +122,9 @@ stitle, cat, author, scrip_ref, key, copyright {
 }
 .icon-fl-right {
   float: right;
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 1.5em;
+  height: 1.5em;
   text-align: center;
-  margin-right: 1em;
 }
 .active .float-menu-item,
 .column:hover .float-menu-item{
@@ -499,6 +498,9 @@ button {
   }
   .subcolumn, body.edit .sidebar {
     border-left: 1.5px solid gray;
+  }
+  .close-icon {
+    display: none;
   }
   .float-menu {
     display: flex;
