@@ -120,6 +120,7 @@ function updateAllLinks(whichView='all') {
   $('[data-songbook-edit]').attr('href','#'+window.songbook_id+'&edit');
   $('[data-songbook-edit="new"]').attr('href','#sb-new-songbook&edit');
   $('[data-songbook]').attr('href','#'+window.songbook_id);
+  $('[data-home]').attr('href','#')
 }
 
 

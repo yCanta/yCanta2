@@ -174,7 +174,7 @@ body {
   align-content: stretch;
 }
 header {
-  flex: 0 0 48px;
+  flex: 0 0 3.3rem;
   overflow: hidden;
 }
 main {

@@ -6,6 +6,7 @@ function initializeSongbooksList(){
     startkey: 'sb-',
     endkey: 'sb-\ufff0',
   }).then(function(result){
+    //first delete all songbooks in list
     if(window.songbooks_list != undefined){
       window.songbooks_list.clear();
     }
@@ -194,6 +195,20 @@ function deleteSong(song_id) {
     return true
   }
 }
+function deleteSongbook(songbook_id) {
+  if (confirm("Are you sure you want to delete this songbook?")) {
+    db.get(window.songbook_id).then(function (doc) {
+      return db.remove(doc);
+    }).then(function(){
+      initializeSongbooksList();
+      window.location.hash='#'
+    });
+    console.log('deleted: '+window.songbook_id);
+    return false
+  } else { //we aren't leaving 
+    return true
+  }
+}
 
 function saveSongbook(songbook_id) {
   return new Promise(function(resolve, reject) {
@@ -226,6 +241,7 @@ function saveSongbook(songbook_id) {
         }
       }).then(function(){
         window.location.hash = '#'+window.songbook_id;
+        initializeSongbooksList();
         resolve('all good!');
       }).catch(function (err) {
         console.log(err);
