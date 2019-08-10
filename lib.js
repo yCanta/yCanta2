@@ -458,7 +458,6 @@ function makeDraggable(dragCaptureEl, dragEl, dragAction, dragSide='right') {
       console.log(starty, height)
       if((starty > height) && (starty < height + 100)) { 
         dragEl.style.transition = 'all 0s';
-        document.getElementsByTagName("HTML")[0].style = "overscroll-behavior: contain;"
         //e.preventDefault();
       }
       else {
@@ -500,7 +499,6 @@ function makeDraggable(dragCaptureEl, dragEl, dragAction, dragSide='right') {
   dragCaptureEl.addEventListener('touchend', function(e){
     dragEl.style.removeProperty('flex');
     dragEl.style.removeProperty('transition');
-    document.getElementsByTagName("HTML")[0].style.removeProperty('overscroll-behavior');
     var touchobj = e.changedTouches[0]; // reference first touch point for this event
     var dist = Math.abs(parseInt(touchobj.clientX) - startx);
     var disty = Math.abs(parseInt(touchobj.clientY) - starty);
