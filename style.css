@@ -3,7 +3,7 @@ font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
 "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans",
 "Droid Sans", "Helvetica Neue", sans-serif;}
 .float-menu-icon:active{outline: none;}
-html, body {overscroll-behavior: contain;}
+html, body, main{overscroll-behavior: contain;}
 html, body, main{
   height: 100%; 
   margin: 0;
