@@ -430,7 +430,7 @@ prepSaveSong = function (element) {
   });
 };
 //Making things work with touch coolness
-function makeDraggable(dragCaptureEl, dragEl, dragSide, dragAction) {
+function makeDraggable(dragCaptureEl, dragEl, dragAction, dragSide='right') {
   var startx = 0;
   var starty = 0;
   var dist = 0;
@@ -442,15 +442,30 @@ function makeDraggable(dragCaptureEl, dragEl, dragSide, dragAction) {
     startx = parseInt(touchobj.clientX);
     starty = parseInt(touchobj.clientY);
     width = $(dragEl).width(); // get x position of touch point relative to left edge of browser
+    height = $(dragEl).height(); // get x position of touch point relative to left edge of browser
 
     // only do stuff if in right place
-    if(window.editing && startx > dragCaptureEl.offsetLeft + dragCaptureEl.offsetWidth - width - 32) { 
-      dragEl.style.transition = 'all 0s';
-      //e.preventDefault();
+    if (dragSide == 'right'){
+      if (window.editing && startx > dragCaptureEl.offsetLeft + dragCaptureEl.offsetWidth - width - 32) { 
+        dragEl.style.transition = 'all 0s';
+        //e.preventDefault();
+      }
+      else {
+        startx = false;
+      }
     }
-    else {
-      startx = false;
+    else if (dragSide == 'top'){
+      console.log(starty, height)
+      if((starty > height) && (starty < height + 100)) { 
+        dragEl.style.transition = 'all 0s';
+        dragCaptureEl.style.transition = 'all 0s';
+        //e.preventDefault();
+      }
+      else {
+        startx = false;
+      }
     }
+    console.log(startx)
   }, {passive: true});
 
   dragCaptureEl.addEventListener('touchmove', function(e){
@@ -458,26 +473,45 @@ function makeDraggable(dragCaptureEl, dragEl, dragSide, dragAction) {
       var touchobj = e.changedTouches[0]; // reference first touch point for this event
       var dist = parseInt(touchobj.clientX) - startx;
       var disty = parseInt(touchobj.clientY) - starty;
-      // change distance if dist > disty
-      if (Math.abs(dist) > 40 ) {
-        if(Math.abs(disty) > Math.abs(dist)) {
-          startx=false;
+
+      if (dragSide == 'right'){
+        // change distance if dist > disty
+        if (Math.abs(dist) > 40 ) {
+          if(Math.abs(disty) > Math.abs(dist)) {
+            startx=false;
+          }
+          dragEl.style.flex = '0 0 '+ parseInt((width-dist)) + 'px';
+          e.preventDefault();   
         }
-        dragEl.style.flex = '0 0 '+ parseInt((width-dist)) + 'px';
-        e.preventDefault();   
+      }
+      else if (dragSide == 'top'){
+        // change distance if dist > disty
+        if (Math.abs(disty) > 40 ) {
+          if(Math.abs(dist) > Math.abs(disty)) {
+            startx=false;
+          }
+          dragEl.style.flex = '0 0 '+ parseInt((height+disty)) + 'px';
+          e.preventDefault();   
+        } 
       }
     }
   }, false);
 
   dragCaptureEl.addEventListener('touchend', function(e){
     dragEl.style.removeProperty('flex');
+    this.style.removeProperty('transition');
     dragEl.style.removeProperty('transition');
     var touchobj = e.changedTouches[0]; // reference first touch point for this event
     var dist = Math.abs(parseInt(touchobj.clientX) - startx);
-
-    if(startx && dist > 100 ){ //make sure that distance isn't just accidental
+    var disty = Math.abs(parseInt(touchobj.clientY) - starty);
+    
+    if (startx && dragSide == 'right' && dist > 100 ){ //make sure that distance isn't just accidental
       dragAction(dragEl, 'sidebar-open');
       e.preventDefault(); 
+    }
+    else if (startx && dragSide == 'top' && disty > 200 ){
+      dragAction();
+      e.preventDefault();
     }
   }, false); 
 };
@@ -491,13 +525,24 @@ function dragToggleClass(el, toggleClass) {
 window.addEventListener('load', function(){
   makeDraggable(document.getElementById('song'),
                 document.getElementById('song-edit'),
-                '', dragToggleClass);
+                dragToggleClass);
 }, false);
 window.addEventListener('load', function(){
   makeDraggable(document.getElementById('songList'),
                 document.getElementById('songListEdit'),
-                '', dragToggleClass);
+                dragToggleClass);
 }, false);
+window.addEventListener('load', function(){
+  makeDraggable(document.getElementById('songList'),
+                document.getElementById('songbookList'),
+                function(){if(!confirmWhenEditing()) {window.location.hash = '#'}}, 'top');
+}, false);
+window.addEventListener('load', function(){
+  makeDraggable(document.getElementById('song'),
+                document.getElementById('songList'),
+                function(){if(!confirmWhenEditing()) {window.location.hash = '#'+window.songbook_id}}, 'top');
+}, false);
+
 
 function bindSearch(element, search_prefix) {
   $('body').on('click', element, function() {
