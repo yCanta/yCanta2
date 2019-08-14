@@ -438,6 +438,7 @@ function makeDraggable(dragCaptureEl, dragEl, dragAction, dragSide='right') {
   var width = 0;
 
   dragCaptureEl.addEventListener('touchstart', function(e){
+    document.documentElement.className = 'no-overscroll';
     var touchobj = e.changedTouches[0]; // reference first touch point (ie: first finger)
     startx = parseInt(touchobj.clientX);
     starty = parseInt(touchobj.clientY);
@@ -497,6 +498,7 @@ function makeDraggable(dragCaptureEl, dragEl, dragAction, dragSide='right') {
   }, false);
 
   dragCaptureEl.addEventListener('touchend', function(e){
+    document.documentElement.className = '';
     dragEl.style.removeProperty('flex');
     dragEl.style.removeProperty('transition');
     var touchobj = e.changedTouches[0]; // reference first touch point for this event
