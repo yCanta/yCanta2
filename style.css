@@ -2,7 +2,7 @@
 font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
 "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans",
 "Droid Sans", "Helvetica Neue", sans-serif;}
-.no-overscroll*{overscroll-behavior: contain;}
+.no-overscroll, .no-overscroll *{overscroll-behavior: contain;}
 html, body, main{
   height: 100%; 
   margin: 0;
