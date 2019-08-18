@@ -63,9 +63,6 @@ function initializeSongbooksList(){
     console.log(err);
   });
 }
-
-initializeSongbooksList();
-
 function saveSong(song_id) {
   return new Promise(function(resolve, reject) {
     var song_html = $('#song song');
