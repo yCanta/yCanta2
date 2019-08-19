@@ -366,7 +366,7 @@ editSong = function () {
     $(this).html(content.join('\n')).addClass('pre');
     var type = $(this).attr('type');
     $(this).wrap('<div class="wrap"></div>').parent().prepend('<select name="types" size="1"><option value="verse">Verse</option><option value="chorus">Chorus</option><optgroup label="Misc"><option value="pre-chorus">Pre-Chorus</option><option value="final chorus">Final Chorus</option><option value="bridge">Bridge</option><option value="ending">Ending</option><option value="no label">No Label</option><option value="indented no label">Indented No Label</option><option value="comment">Comment</option></optgroup></select>');
-    $(this).parent().find('select').val(type);
+    $(this).parent().find('select').val(type.toLowerCase());
     bind_chunk_edit($(this).closest('.wrap')[0]);
   });
 
