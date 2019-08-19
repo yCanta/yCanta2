@@ -160,7 +160,7 @@ if (typeof console  != "undefined")
 console.error = console.debug = console.info =  console.log
 */
 
-bindToEdit = function() {
+bindToSongEdit = function() {
   $('#song').on('change', '[type="checkbox"]', function() {
     //add/remove categories as checkboxes are modified
     var cats = $('categories').text().trim()
