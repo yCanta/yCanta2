@@ -283,6 +283,19 @@ function bind_songbook_edit(song){
   song.addEventListener('drop', dragDrop, false);
   song.addEventListener('dragend', dragEnd, false);
 }
+function bind_chunk_edit(chunk){
+  chunk.setAttribute('draggable', 'true');  // Enable columns to be draggable.
+  chunk.addEventListener('dragstart', function(event){dragStart(event,'.wrap'), false});
+  chunk.addEventListener('dragenter', function(event){dragEnter(event,'.wrap'), false});
+  chunk.addEventListener('dragover', dragOver, false);
+  chunk.addEventListener('dragleave', function(event){dragLeave(event,'.wrap'), false});
+  chunk.addEventListener('drop', function(event){dragDrop(event,'.wrap'), false});
+  chunk.addEventListener('dragend', function(event){dragEnd(event,'.wrap'), false});
+  $(chunk).children().hover(
+    function(){chunk.setAttribute('draggable', 'false')},
+    function(){chunk.setAttribute('draggable', 'true')}
+  );
+}
 
 function editSongbook() {
   //load all the songs into song adder
@@ -354,6 +367,7 @@ editSong = function () {
     var type = $(this).attr('type');
     $(this).wrap('<div class="wrap"></div>').parent().prepend('<select name="types" size="1"><option value="verse">Verse</option><option value="chorus">Chorus</option><optgroup label="Misc"><option value="pre-chorus">Pre-Chorus</option><option value="final chorus">Final Chorus</option><option value="bridge">Bridge</option><option value="ending">Ending</option><option value="no label">No Label</option><option value="indented no label">Indented No Label</option><option value="comment">Comment</option></optgroup></select>');
     $(this).parent().find('select').val(type);
+    bind_chunk_edit($(this).closest('.wrap')[0]);
   });
 
   $('#song authors').html($('#song author').map(function(){return $(this).text()}).get().join(', '));

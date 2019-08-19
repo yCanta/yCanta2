@@ -4,12 +4,17 @@ function dragOver( e ) {
     if (e.preventDefault) {
       e.preventDefault(); // Allows us to drop.
     }
-    e.dataTransfer.dropEffect = 'move';
+    if (e.target.contentEditable=='true') {
+      e.dataTransfer.dropEffect = 'none';
+    }
+    else {
+      e.dataTransfer.dropEffect = 'move';
+    }
     return false;
 }
 
-function dragEnd( e ) {
-  [].forEach.call(document.querySelectorAll('ul li'), function (song) {
+function dragEnd( e, selector='ul li' ) {
+  [].forEach.call(document.querySelectorAll(selector), function (song) {
     song.classList.remove('moving');
     song.classList.remove('overt');  
     song.classList.remove('overb');  
@@ -17,17 +22,17 @@ function dragEnd( e ) {
   selected = null
 }
 
-function dragStart( e ) {
+function dragStart( e, selector='li' ) {
   e.dataTransfer.effectAllowed = "move"
-  e.dataTransfer.setData( "text/plain", null )
-  selected = $(e.target).closest('li')[0];
+  e.dataTransfer.setData( "text/plain", '' )
+  selected = $(e.target).closest(selector)[0];
   selected.classList.add('moving');
 
 }
-function dragEnter( e ) {
-  var li = $(e.target).closest('li')[0];
+function dragEnter( e, selector='li' ) {
+  var li = $(e.target).closest(selector)[0];
   if(isVerboten(li)){ return }
-  [].forEach.call(document.querySelectorAll('ul li'), function (song) {
+  [].forEach.call(document.querySelectorAll(selector), function (song) {
     song.classList.remove('overt');  
     song.classList.remove('overb');  
   });
@@ -42,9 +47,9 @@ function dragEnter( e ) {
 }
 function dragLeave( e ) {
 }
-function dragDrop( e ) {
+function dragDrop( e, selector='li' ) {
   e.preventDefault();
-  var li = $(e.target).closest('li')[0] || e.target;
+  var li = $(e.target).closest(selector)[0] || e.target;
   if (e.stopPropagation) {
     e.stopPropagation(); // stops the browser from redirecting.
   }
@@ -99,12 +104,3 @@ function isBefore( el1, el2 ) {
     }
   } else return false;
 }
-[].forEach.call(document.querySelectorAll('ul li'), function (song) {
-  song.setAttribute('draggable', 'true');  // Enable columns to be draggable.
-  song.addEventListener('dragstart', dragStart, false);
-  song.addEventListener('dragenter', dragEnter, false);
-  song.addEventListener('dragover', dragOver, false);
-  song.addEventListener('dragleave', dragLeave, false);
-  song.addEventListener('drop', dragDrop, false);
-  song.addEventListener('dragend', dragEnd, false);
-});

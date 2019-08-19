@@ -346,6 +346,7 @@
                 		var new_chunk_text = rangeAfter.toString();
                 		var old_chunk_text = rangeBefore.toString();
                     var new_wrap = wrap.clone().insertAfter(wrap);
+                    bind_chunk_edit(new_wrap[0]);
                     new_wrap.find('select').val(wrap.find('select').val());
                     var new_chunk = new_wrap.find('chunk');
                 		chunk.text(old_chunk_text);
