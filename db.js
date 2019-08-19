@@ -130,7 +130,7 @@ function loadSong(song_id) {
         '<introduction>' + song.introduction + '</introduction>' + 
         '<key>' + song.key + '</key>' + 
         '<categories><cat>' + song.categories.sort().join('</cat>, <cat>') + '</cat></categories>' + 
-        '<cclis>' + song.cclis + '</cclis>';
+        '<cclis>' + (song.cclis != false ? true : '') + '</cclis>';
       song.content.forEach(function(chunk){
         song_html += '<chunk type="' + chunk[0].type + '">';
         chunk[1].forEach(function(line){
