@@ -135,10 +135,6 @@ $(function () {
     $(this).children('.float-menu-icon').toggleClass('icon-rotate');
     $(this).siblings().toggleClass('uncollapsed');
   });
-  //float menu close on click
-  /*$('body').on('click', '.float-menu-item:not(:last-child)', function() {
-    $(this).closest('.float-menu').find('.float-menu-toggle').siblings().slideToggle('fast');
-  });*/
 
   //chord toggling
   $('body').on('click', '.toggle-chords', function() {
@@ -159,6 +155,17 @@ if (typeof console  != "undefined")
 };
 console.error = console.debug = console.info =  console.log
 */
+
+function toggleFullscreen(el){
+  var fullscreen = $(el).closest(".column")
+  var full = fullscreen.hasClass('fullscreen');
+  console.log(full);
+
+  $('.fullscreen').removeClass('fullscreen');
+  if(!full) {
+    fullscreen.addClass('fullscreen');
+  }
+}
 
 bindToSongEdit = function() {
   $('#song').on('change', '[type="checkbox"]', function() {

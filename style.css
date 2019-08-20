@@ -117,8 +117,26 @@ stitle, cat, author, scrip_ref, key, copyright {
   display: inline-block;
   transform: rotateZ(90deg);
 }
+.tr {
+  display: none;
+}
+.row {
+  position: relative;  /*fullscreen arrow positioning  */
+}
+.active .tr,
+.column:hover .tr {
+  font-size: 1.5em;
+  display: initial;
+  position: absolute;
+  top: 1em;
+  right: 1em;
+  z-index: 6;
+}
 .icon-rotate {
   transform: rotateZ(45deg);
+}
+.icon-rotate2x {
+  transform: rotateZ(135deg);
 }
 .icon-fl-right {
   float: right;
@@ -126,8 +144,7 @@ stitle, cat, author, scrip_ref, key, copyright {
   height: 1.5em;
   text-align: center;
 }
-.active .float-menu-item,
-.column:hover .float-menu-item{
+.active .float-menu-item{
   opacity: 1;
 }
 .float-menu {
@@ -276,6 +293,16 @@ body.songList #songList {
 }
 body.songList #songbookList {
   flex: 0 1 300px;
+}
+
+.fullscreen {
+  background-color: inherit;
+  z-index: 99;
+  position: absolute !important;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  left: 0;
 }
 
 /*Focus song*/
@@ -429,21 +456,24 @@ button {
     border-top: 1px solid black;
   }
   /*float for mobile*/
+  .column {
+    position: relative;
+  }
   .float-menu {
     position: absolute;
     right: 1.5em;
-    bottom: 3em;
+    bottom: 1em;
     z-index: 6;
     text-align: right;
   }
   .float-menu-item.uncollapsed:not(:last-child) {
     height: auto;
-    opacity: 1;
+    display: block;
     max-height: 50px;
   }
   .float-menu-item:not(:last-child){
     max-height: 0;
-    opacity: 0;
+    display: none;
     overflow: hidden;
   }
   .float-menu-item {
@@ -476,7 +506,7 @@ button {
     max-height: inherit;
   }
   .edit .active .float-menu .float-menu-item {
-    height: 0;
+    display: none;
   }
   .edit .active .float-menu {
     left: 1em;
@@ -487,6 +517,9 @@ button {
   }
 }
 @media only screen and (min-width: 701px) {
+  .column:hover .float-menu-item{
+    opacity: 1;
+  }
   ul li {
     border-left: 1px solid #EEE;
     border-radius: 20px;

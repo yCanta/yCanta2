@@ -173,6 +173,8 @@
       </div>
     </footer>
     <script>
+      $('#song .row').append('<button onclick="toggleFullscreen(this)" class="icon-rotate2x tr">&#8596;</button>');
+
       bindToSongEdit();
       initializeSongbooksList();
       $('.column').click(function(e){
