@@ -294,7 +294,7 @@ function loadSongbook(songbook_id) {
         });
         buildSongbookList(result.rows);
         $('#songbook_title').removeAttr('contenteditable');
-        $('#songbook_content .search').removeAttr('disabled').removeClass('disabled-hidden');
+        $('#songbook_content .search').parent().removeAttr('disabled').removeClass('disabled-hidden');
         $('#songbook_title').text('todosCantas').removeAttr('data-rev');
         $('#songList [data-songbook-edit], #songList .delete').hide()
         resolve('loaded songbook');
@@ -307,7 +307,7 @@ function loadSongbook(songbook_id) {
         window.songbook_list.clear();
       }
       $('#songbook_title').removeAttr('contenteditable');
-      $('#songbook_content .search').removeAttr('disabled').removeClass('disabled-hidden');
+      $('#songbook_content .search').parent().removeAttr('disabled').removeClass('disabled-hidden');
       $('#songbook_title').text('').removeAttr('data-rev');
       resolve('loaded songbook');
     }
@@ -338,7 +338,7 @@ function loadSongbook(songbook_id) {
         });
         window.songbook_id = songbook_id;
         $('#songbook_title').removeAttr('contenteditable');
-        $('#songbook_content .search').removeAttr('disabled').removeClass('disabled-hidden');
+        $('#songbook_content .search').parent().removeAttr('disabled').removeClass('disabled-hidden');
         $('#songbook_title').text(result.title).attr('data-rev',result._rev);
         resolve('loaded songbook');
       }).catch(function(err){
