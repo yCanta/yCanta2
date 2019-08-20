@@ -53,6 +53,11 @@ function is_chord_line(line) {
     return false;
   }
 }
+function remove_chords(line){
+  var wrapped = $("<div>" + line + "</div>");
+  wrapped.find('c').remove();
+  return wrapped.html();
+}
 function expand_chord(line){
   var CHORD_SPACE_RATIO = 0.45;
   var tmp = document.createElement('line');
@@ -213,17 +218,32 @@ function buildSongbookList(songs, target_class='songbook_content',
   var values = [];   
   songs.map(function(row) {
     function mapRowToValue(row) {
+      function formatArray(array, letter){
+        return (array != '' ? array.join(' '+letter+':') : '!'+letter);
+      }
+      function formatText(text, letter){
+        return (text != '' ? text : '!'+letter);
+      }
+      function formatSongContent(content){
+        var song_content = ''
+        content.forEach(function(chunk){
+          chunk[1].forEach(function(line){
+            song_content += remove_chords(line) + '\n';
+          });
+        });
+        return song_content;
+      }
       return { 'song-id':           row.doc._id,
         'song-rev':                 row.doc._rev,
         'song-title':        't:' + row.doc.title,
-        'song-authors':      'a:' + (row.doc.authors != '' ? row.doc.authors.join(' a:') : '!a'),
-        'song-scripture_ref':'s:' + row.doc.scripture_ref,
-        'song-introduction': 'i:' + row.doc.introduction,
-        'song-key':          'k:' + row.doc.key,
-        'song-categories':   'c:' + row.doc.categories.join(' c:'),
-        'song-copyright':    'c:' + (row.doc.copyright ? row.doc.copyright : '!c'),
+        'song-authors':      'a:' + formatArray(row.doc.authors, 'a'),
+        'song-scripture_ref':'s:' + formatArray(row.doc.scripture_ref, 's'),
+        'song-introduction': 'i:' + formatText(row.doc.introduction, 'i'),
+        'song-key':          'k:' + formatText(row.doc.key, 'k'),
+        'song-categories':   'c:' + formatArray(row.doc.categories, 'c'),
+        'song-copyright':    'c:' + formatText(row.doc.copyright, 'cp'),
         'song-cclis': ((row.doc.cclis!='') ? 'cclis' : '!cclis'),
-        'song-content': row.doc.content,
+        'song-content': formatSongContent(row.doc.content), 
         'link': '#'+window.songbook_id+'&'+row.doc._id,
         'name': row.doc.title
       }
@@ -290,6 +310,19 @@ function bind_songbook_edit(song){
   song.addEventListener('drop', dragDrop, false);
   song.addEventListener('dragend', dragEnd, false);
 }
+function bind_chunk_edit(chunk){
+  chunk.setAttribute('draggable', 'true');  // Enable columns to be draggable.
+  chunk.addEventListener('dragstart', function(event){dragStart(event,'.wrap'), false});
+  chunk.addEventListener('dragenter', function(event){dragEnter(event,'.wrap'), false});
+  chunk.addEventListener('dragover', dragOver, false);
+  chunk.addEventListener('dragleave', function(event){dragLeave(event,'.wrap'), false});
+  chunk.addEventListener('drop', function(event){dragDrop(event,'.wrap'), false});
+  chunk.addEventListener('dragend', function(event){dragEnd(event,'.wrap'), false});
+  $(chunk).children().hover(
+    function(){chunk.setAttribute('draggable', 'false')},
+    function(){chunk.setAttribute('draggable', 'true')}
+  );
+}
 
 function editSongbook() {
   //load all the songs into song adder
@@ -340,7 +373,7 @@ function editSongbook() {
       this.addEventListener('dragover', dragOver, false);
     });
     $('#songList #songbook_title').attr('contenteditable', 'true').parent().removeAttr('href');
-    $('#songList #songbook_content input.search').val('').addClass('disabled-hidden')[0].disabled=true;    
+    $('#songList #songbook_content input.search').val('').parent().addClass('disabled-hidden')[0].disabled=true;    
   }).catch(function(err){
     console.log(err);
   });
@@ -360,7 +393,8 @@ editSong = function () {
     $(this).html(content.join('\n')).addClass('pre');
     var type = $(this).attr('type');
     $(this).wrap('<div class="wrap"></div>').parent().prepend('<select name="types" size="1"><option value="verse">Verse</option><option value="chorus">Chorus</option><optgroup label="Misc"><option value="pre-chorus">Pre-Chorus</option><option value="final chorus">Final Chorus</option><option value="bridge">Bridge</option><option value="ending">Ending</option><option value="no label">No Label</option><option value="indented no label">Indented No Label</option><option value="comment">Comment</option></optgroup></select>');
-    $(this).parent().find('select').val(type);
+    $(this).parent().find('select').val(type.toLowerCase());
+    bind_chunk_edit($(this).closest('.wrap')[0]);
   });
 
   $('#song authors').html($('#song author').map(function(){return $(this).text()}).get().join(', '));
@@ -406,7 +440,7 @@ editSong = function () {
     //should load the songbook and explain what's up.
   });  
 }
-prepSaveSong = function (element) {
+function prepSaveSong(element) {
   return new Promise(function(resolve, reject) {
     $('#song').first('.subcolumn').find('song').children().attr('contenteditable', 'false');
     $('song chunk').each(function(index){

@@ -231,6 +231,30 @@ footer {
 }
 #debugDiv {
 }
+span.deleteicon {
+    position: relative;
+}
+span.deleteicon span {
+    position: absolute;
+    display: block;
+    top: 0px;
+    right: 0px;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+input.deletable:not(:placeholder-shown) + span:after {
+  content: 'X';
+}
+input.deletable:placeholder-shown + span:after {
+  content: '🔍';
+}
+input.deletable:placeholder-shown + span {
+  right: 10px;
+}
+span.deleteicon input {
+  padding-right: 16px;
+}
 /*footer:hover{
   flex: 0 0 180px;
 }*/

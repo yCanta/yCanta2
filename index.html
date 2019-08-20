@@ -45,7 +45,7 @@
             <div style="width:300px;"  id="songbooks">
               <div id="songbooks_header">
                 <a class="title_link" href="#"><h3>Songbooks</h3></a>
-                <input aria-label="Search" class="search" type="text" data-target="#songbooks" data-trigger="change" placeholder="Search">
+                <input aria-label="Search" class="search deletable" type="text" data-target="#songbooks" data-trigger="change" placeholder="Search">
               </div>
               <ul class="list"></ul>
             </div>
@@ -76,7 +76,7 @@
             <div style="width:400px;" id="songbook_content">
               <div id="songbook_header">
                 <a data-songbook class="title_link" href="#"><h3 id="songbook_title">todosCantas</h3></a>
-                <input aria-label="Search" class="search" type="text" data-target="#songbook_content" data-trigger="change" placeholder="Search">
+                <input aria-label="Search" class="search deletable" type="text" data-target="#songbook_content" data-trigger="change" placeholder="Search">
               </div>
               <ul class="list"></ul>
             </div>
@@ -86,7 +86,7 @@
                   data-song-rev=""
                   data-song-title=""
                   data-song-authors=""
-                  data-song-scripture=""
+                  data-song-scripture_ref=""
                   data-song-introduction=""
                   data-song-key=""
                   data-song-categories=""
@@ -101,7 +101,7 @@
             <div id="songbook_edit_togglesongs" style="width: 240px">
               <div class="sticky">
                 <h3>Add a song?<button onclick="$(this).closest('.sidebar-open').removeClass('sidebar-open');" class="icon-fl-right close-icon">&times;</button></h3>
-                <input aria-label="Search" class="search" type="text" data-target="#songbook_edit_togglesongs" data-trigger="change" placeholder="Search">
+                <input aria-label="Search" class="search deletable" type="text" data-target="#songbook_edit_togglesongs" data-trigger="change" placeholder="Search">
               </div>
               <ul class="list">
               </ul>
@@ -145,7 +145,7 @@
             <div id="categories" style="width: 240px;">
               <div class="sticky">
                 <h3>Song Categories<button onclick="$(this).closest('#song-edit').removeClass('sidebar-open');" class="icon-fl-right close-icon">&times;</button></h3>
-                <input aria-label="Search" class="search" type="text" data-target="#categories" data-trigger="change" placeholder="Search">
+                <input aria-label="Search" class="search deletable" type="text" data-target="#categories" data-trigger="change" placeholder="Search">
               </div>
               <ul class="list">
               </ul>
@@ -188,6 +188,9 @@
         }
       });
       $(function () {
+        $('input.deletable').wrap('<span class="deleteicon" />').after($('<span/>').click(function() {
+          $(this).prev('input').val('').trigger('change').focus();
+        }));
         // URL navigation implementing
         window.addEventListener("hashchange", hashchanged, false);
         // Trigger the event (useful on page load).
