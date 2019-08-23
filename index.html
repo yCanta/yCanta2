@@ -16,6 +16,8 @@
     <script src="jquery.toTextarea.js"></script>
     <script src="list.min.js"></script>
     <script src="sortable.js"></script>
+    <script src="jszip.min.js"></script>
+    <script src="song2json.js"></script>
 
     <link rel="stylesheet" type="text/css" href="style.css">
     <link rel="stylesheet" type="text/css" href="jquery.myTransposer.css">
@@ -26,11 +28,17 @@
   <body class="songbookList">
     <header>
       <h2><a href="#">yCanta</a></h2>
-      <a href="#" style="position: absolute; top:0;right:0" onclick="db.destroy().then(function () {
-      window.location.reload();
-    }).catch(function (err) {
-      console.log(err);
-    });">Delete DB</a>
+      <span style="position: absolute; top:0;right:0">
+        <a href="#" onclick="db.destroy().then(function () {
+            window.location.reload();
+          }).catch(function (err) {
+            console.log(err);
+          });">Delete DB</a><br />
+          <label>
+            Upload songs:
+            <input type="file" id="file" name="file" />
+          </label>
+      </span>
     </header>
     <main>
       <div class="column active" id="songbookList">
@@ -163,6 +171,8 @@
       </div>
       <div class="column" id="column-filler">
         <div class="float-menu">
+        </div>
+        <div id="result">
         </div>
       </div>
       
