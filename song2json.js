@@ -26,9 +26,18 @@
         }));
 
         zip.forEach(function (relativePath, zipEntry) {  // 2) print entries
-          $fileContent.append($("<li>", {
-            text : zipEntry.name
-          }));
+          zipEntry.async("string").then(function (song) {
+            $fileContent.append($("<li>", {
+              text : zipEntry.name
+            }));
+            if(zipEntry.name.endsWith('.song')){
+              saveSong('s-new-song', $(song));            
+            }
+            else {
+              alert(zipEntry.name + ' is not a song!');
+            }
+            return 
+          });
         });
       }, function (e) {
         $result.append($("<div>", {

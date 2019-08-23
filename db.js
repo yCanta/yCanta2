@@ -63,9 +63,8 @@ function initializeSongbooksList(){
     console.log(err);
   });
 }
-function saveSong(song_id) {
+function saveSong(song_id, song_html=$('#song song')) {
   return new Promise(function(resolve, reject) {
-    var song_html = $('#song song');
     function loadSongContent(song) {
       if(song._rev != undefined) {
         song._rev       = song_html.attr('data-rev'); //need a _rev if updating a document

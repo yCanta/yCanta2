@@ -28,15 +28,15 @@
   <body class="songbookList">
     <header>
       <h2><a href="#">yCanta</a></h2>
-      <span style="position: absolute; top:0;right:0">
-        <a href="#" onclick="db.destroy().then(function () {
+      <span style="position: absolute; top:0;right:0;">
+        <a href="#" style="margin-left: auto; float:right" onclick="db.destroy().then(function () {
             window.location.reload();
           }).catch(function (err) {
             console.log(err);
           });">Delete DB</a><br />
           <label>
             Upload songs:
-            <input type="file" id="file" name="file" />
+            <input type="file" id="file" name="file" style="width: 200px" />
           </label>
       </span>
     </header>
