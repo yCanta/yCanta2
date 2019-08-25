@@ -55,7 +55,7 @@ function initializeSongbooksList(){
       });
       //Creates list.min.js list for viewing all the songbooks
       window.songbooks_list = new List('songbooks', options, values);
-
+      bindSearchToList(window.songbooks_list, '#songbooks');
       return 
     }
     buildSongbooksList(result.rows);

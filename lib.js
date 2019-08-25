@@ -172,6 +172,11 @@ function toggleFullscreen(el){
   }
 }
 
+function bindSearchToList(list, id){
+  list.on('searchComplete', function(){$(id + ' .search + span').attr('data-number-visible',list.visibleItems.length)});
+  $(id + ' .search+span').attr('data-number-visible', $(id + ' .list li').length);
+}
+
 bindToSongEdit = function() {
   $('#song').on('change', '[type="checkbox"]', function() {
     //add/remove categories as checkboxes are modified
@@ -274,9 +279,11 @@ function buildSongbookList(songs, target_class='songbook_content',
   //Creates list.min.js list for viewing the songbook
   if(edit != true) {
     window.songbook_list = new List(target_class, options, values);
+    bindSearchToList(window.songbook_list, '#songbook_content');
   }
   else{
     window.songbook_edit_togglesongs_list = new List(target_class, options, values);
+    bindSearchToList(window.songbook_edit_togglesongs_list, '#songListEdit');
   }
   return 
 }
@@ -427,6 +434,7 @@ editSong = function () {
       values.push({ 'name': cat});
     });
     window.categories_list = new List('categories', options, values);
+    bindSearchToList(window.categories_list, '#categories');
     //set checkboxes
     $('#song [type="checkbox"]').prop("checked", false);
     $('categories').text().split(',').forEach(function(cat){
