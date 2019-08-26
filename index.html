@@ -278,6 +278,7 @@
         else if(hash.search('#sb-') != -1) {
           Promise.resolve(loadSongbook(parseHash('sb-')))
             .then(function() {
+              $('body').attr('class', 'songList');
               $('.active').removeClass('active');
               $('#songList').addClass('active');
               updateAllLinks();
