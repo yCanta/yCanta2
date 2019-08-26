@@ -420,15 +420,28 @@ db.get('age').then(function(age){
       console.log(err);
     });
   }
-  }).catch(function(err){
-    db.put({_id: 'age', age: 190711}, function callback(err, result) {
-      if (!err) {
-        console.log('added age');
-      }
-      else {
-        console.log(err);
-      }
-    });
+}).catch(function(err){
+  db.put({_id: 'age', age: 190711}, function callback(err, result) {
+    if (!err) {
+      console.log('added age');
+    }
+    else {
+      console.log(err);
+    }
   });
+});
+
+//Update ui when db changes]s
+db.changes({
+  since: 'now',
+  live: true,
+  include_docs: true
+}).on('change', function (change) {
+  // received a change
+  console.log(change);
+}).on('error', function (err) {
+  // handle errors
+  console.log('Error in db.changes('+err);
+});
 
 
