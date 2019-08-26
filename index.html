@@ -254,7 +254,6 @@
             window.location.hash = '#'+window.songbook_id;
             return
           }
-          //Need to check check if songbook is loaded
           Promise.all([loadSongbook(parseHash('sb-')), loadSong(parseHash('s-'))])
             .then(function(values) {
               $('body').attr('class','song');

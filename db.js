@@ -263,7 +263,11 @@ function loadSongbook(songbook_id) {
   $('#songList [data-songbook-edit], #songList .delete').show()
 
   return new Promise(function(resolve, reject) {
-    if(songbook_id == undefined || songbook_id == 'sb-todosCantas') {
+    if(songbook_id == window.songbook_id){
+      //console.log('Songbook is already loaded');
+      resolve('loaded songbook');
+    }
+    else if(songbook_id == undefined || songbook_id == 'sb-todosCantas') {
       songbook_id = 'sb-todosCantas';
       window.songbook_id = songbook_id;  
       db.allDocs({
@@ -344,8 +348,6 @@ function loadSongbook(songbook_id) {
         console.log(err);
       });
     }
-    $('body').attr('class','songList');
-
   });
 }
 
