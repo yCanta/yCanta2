@@ -251,6 +251,7 @@ function saveSongbook(songbook_id) {
 }
 
 function loadSongbook(songbook_id) {
+  var dateBefore = new Date();
   $('#songList [data-songbook-edit], #songList .delete').show()
 
   return new Promise(function(resolve, reject) {
@@ -291,6 +292,8 @@ function loadSongbook(songbook_id) {
         $('#songbook_content .search').parent().removeAttr('disabled').removeClass('disabled-hidden');
         $('#songbook_title').text('todosCantas').removeAttr('data-rev');
         $('#songList [data-songbook-edit], #songList .delete').hide()
+        var dateAfter = new Date();
+        console.log(dateAfter-dateBefore);
         resolve('loaded songbook');
       }).catch(function(err){
         console.log(err);
