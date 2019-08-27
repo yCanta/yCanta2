@@ -199,6 +199,46 @@ bindToSongEdit = function() {
   });
 }
 
+function mapSongbookRowToValue(row) {
+  return { 'songbook-id':           row.doc._id,
+    'songbook-rev':                 row.doc._rev,
+    'songbook-title':        't:' + row.doc.title,
+    'link': '#'+row.doc._id,
+    'name': row.doc.title
+  }
+}
+function mapSongRowToValue(row) {
+  function formatArray(array, letter){
+    return (array != '' ? array.join(' '+letter+':') : '!'+letter);
+  }
+  function formatText(text, letter){
+    return (text != '' ? text : '!'+letter);
+  }
+  function formatSongContent(content){
+    var song_content = ''
+    content.forEach(function(chunk){
+      chunk[1].forEach(function(line){
+        song_content += remove_chords(line) + '\n';
+      });
+    });
+    return song_content;
+  }
+  return { 'song-id':           row.doc._id,
+    'song-rev':                 row.doc._rev,
+    'song-title':        't:' + row.doc.title,
+    'song-authors':      'a:' + formatArray(row.doc.authors, 'a'),
+    'song-scripture_ref':'s:' + formatArray(row.doc.scripture_ref, 's'),
+    'song-introduction': 'i:' + formatText(row.doc.introduction, 'i'),
+    'song-key':          'k:' + formatText(row.doc.key, 'k'),
+    'song-categories':   'c:' + formatArray(row.doc.categories, 'c'),
+    'song-copyright':    'c:' + formatText(row.doc.copyright, 'cp'),
+    'song-cclis': ((row.doc.cclis!='') ? 'cclis' : '!cclis'),
+    'song-content': formatSongContent(row.doc.content), 
+    'link': '#'+window.songbook_id+'&'+row.doc._id,
+    'name': row.doc.title
+  }
+}
+
 function buildSongbookList(songs, target_class='songbook_content', 
                                   template='song-item-template', 
                                   edit=false) {
@@ -222,37 +262,6 @@ function buildSongbookList(songs, target_class='songbook_content',
   };
   var values = [];   
   songs.map(function(row) {
-    function mapRowToValue(row) {
-      function formatArray(array, letter){
-        return (array != '' ? array.join(' '+letter+':') : '!'+letter);
-      }
-      function formatText(text, letter){
-        return (text != '' ? text : '!'+letter);
-      }
-      function formatSongContent(content){
-        var song_content = ''
-        content.forEach(function(chunk){
-          chunk[1].forEach(function(line){
-            song_content += remove_chords(line) + '\n';
-          });
-        });
-        return song_content;
-      }
-      return { 'song-id':           row.doc._id,
-        'song-rev':                 row.doc._rev,
-        'song-title':        't:' + row.doc.title,
-        'song-authors':      'a:' + formatArray(row.doc.authors, 'a'),
-        'song-scripture_ref':'s:' + formatArray(row.doc.scripture_ref, 's'),
-        'song-introduction': 'i:' + formatText(row.doc.introduction, 'i'),
-        'song-key':          'k:' + formatText(row.doc.key, 'k'),
-        'song-categories':   'c:' + formatArray(row.doc.categories, 'c'),
-        'song-copyright':    'c:' + formatText(row.doc.copyright, 'cp'),
-        'song-cclis': ((row.doc.cclis!='') ? 'cclis' : '!cclis'),
-        'song-content': formatSongContent(row.doc.content), 
-        'link': '#'+window.songbook_id+'&'+row.doc._id,
-        'name': row.doc.title
-      }
-    }
 
     //I tried to use saved_list as a standin variable for the window object we save below - it never worked out so I'm using this clunky bit of code here.
     if(edit != true) {
@@ -268,12 +277,12 @@ function buildSongbookList(songs, target_class='songbook_content',
         // we need to update if the revision is different.
         var songRevInList = saved_list.get('song-rev', row.doc._rev);
         if(songRevInList < 1){
-          songIdInList[0].values(mapRowToValue(row));
+          songIdInList[0].values(mapSongRowToValue(row));
         }
         return
       }
     }
-    values.push(mapRowToValue(row));
+    values.push(mapSongRowToValue(row));
   });
   
   //Creates list.min.js list for viewing the songbook
