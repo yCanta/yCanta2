@@ -32,26 +32,18 @@ function initializeSongbooksList(){
                      'link': '#sb-todosCantas',
                      'name': 'todosCantas'}];   
       songbooks.map(function(row) {
-        function mapRowToValue(row) {
-          return { 'songbook-id':           row.doc._id,
-            'songbook-rev':                 row.doc._rev,
-            'songbook-title':        't:' + row.doc.title,
-            'link': '#'+row.doc._id,
-            'name': row.doc.title
-          }
-        }
         if(window.songbooks_list != undefined){
           var songbookIdInList = window.songbooks_list.get('songbook-id',row.doc._id);
           if(songbookIdInList.length > 0){
             // we need to update if the revision is different.
             var songbookRevInList = window.songbooks_list.get('songbook-rev', row.doc._rev);
             if(songbookRevInList < 1){
-              songbookIdInList[0].values(mapRowToValue(row));
+              songbookIdInList[0].values(mapSongbookRowToValue(row));
             }
             return
           }
         }
-        values.push(mapRowToValue(row));
+        values.push(mapSongbookRowToValue(row));
       });
       //Creates list.min.js list for viewing all the songbooks
       window.songbooks_list = new List('songbooks', options, values);
@@ -90,7 +82,7 @@ function saveSong(song_id, song_html=$('#song song')) {
 
       db.put(song, function callback(err, result) {
         if (!err) {
-          console.log('Successfully saved a song!');
+          console.log('saved: ', song.title);
         }
         else {
           console.log(err);
@@ -211,7 +203,6 @@ function saveSongbook(songbook_id) {
     var songbook_html = $('#songbook_content');
     function loadSongbookContent(songbook) {
       if(songbook._rev != undefined) {
-        console.log(songbook_html.find('#songbook_title'))
         songbook._rev = songbook_html.find('#songbook_title').attr('data-rev'); //need a _rev if updating a document
       }
       songbook.title  = songbook_html.find('#songbook_title').text();
@@ -230,7 +221,7 @@ function saveSongbook(songbook_id) {
       db.put(songbook, function callback(err, result) {
         if (!err) {
           window.songbook_id = songbook._id;
-          console.log('Successfully saved: '+ songbook.title);
+          console.log('saved: '+ songbook.title);
         }
         else {
           console.log(err);
@@ -260,10 +251,15 @@ function saveSongbook(songbook_id) {
 }
 
 function loadSongbook(songbook_id) {
+  var dateBefore = new Date();
   $('#songList [data-songbook-edit], #songList .delete').show()
 
   return new Promise(function(resolve, reject) {
-    if(songbook_id == undefined || songbook_id == 'sb-todosCantas') {
+    if(songbook_id == window.songbook_id){
+      //console.log('Songbook is already loaded');
+      resolve('loaded songbook');
+    }
+    else if(songbook_id == undefined || songbook_id == 'sb-todosCantas') {
       songbook_id = 'sb-todosCantas';
       window.songbook_id = songbook_id;  
       db.allDocs({
@@ -296,6 +292,8 @@ function loadSongbook(songbook_id) {
         $('#songbook_content .search').parent().removeAttr('disabled').removeClass('disabled-hidden');
         $('#songbook_title').text('todosCantas').removeAttr('data-rev');
         $('#songList [data-songbook-edit], #songList .delete').hide()
+        var dateAfter = new Date();
+        console.log(dateAfter-dateBefore);
         resolve('loaded songbook');
       }).catch(function(err){
         console.log(err);
@@ -344,8 +342,6 @@ function loadSongbook(songbook_id) {
         console.log(err);
       });
     }
-    $('body').attr('class','songList');
-
   });
 }
 
@@ -418,15 +414,61 @@ db.get('age').then(function(age){
       console.log(err);
     });
   }
-  }).catch(function(err){
-    db.put({_id: 'age', age: 190711}, function callback(err, result) {
-      if (!err) {
-        console.log('added age');
-      }
-      else {
-        console.log(err);
-      }
-    });
+}).catch(function(err){
+  db.put({_id: 'age', age: 190711}, function callback(err, result) {
+    if (!err) {
+      console.log('added age');
+    }
+    else {
+      console.log(err);
+    }
   });
+});
+
+//Update ui when db changes]s
+db.changes({
+  since: 'now',
+  live: true,
+  include_docs: true
+}).on('change', function (change) {
+  // received a change
+  if (change.deleted) {
+    // document was deleted
+    console.log('deleted: ' + change.doc._id);
+  } else {
+    // document was added/modified
+  }
+
+  //what type?
+  //song?
+  if(change.doc._id.startsWith('s-')){
+    console.log('loaded: ', change.doc.title);
+    loadSong(change.doc._id);
+    //update all songs in songbooks
+    window.songbook_list.get('song-id',change.doc._id)
+      .forEach(function(song){song.values(mapSongRowToValue(change))});;
+    if(window.songbook_edit_togglesongs_list != undefined){
+      window.songbook_edit_togglesongs_list.get('song-id',change.doc._id)
+        .forEach(function(song){song.values(mapSongRowToValue(change))});;
+    }
+  }
+  //songbook?
+  else if(change.doc._id.startsWith('sb-')){
+    console.log('loaded: ', change.doc._id);
+    window.songbook_id = '';
+    loadSongbook(change.doc._id);
+    //update the songbook entry in songbooks_list
+    window.songbooks_list.get('songbook-id',window.songbook_id)
+      .forEach(function(songbook){songbook.values(mapSongbookRowToValue(change))});;
+  }
+  //else... let it go! for now
+  else {
+    console.log('changed:',change.doc._id);
+  }
+
+}).on('error', function (err) {
+  // handle errors
+  console.log('Error in db.changes('+err);
+});
 
 

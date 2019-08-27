@@ -74,7 +74,7 @@
           <button data-home onclick="deleteSongbook(window.songbook_id)" class="float-menu-item delete"><span class="float-menu-icon">&#128465;</span> Delete</button>
           <span class="float-menu-item"><span class="float-menu-icon">&#128253;</span> Present</span>
           <span class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</span>
-          <button data-songbook class="float-menu-item float-menu-editing" onclick="window.editing=false; window.location.hash=$(this).attr('href');"><span class="float-menu-icon">&#128465;</span> Cancel</button>
+          <button data-songbook class="float-menu-item float-menu-editing" onclick="window.editing=false; window.songbook_id=''; window.location.hash=$(this).attr('href');"><span class="float-menu-icon">&#128465;</span> Cancel</button>
           <button data-songbook class="float-menu-item float-menu-editing" onclick="window.editing=false; saveSongbook(parseHash('sb-'));"><span class="float-menu-icon">&#128190;</span> Save</button>
           <a data-songbook-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>
           <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>
@@ -199,7 +199,7 @@
       });
       $(function () {
         $('input.deletable').wrap('<span class="deleteicon" />').after($('<span/>').click(function() {
-          $(this).prev('input').val('').trigger('change').focus();
+          $(this).prev('input').val('').trigger('change').focus()[0].dispatchEvent(new KeyboardEvent("keyup"));
         }));
         // URL navigation implementing
         window.addEventListener("hashchange", hashchanged, false);
@@ -239,7 +239,6 @@
           //check if songbook is loaded
           Promise.all([loadSongbook(parseHash('sb-')), loadSong(parseHash('s-'))])
             .then(function(values){
-              console.log(values);
               //Initiate song edit
               $('body').attr('class', 'song edit');
               $('.active').removeClass('active');
@@ -254,7 +253,6 @@
             window.location.hash = '#'+window.songbook_id;
             return
           }
-          //Need to check check if songbook is loaded
           Promise.all([loadSongbook(parseHash('sb-')), loadSong(parseHash('s-'))])
             .then(function(values) {
               $('body').attr('class','song');
@@ -279,6 +277,7 @@
         else if(hash.search('#sb-') != -1) {
           Promise.resolve(loadSongbook(parseHash('sb-')))
             .then(function() {
+              $('body').attr('class', 'songList');
               $('.active').removeClass('active');
               $('#songList').addClass('active');
               updateAllLinks();
