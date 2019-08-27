@@ -199,7 +199,7 @@
       });
       $(function () {
         $('input.deletable').wrap('<span class="deleteicon" />').after($('<span/>').click(function() {
-          $(this).prev('input').val('').trigger('change').focus();
+          $(this).prev('input').val('').trigger('change').focus()[0].dispatchEvent(new KeyboardEvent("keyup"));
         }));
         // URL navigation implementing
         window.addEventListener("hashchange", hashchanged, false);

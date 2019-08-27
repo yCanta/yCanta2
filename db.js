@@ -463,7 +463,7 @@ db.changes({
   }
   //else... let it go! for now
   else {
-    console.log(change.doc._id);
+    console.log('changed:',change.doc._id);
   }
 
 }).on('error', function (err) {
