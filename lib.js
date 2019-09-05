@@ -483,8 +483,8 @@ function makeDraggable(dragCaptureEl, dragEl, dragAction, dragSide='right') {
     var touchobj = e.changedTouches[0]; // reference first touch point (ie: first finger)
     startx = parseInt(touchobj.clientX);
     starty = parseInt(touchobj.clientY);
-    width = $(dragEl).width(); // get x position of touch point relative to left edge of browser
-    height = $(dragEl).height(); // get x position of touch point relative to left edge of browser
+    width = dragEl.offsetWidth; // get x position of touch point relative to left edge of browser
+    height = dragEl.offsetHeight; // get x position of touch point relative to left edge of browser
 
     // only do stuff if in right place
     if (dragSide == 'right'){

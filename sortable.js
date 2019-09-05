@@ -25,12 +25,12 @@ function dragEnd( e, selector='ul li' ) {
 function dragStart( e, selector='li' ) {
   e.dataTransfer.effectAllowed = "move"
   e.dataTransfer.setData( "text/plain", '' )
-  selected = $(e.target).closest(selector)[0];
+  selected = e.target.closest(selector);
   selected.classList.add('moving');
 
 }
 function dragEnter( e, selector='li' ) {
-  var li = $(e.target).closest(selector)[0];
+  var li = e.target.closest(selector);
   if(isVerboten(li)){ return }
   [].forEach.call(document.querySelectorAll(selector), function (song) {
     song.classList.remove('overt');  
@@ -49,7 +49,7 @@ function dragLeave( e ) {
 }
 function dragDrop( e, selector='li' ) {
   e.preventDefault();
-  var li = $(e.target).closest(selector)[0] || e.target;
+  var li = e.target.closest(selector) || e.target;
   if (e.stopPropagation) {
     e.stopPropagation(); // stops the browser from redirecting.
   }
@@ -88,7 +88,7 @@ function dragDrop( e, selector='li' ) {
   }
 }
 function isVerboten(target) {
-  if ($(target).closest('#songListEdit').length == 0) {
+  if (target.closest('#songListEdit') == null) {
     return false
   }
   else {
