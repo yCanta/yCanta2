@@ -30,11 +30,11 @@
             $fileContent.append($("<li>", {
               text : zipEntry.name
             }));
-            if(zipEntry.name.endsWith('.song')){
+            if(zipEntry.name.match(".*\.(song|son|hym|so1|rnd|poe)$")){
               saveSong('s-new-song', $(song));            
             }
             else {
-              alert(zipEntry.name + ' is not a song!');
+              console.log(zipEntry.name + ' is not a song!');
             }
             return 
           });

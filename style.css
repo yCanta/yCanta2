@@ -238,19 +238,23 @@ span.deleteicon span {
     position: absolute;
     display: block;
     top: 0px;
-    right: 0px;
+    right: 10px;
     width: 16px;
     height: 16px;
     cursor: pointer;
 }
+input.deletable + span:after {   
+  position: absolute;
+  top: 0; 
+  left: 0;
+  width: 1.2em;
+}
 input.deletable:not(:placeholder-shown) + span:after {
-  content: 'X';
+  padding-left: 5px;
+  content: '  X';
 }
 input.deletable:placeholder-shown + span:after {
   content: '🔍';
-}
-input.deletable:placeholder-shown + span {
-  right: 10px;
 }
 span.deleteicon input {
   padding-right: 16px;
@@ -412,6 +416,23 @@ button {
 }
 .edit #songbook_title[contentEditable=true]:empty:before{
   content: 'Title ';
+}
+.search {
+  border-radius: 20px;
+  border: 1px rgb(238, 238, 238) inset;
+  padding-left: .5em;
+}
+.search + span:after {position: relative;}
+.search + span:before {
+  position: relative;
+  content: attr(data-number-visible);
+  top: -.8em;
+  right: -1em;
+  border-radius: 2rem;
+  background-color: lightblue;
+  padding-left: .4em;
+  padding-right: .4em;
+  float: right;
 }
 
 /*For Mobile devices only*/
