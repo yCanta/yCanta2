@@ -361,6 +361,14 @@ body.edit .sidebar-open {
   flex: 0 0 240px;
 }
 /*Focus export*/
+body.export #export .sidebar {
+  background-color: lightgray;
+  z-index:7;
+  flex: 0 0 20px;
+}
+body.export #export .sidebar-open {
+  flex: 0 0 240px;
+}
 body.export #export {
   background-color: bisque;
   z-index: 7;
@@ -624,11 +632,13 @@ button {
   .column:not(:last-child):hover {
     z-index: 6 !important;
   }
-  body.edit .sidebar {
+  body.edit .sidebar,
+  body.export #export .sidebar {
     flex: 0 0 240px;
   }
   body.edit.song #song, 
-  body.edit.songList #songList {
+  body.edit.songList #songList,
+  body.export #export {
     flex: 0 .2 640px;
   }
 }

@@ -179,24 +179,14 @@
         <div class="row">
           <div class="subcolumn">
             <div class="content" style="width: 400px;">
+              <h3>Export</h3>
             </div>
           </div>
-          <div class="subcolumn sidebar" id="song-edit">
-            <div id="categories" style="width: 240px;">
+          <div class="subcolumn sidebar" id="exportPreview">
+            <div style="width: 240px;">
               <div class="sticky">
-                <h3>Song Categories<button onclick="$(this).closest('#song-edit').removeClass('sidebar-open');" class="icon-fl-right close-icon">&times;</button></h3>
-                <input aria-label="Search" class="search deletable" type="text" data-target="#categories" data-trigger="change" placeholder="Search">
+                <h3>Preview<button onclick="$(this).closest('#exportPreview').removeClass('sidebar-open');" class="icon-fl-right close-icon">&times;</button></h3>
               </div>
-              <ul class="list">
-              </ul>
-              <ul style="display:none">
-                <li id="category-template">
-                  <label>
-                    <input type="checkbox">
-                    <span class="name"></span>
-                  </label>
-                </li>
-              </ul>
             </div>
           </div>
         </div>

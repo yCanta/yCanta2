@@ -503,12 +503,12 @@ function makeDraggable(dragCaptureEl, dragEl, dragAction, dragSide='right') {
     var touchobj = e.changedTouches[0]; // reference first touch point (ie: first finger)
     startx = parseInt(touchobj.clientX);
     starty = parseInt(touchobj.clientY);
-    width = $(dragEl).width(); // get x position of touch point relative to left edge of browser
-    height = $(dragEl).height(); // get x position of touch point relative to left edge of browser
+    width = dragEl.offsetWidth; // get x position of touch point relative to left edge of browser
+    height = dragEl.offsetHeight; // get x position of touch point relative to left edge of browser
 
     // only do stuff if in right place
     if (dragSide == 'right'){
-      if (window.editing && startx > dragCaptureEl.offsetLeft + dragCaptureEl.offsetWidth - width - 32) { 
+      if ((window.editing || e.target.closest('#export')) && startx > dragCaptureEl.offsetLeft + dragCaptureEl.offsetWidth - width - 32 && startx < dragCaptureEl.offsetLeft + dragCaptureEl.offsetWidth - width + 32) { 
         dragEl.style.transition = 'all 0s';
         //e.preventDefault();
       }
@@ -517,7 +517,6 @@ function makeDraggable(dragCaptureEl, dragEl, dragAction, dragSide='right') {
       }
     }
     else if (dragSide == 'top'){
-      console.log(starty, height)
       if((starty > height) && (starty < height + 100)) { 
         dragEl.style.transition = 'all 0s';
         //e.preventDefault();
@@ -526,7 +525,6 @@ function makeDraggable(dragCaptureEl, dragEl, dragAction, dragSide='right') {
         startx = false;
       }
     }
-    console.log(startx)
   }, {passive: true});
 
   dragCaptureEl.addEventListener('touchmove', function(e){
@@ -536,24 +534,12 @@ function makeDraggable(dragCaptureEl, dragEl, dragAction, dragSide='right') {
       var disty = parseInt(touchobj.clientY) - starty;
 
       if (dragSide == 'right'){
-        // change distance if dist > disty
-        if (Math.abs(dist) > 40 ) {
-          if(Math.abs(disty) > Math.abs(dist)) {
-            startx=false;
-          }
-          dragEl.style.flex = '0 0 '+ parseInt((width-dist)) + 'px';
-          e.preventDefault();   
-        }
+        dragEl.style.flex = '0 0 '+ parseInt((width-dist)) + 'px';
+        e.preventDefault();
       }
       else if (dragSide == 'top'){
-        // change distance if dist > disty
-        if (Math.abs(disty) > 40 ) {
-          if(Math.abs(dist) > Math.abs(disty)) {
-            startx=false;
-          }
-          dragEl.style.flex = '0 0 '+ parseInt((height+disty)) + 'px';
-          e.preventDefault();   
-        } 
+        dragEl.style.flex = '0 0 '+ parseInt((height+disty)) + 'px';
+        e.preventDefault();   
       }
     }
   }, false);
@@ -594,6 +580,11 @@ window.addEventListener('load', function(){
                 dragToggleClass);
 }, false);
 window.addEventListener('load', function(){
+  makeDraggable(document.getElementById('export'),
+                document.getElementById('exportPreview'),
+                dragToggleClass);
+}, false);
+window.addEventListener('load', function(){
   makeDraggable(document.getElementById('songList'),
                 document.getElementById('songbookList'),
                 function(){if(!confirmWhenEditing()) {window.location.hash = '#'}}, 'top');
@@ -602,6 +593,11 @@ window.addEventListener('load', function(){
   makeDraggable(document.getElementById('song'),
                 document.getElementById('songList'),
                 function(){if(!confirmWhenEditing()) {window.location.hash = '#'+window.songbook_id}}, 'top');
+}, false);
+window.addEventListener('load', function(){
+  makeDraggable(document.getElementById('export'),
+                document.getElementById('song'),
+                function(){if(!confirmWhenEditing()) {window.location.hash = window.location.hash.replace('&export','')}}, 'top');
 }, false);
 
 
