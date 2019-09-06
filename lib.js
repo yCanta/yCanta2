@@ -125,9 +125,11 @@ function updateAllLinks(whichView='all') {
   $('[data-song-edit]').attr('href','#'+window.songbook_id+'&'+window.song_id+'&edit');
   $('[data-song-edit="new"]').attr('href','#'+window.songbook_id+'&s-new-song&edit');
   $('[data-song]').attr('href','#'+window.songbook_id+'&'+window.song_id);
+  $('[data-song-export]').attr('href','#'+window.songbook_id+'&'+window.song_id+'&export');
   $('[data-songbook-edit]').attr('href','#'+window.songbook_id+'&edit');
   $('[data-songbook-edit="new"]').attr('href','#sb-new-songbook&edit');
   $('[data-songbook]').attr('href','#'+window.songbook_id);
+  $('[data-songbook-export]').attr('href','#'+window.songbook_id+'&export');
   $('[data-home]').attr('href','#')
 }
 
