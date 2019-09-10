@@ -18,7 +18,7 @@
       $result.append($fileContent);
 
       var dateBefore = new Date();
-      JSZip.loadAsync(f)                                   // 1) read the Blob
+      JSZip.loadAsync(f)
       .then(function(zip) {
         var dateAfter = new Date();
 
@@ -36,10 +36,12 @@
         song_map = {};
         promise_list = [];
 
-        zip.folder('songs/').forEach(function (relativePath, zipEntry) {  // 2) print entries
+        zip.folder('songs/').forEach(function (relativePath, zipEntry) {
           zipEntry.async("string").then(function (song) {
             if(zipEntry.name.match(".*\.(song|son|hym|so1|rnd|poe)$")){
-              //doesn't properly save author, categories, etc also has name collisions and doesn't save all songs.
+              song = song.replace(/author\>/gi, 'authors\>');
+              song = song.replace(/\|/gi, ',');
+              //has name collisions and doesn't save all songs.
               promise_list.push(Promise.resolve(saveSong('s-new-song', $(song), false)) 
               .then(function(results){ //results is the song._id
                 count ++;
