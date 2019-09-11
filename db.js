@@ -92,7 +92,7 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
         resolve(song._id);
       }).catch(function (err) {
         if(new_song){
-          song._id += 'x';  
+          song._id += Math.random().toString(36).substring(7)[0];  
           console.log(song._id);
           db.put(song, function callback(err, result){
             if (!err) {
