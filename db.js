@@ -57,6 +57,7 @@ function initializeSongbooksList(){
 }
 function saveSong(song_id, song_html=$('#song song'), change_url=true) {
   return new Promise(function(resolve, reject) {
+    var new_song = false;
     function loadSongContent(song) {
       if(song._rev != undefined) {
         song._rev       = song_html.attr('data-rev'); //need a _rev if updating a document
@@ -90,12 +91,22 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
         }
         resolve(song._id);
       }).catch(function (err) {
+        if(new_song){
+          song._id += 'x';  
+          console.log(song._id);
+          db.put(song, function callback(err, result){
+            if (!err) {
+              console.log('saved song really quickly! ', song.title);
+            }
+          });
+        }
         console.log(err, song.title);
         resolve(song._id);
       });
     }
     //we've got a new song folks!
     if(song_id == 's-new-song') {
+      new_song = true;
       song_id = 's-' + new Date().getTime();  //  + song_html.find('stitle').text().replace(' ','');
       var song = {_id: song_id};
       loadSongContent(song);
@@ -250,6 +261,7 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
         resolve('all good!');
       }).catch(function (err) {
         console.log(err);
+        resolve('not all good!');
       });
     }
     //we've got a new songbook folks!
@@ -263,6 +275,7 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
         loadSongbookContent(songbook);
       }).catch(function (err) {
         console.log(err);
+        resolve('not all good!');
       });  
     }
   });

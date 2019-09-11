@@ -28,8 +28,8 @@
           "class": "small",
           text:" (" + file_count + " files loaded in " + (dateAfter - dateBefore) + "ms)"
         }));
-        $title.append($("<div id='progress_bar' style='width:400px; border: 1px solid black'><div style='border-right: 1px solid gray; background-color: white; width:0%;' id='progress'><div style='margin-left:auto; height: 1rem; background-color: yellow; width:0%; border-left: 1px solid gray;' id='red_progress'></div></div></div>"))
-        $title.append($("<div id='progress_text'></div>"))
+        $title.append($("<div id='progress_bar' style='width:250px; border: 1px solid black'><div style='border-right: 1px solid gray; background-color: white; width:0%;' id='progress'><div style='margin-left:auto; height: 1rem; background-color: yellow; width:0%; border-left: 1px solid gray;' id='red_progress'></div></div></div>"))
+        $title.append($("<div id='progress_text' style='font-size:small; white-space:nowrap'></div>"))
         //Import files
         count = 0;
         red_count = 0;
@@ -41,7 +41,7 @@
             if(zipEntry.name.match(".*\.(song|son|hym|so1|rnd|poe)$")){
               song = song.replace(/author\>/gi, 'authors\>');
               song = song.replace(/\|/gi, ',');
-              //has name collisions and doesn't save all songs.
+              
               promise_list.push(Promise.resolve(saveSong('s-new-song', $(song), false)) 
               .then(function(results){ //results is the song._id
                 count ++;
@@ -61,6 +61,7 @@
           });
         });
         
+        var songbook_promise_list = [];
         //timeout is to give enough time to queue all the promises
         setTimeout(function(){Promise.all(promise_list).then(function(result){
           console.log(Object.keys(song_map).length + ' songs loaded');
@@ -72,12 +73,13 @@
                   songbook = songbook.replace('songs/'+key, value);
                 }
 
-                Promise.resolve(saveSongbook('sb-new-songbook', $(songbook), false))
+                songbook_promise_list.push(Promise.resolve(saveSongbook('sb-new-songbook', $(songbook), false))
                 .then(function(results){ //results is the song._id
                   count ++;
                   document.getElementById('progress').style.width = count/file_count*100 +'%';
                   document.getElementById('progress_text').innerHTML = zipEntry.name;
-                });
+                }));
+                console.log(songbook_promise_list);
               }
               else {
                 red_count++;
@@ -89,7 +91,17 @@
               return 
             });
           });
+          //let's us change things when we're done.
+          setTimeout(function(){Promise.all(songbook_promise_list).then(function(result){
+            document.getElementById('progress_text').innerHTML = 'All docs imported!';
+            });
+          }, 2000);
         })},  3000);
+        //we are assuming total process time is less than 45sec
+        setTimeout(function(){
+          $result.html("");
+          $result[0].style='';
+        }, 45000)
 
       }, function (e) {
         $result.append($("<div>", {
