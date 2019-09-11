@@ -92,7 +92,7 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
         resolve(song._id);
       }).catch(function (err) {
         if(new_song){
-          song._id += Math.random().toString(36).substring(7)[0];  
+          song._id += Math.random().toString(36).substring(7).substring(0,2);  
           console.log(song._id);
           db.put(song, function callback(err, result){
             if (!err) {
@@ -211,6 +211,7 @@ function deleteSongbook(songbook_id) {
 }
 
 function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_url=true) {
+  var new_songbook = false;
   return new Promise(function(resolve, reject) {
     function loadSongbookContent(songbook) {
       if(songbook._rev != undefined) {
@@ -261,11 +262,21 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
         resolve('all good!');
       }).catch(function (err) {
         console.log(err);
+        if(new_songbook){
+          songbook._id += Math.random().toString(36).substring(7).substring(0,2);  
+          console.log(songbook._id);
+          db.put(songbook, function callback(err, result){
+            if (!err) {
+              console.log('saved song really quickly! ', song.title);
+            }
+          });
+        }
         resolve('not all good!');
       });
     }
     //we've got a new songbook folks!
     if(songbook_id == 'sb-new-songbook') {
+      new_songbook = true;
       songbook_id = 'sb-' + new Date().getTime();  //  + song_html.find('stitle').text().replace(' ','');
       var songbook = {_id: songbook_id};
       loadSongbookContent(songbook);
