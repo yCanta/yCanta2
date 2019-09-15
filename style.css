@@ -453,6 +453,106 @@ button {
   float: right;
 }
 
+input[type='radio'].toggle {
+  display: none;
+}
+.lbl-toggle {
+  display: block;
+
+  font-weight: bold;
+  font-family: monospace;
+  font-size: 1.2rem;
+  text-transform: uppercase;
+
+  padding: 0.5rem;
+  background: lightblue;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.lbl-toggle:hover {
+  color: #444;
+}
+.lbl-toggle::before {
+  transform: rotate(0) translateX(0);
+  transition: all .2s;
+  content: ' ';
+  display: inline-block;
+
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 5px solid currentColor;
+
+  vertical-align: middle;
+  margin-right: .7rem;
+  transform: translateY(-2px);
+}
+.collapsible-content .content-inner {
+  background: lightgray;
+  border-bottom: 1px solid lightgray;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  padding: .5rem 1rem;
+}
+.collapsible-content {
+  max-height: 0px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+.toggle:checked + .lbl-toggle + .collapsible-content {
+  max-height: 650px;
+}
+.toggle:checked + .lbl-toggle::before {
+  transform: rotate(90deg) translateX(-3px);
+}
+.toggle:checked + .lbl-toggle {
+  border-bottom-right-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.table tr td, .table tr th {
+  border-bottom: solid 1px grey;
+  border-right: solid 1px grey;
+}
+th {
+  text-align: left;
+}
+/*This is not usable on mobile devices... they don't have access to the title tooltip*/
+[title] {
+  position: relative;
+}
+[title]:after {
+  position: absolute;
+  top: -5px;
+  color: blue;
+  vertical-align: middle;
+  content: 'i';
+  width: 1rem;
+  height: 1rem;
+
+  font-size: small;
+  font-style: oblique;
+  font-weight: normal;
+  text-align: center;
+
+  border: 1px blue solid;
+  border-radius: 20px;
+  background-color: beige;
+}
+input[type="number"] {
+  padding-left: 0.1rem;
+  width: 3rem;
+}
+.art {  /*align right top */
+  text-align: right;
+  vertical-align: top;
+}
+.t3 > span, .t3 > select { /*t3 is a random class name*/
+  float: right;
+}
+.t3 > label {
+  display: inline-block;
+  height: 2rem;
+}
 /*For Mobile devices only*/
 @media only screen and (max-width: 700px) {
   header {
@@ -642,4 +742,3 @@ button {
     flex: 0 .2 640px;
   }
 }
-
