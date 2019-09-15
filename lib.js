@@ -125,9 +125,11 @@ function updateAllLinks(whichView='all') {
   $('[data-song-edit]').attr('href','#'+window.songbook_id+'&'+window.song_id+'&edit');
   $('[data-song-edit="new"]').attr('href','#'+window.songbook_id+'&s-new-song&edit');
   $('[data-song]').attr('href','#'+window.songbook_id+'&'+window.song_id);
+  $('[data-song-export]').attr('href','#'+window.songbook_id+'&'+window.song_id+'&export');
   $('[data-songbook-edit]').attr('href','#'+window.songbook_id+'&edit');
   $('[data-songbook-edit="new"]').attr('href','#sb-new-songbook&edit');
   $('[data-songbook]').attr('href','#'+window.songbook_id);
+  $('[data-songbook-export]').attr('href','#'+window.songbook_id+'&export');
   $('[data-home]').attr('href','#')
 }
 
@@ -506,7 +508,7 @@ function makeDraggable(dragCaptureEl, dragEl, dragAction, dragSide='right') {
 
     // only do stuff if in right place
     if (dragSide == 'right'){
-      if (window.editing && startx > dragCaptureEl.offsetLeft + dragCaptureEl.offsetWidth - width - 32) { 
+      if ((window.editing || e.target.closest('#export')) && startx > dragCaptureEl.offsetLeft + dragCaptureEl.offsetWidth - width - 32 && startx < dragCaptureEl.offsetLeft + dragCaptureEl.offsetWidth - width + 32) { 
         dragEl.style.transition = 'all 0s';
         //e.preventDefault();
       }
@@ -515,7 +517,6 @@ function makeDraggable(dragCaptureEl, dragEl, dragAction, dragSide='right') {
       }
     }
     else if (dragSide == 'top'){
-      console.log(starty, height)
       if((starty > height) && (starty < height + 100)) { 
         dragEl.style.transition = 'all 0s';
         //e.preventDefault();
@@ -524,7 +525,6 @@ function makeDraggable(dragCaptureEl, dragEl, dragAction, dragSide='right') {
         startx = false;
       }
     }
-    console.log(startx)
   }, {passive: true});
 
   dragCaptureEl.addEventListener('touchmove', function(e){
@@ -534,24 +534,12 @@ function makeDraggable(dragCaptureEl, dragEl, dragAction, dragSide='right') {
       var disty = parseInt(touchobj.clientY) - starty;
 
       if (dragSide == 'right'){
-        // change distance if dist > disty
-        if (Math.abs(dist) > 40 ) {
-          if(Math.abs(disty) > Math.abs(dist)) {
-            startx=false;
-          }
-          dragEl.style.flex = '0 0 '+ parseInt((width-dist)) + 'px';
-          e.preventDefault();   
-        }
+        dragEl.style.flex = '0 0 '+ parseInt((width-dist)) + 'px';
+        e.preventDefault();
       }
       else if (dragSide == 'top'){
-        // change distance if dist > disty
-        if (Math.abs(disty) > 40 ) {
-          if(Math.abs(dist) > Math.abs(disty)) {
-            startx=false;
-          }
-          dragEl.style.flex = '0 0 '+ parseInt((height+disty)) + 'px';
-          e.preventDefault();   
-        } 
+        dragEl.style.flex = '0 0 '+ parseInt((height+disty)) + 'px';
+        e.preventDefault();   
       }
     }
   }, false);
@@ -592,6 +580,11 @@ window.addEventListener('load', function(){
                 dragToggleClass);
 }, false);
 window.addEventListener('load', function(){
+  makeDraggable(document.getElementById('export'),
+                document.getElementById('exportPreview'),
+                dragToggleClass);
+}, false);
+window.addEventListener('load', function(){
   makeDraggable(document.getElementById('songList'),
                 document.getElementById('songbookList'),
                 function(){if(!confirmWhenEditing()) {window.location.hash = '#'}}, 'top');
@@ -600,6 +593,11 @@ window.addEventListener('load', function(){
   makeDraggable(document.getElementById('song'),
                 document.getElementById('songList'),
                 function(){if(!confirmWhenEditing()) {window.location.hash = '#'+window.songbook_id}}, 'top');
+}, false);
+window.addEventListener('load', function(){
+  makeDraggable(document.getElementById('export'),
+                document.getElementById('song'),
+                function(){if(!confirmWhenEditing()) {window.location.hash = window.location.hash.replace('&export','')}}, 'top');
 }, false);
 
 

@@ -73,7 +73,7 @@
           <a data-song-edit="new" class="float-menu-item"><span class="float-menu-icon">+</span> Add Song</a>
           <button data-home onclick="deleteSongbook(window.songbook_id)" class="float-menu-item delete"><span class="float-menu-icon">&#128465;</span> Delete</button>
           <span class="float-menu-item"><span class="float-menu-icon">&#128253;</span> Present</span>
-          <span class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</span>
+          <a data-songbook-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</a>
           <button data-songbook class="float-menu-item float-menu-editing" onclick="window.editing=false; window.songbook_id=''; window.location.hash=$(this).attr('href');"><span class="float-menu-icon">&#128465;</span> Cancel</button>
           <button data-songbook class="float-menu-item float-menu-editing" onclick="window.editing=false; saveSongbook(parseHash('sb-'));"><span class="float-menu-icon">&#128190;</span> Save</button>
           <a data-songbook-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>
@@ -137,7 +137,7 @@
         <div class="float-menu">
           <button data-songbook onclick="deleteSong(window.song_id)" class="float-menu-item"><span class="float-menu-icon">&#128465;</span> Delete</button>
           <button class="float-menu-item toggle-chords"><span class="float-menu-icon">&#9839;</span> Chords</button>
-          <span class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</span>
+          <a data-song-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</a>
           <span class="float-menu-item"><span class="float-menu-icon">&#128253;</span> Present</span>
           <button data-song class="float-menu-item float-menu-editing" onclick="window.editing=false; window.location.hash=$(this).attr('href');"><span class="float-menu-icon">&#128465;</span> Cancel</button>
           <button data-song class="float-menu-item float-menu-editing" onclick="window.editing=false; prepSaveSong($(this));"><span class="float-menu-icon">&#128190;</span> Save</button>
@@ -169,6 +169,355 @@
           </div>
         </div>
       </div>
+      <div class="column" id="export">
+        <div class="float-menu">
+          <button class="float-menu-item" onclick="window.location.hash=window.location.hash.replace('&export','');"><span class="float-menu-icon">&#128465;</span> Cancel</button>
+          <button data-song class="float-menu-item"><span class="float-menu-icon">&#128190;</span> Save</button>
+          <span class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</span>
+          <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>
+        </div>
+        <div class="row">
+          <div class="subcolumn">
+            <div class="content" style="min-width: 300px; max-width: 425px">
+              <h3>Export</h3>
+
+              <input id="collapsible1" class="toggle" type="radio" name="accordion">
+              <label for="collapsible1" class="lbl-toggle">Page Options</label>
+              <div class="collapsible-content">
+                <div class="content-inner">
+                  <table>
+                    <tr>
+                      <td style="width:40%">
+                        <label>Chords</label>
+                        <select size="1" id="display_chords" name="display_chords">
+                          <option value="no">no</option>
+                          <option value="yes">yes</option>
+                          <option value="yes">1st</option>
+                        </select>
+                      </td>
+                      <td class="hide_for_songs">
+                        <input type="checkbox" id="start_song_on_new_page" name="start_song_on_new_page">
+                        <label>Start songs on new pages:</label>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <label>Columns</label>
+                        <input type="number" id="columns" name="columns">
+                      </td>
+                      <td> 
+                        <label>CCLI license#</label>
+                        <input size="7" type="text" id="ccli" name="ccli">
+                      </td>
+                    </tr>
+                  </table>
+                  <h4>Page Setup</h4>
+                  <div class="t3" title="Choose the songs you want to print based on status">
+                    <label>Print</label>
+                    <span>
+                      <input type="checkbox" id="print_a" name="print_a">
+                      <label for="print_a"><img src="static/images/thumb_up_green.png"></label>
+                      <input type="checkbox" id="print_n" name="print_n">
+                      <label for="print_n"><img src="static/images/time_yellow.png"></label>
+                      <input type="checkbox" id="print_r" name="print_r">
+                      <label for="print_r"><img src="static/images/thumb_down_red.png"></label>
+                    </span>
+                  </div>
+                  <div class="t3" title="Choose the physical layout of the songbook">
+                    <label>Layout</label>
+                    <select size="1" id="page_layout" name="page_layout">
+                      <option value="single-sided">single-sided</option><option value="booklet">booklet</option><option value="double-sided">double-sided</option><option value="adobe-booklet">adobe-booklet</option>
+                    </select>
+                  </div>
+                  <div class="t3">
+                    <label>Orientation</label>
+                    <select size="1" id="paper_orientation" name="paper_orientation">
+                      <option value="portrait">portrait</option><option value="landscape">landscape</option>
+                    </select>
+                  </div>
+                  <div class="t3">
+                    <label>Paper Size</label>
+                    <select size="1" id="paper_size" name="paper_size" style="display: inline-block;">
+                      <option value="A0">A0</option><option value="A1">A1</option><option value="A2">A2</option><option value="A3">A3</option><option value="A4">A4</option><option value="A5">A5</option><option value="A6">A6</option><option value="B0">B0</option><option value="B1">B1</option><option value="B2">B2</option><option value="B3">B3</option><option value="B4">B4</option><option value="B5">B5</option><option value="B6">B6</option><option value="11x17">11x17</option><option value="LEGAL">LEGAL</option><option value="LETTER">LETTER</option>
+                    </select>
+                  </div>
+                  <div class="t3" title="Font to be used in the songbook">
+                    <label>Font</label>
+                    <select size="1" id="font_face" name="font_face" style="display: inline-block;">
+                      <option value="Courier">Courier</option><option value="Courier-Bold">Courier-Bold</option><option value="Courier-BoldOblique">Courier-BoldOblique</option><option value="Courier-Oblique">Courier-Oblique</option><option value="Helvetica">Helvetica</option><option value="Helvetica-Bold">Helvetica-Bold</option><option value="Helvetica-BoldOblique">Helvetica-BoldOblique</option><option value="Helvetica-Oblique">Helvetica-Oblique</option><option value="Symbol">Symbol</option><option value="Times-Bold">Times-Bold</option><option value="Times-BoldItalic">Times-BoldItalic</option><option value="Times-Italic">Times-Italic</option><option value="Times-Roman">Times-Roman</option><option value="ZapfDingbats">ZapfDingbats</option>
+                    </select>
+                  </div>
+                  <h4>Margins</h4>
+                  <table class="table">
+                    <tr>
+                      <th>
+                      </th>
+                      <th>
+                        <small>Size</small>
+                      </th>
+                      <th>
+                      </th>
+                      <th>
+                        <small>Size</small>
+                      </th>
+                    <tr>
+                      <td>
+                        Top
+                      </td>
+                      <td>
+                        <input type="number" id="margin_top" name="margin_top">
+                      </td>
+                      <td>
+                        Bottom
+                      </td>
+                      <td>
+                        <input type="number" id="margin_bottom" name="margin_bottom">
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <span data-booklet="Inside">Left</span>
+                      </td>
+                      <td>
+                        <input type="number" id="margin_left" name="margin_left">
+                      </td>
+                      <td>
+                        <span data-booklet="Outside">Right</span>
+                      </td>
+                      <td>
+                        <input type="number" id="margin_right" name="margin_right">
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>
+                        Gutter
+                      </td>
+                      <td>
+                        <input type="number" id="margin_gutter" name="margin_gutter">
+                      </td>
+                      <td>
+                        Column Gutter
+                      </td>
+                      <td>
+                        <input type="number" id="column_gutter" name="column_gutter">
+                        <select size="1" id="resize_percent" name="resize_percent">
+                          <option value="left">Left</option>
+                          <option value="top">Top</option>
+                          <option value="inside">Inside</option>
+                        </select>
+                      </td>
+                    </tr>
+                  </table>
+                </div>
+              </div>
+
+              <input id="collapsible2" class="toggle" type="radio" name="accordion">
+              <label for="collapsible2" class="lbl-toggle">Text Options</label>
+              <div class="collapsible-content">
+                <div class="content-inner">
+                  <table class="table">
+                    <tr>
+                      <th></th>
+                      <th><small>Size</small></th>
+                      <th title="Space below the text"><small>Space</small></th>
+                      <th title="Allow automatic reduction of font size to this percentage of the set font size"><small>Resize</small></th>
+                    </tr>
+                    <tr class="hide_for_songs">
+                      <td>Book Title</td>
+                      <td><input type="number" id="booktitle_size" name="booktitle_size"></td>
+                      <td><input type="number" id="booktitle_space" name="booktitle_space"></td>
+                      <td></td>
+                    </tr>
+                    <tr>
+                      <td>Song Title</td>
+                      <td><input type="number" id="songtitle_size" name="songtitle_size"></td>
+                      <td><input type="number" id="songtitle_space" name="songtitle_space"></td>
+                      <td></td>
+                    </tr>
+                    <tr>
+                      <td><small>Small Text</small></td>
+                      <td><input type="number" id="small_size" name="small_size"></td>
+                      <td><input type="number" id="small_space" name="small_space"></td>
+                      <td></td>
+                    </tr>
+                    <tr>
+                      <td>Line</td>
+                      <td><input type="number" id="songline_size" name="songline_size"></td>
+                      <td><input type="number" id="songline_space" name="songline_space"></td>
+                      <td title="Allow automatic reduction of font size to this percentage of the set font size">
+                        <select size="1" id="resize_percent" name="resize_percent">
+                          <option value="100">100%</option><option value="95">95%</option><option value="90">90%</option><option value="85">85%</option><option value="80">80%</option><option value="75">75%</option><option value="70">70%</option><option value="65">65%</option><option value="60">60%</option><option value="55">55%</option><option value="50">50%</option>
+                          <option value="0">Wrap</option>
+                        </select>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Chord</td>
+                      <td><input type="number" id="songchord_size" name="songchord_size"></td>
+                      <td><input type="number" id="songchord_space" name="songchord_space"></td>
+                      <td></td>
+                    </tr>
+                    <tr>
+                      <td colspan=2 title="Spacing before Chorus/Verse/Bridge/etc">Block Spacing</td>
+                      <td><input type="number" id="songchunk_b4" name="songchunk_b4"></td>
+                      <td></td>
+                    </tr>
+                    <tr>
+                      <td colspan=2 title="Spacing after the end of the song">Song Spacing</td>
+                      <td><input type="number" id="song_space_after" name="song_space_after"></td>
+                      <td></td>
+                    </tr>
+                    <tr>
+                      <td>Copyright</td>
+                      <td><input type="number" id="copyright_size" name="copyright_size"></td>
+                      <td><input type="number" id="copyright_space_b4" name="copyright_space_b4"></td>
+                      <td></td>
+                    </tr>
+                  </table>
+                  <h4>Other Options</h4>
+                  <dl>
+                    <span class="hide_for_songs">
+                      <dt>Hide book title?</dt>
+                      <dd>
+                        <select size="1" id="hide_booktitle" name="hide_booktitle">
+                          <option value="no">no</option><option value="yes">yes</option>
+                        </select>
+                      </dd>
+                      <dt title="($num substitutes the song number; \s must be used for spaces)">Song number format:</dt>
+                      <dd>
+                        <input size="10" type="text" id="songtitle_format" value="$num\s" name="songtitle_format">
+                      </dd>
+                    </span>
+                    <dt>Scripture reference location</dt>
+                    <dd>
+                      <select size="1" id="scripture_location" name="scripture_location" style="display: inline-block;">
+                        <option value="in-title">in-title</option><option value="under-title">under-title</option>
+                      </select>
+                    </dd>
+                  </dl>
+                </div>
+              </div>
+
+              <input id="collapsible3" class="toggle" type="radio" name="accordion">
+              <label for="collapsible3" class="lbl-toggle">Index Options</label>
+              <div class="collapsible-content">
+                <div class="content-inner">
+                  <div class="hide_for_songs">
+                    <b>Include Indexes?</b><br><br>
+                    <div class="t3">
+                      <label>Categories</label>
+                      <select size="1" id="display_cat_index" name="display_cat_index">
+                        <option value="on-new-page">on-new-page</option><option value="no-page-break">no-page-break</option><option value="no-index">no-index</option>
+                      </select>
+                    </div>
+                    <div class="t3">
+                      <label>Scripture</label>
+                      <select size="1" id="display_scrip_index" name="display_scrip_index">
+                        <option value="on-new-page">on-new-page</option><option value="no-page-break">no-page-break</option><option value="no-index">no-index</option>
+                      </select>
+                    </div>
+                    <div class="t3">
+                      <label>Alphabetical</label>
+                      <select size="1" id="display_index" name="display_index">
+                        <option value="on-new-page">on-new-page</option><option value="no-page-break">no-page-break</option><option value="no-index">no-index</option>
+                      </select><br>
+                    </div>
+                    <span style="float: right;">
+                      <input type="checkbox" id="include_first_line" name="include_first_line"><label for="include_first_line">Include 1st verse and chorus?</label>
+                    </span>
+                  </div>
+                  <br><br>
+                  <table class="table">
+                    <tr>
+                      <th><small>Titles</small></th>
+                      <th><small>Size</small></th>
+                      <th title="Spacing below the text"><small>Space</small></th>
+                      <th><small>Font</small></th>
+                    </tr>
+                    <tr>
+                      <td>Index</td>
+                      <td><input type="number" id="index_title_size" name="index_title_size"></td>
+                      <td><input type="number" id="index_title_space" name="index_title_space"></td>
+                      <td>
+                        <select size="1" id="index_title_font" name="index_title_font">
+                          <option value="Courier">Courier</option><option value="Courier-Bold">Courier-Bold</option><option value="Courier-BoldOblique">Courier-BoldOblique</option><option value="Courier-Oblique">Courier-Oblique</option><option value="Helvetica">Helvetica</option><option value="Helvetica-Bold">Helvetica-Bold</option><option value="Helvetica-BoldOblique">Helvetica-BoldOblique</option><option value="Helvetica-Oblique">Helvetica-Oblique</option><option value="Symbol">Symbol</option><option value="Times-Bold">Times-Bold</option><option value="Times-BoldItalic">Times-BoldItalic</option><option value="Times-Italic">Times-Italic</option><option value="Times-Roman">Times-Roman</option><option value="ZapfDingbats">ZapfDingbats</option>
+                        </select>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td title="Spacing between songs and the Index if index on same page as songs" colspan=2 class="art"><small>Space Before</small></td>
+                      <td><input type="number" id="index_title_b4" name="index_title_b4"></td>
+                      <td></td>
+                    </tr>
+                    <tr>
+                      <td>Category</td>
+                      <td><input type="number" id="index_cat_size" name="index_cat_size"></td>
+                      <td><input type="number" id="index_cat_space" name="index_cat_space"></td>
+                      <td>
+                        <select size="1" id="index_cat_font" name="index_cat_font">
+                          <option value="Courier">Courier</option><option value="Courier-Bold">Courier-Bold</option><option value="Courier-BoldOblique">Courier-BoldOblique</option><option value="Courier-Oblique">Courier-Oblique</option><option value="Helvetica">Helvetica</option><option value="Helvetica-Bold">Helvetica-Bold</option><option value="Helvetica-BoldOblique">Helvetica-BoldOblique</option><option value="Helvetica-Oblique">Helvetica-Oblique</option><option value="Symbol">Symbol</option><option value="Times-Bold">Times-Bold</option><option value="Times-BoldItalic">Times-BoldItalic</option><option value="Times-Italic">Times-Italic</option><option value="Times-Roman">Times-Roman</option><option value="ZapfDingbats">ZapfDingbats</option>
+                        </select>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td title="Spacing before catedories in the category index" colspan=2 class="art"><small>Space Before</small></td>
+                      <td><input type="number" id="index_cat_b4" name="index_cat_b4"></td>
+                      <td></td>
+                    </tr>
+                    <tr>
+                      <th colspan=4>
+                        <small>Index Song Lines</small>
+                      </th>
+                    </tr>
+                    <tr>
+                      <td>Song Title</td>
+                      <td><input type="number" id="index_song_size" name="index_song_size"></td>
+                      <td><input type="number" id="index_song_space" name="index_song_space"></td>
+                      <td>
+                        <select size="1" id="index_song_font" name="index_song_font">
+                          <option value="Courier">Courier</option><option value="Courier-Bold">Courier-Bold</option><option value="Courier-BoldOblique">Courier-BoldOblique</option><option value="Courier-Oblique">Courier-Oblique</option><option value="Helvetica">Helvetica</option><option value="Helvetica-Bold">Helvetica-Bold</option><option value="Helvetica-BoldOblique">Helvetica-BoldOblique</option><option value="Helvetica-Oblique">Helvetica-Oblique</option><option value="Symbol">Symbol</option><option value="Times-Bold">Times-Bold</option><option value="Times-BoldItalic">Times-BoldItalic</option><option value="Times-Italic">Times-Italic</option><option value="Times-Roman">Times-Roman</option><option value="ZapfDingbats">ZapfDingbats</option>
+                        </select>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>First Line</td>
+                      <td><input type="number" id="index_first_line_size" name="index_first_line_size"></td>
+                      <td><input type="number" id="index_first_line_space" name="index_first_line_space"></td>
+                      <td>
+                        <select size="1" id="index_first_line_font" name="index_first_line_font">
+                          <option value="Courier">Courier</option><option value="Courier-Bold">Courier-Bold</option><option value="Courier-BoldOblique">Courier-BoldOblique</option><option value="Courier-Oblique">Courier-Oblique</option><option value="Helvetica">Helvetica</option><option value="Helvetica-Bold">Helvetica-Bold</option><option value="Helvetica-BoldOblique">Helvetica-BoldOblique</option><option value="Helvetica-Oblique">Helvetica-Oblique</option><option value="Symbol">Symbol</option><option value="Times-Bold">Times-Bold</option><option value="Times-BoldItalic">Times-BoldItalic</option><option value="Times-Italic">Times-Italic</option><option value="Times-Roman">Times-Roman</option><option value="ZapfDingbats">ZapfDingbats</option>
+                        </select>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td title="Categories to exclude (separate with a ',' no spaces allowed)">Excluded categories</td>
+                      <td colspan="3"><input size="30" type="text" id="index_cat_exclude" name="index_cat_exclude"></td>
+                    </tr>
+                  </table>
+                </div>
+              </div>
+
+              <input id="collapsible4" class="toggle" type="radio" name="accordion">
+              <label for="collapsible4" class="lbl-toggle">More Info</label>
+              <div class="collapsible-content">
+                <div class="content-inner">
+                  <p>
+                    Settings:!
+                  </p>
+                </div>
+              </div>
+              
+            </div>
+          </div>
+          <div class="subcolumn sidebar" id="exportPreview">
+            <div style="width: 240px;">
+              <div class="sticky">
+                <h3>Preview<button onclick="$(this).closest('#exportPreview').removeClass('sidebar-open');" class="icon-fl-right close-icon">&times;</button></h3>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="column" id="column-filler">
         <div class="float-menu">
         </div>
@@ -188,8 +537,8 @@
       bindToSongEdit();
       initializeSongbooksList();
       $('.column').click(function(e){
-        var h = $(this).height();
-        var w = $(this).width();
+        var h = this.offsetHeight;
+        var w = this.offsetWidth;
         if((h <= 200 && h > 0) || ( w <= 200 && w > 0)) {
           e.preventDefault();
           e.stopPropagation();
@@ -247,6 +596,18 @@
               updateAllLinks();
           });
         }
+        //if song export
+        else if((hash.search('&s-') != -1) && (hash.search('&export') != -1)) {
+          //Initiate song export
+          Promise.all([loadSongbook(parseHash('sb-')), loadSong(parseHash('s-'))])
+            .then(function(values){
+              //Initiate song edit
+              $('body').attr('class', 'song export');
+              $('.active').removeClass('active');
+              $('#export').addClass('active');
+              updateAllLinks();
+          });
+        }
         //if song
         else if(hash.search('&s-') != -1) {
           if(hash.search('s-new-song') != -1){
@@ -270,6 +631,17 @@
               $('.active').removeClass('active');
               $('#songList').addClass('active');
               editSongbook();
+              updateAllLinks();
+          });
+        }
+        //if songbook export
+        else if((hash.search('#sb-') != -1) && (hash.search('&export') != -1)) {
+          //Initiate songbook export
+          Promise.resolve(loadSongbook(parseHash('sb-')))
+            .then(function() {
+              $('body').attr('class', 'songList export');
+              $('.active').removeClass('active');
+              $('#export').addClass('active');
               updateAllLinks();
           });
         }
