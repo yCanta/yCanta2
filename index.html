@@ -18,6 +18,9 @@
     <script src="sortable.js"></script>
     <script src="jszip.min.js"></script>
     <script src="song2json.js"></script>
+    <script src="pdfformatter.js"></script>
+    <script src="pdfkit.standalone.js"></script>
+    <script src="blob-stream.js"></script>
 
     <link rel="stylesheet" type="text/css" href="style.css">
     <link rel="stylesheet" type="text/css" href="jquery.myTransposer.css">
@@ -513,6 +516,8 @@
             <div style="width: 240px;">
               <div class="sticky">
                 <h3>Preview<button onclick="$(this).closest('#exportPreview').removeClass('sidebar-open');" class="icon-fl-right close-icon">&times;</button></h3>
+                  <!-- can't seem to get chrome to display this in iframe, objects or any other thingy without crashing on src change.  I get an "awSnap!" message and closed out tab -->
+                  <embed width="200" height="300">
               </div>
             </div>
           </div>
@@ -547,6 +552,10 @@
         }
       });
       $(function () {
+        //makePDF stuffs
+        var iframe = document.querySelector('embed'); //I'm using embed because it works for FF and doesn't crash chrome
+        makePDF(PDFDocument, blobStream, lorem, iframe);
+
         $('input.deletable').wrap('<span class="deleteicon" />').after($('<span/>').click(function() {
           $(this).prev('input').val('').trigger('change').focus()[0].dispatchEvent(new KeyboardEvent("keyup"));
         }));
