@@ -1,7 +1,8 @@
 var cacheName = 'ycanta-cache-1.1';
 var prefetchedURLs = [
   'jquery-3.4.0.min.js',
-  'pouchdb.min.js'
+  'pouchdb.min.js',
+  'pdfkit.standalone.js'
   /*'db.js',
   'lib.js',
   'sw.js',
