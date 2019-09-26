@@ -28,7 +28,7 @@ function makePDF(PDFDocument, blobStream, lorem, iframe) {
     .fill('red', 'even-odd')
     .restore();
 
-  // and some justified text wrapped into columns
+  */// and some justified text wrapped into columns
   doc
     .text('And here is some wrapped text...', 100, 300)
     .font('Times-Roman', 13)
@@ -41,7 +41,7 @@ function makePDF(PDFDocument, blobStream, lorem, iframe) {
       height: 300,
       ellipsis: true
     });
-*/
+
   // end and display the document in the iframe to the right
   doc.end();
   stream.on('finish', function() {

@@ -513,11 +513,11 @@
             </div>
           </div>
           <div class="subcolumn sidebar" id="exportPreview">
-            <div style="width: 240px;">
+            <div>
               <div class="sticky">
                 <h3>Preview<button onclick="$(this).closest('#exportPreview').removeClass('sidebar-open');" class="icon-fl-right close-icon">&times;</button></h3>
                   <!-- can't seem to get chrome to display this in iframe, objects or any other thingy without crashing on src change.  I get an "awSnap!" message and closed out tab -->
-                  <embed width="200" height="300">
+                  <embed width="320" height="450">
               </div>
             </div>
           </div>
@@ -552,10 +552,6 @@
         }
       });
       $(function () {
-        //makePDF stuffs
-        var iframe = document.querySelector('embed'); //I'm using embed because it works for FF and doesn't crash chrome
-        makePDF(PDFDocument, blobStream, lorem, iframe);
-
         $('input.deletable').wrap('<span class="deleteicon" />').after($('<span/>').click(function() {
           $(this).prev('input').val('').trigger('change').focus()[0].dispatchEvent(new KeyboardEvent("keyup"));
         }));
@@ -609,7 +605,12 @@
         else if((hash.search('&s-') != -1) && (hash.search('&export') != -1)) {
           //Initiate song export
           Promise.all([loadSongbook(parseHash('sb-')), loadSong(parseHash('s-'))])
-            .then(function(values){
+            .then(function(){
+            //get the song object db.get(id) and save it to window.exportObject
+            window.exportObject = 'Hi!'
+            }).then(function(values){
+              makePDF(PDFDocument, blobStream, window.exportObject, document.querySelector('embed'));
+
               //Initiate song edit
               $('body').attr('class', 'song export');
               $('.active').removeClass('active');
@@ -647,7 +648,12 @@
         else if((hash.search('#sb-') != -1) && (hash.search('&export') != -1)) {
           //Initiate songbook export
           Promise.resolve(loadSongbook(parseHash('sb-')))
-            .then(function() {
+            .then(function(){
+              //get the songbook object and all songs db.get(id) and save it to window.exportObject
+              window.exportObject = 'Howdy!!'
+            }).then(function(values){
+              makePDF(PDFDocument, blobStream, window.exportObject, document.querySelector('embed'));
+
               $('body').attr('class', 'songList export');
               $('.active').removeClass('active');
               $('#export').addClass('active');

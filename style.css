@@ -345,7 +345,7 @@ body.song #songList {
   flex: 0 1 400px;
 }
 body.song #songbookList {
-  flex: 0 1 300px;
+  flex: 0 2 300px;
 }
 body.edit.song #songList #songListEdit {
   flex: 0 0 0 !important;
@@ -361,6 +361,14 @@ body.edit .sidebar-open {
   flex: 0 0 240px;
 }
 /*Focus export*/
+body.export.song #song, 
+body.export.songList #songList {
+  flex-shrink: 1;
+}
+body.export.song #songList,
+body.export.songList #songbookList {
+  flex-shrink: 2;
+}
 body.export #export .sidebar {
   background-color: lightgray;
   z-index:7;
@@ -732,13 +740,17 @@ input[type="number"] {
   .column:not(:last-child):hover {
     z-index: 6 !important;
   }
-  body.edit .sidebar,
-  body.export #export .sidebar {
+  body.edit .sidebar{
     flex: 0 0 240px;
   }
   body.edit.song #song, 
-  body.edit.songList #songList,
-  body.export #export {
+  body.edit.songList #songList {
     flex: 0 .2 640px;
+  }
+  body.export #export {
+    flex: 0 0.2 800px;
+  }
+  body.export #export .sidebar {
+    flex: 0 0 360px;
   }
 }
