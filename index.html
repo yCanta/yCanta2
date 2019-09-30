@@ -607,7 +607,12 @@
           Promise.all([loadSongbook(parseHash('sb-')), loadSong(parseHash('s-'))])
             .then(function(){
             //get the song object db.get(id) and save it to window.exportObject
-            window.exportObject = 'Hi!'
+              return new Promise(function(resolve, reject) {
+                db.get(parseHash('s-')).then(function(song){
+                  window.exportObject = song.title;
+                  resolve('its done');
+                });
+              })
             }).then(function(values){
               makePDF(PDFDocument, blobStream, window.exportObject, document.querySelector('embed'));
 
@@ -650,7 +655,20 @@
           Promise.resolve(loadSongbook(parseHash('sb-')))
             .then(function(){
               //get the songbook object and all songs db.get(id) and save it to window.exportObject
-              window.exportObject = 'Howdy!!'
+              return new Promise(function(resolve, reject) {
+                //need to implement logic to pull songs for todos and all other songs.
+                if(parseHash('sb-') == 'sb-todosCantas'){
+                  window.exportObject = 'todosCantas';
+                  resolve('heya!');
+                }
+                else{
+                  db.get(parseHash('sb-')).then(function(songbook){
+                    console.log(songbook)
+                    window.exportObject = songbook.title;
+                    resolve('its done');
+                  });
+                }
+              })
             }).then(function(values){
               makePDF(PDFDocument, blobStream, window.exportObject, document.querySelector('embed'));
 
