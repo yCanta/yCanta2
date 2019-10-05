@@ -261,7 +261,7 @@ input.deletable:placeholder-shown + span:after {
   content: '🔍';
 }
 span.deleteicon input {
-  padding-right: 16px;
+  padding-right: 24px;
 }
 /*footer:hover{
   flex: 0 0 180px;

@@ -62,7 +62,11 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
       if(song._rev != undefined) {
         song._rev       = song_html.attr('data-rev'); //need a _rev if updating a document
       }
-      song.title        = song_html.find('stitle').text();
+      var stitle = song_html.find('stitle').text().trim();
+      if (stitle == "" || stitle == undefined){
+        stitle = "New Song";
+      }
+      song.title        = stitle;
       song.authors      = song_html.find('authors').text().split(',').map(Function.prototype.call, String.prototype.trim);
       song.scripture_ref= song_html.find('scripture_ref').text().split(',').map(Function.prototype.call, String.prototype.trim);
       song.introduction = song_html.find('introduction').text();
@@ -218,10 +222,13 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
         songbook._rev = songbook_html.find('#songbook_title').attr('data-rev'); //need a _rev if updating a document
       }
       if (songbook_html.find('#songbook_title').length > 0){
-        songbook.title  = songbook_html.find('#songbook_title').text();
+        songbook.title  = songbook_html.find('#songbook_title').text().trim();
       }
       else{
-        songbook.title = songbook_html.find('title').text();
+        songbook.title = songbook_html.find('title').text().trim();
+      }
+      if (songbook.title == "" || songbook.title == undefined){
+        songbook.title = "New Songbook";
       }
 
       //Compile Songbook songrefs, a list of lists
