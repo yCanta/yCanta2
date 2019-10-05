@@ -294,7 +294,9 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
 
 function loadSongbook(songbook_id) {
   var dateBefore = new Date();
-  $('#songList [data-songbook-edit], #songList .delete').show()
+  if(songbook_id != 'sb-todosCantas'){
+    $('#songList [data-songbook-edit], #songList .delete').show()
+  }
 
   return new Promise(function(resolve, reject) {
     if(songbook_id == window.songbook_id){
