@@ -125,6 +125,7 @@
       var newKey = getKeyByName(key);
       currentKey = getKeyByName($('key').text()) || newKey;
       if (currentKey.name == newKey.name) {
+        $('#song').toggleClass('nochords');
         return;
       }
 
@@ -147,7 +148,6 @@
           $(this).find('c').each(function(){
             transposeChord(this, delta, newKey);
           });
-          $('key').css('background-color', 'salmon');
           $('#song').removeClass('nochords');
         }
       });
@@ -236,7 +236,7 @@
       var keyLinks = [];
       $(keys).each(function(i, key) {
           if (currentKey.name == key.name)
-              keyLinks.push("<a id='"+key.name.replace('#','_')+"' class='selected'>" + key.name + "</a>");
+              keyLinks.push("<a id='"+key.name.replace('#','_')+"' class='selected default'>" + key.name + "</a>");
           else
               keyLinks.push("<a id='"+key.name.replace('#','_')+"'>" + key.name + "</a>");
       });
