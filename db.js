@@ -50,7 +50,11 @@ function initializeSongbooksList(){
       bindSearchToList(window.songbooks_list, '#songbooks');
       return 
     }
-    buildSongbooksList(result.rows);
+    buildSongbooksList(result.rows.sort(function(a, b){
+          if(a.doc.title < b.doc.title) { return -1; }
+          if(a.doc.title > b.doc.title) { return 1; }
+          return 0;
+        }));
   }).catch(function(err){
     console.log(err);
   });

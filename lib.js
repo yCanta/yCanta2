@@ -355,7 +355,11 @@ function editSongbook() {
     if(window.songbook_edit_togglesongs_list != undefined){
       window.songbook_edit_togglesongs_list.clear();
     }
-    return buildSongbookList(result.rows, 
+    return buildSongbookList(result.rows.sort(function(a, b){
+          if(a.doc.title < b.doc.title) { return -1; }
+          if(a.doc.title > b.doc.title) { return 1; }
+          return 0;
+        }), 
       'songbook_edit_togglesongs', 
       'song-item-template-edit', 
       true);
@@ -398,7 +402,7 @@ function editSongbook() {
   });
 }
 
-editSong = function () {
+function editSong() {
   $('chunk').each(function(index){
     var content = [];
     $(this).children('line').each(function(index){
