@@ -26,11 +26,11 @@ function initializeSongbooksList(){
         ],
         item: 'songbook-item-template'
       };
-      var values = [{'songbook_id': 'sb-todosCantas', 
+      var values = [{'songbook_id': 'sb-allSongs', 
                      'songbook-rev': 'n/a', 
-                     'songbook_title': 'todosCantas',            
-                     'link': '#sb-todosCantas',
-                     'name': 'todosCantas'}];   
+                     'songbook_title': 'All Songs',            
+                     'link': '#sb-allSongs',
+                     'name': 'All Songs'}];   
       songbooks.map(function(row) {
         if(window.songbooks_list != undefined){
           var songbookIdInList = window.songbooks_list.get('songbook-id',row.doc._id);
@@ -305,7 +305,7 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
 
 function loadSongbook(songbook_id) {
   var dateBefore = new Date();
-  if(songbook_id != 'sb-todosCantas'){
+  if(songbook_id != 'sb-allSongs'){
     $('#songList [data-songbook-edit], #songList .delete').show()
   }
 
@@ -314,8 +314,8 @@ function loadSongbook(songbook_id) {
       //console.log('Songbook is already loaded');
       resolve('loaded songbook');
     }
-    else if(songbook_id == undefined || songbook_id == 'sb-todosCantas') {
-      songbook_id = 'sb-todosCantas';
+    else if(songbook_id == undefined || songbook_id == 'sb-allSongs') {
+      songbook_id = 'sb-allSongs';
       window.songbook_id = songbook_id;  
       db.allDocs({
         include_docs: true,
@@ -345,7 +345,7 @@ function loadSongbook(songbook_id) {
         buildSongbookList(result.rows);
         $('#songbook_title').removeAttr('contenteditable');
         $('#songbook_content .search').parent().removeAttr('disabled').removeClass('disabled-hidden');
-        $('#songbook_title').text('todosCantas').removeAttr('data-rev');
+        $('#songbook_title').html('<i>All Songs</i>').removeAttr('data-rev');
         $('#songList [data-songbook-edit], #songList .delete').hide()
         var dateAfter = new Date();
         console.log(dateAfter-dateBefore);

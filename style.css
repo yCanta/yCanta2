@@ -27,6 +27,10 @@ stitle, cat, author, scrip_ref, key, copyright {
   background-color: lightgray;
   border: 1px gray dashed;
 }
+#songbookList a[href="#sb-allSongs"] {
+  font-style: italic;
+  font-weight: bold;
+} 
 #songbook_header {
   position: sticky;
   top: 0;
