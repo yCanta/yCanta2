@@ -121,7 +121,7 @@ function parseHash(part) {
     return parts
   }
 }
-function updateAllLinks(whichView='all') {
+function updateAllLinks(whatChanged='all') {
   $('[data-song-edit]').attr('href','#'+window.songbook._id+'&'+window.song._id+'&edit');
   $('[data-song-edit="new"]').attr('href','#'+window.songbook._id+'&s-new-song&edit');
   $('[data-song]').attr('href','#'+window.songbook._id+'&'+window.song._id);
@@ -131,6 +131,13 @@ function updateAllLinks(whichView='all') {
   $('[data-songbook]').attr('href','#'+window.songbook._id);
   $('[data-songbook-export]').attr('href','#'+window.songbook._id+'&export');
   $('[data-home]').attr('href','#');
+
+  //add highlighting
+  //doesn't happen after it's done rendering the list.js on initial page load.
+  $('.song-highlight').removeClass('song-highlight');
+  $("[data-song-id='"+window.song._id+"']").addClass("song-highlight");
+  $('.songbook-highlight').removeClass('songbook-highlight');
+  $("[data-songbook-id='"+window.songbook._id+"']").addClass("songbook-highlight");
 }
 
 

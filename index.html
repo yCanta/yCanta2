@@ -25,20 +25,44 @@
     <title>yCanta2: TodosCantas > All Creatures of Our God and King</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
   </head>
-  <body class="songbookList">
+  <body class="header">
     <header>
       <h2><a href="#">yCanta</a></h2>
       <span style="position: absolute; top:0;right:0;">
-        <a href="#" style="margin-left: auto; float:right" onclick="db.destroy().then(function () {
-            window.location.reload();
-          }).catch(function (err) {
-            console.log(err);
-          });">Delete DB</a><br />
-          <label>
-            Upload songs:
-            <input type="file" id="file" name="file" style="width: 200px" />
-          </label>
+
       </span>
+      <hr>
+      <div class="scrollable">
+        <a class="btn songbookList-color" href="#songbooks">Songbooks</a>
+        <a class="btn songList-color" href="#sb-allSongs">All Songs</a>
+
+
+
+        <h2>Brief Introduction</h2>
+
+        You can view songbooks or songs by selecting one of the above buttons.<br><br>
+        
+        To import more songs, choose a zip file and upload it below.
+      </div>
+
+      <div>
+        <h2>Utilities</h2>
+
+        <label class="btn">Upload songs:<input type="file" id="file" name="file" />
+        </label>
+        <br>
+        <br>
+
+        <div id="result">
+        </div>
+
+        <a href="#" class="btn" style="background-color: crimson;" onclick="db.destroy().then(function () {
+              window.location.reload();
+            }).catch(function (err) {
+              console.log(err);
+          });">Reset DB</a>
+      </div>
+
     </header>
     <main>
       <div class="column active" id="songbookList">
@@ -50,9 +74,9 @@
         </div>
         <div class="row">
           <div class="subcolumn">
-            <div style="width:300px;"  id="songbooks">
+            <div id="songbooks">
               <div id="songbooks_header">
-                <a class="title_link" href="#"><h3>Songbooks</h3></a>
+                <a class="title_link" href="#songbooks"><h3>Songbooks</h3></a>
                 <input aria-label="Search" class="search deletable" type="text" data-target="#songbooks" data-trigger="change" placeholder="Search">
               </div>
               <ul class="list"></ul>
@@ -81,7 +105,7 @@
         </div>
         <div class="row">
           <div class="subcolumn">
-            <div style="width:400px;" id="songbook_content">
+            <div id="songbook_content">
               <div id="songbook_header">
                 <a data-songbook class="title_link" href="#"><h3 id="songbook_title">All Songs</h3></a>
                 <input aria-label="Search" class="search deletable" type="text" data-target="#songbook_content" data-trigger="change" placeholder="Search">
@@ -145,7 +169,7 @@
         </div>
         <div class="row">
           <div class="subcolumn">
-            <div class="content" style="width: 400px;">
+            <div class="content">
             </div>
           </div>
           <div class="subcolumn sidebar" id="song-edit">
@@ -520,8 +544,6 @@
       <div class="column" id="column-filler">
         <div class="float-menu">
         </div>
-        <div id="result">
-        </div>
       </div>
       
     </main>
@@ -577,6 +599,12 @@
         }*/
         //if blank - should have to do nothing
         if(hash == ''){
+         $('body').attr('class','header');
+         $('.active').removeClass('active');
+         updateAllLinks();
+         window.document.title = "yCanta2";
+        }
+        else if(hash == '#songbooks'){
          $('body').attr('class','songbookList');
          $('.active').removeClass('active');
          $('#songbookList').addClass('active');
@@ -620,7 +648,7 @@
             .then(function(values) {
               $('body').attr('class','song');
               $('.active').removeClass('active');
-              $('#song').addClass('active');  
+              $('#song').addClass('active');
               updateAllLinks();
               window.document.title = "yCanta2: "+window.songbook.title + " > " + window.song.title;
           });          

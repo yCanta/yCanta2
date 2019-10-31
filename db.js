@@ -26,7 +26,7 @@ function initializeSongbooksList(){
         ],
         item: 'songbook-item-template'
       };
-      var values = [{'songbook_id': 'sb-allSongs', 
+      var values = [{'songbook-id': 'sb-allSongs', 
                      'songbook-rev': 'n/a', 
                      'songbook_title': 'All Songs',            
                      'link': '#sb-allSongs',
@@ -210,7 +210,7 @@ function deleteSongbook(songbook_id) {
       return db.remove(doc);
     }).then(function(){
       initializeSongbooksList();
-      window.location.hash='#'
+      window.location.hash='#songbooks'
     });
     console.log('deleted: '+window.songbook._id);
     return false

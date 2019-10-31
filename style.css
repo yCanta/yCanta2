@@ -36,12 +36,26 @@ stitle, cat, author, scrip_ref, key, copyright {
   top: 0;
   background-color: lightsalmon;
   z-index: 10;
+  padding-top: 0.1px;
 }
 #songbooks_header {
   position: sticky;
   top: 0;
   background-color: lightyellow;
   z-index: 10;
+  padding-top: 0.1px;
+}
+.active #songbook_header,
+.active #songbooks_header {
+  padding-top: 0px;
+}
+.song-highlight {
+  background-color: lightblue;
+  border-color: darkcyan;
+}
+.songbook-highlight {
+  background-color: lightsalmon;
+  border-color: darksalmon;
 }
 .songList.edit #songbook_content ul {
   background-color: lightgray;
@@ -192,12 +206,31 @@ body {
   align-items: stretch;
   align-content: stretch;
 }
+.songbookList-color {
+  background-color: lightyellow;
+}
+.songList-color {
+  background-color: lightsalmon;
+}
+.btn {
+  font-weight: bold;
+  border-radius: 1rem;
+  padding: 5px 15px 5px 15px;
+  display: inline-block;
+  border: 1px solid gray;
+}
+.header header {
+  flex: 0 1 100%;
+}
+.header main {
+  flex: 0 0 0px;
+}
 header {
   flex: 0 0 3.3rem;
   overflow: hidden;
 }
 main {
-  flex: 0 1 auto;
+  flex: 0 1 100%;
   display: flex;
   background-color: lightgray;
   overflow-y: hidden;
@@ -228,7 +261,8 @@ body main .sidebar {
   z-index: 4;
 }
 footer {
-  flex: 0 0 40px;
+  display: none;
+  flex: 0 0 0px;
   width: 100%;
   background-color: lightgreen;
   border-top: ridge 5px black;
@@ -343,13 +377,25 @@ body.songList #songbookList {
 
 /*Focus song*/
 body.song #song{
-  flex: 0 0 400px;
+  flex: 0 0 500px;
 }
 body.song #songList {
   flex: 0 1 400px;
 }
 body.song #songbookList {
-  flex: 0 1 300px;
+  flex: 0 0 2.5rem;
+}
+body.song #songbookList .subcolumn {
+  overflow: hidden;
+}
+body.song #songbookList #songbooks_header a {
+  height: 100vh;
+  display: block;
+}
+body.song #songbookList h3 {
+  transform:  translateX(-50%) translateY(-50%) rotate(-90deg);
+  background-color: lightyellow;
+  z-index: 1000;
 }
 body.edit.song #songList #songListEdit {
   flex: 0 0 0 !important;
@@ -362,7 +408,7 @@ body.edit .sidebar {
   flex: 0 0 20px;
 }
 body.edit .sidebar-open {
-  flex: 0 0 240px;
+  flex: 0 0 280px;
 }
 /*Focus export*/
 body.export #export .sidebar {
@@ -371,7 +417,7 @@ body.export #export .sidebar {
   flex: 0 0 20px;
 }
 body.export #export .sidebar-open {
-  flex: 0 0 240px;
+  flex: 0 0 280px;
 }
 body.export #export {
   background-color: bisque;
@@ -570,7 +616,8 @@ input[type="number"] {
     overflow: auto;
   }
 
-  header h2 {
+  header > h2,
+  header > div {
     padding: 0 1rem 0 1rem;
   }
   body {
@@ -738,11 +785,18 @@ input[type="number"] {
   }
   body.edit .sidebar,
   body.export #export .sidebar {
-    flex: 0 0 240px;
+    flex: 0 0 280px;
   }
   body.edit.song #song, 
   body.edit.songList #songList,
   body.export #export {
-    flex: 0 .2 640px;
+    flex: 0 .2 740px;
+  }
+  #songbooks {
+    width: 300px;
+  }
+  #song .content,
+  #songbook_content {
+    width: 400px;
   }
 }
