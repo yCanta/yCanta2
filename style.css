@@ -744,6 +744,11 @@ input[type="number"] {
   .edit song {
     margin-bottom: 10rem;
   }
+  #songbooks,
+  #song .content,
+  #songbook_content {
+    width: 100vw;
+  }
 }
 @media only screen and (min-width: 701px) {
   .column:hover .float-menu-item{
