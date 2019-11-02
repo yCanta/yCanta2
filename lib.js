@@ -299,6 +299,7 @@ function buildSongbookList(songs, target_class='songbook_content',
   if(edit != true) {
     window.songbook_list = new List(target_class, options, values);
     bindSearchToList(window.songbook_list, '#songbook_content');
+    $('#songbook_content input').trigger('change').focus()[0].dispatchEvent(new KeyboardEvent("keyup"));
   }
   else{
     window.songbook_edit_togglesongs_list = new List(target_class, options, values);
@@ -402,6 +403,7 @@ function editSongbook() {
       this.addEventListener('drop', dragDrop, false);
       this.addEventListener('dragover', dragOver, false);
     });
+    $('.song-highlight').removeClass('song-highlight');
     $('#songList #songbook_title').attr('contenteditable', 'true').parent().removeAttr('href');
     $('#songList #songbook_content input.search').val('').parent().addClass('disabled-hidden')[0].disabled=true;    
   }).catch(function(err){
@@ -596,9 +598,14 @@ window.addEventListener('load', function(){
                 dragToggleClass);
 }, false);
 window.addEventListener('load', function(){
+  makeDraggable(document.getElementById('songbookList'),
+                document.getElementById('header'),
+                function(){if(!confirmWhenEditing()) {window.location.hash = ''}}, 'top');
+}, false);
+window.addEventListener('load', function(){
   makeDraggable(document.getElementById('songList'),
                 document.getElementById('songbookList'),
-                function(){if(!confirmWhenEditing()) {window.location.hash = '#'}}, 'top');
+                function(){if(!confirmWhenEditing()) {window.location.hash = '#songbooks'}}, 'top');
 }, false);
 window.addEventListener('load', function(){
   makeDraggable(document.getElementById('song'),

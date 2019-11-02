@@ -388,15 +388,6 @@ body.song #songbookList {
 body.song #songbookList .subcolumn {
   overflow: hidden;
 }
-body.song #songbookList #songbooks_header a {
-  height: 100vh;
-  display: block;
-}
-body.song #songbookList h3 {
-  transform:  translateX(-50%) translateY(-50%) rotate(-90deg);
-  background-color: lightyellow;
-  z-index: 1000;
-}
 body.song #songbookList a {
   height: 15rem;
 }
@@ -799,6 +790,15 @@ input[type="number"] {
   body.edit.songList #songList,
   body.export #export {
     flex: 0 .2 740px;
+  }
+  body.song #songbookList #songbooks_header a {
+    height: 100vh;
+    display: block;
+  }
+  body.song #songbookList h3 {
+    transform:  translateX(-50%) translateY(-50%) rotate(-90deg);
+    background-color: lightyellow;
+    z-index: 1000;
   }
   #songbooks {
     width: 300px;
