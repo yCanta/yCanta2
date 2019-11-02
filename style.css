@@ -388,9 +388,6 @@ body.song #songbookList {
 body.song #songbookList .subcolumn {
   overflow: hidden;
 }
-body.song #songbookList a {
-  height: 15rem;
-}
 body.edit.song #songList #songListEdit {
   flex: 0 0 0 !important;
 }
@@ -799,6 +796,9 @@ input[type="number"] {
     transform:  translateX(-50%) translateY(-50%) rotate(-90deg);
     background-color: lightyellow;
     z-index: 1000;
+  }
+  body.song #songbookList a {
+    height: 15rem;
   }
   #songbooks {
     width: 300px;
