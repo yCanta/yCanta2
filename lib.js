@@ -299,7 +299,7 @@ function buildSongbookList(songs, target_class='songbook_content',
   if(edit != true) {
     window.songbook_list = new List(target_class, options, values);
     bindSearchToList(window.songbook_list, '#songbook_content');
-    $('#songbook_content input').trigger('change').focus()[0].dispatchEvent(new KeyboardEvent("keyup"));
+    $('#songbook_content input').trigger('change')[0].dispatchEvent(new KeyboardEvent("keyup"));
   }
   else{
     window.songbook_edit_togglesongs_list = new List(target_class, options, values);
