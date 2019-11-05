@@ -164,8 +164,6 @@ stitle, cat, author, scrip_ref, key, copyright {
 .active .float-menu-item{
   opacity: 1;
 }
-.float-menu {
-}
 .float-menu-item {
   opacity: 0;
   white-space: pre;
@@ -675,6 +673,18 @@ input[type="number"] {
   .active .row {
     border-top: 1px solid black;
   }
+  #songbooks,
+  #song .content,
+  #songbook_content {
+    width: 100vw;
+  }
+}
+@media only screen and (max-width: 700px),
+only screen and (max-height: 500px) {
+  body.song header, 
+  body.songList header {
+    flex: 0 0 0;
+  }
   /*float for mobile*/
   .column {
     position: relative;
@@ -735,30 +745,11 @@ input[type="number"] {
   .edit song {
     margin-bottom: 10rem;
   }
-  #songbooks,
-  #song .content,
-  #songbook_content {
-    width: 100vw;
-  }
 }
-@media only screen and (min-width: 701px) {
+
+@media only screen and (min-width: 701px) and (min-height: 501px){
   .column:hover .float-menu-item{
     opacity: 1;
-  }
-  ul li {
-    border-left: 1px solid #EEE;
-    border-radius: 20px;
-    padding: 2px 8px 2px 8px;
-    margin: 2px 0 2px 0px;
-  }
-  #column-filler {
-    flex: 1 1 auto;
-  }
-  .subcolumn, body.edit .sidebar {
-    border-left: 1.5px solid gray;
-  }
-  .close-icon {
-    display: none;
   }
   .float-menu {
     display: flex;
@@ -775,6 +766,24 @@ input[type="number"] {
   }
   .float-menu-item:not(:first-child):after {
     content: ' //';
+  }
+}
+@media only screen and (min-width: 701px) {
+  
+  ul li {
+    border-left: 1px solid #EEE;
+    border-radius: 20px;
+    padding: 2px 8px 2px 8px;
+    margin: 2px 0 2px 0px;
+  }
+  #column-filler {
+    flex: 1 1 auto;
+  }
+  .subcolumn, body.edit .sidebar {
+    border-left: 1.5px solid gray;
+  }
+  .close-icon {
+    display: none;
   }
   .column:not(:last-child):hover {
     z-index: 6 !important;
