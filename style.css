@@ -681,9 +681,22 @@ input[type="number"] {
 }
 @media only screen and (max-width: 700px),
 only screen and (max-height: 500px) {
+  body {
+    margin: 0;
+  }
+  header > h2,
+  header > div {
+    padding: 0 1rem 0 1rem;
+  }
   body.song header, 
   body.songList header {
     flex: 0 0 0;
+  }
+  body.songbookList header {
+    border-bottom: gray 1px solid;
+  }
+  body.songbookList header h2 {
+    margin-top: .5rem;
   }
   /*float for mobile*/
   .column {
@@ -746,7 +759,6 @@ only screen and (max-height: 500px) {
     margin-bottom: 10rem;
   }
 }
-
 @media only screen and (min-width: 701px) and (min-height: 501px){
   .column:hover .float-menu-item{
     opacity: 1;
