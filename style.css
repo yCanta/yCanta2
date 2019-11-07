@@ -679,6 +679,11 @@ input[type="number"] {
     width: 100vw;
   }
 }
+@media only screen and (max-height: 500px) {
+  body.songbookList header h2 {
+    margin-top: .5rem;
+  }
+}
 @media only screen and (max-width: 700px),
 only screen and (max-height: 500px) {
   body {
@@ -694,9 +699,6 @@ only screen and (max-height: 500px) {
   }
   body.songbookList header {
     border-bottom: gray 1px solid;
-  }
-  body.songbookList header h2 {
-    margin-top: .5rem;
   }
   /*float for mobile*/
   .column {
