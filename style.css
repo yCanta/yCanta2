@@ -793,9 +793,6 @@ only screen and (max-height: 500px) {
   #column-filler {
     flex: 1 1 auto;
   }
-  .subcolumn, body.edit .sidebar {
-    border-left: 1.5px solid gray;
-  }
   .close-icon {
     display: none;
   }
