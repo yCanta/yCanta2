@@ -793,6 +793,9 @@ only screen and (max-height: 500px) {
   #column-filler {
     flex: 1 1 auto;
   }
+  .column:first-child .row {	
+    border-left: 1px solid gray;	
+  }
   .close-icon {
     display: none;
   }
