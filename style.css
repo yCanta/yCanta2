@@ -540,6 +540,7 @@ input[type='radio'].toggle {
 }
 .toggle:checked + .lbl-toggle + .collapsible-content {
   max-height: 650px;
+  transition-delay: 0.05s; /*get weird resizing without this...  */
 }
 .toggle:checked + .lbl-toggle::before {
   transform: rotate(90deg) translateX(-3px);
