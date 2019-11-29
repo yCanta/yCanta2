@@ -375,7 +375,7 @@ body.songList #songbookList {
 
 /*Focus song*/
 body.song #song{
-  flex: 0 0 500px;
+  flex: 0 0 400px;
 }
 body.song #songList {
   flex: 0 1 400px;
