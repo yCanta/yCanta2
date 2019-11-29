@@ -593,7 +593,7 @@ input[type="number"] {
   height: 2rem;
 }
 /*For Mobile devices only*/
-@media only screen and (max-width: 700px) {
+@media only screen and (max-width: 639px) {
   header {
     flex: 0 0 60px;
   }
@@ -684,7 +684,7 @@ input[type="number"] {
     margin-top: .5rem;
   }
 }
-@media only screen and (max-width: 700px),
+@media only screen and (max-width: 639px),
 only screen and (max-height: 500px) {
   body {
     margin: 0;
@@ -761,7 +761,7 @@ only screen and (max-height: 500px) {
     margin-bottom: 10rem;
   }
 }
-@media only screen and (min-width: 701px) and (min-height: 501px){
+@media only screen and (min-width: 640px) and (min-height: 501px){
   .column:hover .float-menu-item{
     opacity: 1;
   }
@@ -782,7 +782,7 @@ only screen and (max-height: 500px) {
     content: ' //';
   }
 }
-@media only screen and (min-width: 701px) {
+@media only screen and (min-width: 640px) {
   
   ul li {
     border-left: 1px solid #EEE;
