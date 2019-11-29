@@ -765,7 +765,7 @@ only screen and (max-height: 500px) {
   .column:hover .float-menu-item{
     opacity: 1;
   }
-  .float-menu {
+  .float-menu:not(:last-child) {
     display: flex;
     flex-direction: row-reverse;
     width: 100%;
