@@ -27,17 +27,35 @@ stitle, cat, author, scrip_ref, key, copyright {
   background-color: lightgray;
   border: 1px gray dashed;
 }
+#songbookList a[href="#sb-allSongs"] {
+  font-style: italic;
+  font-weight: bold;
+} 
 #songbook_header {
   position: sticky;
   top: 0;
   background-color: lightsalmon;
   z-index: 10;
+  padding-top: 0.1px;
 }
 #songbooks_header {
   position: sticky;
   top: 0;
   background-color: lightyellow;
   z-index: 10;
+  padding-top: 0.1px;
+}
+.active #songbook_header,
+.active #songbooks_header {
+  padding-top: 0px;
+}
+.song-highlight {
+  background-color: lightblue;
+  border-color: darkcyan;
+}
+.songbook-highlight {
+  background-color: lightsalmon;
+  border-color: darksalmon;
 }
 .songList.edit #songbook_content ul {
   background-color: lightgray;
@@ -146,8 +164,6 @@ stitle, cat, author, scrip_ref, key, copyright {
 .active .float-menu-item{
   opacity: 1;
 }
-.float-menu {
-}
 .float-menu-item {
   opacity: 0;
   white-space: pre;
@@ -188,12 +204,31 @@ body {
   align-items: stretch;
   align-content: stretch;
 }
+.songbookList-color {
+  background-color: lightyellow;
+}
+.songList-color {
+  background-color: lightsalmon;
+}
+.btn {
+  font-weight: bold;
+  border-radius: 1rem;
+  padding: 5px 15px 5px 15px;
+  display: inline-block;
+  border: 1px solid gray;
+}
+.header header {
+  flex: 0 1 100%;
+}
+.header main {
+  flex: 0 0 0px;
+}
 header {
   flex: 0 0 3.3rem;
   overflow: hidden;
 }
 main {
-  flex: 0 1 auto;
+  flex: 0 1 100%;
   display: flex;
   background-color: lightgray;
   overflow-y: hidden;
@@ -224,7 +259,8 @@ body main .sidebar {
   z-index: 4;
 }
 footer {
-  flex: 0 0 40px;
+  display: none;
+  flex: 0 0 0px;
   width: 100%;
   background-color: lightgreen;
   border-top: ridge 5px black;
@@ -261,7 +297,7 @@ input.deletable:placeholder-shown + span:after {
   content: '🔍';
 }
 span.deleteicon input {
-  padding-right: 16px;
+  padding-right: 24px;
 }
 /*footer:hover{
   flex: 0 0 180px;
@@ -345,7 +381,10 @@ body.song #songList {
   flex: 0 1 400px;
 }
 body.song #songbookList {
-  flex: 0 2 300px;
+  flex: 0 0 2.5rem;
+}
+body.song #songbookList .subcolumn {
+  overflow: hidden;
 }
 body.edit.song #songList #songListEdit {
   flex: 0 0 0 !important;
@@ -358,7 +397,7 @@ body.edit .sidebar {
   flex: 0 0 20px;
 }
 body.edit .sidebar-open {
-  flex: 0 0 240px;
+  flex: 0 0 280px;
 }
 /*Focus export*/
 body.export.song #song, 
@@ -375,7 +414,7 @@ body.export #export .sidebar {
   flex: 0 0 20px;
 }
 body.export #export .sidebar-open {
-  flex: 0 0 240px;
+  flex: 0 0 280px;
 }
 body.export #export {
   background-color: bisque;
@@ -509,6 +548,7 @@ input[type='radio'].toggle {
 }
 .toggle:checked + .lbl-toggle + .collapsible-content {
   max-height: 650px;
+  transition-delay: 0.065s; /*get weird resizing without this...  */
 }
 .toggle:checked + .lbl-toggle::before {
   transform: rotate(90deg) translateX(-3px);
@@ -562,7 +602,7 @@ input[type="number"] {
   height: 2rem;
 }
 /*For Mobile devices only*/
-@media only screen and (max-width: 700px) {
+@media only screen and (max-width: 639px) {
   header {
     flex: 0 0 60px;
   }
@@ -574,7 +614,8 @@ input[type="number"] {
     overflow: auto;
   }
 
-  header h2 {
+  header > h2,
+  header > div {
     padding: 0 1rem 0 1rem;
   }
   body {
@@ -641,6 +682,33 @@ input[type="number"] {
   .active .row {
     border-top: 1px solid black;
   }
+  #songbooks,
+  #song .content,
+  #songbook_content {
+    width: 100vw;
+  }
+}
+@media only screen and (max-height: 500px) {
+  body.songbookList header h2 {
+    margin-top: .5rem;
+  }
+}
+@media only screen and (max-width: 639px),
+only screen and (max-height: 500px) {
+  body {
+    margin: 0;
+  }
+  header > h2,
+  header > div {
+    padding: 0 1rem 0 1rem;
+  }
+  body.song header, 
+  body.songList header {
+    flex: 0 0 0;
+  }
+  body.songbookList header {
+    border-bottom: gray 1px solid;
+  }
   /*float for mobile*/
   .column {
     position: relative;
@@ -673,7 +741,7 @@ input[type="number"] {
   .float-menu-icon {
     text-align: center;
     display: inline-block;
-    font-size: 1.25em;
+    font-size: 1.5em;
     width: 2em;
     height: 2em;
     line-height: 2em;
@@ -702,26 +770,11 @@ input[type="number"] {
     margin-bottom: 10rem;
   }
 }
-@media only screen and (min-width: 701px) {
+@media only screen and (min-width: 640px) and (min-height: 501px){
   .column:hover .float-menu-item{
     opacity: 1;
   }
-  ul li {
-    border-left: 1px solid #EEE;
-    border-radius: 20px;
-    padding: 2px 8px 2px 8px;
-    margin: 2px 0 2px 0px;
-  }
-  #column-filler {
-    flex: 1 1 auto;
-  }
-  .subcolumn, body.edit .sidebar {
-    border-left: 1.5px solid gray;
-  }
-  .close-icon {
-    display: none;
-  }
-  .float-menu {
+  .float-menu:not(:last-child) {
     display: flex;
     flex-direction: row-reverse;
     width: 100%;
@@ -737,15 +790,54 @@ input[type="number"] {
   .float-menu-item:not(:first-child):after {
     content: ' //';
   }
+}
+@media only screen and (min-width: 640px) {
+  
+  ul li {
+    border-left: 1px solid #EEE;
+    border-radius: 20px;
+    padding: 2px 8px 2px 8px;
+    margin: 2px 0 2px 0px;
+  }
+  #column-filler {
+    flex: 1 1 auto;
+  }
+  .column:first-child .row {	
+    border-left: 1px solid gray;	
+  }
+  .close-icon {
+    display: none;
+  }
   .column:not(:last-child):hover {
     z-index: 6 !important;
   }
-  body.edit .sidebar{
-    flex: 0 0 240px;
+  body.edit .sidebar,
+  body.export #export .sidebar {
+    flex: 0 0 280px;
   }
   body.edit.song #song, 
-  body.edit.songList #songList {
-    flex: 0 .2 640px;
+  body.edit.songList #songList,
+  body.export #export {
+    flex: 0 .2 740px;
+  }
+  body.song #songbookList #songbooks_header a {
+    height: 100vh;
+    display: block;
+  }
+  body.song #songbookList h3 {
+    transform:  translateX(-50%) translateY(-50%) rotate(-90deg);
+    background-color: lightyellow;
+    z-index: 1000;
+  }
+  body.song #songbookList a {
+    height: 15rem;
+  }
+  #songbooks {
+    width: 300px;
+  }
+  #song .content,
+  #songbook_content {
+    width: 400px;
   }
   body.export #export {
     flex: 0 0.2 800px;

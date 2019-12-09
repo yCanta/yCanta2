@@ -28,20 +28,44 @@
     <title>yCanta2: TodosCantas > All Creatures of Our God and King</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
   </head>
-  <body class="songbookList">
-    <header>
+  <body class="header">
+    <header id="header">
       <h2><a href="#">yCanta</a></h2>
       <span style="position: absolute; top:0;right:0;">
-        <a href="#" style="margin-left: auto; float:right" onclick="db.destroy().then(function () {
-            window.location.reload();
-          }).catch(function (err) {
-            console.log(err);
-          });">Delete DB</a><br />
-          <label>
-            Upload songs:
-            <input type="file" id="file" name="file" style="width: 200px" />
-          </label>
+
       </span>
+      <hr>
+      <div class="scrollable">
+        <a class="btn songbookList-color" href="#songbooks">Songbooks</a>
+        <a class="btn songList-color" href="#sb-allSongs">All Songs</a>
+
+
+
+        <h2>Brief Introduction</h2>
+
+        You can view songbooks or songs by selecting one of the above buttons.<br><br>
+        
+        To import more songs, choose a zip file and upload it below.
+      </div>
+
+      <div>
+        <h2>Utilities</h2>
+
+        <label class="btn">Upload songs:<input type="file" id="file" name="file" />
+        </label>
+        <br>
+        <br>
+
+        <div id="result">
+        </div>
+
+        <a href="#" class="btn" style="background-color: crimson;" onclick="db.destroy().then(function () {
+              window.location.reload();
+            }).catch(function (err) {
+              console.log(err);
+          });">Reset DB</a>
+      </div>
+
     </header>
     <main>
       <div class="column active" id="songbookList">
@@ -53,9 +77,9 @@
         </div>
         <div class="row">
           <div class="subcolumn">
-            <div style="width:300px;"  id="songbooks">
+            <div id="songbooks">
               <div id="songbooks_header">
-                <a class="title_link" href="#"><h3>Songbooks</h3></a>
+                <a class="title_link" href="#songbooks"><h3>Songbooks</h3></a>
                 <input aria-label="Search" class="search deletable" type="text" data-target="#songbooks" data-trigger="change" placeholder="Search">
               </div>
               <ul class="list"></ul>
@@ -74,19 +98,19 @@
       <div class="column" id="songList">
         <div class="float-menu">
           <a data-song-edit="new" class="float-menu-item"><span class="float-menu-icon">+</span> Add Song</a>
-          <button data-home onclick="deleteSongbook(window.songbook_id)" class="float-menu-item delete"><span class="float-menu-icon">&#128465;</span> Delete</button>
+          <button data-home onclick="deleteSongbook(window.songbook._id)" class="float-menu-item delete"><span class="float-menu-icon">&#128465;</span> Delete</button>
           <span class="float-menu-item"><span class="float-menu-icon">&#128253;</span> Present</span>
           <a data-songbook-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</a>
-          <button data-songbook class="float-menu-item float-menu-editing" onclick="window.editing=false; window.songbook_id=''; window.location.hash=$(this).attr('href');"><span class="float-menu-icon">&#128465;</span> Cancel</button>
-          <button data-songbook class="float-menu-item float-menu-editing" onclick="window.editing=false; saveSongbook(parseHash('sb-'));"><span class="float-menu-icon">&#128190;</span> Save</button>
+          <button data-songbook class="float-menu-item float-menu-editing" onclick="window.editing=false; window.songbook._id=''; window.location.hash=$(this).attr('href');"><span class="float-menu-icon">&#128465;</span> Cancel</button>
+          <button data-songbook class="float-menu-item float-menu-editing" onclick="if($('#songbook_title').text().trim() == ''){alert('Please add a title before you save');}else{window.editing=false; saveSongbook(parseHash('sb-'));}"><span class="float-menu-icon">&#128190;</span> Save</button>
           <a data-songbook-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>
           <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>
         </div>
         <div class="row">
           <div class="subcolumn">
-            <div style="width:400px;" id="songbook_content">
+            <div id="songbook_content">
               <div id="songbook_header">
-                <a data-songbook class="title_link" href="#"><h3 id="songbook_title">todosCantas</h3></a>
+                <a data-songbook class="title_link" href="#"><h3 id="songbook_title">All Songs</h3></a>
                 <input aria-label="Search" class="search deletable" type="text" data-target="#songbook_content" data-trigger="change" placeholder="Search">
               </div>
               <ul class="list"></ul>
@@ -138,18 +162,17 @@
       </div>
       <div class="column nochords" id="song">
         <div class="float-menu">
-          <button data-songbook onclick="deleteSong(window.song_id)" class="float-menu-item"><span class="float-menu-icon">&#128465;</span> Delete</button>
-          <button class="float-menu-item toggle-chords"><span class="float-menu-icon">&#9839;</span> Chords</button>
+          <button data-songbook onclick="deleteSong(window.song._id)" class="float-menu-item"><span class="float-menu-icon">&#128465;</span> Delete</button>
           <a data-song-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</a>
           <span class="float-menu-item"><span class="float-menu-icon">&#128253;</span> Present</span>
           <button data-song class="float-menu-item float-menu-editing" onclick="window.editing=false; window.location.hash=$(this).attr('href');"><span class="float-menu-icon">&#128465;</span> Cancel</button>
-          <button data-song class="float-menu-item float-menu-editing" onclick="window.editing=false; prepSaveSong($(this));"><span class="float-menu-icon">&#128190;</span> Save</button>
+          <button data-song class="float-menu-item float-menu-editing" onclick="if($('stitle').text().trim() == ''){alert('Please add a title before you save');}else{window.editing=false; prepSaveSong($(this));}"><span class="float-menu-icon">&#128190;</span> Save</button>
           <a data-song-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>
           <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>
         </div>
         <div class="row">
           <div class="subcolumn">
-            <div class="content" style="width: 400px;">
+            <div class="content">
             </div>
           </div>
           <div class="subcolumn sidebar" id="song-edit">
@@ -526,8 +549,6 @@
       <div class="column" id="column-filler">
         <div class="float-menu">
         </div>
-        <div id="result">
-        </div>
       </div>
       
     </main>
@@ -544,7 +565,7 @@
       $('.column').click(function(e){
         var h = this.offsetHeight;
         var w = this.offsetWidth;
-        if((h <= 200 && h > 0) || ( w <= 200 && w > 0)) {
+        if((h <= 175 && h > 0) || ( w <= 175 && w > 0)) {
           e.preventDefault();
           e.stopPropagation();
           if (confirmWhenEditing()) { return };
@@ -577,16 +598,32 @@
       });   
       function hashchanged(){
         var hash = location.hash;
+        if(window.old_hash == hash){
+          return
+        }
+
+        if(confirmWhenEditing()) {
+          window.location.hash = window.old_hash;
+          return
+        }
+
         /*/doesn't yet prevent - but does let you know need to restore the hash.
         if(window.editing){
           confirmWhenEditing();
         }*/
         //if blank - should have to do nothing
         if(hash == ''){
+         $('body').attr('class','header');
+         $('.active').removeClass('active');
+         updateAllLinks();
+         window.document.title = "yCanta2";
+        }
+        else if(hash == '#songbooks'){
          $('body').attr('class','songbookList');
          $('.active').removeClass('active');
          $('#songbookList').addClass('active');
          updateAllLinks();
+         window.document.title = "yCanta2";
         }
         //if song edit
         else if((hash.search('&s-') != -1) && (hash.search('&edit') != -1)) {
@@ -599,6 +636,7 @@
               $('#song').addClass('active');
               editSong();
               updateAllLinks();
+              window.document.title = "yCanta2: Editing " + window.song.title;
           });
         }
         //if song export
@@ -621,20 +659,22 @@
               $('.active').removeClass('active');
               $('#export').addClass('active');
               updateAllLinks();
+              window.document.title = "yCanta2: Exporting " + window.song.title;
           });
         }
         //if song
         else if(hash.search('&s-') != -1) {
           if(hash.search('s-new-song') != -1){
-            window.location.hash = '#'+window.songbook_id;
+            window.location.hash = '#' + window.songbook._id;
             return
           }
           Promise.all([loadSongbook(parseHash('sb-')), loadSong(parseHash('s-'))])
             .then(function(values) {
               $('body').attr('class','song');
               $('.active').removeClass('active');
-              $('#song').addClass('active');  
+              $('#song').addClass('active');
               updateAllLinks();
+              window.document.title = "yCanta2: "+window.songbook.title + " > " + window.song.title;
           });          
         }
         //if songbook edit
@@ -647,6 +687,7 @@
               $('#songList').addClass('active');
               editSongbook();
               updateAllLinks();
+              window.document.title = "yCanta2: Editing " + window.songbook.title;
           });
         }
         //if songbook export
@@ -676,6 +717,7 @@
               $('.active').removeClass('active');
               $('#export').addClass('active');
               updateAllLinks();
+              window.document.title = "yCanta2: Exporting " + window.songbook.title;
           });
         }
         //if songbook
@@ -686,8 +728,10 @@
               $('.active').removeClass('active');
               $('#songList').addClass('active');
               updateAllLinks();
+              window.document.title = "yCanta2: " + window.songbook.title;
           });
         }
+        window.old_hash = window.location.hash;
       }
     </script>
   </body>

@@ -121,16 +121,23 @@ function parseHash(part) {
     return parts
   }
 }
-function updateAllLinks(whichView='all') {
-  $('[data-song-edit]').attr('href','#'+window.songbook_id+'&'+window.song_id+'&edit');
-  $('[data-song-edit="new"]').attr('href','#'+window.songbook_id+'&s-new-song&edit');
-  $('[data-song]').attr('href','#'+window.songbook_id+'&'+window.song_id);
-  $('[data-song-export]').attr('href','#'+window.songbook_id+'&'+window.song_id+'&export');
-  $('[data-songbook-edit]').attr('href','#'+window.songbook_id+'&edit');
+function updateAllLinks(whatChanged='all') {
+  $('[data-song-edit]').attr('href','#'+window.songbook._id+'&'+window.song._id+'&edit');
+  $('[data-song-edit="new"]').attr('href','#'+window.songbook._id+'&s-new-song&edit');
+  $('[data-song]').attr('href','#'+window.songbook._id+'&'+window.song._id);
+  $('[data-song-export]').attr('href','#'+window.songbook._id+'&'+window.song._id+'&export');
+  $('[data-songbook-edit]').attr('href','#'+window.songbook._id+'&edit');
   $('[data-songbook-edit="new"]').attr('href','#sb-new-songbook&edit');
-  $('[data-songbook]').attr('href','#'+window.songbook_id);
-  $('[data-songbook-export]').attr('href','#'+window.songbook_id+'&export');
-  $('[data-home]').attr('href','#')
+  $('[data-songbook]').attr('href','#'+window.songbook._id);
+  $('[data-songbook-export]').attr('href','#'+window.songbook._id+'&export');
+  $('[data-home]').attr('href','#');
+
+  //add highlighting
+  //doesn't happen after it's done rendering the list.js on initial page load.
+  $('.song-highlight').removeClass('song-highlight');
+  $("[data-song-id='"+window.song._id+"']").addClass("song-highlight");
+  $('.songbook-highlight').removeClass('songbook-highlight');
+  $("[data-songbook-id='"+window.songbook._id+"']").addClass("songbook-highlight");
 }
 
 
@@ -236,7 +243,7 @@ function mapSongRowToValue(row) {
     'song-copyright':    'c:' + formatText(row.doc.copyright, 'cp'),
     'song-cclis': ((row.doc.cclis!='') ? 'cclis' : '!cclis'),
     'song-content': formatSongContent(row.doc.content), 
-    'link': '#'+window.songbook_id+'&'+row.doc._id,
+    'link': '#'+window.songbook._id+'&'+row.doc._id,
     'name': row.doc.title
   }
 }
@@ -292,6 +299,7 @@ function buildSongbookList(songs, target_class='songbook_content',
   if(edit != true) {
     window.songbook_list = new List(target_class, options, values);
     bindSearchToList(window.songbook_list, '#songbook_content');
+    $('#songbook_content input').trigger('change')[0].dispatchEvent(new KeyboardEvent("keyup"));
   }
   else{
     window.songbook_edit_togglesongs_list = new List(target_class, options, values);
@@ -355,7 +363,11 @@ function editSongbook() {
     if(window.songbook_edit_togglesongs_list != undefined){
       window.songbook_edit_togglesongs_list.clear();
     }
-    return buildSongbookList(result.rows, 
+    return buildSongbookList(result.rows.sort(function(a, b){
+          if(a.doc.title < b.doc.title) { return -1; }
+          if(a.doc.title > b.doc.title) { return 1; }
+          return 0;
+        }), 
       'songbook_edit_togglesongs', 
       'song-item-template-edit', 
       true);
@@ -391,6 +403,7 @@ function editSongbook() {
       this.addEventListener('drop', dragDrop, false);
       this.addEventListener('dragover', dragOver, false);
     });
+    $('.song-highlight').removeClass('song-highlight');
     $('#songList #songbook_title').attr('contenteditable', 'true').parent().removeAttr('href');
     $('#songList #songbook_content input.search').val('').parent().addClass('disabled-hidden')[0].disabled=true;    
   }).catch(function(err){
@@ -398,7 +411,7 @@ function editSongbook() {
   });
 }
 
-editSong = function () {
+function editSong() {
   $('chunk').each(function(index){
     var content = [];
     $(this).children('line').each(function(index){
@@ -585,14 +598,19 @@ window.addEventListener('load', function(){
                 dragToggleClass);
 }, false);
 window.addEventListener('load', function(){
+  makeDraggable(document.getElementById('songbookList'),
+                document.getElementById('header'),
+                function(){if(!confirmWhenEditing()) {window.location.hash = ''}}, 'top');
+}, false);
+window.addEventListener('load', function(){
   makeDraggable(document.getElementById('songList'),
                 document.getElementById('songbookList'),
-                function(){if(!confirmWhenEditing()) {window.location.hash = '#'}}, 'top');
+                function(){if(!confirmWhenEditing()) {window.location.hash = '#songbooks'}}, 'top');
 }, false);
 window.addEventListener('load', function(){
   makeDraggable(document.getElementById('song'),
                 document.getElementById('songList'),
-                function(){if(!confirmWhenEditing()) {window.location.hash = '#'+window.songbook_id}}, 'top');
+                function(){if(!confirmWhenEditing()) {window.location.hash = '#'+window.songbook._id}}, 'top');
 }, false);
 window.addEventListener('load', function(){
   makeDraggable(document.getElementById('export'),

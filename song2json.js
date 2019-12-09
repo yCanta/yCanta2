@@ -1,7 +1,6 @@
  $(function () {
 
   var $result = $("#result");
-  $result[0].style = "margin-left: 2rem;";
   $("#file").on("change", function(evt) {
     // remove content
     $result.html("");
@@ -55,6 +54,7 @@
               red_count++;
               count++;
               document.getElementById('red_progress').style.width = red_count/file_count*100 +'%';
+              document.getElementById('progress').style.width = count/file_count*100 +'%';
               document.getElementById('progress_text').innerHTML = zipEntry.name;
             }
             return 
@@ -85,6 +85,7 @@
                 red_count++;
                 count++;
                 document.getElementById('red_progress').style.width = red_count/file_count*100 +'%';
+                document.getElementById('progress').style.width = count/file_count*100 +'%';
                 document.getElementById('progress_text').innerHTML = zipEntry.name;
                 //console.log(zipEntry.name + ' is not a songbook!');
               }
@@ -93,7 +94,11 @@
           });
           //let's us change things when we're done.
           setTimeout(function(){Promise.all(songbook_promise_list).then(function(result){
-            document.getElementById('progress_text').innerHTML = 'All docs imported!';
+            return document.getElementById('progress_text').innerHTML = 'All docs imported!';
+            }).then(function(result){
+              setTimeout(function(){
+                document.location.hash = "#songbooks";                
+              }, 1500);
             });
           }, 2000);
         })},  3000);
