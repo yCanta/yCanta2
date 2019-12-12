@@ -185,7 +185,7 @@ class Category {
 class IndexEntry {
   constructor(self, song, index_text, is_song_title){
     self.song = song;
-    self.index_text = index_text.strip();
+    self.index_text = index_text.trim();
     self.is_song_title = is_song_title;
     self.height = 0;
     self.height_after = 0;
@@ -198,12 +198,12 @@ class CatIndexEntry {
 
 class Song {
   constructor(self, title, author, copyright='', ccli='', scripture_ref='', key='', introduction=null, categories=null){
-    self.title = title.strip();
-    self.author = author.strip();
-    self.copyright = copyright.strip();
-    self.ccli = ccli.strip();
-    self.scripture_ref = scripture_ref.strip();
-    self.key = key.strip();
+    self.title = title.trim();
+    self.author = author.trim();
+    self.copyright = copyright.trim();
+    self.ccli = ccli.trim();
+    self.scripture_ref = scripture_ref.trim();
+    self.key = key.trim();
     if (self.key){
       self.key = 'Key: ' + self.key;
     }
@@ -245,8 +245,8 @@ class Line {
 //
 //==============*/
 function sort_scrip_index(scrip_ref){ 
-  var x = scrip_ref.strip().replace('.','').split(\s(?=\d), 1);
-  //x = re.split('\s(?=\d)', scrip_ref.strip().replace('.',''), 1);
+  var x = scrip_ref.trim().replace('.','').split(\s(?=\d), 1);
+  //x = re.split('\s(?=\d)', scrip_ref.trim().replace('.',''), 1);
   
   // get the book number XX
   try:
@@ -284,95 +284,114 @@ function sort_scrip_index(scrip_ref){
  
   return book_number + chapter_number + verse_number;
 
-//This will look different.
+//This will look different.  not xml... 
 function parse_song(song_xml){
-  title = song_xml.find('stitle')
-  if title is not null:  // if not found title is null
-    title = title.text or 'Untitled'
-  else:
-    title = 'Untitled'
+  let title = song_xml.find('stitle')
+  if (title != null) {  // if not found title is null
+    title = title.text || 'Untitled';
+  }
+  else {
+    title = 'Untitled';
+  }
 
-  author = song_xml.find('author')
-  if author is not null:  // if not found author is null
-    author = author.text or ''
-  else:
-    author = ''
+  let author = song_xml.find('author');
+  if (author != null) {  // if not found author is null
+    author = author.text || '';
+  }
+  else {
+    author = '';
+  }
 
-  categories = song_xml.find('categories')
-  if categories is not null and categories.text is not null:  // if not found categories is null
-    categories = [c.strip() for c in categories.text.split(',')]
-  else:
-    categories = []
+  let categories = song_xml.find('categories');
+  if (categories != null && categories.text != null) {  // if not found categories is null
+    categories = categories.text.split(',').map(c => c.trim());
+  }
+  else {
+    categories = [];
+  }
 
-  ccli = song_xml.find('cclis')
-  if ccli is not null:
-    ccli = ccli.text or ''
-  else:
-    ccli = ''
+  let ccli = song_xml.find('cclis');
+  if (ccli != null) {
+    ccli = ccli.text || '';
+  }
+  else {
+    ccli = '';
+  }
 
-  copyright = song_xml.find('copyright')
-  if copyright is not null:
-    copyright = copyright.text or ''
-  else:
-    copyright = ''
+  let copyright = song_xml.find('copyright');
+  if (copyright != null) {
+    copyright = copyright.text || '';
+  }
+  else {
+    copyright = '';
+  }
 
-  scripture_ref = song_xml.find('scripture_ref')
-  if scripture_ref is not null:
-    scripture_ref = scripture_ref.text or ''
-  else:
-    scripture_ref = ''
+  let scripture_ref = song_xml.find('scripture_ref');
+  if (scripture_ref != null) {
+    scripture_ref = scripture_ref.text || '';
+  }
+  else {
+    scripture_ref = '';
+  }
 
-  key = song_xml.find('key')
-  if key is not null:
-    key = key.text or ''
-  else:
-    key = ''
+  let key = song_xml.find('key');
+  if (key != null) {
+    key = key.text || '';
+  }
+  else {
+    key = '';
+  }
 
-  intro = song_xml.find('introduction')
-  if intro is not null:
-    intro = intro.text or ''
-  else:
-    intro = ''
+  let intro = song_xml.find('introduction');
+  if (intro != null):
+    intro = intro.text || '';
+  else {
+    intro = '';
+  }
 
   //this will be the same?
-  song = Song(title, author, copyright=copyright, ccli=ccli, scripture_ref=scripture_ref, key=key, introduction=intro.strip(), categories=categories)
+  let song = new Song(title, author, copyright=copyright, ccli=ccli, scripture_ref=scripture_ref, key=key, introduction=intro.trim(), categories=categories);
 
   // parse song chunks
-  verse_num = 1
-  for chunk_xml in song_xml.findall('chunk'):
-    type=chunk_xml.attrib['type']
-    chunk = Chunk(type)
+  let verse_num = 1;
+  for (chunk_xml of song_xml.findall('chunk')) {
+    let type = chunk_xml.attrib['type'];
+    let chunk = new Chunk(type);
     
     // skip comment chunks
-    if chunk.type == 'comment':
+    if (chunk.type == 'comment') {
       continue
+    }
     // increment verse count
-    elif chunk.type == 'verse':
-      chunk.num = verse_num
-      verse_num += 1
+    else if (chunk.type == 'verse') {
+      chunk.num = verse_num;
+      verse_num += 1;
+    }
 
     // parse lines and chords in chunk
-    for line in chunk_xml.findall('line'):
-      text = line.text or ''
-      chords = {}
+    for (line of chunk_xml.findall('line')) {
+      let text = line.text || '';
+      let chords = {};
 
       // parse chords and rest of line text
-      for c in line.findall('c'):
-        chords[len(text)] = c.text // len(text) is offset in text where chord appears
-        text += c.tail or ''
+      for (c of line.findall('c')) {
+        chords[len(text)] = c.text; // len(text) is offset in text where chord appears
+        text += c.tail || '';
+      }
 
       // done parsing line -- add it
-      line = Line(text, chords)
-      chunk.lines.append(line)
+      let line = Line(text, chords);
+      chunk.lines.append(line);
+    }
 
     // done parsing chunk -- add it
-    song.chunks.append(chunk)
-
+    song.chunks.append(chunk);
+  }
   return song
 }
 
 
-def parse(xml, cfg):
+function parse(xml, cfg) {
   // if xml passed as filename, convert to object
   if isinstance(xml, basestring) and os.path.isfile(xml):
     xml = etree_parse(xml).getroot()
@@ -388,11 +407,11 @@ def parse(xml, cfg):
   // ==========================
 
   // parse songbook information
-  title = xml.find('title').text
+  title = xml.find('title').text;
 
-  songbook = Songbook(title)
+  let songbook = new Songbook(title);
 
-  song_num = 1
+  let song_num = 1;
   // iterate through all songs in the songbook
   for songref in xml.findall('songref'):
     song_xml = etree_parse(songref.attrib['ref'])
@@ -445,6 +464,7 @@ def parse(xml, cfg):
 
   // done parsing songbook -- return
   return songbook
+}
 
 
 class PageMapping:
@@ -723,7 +743,7 @@ def word_wrap(text, width, font, size, hanging_indent=0):
   else:    
     Line_object = False
 
-  if text.strip() == '':
+  if text.trim() == '':
     return []
   """ Returns a list of strings that will fit inside width """
   out = []
