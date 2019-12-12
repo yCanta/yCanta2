@@ -313,7 +313,7 @@ function loadSongbook(songbook_id) {
   return new Promise(function(resolve, reject) {
     if(songbook_id == window.songbook._id){
       //console.log('Songbook is already loaded');
-      resolve('loaded songbook');
+      resolve('songbook already loaded');
     }
     else if(songbook_id == undefined || songbook_id == 'sb-allSongs') {
       songbook_id = 'sb-allSongs';
