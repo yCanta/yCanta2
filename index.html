@@ -649,13 +649,9 @@
           Promise.all([loadSongbook(parseHash('sb-')), loadSong(parseHash('s-'))])
             .then(function(){
             //get the song object db.get(id) and save it to window.exportObject
-              return new Promise(function(resolve, reject) {
-                db.get(parseHash('s-')).then(function(song){
-                  window.exportObject = window.song;
-                  resolve('its done');
-                });
-              })
+              return window.exportObject = window.song;
             }).then(function(values){
+              console.log(window.exportObject);
               makePDF(PDFDocument, blobStream, window.exportObject, document.querySelector('embed'));
 
               //Initiate song export
@@ -699,13 +695,24 @@
           //Initiate songbook export
           Promise.resolve(loadSongbook(parseHash('sb-')))
             .then(function(){
-              //get the songbook object and all songs db.get(id) and save it to window.exportObject
-              return new Promise(function(resolve, reject) {
+              //get the songbook object and all songs and save them to window.exportObject
+              return new Promise(function(resolve, reject){
                 //Songbooks are already loaded into the window.songbook object
-                window.exportObject = window.songbook.title;
-                console.log(window.songbook);
-                resolve('It done')
-              })
+                window.exportObject = window.songbook;
+                var sb_song_ids = window.songbook.songrefs.map(function (row) {
+                    return row.id
+                  });
+                db.allDocs({
+                  include_docs: true,
+                  keys: sb_song_ids, //we need error handling for missing ids
+                }).then(function (result) {
+                  window.exportObject.songs = result.rows;
+                  console.log(window.exportObject);
+                  resolve('Its done')
+                }).catch(function (err) {
+                  console.log(err);
+                });
+              });
             }).then(function(values){
               makePDF(PDFDocument, blobStream, window.exportObject, document.querySelector('embed'));
 
