@@ -124,6 +124,12 @@ class defaultdict {
   }
 }
 
+function* range(start, end) {
+    yield start;
+    if (start === end) return;
+    yield* range(start + 1, end);
+}
+
 var INDENT_NO_LABEL = 'indented no label';
 var VARIABLE_INDENT = ('verse', 'no label', INDENT_NO_LABEL, 'introduction');
 var SCRIPTURE_IN_TITLE    = 'in-title';
@@ -248,23 +254,26 @@ class Line {
 //==============*/
 function sort_scrip_index(scrip_ref){ 
   var x = scrip_ref.trim().replace('.','').split(/\s(?=\d)/, 1);
+  let book_number;
+  let chapter_number;
+  let verse_number;
   //x = re.split('\s(?=\d)', scrip_ref.trim().replace('.',''), 1);
   
   // get the book number XX
   try {
-    let book_number = str(BIBLE_BOOK_ORDER_DICT[x[0]]);
+    book_number = String(BIBLE_BOOK_ORDER_DICT[x[0]]);
   }
   catch(error) {
-    let book_number = '99';
+    book_number = '99';
   }
   book_number = book_number.padstart(2,'0');
   
   // get chapter number YYY
   try {
-    let chapter_number = x[1].split(':')[0];
+    chapter_number = x[1].split(':')[0];
   }
   catch(err) {
-    let chapter_number = '000';
+    chapter_number = '000';
   }
   if (chapter_number.length < 4){
     chapter_number = chapter_number.padstart(3,'0');
@@ -275,7 +284,7 @@ function sort_scrip_index(scrip_ref){
 
   // get verse number ZZZ
   try {
-    let verse_number = x[1].split(':')[1].split(/[-,]/)[0];
+    verse_number = x[1].split(':')[1].split(/[-,]/)[0];
     //verse_number = re.split('[-,]',x[1].split(':')[1])[0];
     verse_number = verse_number.padstart(3,'0');
     if (verse_number.length > 3) {
@@ -283,7 +292,7 @@ function sort_scrip_index(scrip_ref){
     }
   }
   catch(err) {
-    let verse_number = '000';
+    verse_number = '000';
   }
  
   return book_number + chapter_number + verse_number;
@@ -314,7 +323,7 @@ function parse_song(song_object){  //json song object
   let intro = song_ob.introduction;
   
   //could sub some of these directly for song.____
-  let song = new Song(title, author, copyright=copyright, ccli=ccli, scripture_ref=scripture_ref, key=key, introduction=intro.trim(), categories=categories);
+  let song = new Song(title, author, copyright, ccli, scripture_ref, key, intro.trim(), categories);
 
   // parse song chunks
   let verse_num = 1;
@@ -363,7 +372,7 @@ function parse(export_object, cfg) {
 
   // check if we are parsing a song and not a songbook
   if (export_object._id.startsWith('s-')) {
-    song = parse_song(export_object);
+    let song = parse_song(export_object);
     song.num = 1;
     return song;
   }
@@ -387,7 +396,7 @@ function parse(export_object, cfg) {
       continue;
     }
 
-    song = parse_song(export_object.songs[i]);
+    let song = parse_song(export_object.songs[i]);
     song.num = song_num;
     song_num += 1;
 
@@ -396,25 +405,25 @@ function parse(export_object, cfg) {
 
     // generate index entries for this song
     if(cfg.DISPLAY_INDEX != INDEX_OFF){
-      songbook.index.append(IndexEntry(song, song.title, is_song_title=true));
+      songbook.index.append(IndexEntry(song, song.title, true));
     }
     for(let cat of song.categories){  // an entry for each category in the song
       let exclude = false;
       for(let exc of cfg.INDEX_CAT_EXCLUDE){
-        if(re.search(exc, cat)){ // cat matches exclusion
+        if(exc.find(cat)){ // cat matches exclusion
           exclude = true;
           break;
         }
       }
       if(!exclude){
-        songbook.cat_index[cat].append(CatIndexEntry(song, song.title, is_song_title=true));
+        songbook.cat_index[cat].append(CatIndexEntry(song, song.title, true));
       }
     }
     // add entries for scripture ref
     if(song.scripture_ref && cfg.DISPLAY_SCRIP_INDEX != INDEX_OFF){
-      let scripture_refs = re.split('[,;]\s(?=[A-Za-z])',song.scripture_ref);
+      let scripture_refs = song.scripture_ref.split(/[,;]\s(?=[A-Za-z])/);
       for(let scripture_ref of scripture_refs){
-        songbook.scrip_index.append(IndexEntry(song, scripture_ref, is_song_title=true));
+        songbook.scrip_index.append(IndexEntry(song, scripture_ref, true));
       }
     }
     // add some first line index entries
@@ -424,7 +433,7 @@ function parse(export_object, cfg) {
         // if this is a chorus chunk or a first verse chunk AND the first line is not the same as the song title
         if((chunk.type == 'chorus' || ((('verse', 'no label', INDENT_NO_LABEL).indexOf(chunk.type) > -1) && first_verse)) && 
           (chunk.lines.length > 0) && (chunk.lines[0].text.replace(/[^A-Za-z]/, '').lower() != song.title.replace(/[^A-Za-z]/, '').lower())) {
-          songbook.index.append(IndexEntry(song, chunk.lines[0].text, is_song_title=false));
+          songbook.index.append(IndexEntry(song, chunk.lines[0].text, false));
           // TODO? at the moment, not including first line entries in cat index
 
           // don't do any more verse index entries -- we aren't on the first verse anymore
@@ -510,11 +519,11 @@ class PageLayoutSimple {
     // helper function
     function _make_mapping(p) {
       return PageMapping(
-          page=p,
-          startx=cfg.PAPER_MARGIN_LEFT+cfg.PAGE_MARGIN_LEFT,
-          starty=cfg.PAPER_HEIGHT-(cfg.PAPER_MARGIN_TOP+cfg.PAGE_MARGIN_TOP),
-          endx=cfg.PAPER_WIDTH-(cfg.PAPER_MARGIN_RIGHT+cfg.PAGE_MARGIN_RIGHT),
-          endy=cfg.PAPER_MARGIN_BOTTOM+cfg.PAGE_MARGIN_BOTTOM);
+          p,
+          cfg.PAPER_MARGIN_LEFT+cfg.PAGE_MARGIN_LEFT,
+          cfg.PAPER_HEIGHT-(cfg.PAPER_MARGIN_TOP+cfg.PAGE_MARGIN_TOP),
+          cfg.PAPER_WIDTH-(cfg.PAPER_MARGIN_RIGHT+cfg.PAGE_MARGIN_RIGHT),
+          cfg.PAPER_MARGIN_BOTTOM+cfg.PAGE_MARGIN_BOTTOM);
     }
 
     return pages.map(p => _make_mapping(p));
@@ -550,12 +559,12 @@ class PageLayoutColumn {
     let curent_paper_page = [];
     
     for(let p of pages) {
-      let sx=self.cfg.PAPER_MARGIN_LEFT+self.cfg.PAGE_MARGIN_LEFT + curent_paper_page.length*self.get_page_width(margin=0);
+      let sx=self.cfg.PAPER_MARGIN_LEFT+self.cfg.PAGE_MARGIN_LEFT + curent_paper_page.length*self.get_page_width(0);
       let sy=self.cfg.PAPER_HEIGHT - (self.cfg.PAPER_MARGIN_TOP + self.cfg.PAGE_MARGIN_TOP);
-      let ex=sx + self.get_page_width(margin=1); // margin=1 so margins not included in calc
+      let ex=sx + self.get_page_width(1); // margin=1 so margins not included in calc
       let ey=self.cfg.PAPER_MARGIN_BOTTOM + self.cfg.PAGE_MARGIN_BOTTOM;
 
-      curent_paper_page.append(PageMapping(page=p, startx=sx, starty=sy, endx=ex, endy=ey));
+      curent_paper_page.append(PageMapping(p, sx, sy, ex, ey));
       
       if(curent_paper_page.length >= self.cfg.COLUMNS) {
         ret.append(curent_paper_page);
@@ -605,7 +614,7 @@ class PageLayoutColumn1Sided {
   page_order(self, pages) {
     pages = PageLayoutColumn.page_order(self, pages);
     for(let pg of pages) {
-      shift_mappings(pg, right=self.cfg.BINDER_MARGIN);
+      shift_mappings(pg, self.cfg.BINDER_MARGIN);
     }
 
     // return page size to normal
@@ -631,7 +640,7 @@ class PageLayoutColumn2Sided {
     pages = PageLayoutColumn.page_order(self, pages);
     for(const [i, pg] of Object.entries(pages)) {
       if(i % 2 == 0) {  // every other page must be shifted since we are printing double sided
-        shift_mappings(pg, right=self.cfg.BINDER_MARGIN);
+        shift_mappings(pg, self.cfg.BINDER_MARGIN);
       }
     }
 
@@ -681,13 +690,13 @@ class PageLayoutBooklet {
     // process pages in groups of 4
     for(let i of range(0, pages.length, 4)) {
       if ((i+0) < pages.length) {  // page 1 on physical paper
-        page1 = shift_mappings(pages[i+0], right=self.cfg.PAPER_WIDTH + self.cfg.BINDER_MARGIN);  // shift right (include binder)
+        page1 = shift_mappings(pages[i+0], self.cfg.PAPER_WIDTH + self.cfg.BINDER_MARGIN);  // shift right (include binder)
       }
       if ((i+1) < pages.length) {  // page 2 on physical paper
         page2 = pages[i+1];                                                   // no shift
       }
       if ((i+2) < pages.length) {  // page 3 on physical paper
-        page3 = shift_mappings(pages[i+2], right=self.cfg.PAPER_WIDTH + self.cfg.BINDER_MARGIN);  // shift right (include binder)
+        page3 = shift_mappings(pages[i+2], self.cfg.PAPER_WIDTH + self.cfg.BINDER_MARGIN);  // shift right (include binder)
       }
       if ((i+3) < pages.length) {  // page 4 on physical paper
         page4 = pages[i+3];                                                   // no shift
@@ -747,8 +756,8 @@ class PageLayoutAdobeBooklet{
     PageLayoutColumn.__init__(self, options); // call super
 
     // mess with paper size -- make it half size with new height being old width and new width being 1/2 old height
-    old_width = self.cfg.PAPER_WIDTH;
-    old_height = self.cfg.PAPER_HEIGHT;
+    let old_width = self.cfg.PAPER_WIDTH;
+    let old_height = self.cfg.PAPER_HEIGHT;
     self.cfg.PAPER_HEIGHT = old_width;
     self.cfg.PAPER_WIDTH = old_height / 2.0;
   }
@@ -757,15 +766,18 @@ class PageLayoutAdobeBooklet{
 register_page_layout('adobe-booklet', PageLayoutAdobeBooklet);
 
 function myStringWidth(text, font, size) {
-  s = stringWidth(text, font, size);  //PDFFUNCTION!!!!!!!!!
+  let s = stringWidth(text, font, size);  //PDFFUNCTION!!!!!!!!!
   return s;
 }
 
 function word_wrap(text, width, font, size, hanging_indent=0) {
+  let Line_object;
+  let orig_text;
+  let chords;
   if(text instanceof Line){
-    let Line_object = true;
-    let orig_text = text;   // save original line object
-    let chords = text.chords;
+    Line_object = true;
+    orig_text = text;   // save original line object
+    chords = text.chords;
     text = text.text;
   }
   else{
@@ -824,9 +836,9 @@ function print_chords(pdf, cfg=null, font_size=null, y_offset=null, x_offset=nul
   pdf.setFont(cfg.FONT_FACE, cfg.SONGCHORD_SIZE);
 
   // loop through chords
-  char_offsets = sorted(line.chords.keys());
+  let char_offsets = sorted(line.chords.keys());
   for(let char_offset of char_offsets) {
-    chord_offset = pdf.stringWidth(line.text.slice(0, char_offset), cfg.FONT_FACE, font_size);
+    let chord_offset = pdf.stringWidth(line.text.slice(0, char_offset), cfg.FONT_FACE, font_size);
     pdf.drawString(page_mapping.startx + x_offset + chord_offset, page_mapping.starty - y_offset, line.chords[char_offset]);
   }
 
@@ -886,17 +898,19 @@ function paginate(songbook, cfg) {
     return height;
   }
 
-  USABLE_HEIGHT = cfg.PAPER_HEIGHT - (cfg.PAGE_MARGIN_BOTTOM + cfg.PAGE_MARGIN_TOP + cfg.PAPER_MARGIN_BOTTOM + cfg.PAPER_MARGIN_TOP);
+  let USABLE_HEIGHT = cfg.PAPER_HEIGHT - (cfg.PAGE_MARGIN_BOTTOM + cfg.PAGE_MARGIN_TOP + cfg.PAPER_MARGIN_BOTTOM + cfg.PAPER_MARGIN_TOP);
   let pages = [];
+  let p;
+  let list_of_songs;
 
   // we may be called with just a song and not a songbook
   if(songbook instanceof Song) {
-    let list_of_songs = [songbook];
-    let p = [];
+    list_of_songs = [songbook];
+    p = [];
   }
   else {
-    let list_of_songs = songbook.songs;
-    let p = [songbook];
+    list_of_songs = songbook.songs;
+    p = [songbook];
   }
 
   let songs_have_been_added = false;
@@ -924,6 +938,7 @@ function paginate(songbook, cfg) {
       // we don't need it at the bottom of a page -- HOWEVER, if the last chunk
       // has copyright info, we can't remove SONGLINE_SPACE because it is not
       // at the bottom of the page
+      let songline_correct;
       if(chunk.last_chunk) { // last_chunk only set when there is copyright for the song
         songline_correct = 0;
       }
@@ -938,11 +953,11 @@ function paginate(songbook, cfg) {
 
         // duplicate the chorus on each new page/column/etc if the page layout says it is needed
         // Also ... if there are enough verses left in this song (i.e. > 1) then we want to dupe the chorus AFTER adding the verse
-        if(chorus.length != 0 && !cfg.page_layout.previous_page_visible(previous_pages=pages)) {
+        if(chorus.length != 0 && !cfg.page_layout.previous_page_visible(pages)) {
 
           // this chunk and at least one more are still to go -- so do chunk, chorus, chunk... end-of-song
           // UNLESS this chunk is a chorus, in which case we want to print any pre-choruses first
-          if(dx+1 < song.chunks.length && chunk.type.indexOf('chorus') == -1) {
+          if(idx+1 < song.chunks.length && chunk.type.indexOf('chorus') == -1) {
             p.append(chunk);
             p.extend(chorus); // extend with chorus(es)
           }
@@ -1001,7 +1016,7 @@ function paginate(songbook, cfg) {
       p.append(Category(cat, songbook.cat_index.cat_height));
 
       // sort cat_index entries then add to page
-      entries = songbook.cat_index[cat].sort(function(a,b) {return a.index_text.lower().replace(/(?i)^([^a-z0-9]*the +|[^a-z0-9]+)/, '')});
+      let entries = songbook.cat_index[cat].sort(function(a,b) {return a.index_text.lower().replace(/(?i)^([^a-z0-9]*the +|[^a-z0-9]+)/, '')});
 
       for(let index_entry of entries) {
         // if there is no room for this entry, then the page is complete and we start a new one
@@ -1043,7 +1058,7 @@ function paginate(songbook, cfg) {
 
     // sort index entries then add to page
     //entries = sorted(songbook.scrip_index, key=lambda m: sort_scrip_index(re.sub(r'(?i)^([^a-z0-9]*the +|[^a-z0-9]+)', '', m.index_text.lower())));
-    entries = songbook.scrip_index.sort(function(a,b) { return sort_scrip_index(a.index_text.lower().replace(/(?i)^([^a-z0-9]*the +|[^a-z0-9]+)/, ''))});
+    let entries = songbook.scrip_index.sort(function(a,b) { return sort_scrip_index(a.index_text.lower().replace(/(?i)^([^a-z0-9]*the +|[^a-z0-9]+)/, ''))});
 
 
     for(let index_entry of entries) {
@@ -1085,7 +1100,7 @@ function paginate(songbook, cfg) {
 
     // sort index entries then add to page
     //entries = sorted(songbook.index, key=lambda m: re.sub(r'(?i)^([^a-z0-9]*the +|[^a-z0-9]+)', '', m.index_text.lower()))
-    entries = songbook.index.sort(function(a,b) { return a.index_text.lower().replace(/(?i)^([^a-z0-9]*the +|[^a-z0-9]+)/, '')});
+    let entries = songbook.index.sort(function(a,b) { return a.index_text.lower().replace(/(?i)^([^a-z0-9]*the +|[^a-z0-9]+)/, '')});
 
 
     for(let index_entry of entries) {
@@ -1114,14 +1129,18 @@ function calc_heights(songbook, cfg) {
   // calc heights of elements and store in songbook object tree
 
   // we may be called with just a song even though the variable name suggests otherwise
+  let list_of_songs;
+  let index;
+  let scrip_index;
+  let cat_index;
   if(songbook instanceof Song) {
-    let list_of_songs = [songbook];
-    let index = [];
-    let scrip_index = [];
-    let cat_index = {};
+    list_of_songs = [songbook];
+    index = [];
+    scrip_index = [];
+    cat_index = {};
   }
   else {
-    let list_of_songs = songbook.songs;
+    list_of_songs = songbook.songs;
     if(!cfg.HIDE_BOOKTITLE){
       songbook.height = cfg.BOOKTITLE_SIZE + cfg.BOOKTITLE_SPACE;
     }
@@ -1131,55 +1150,59 @@ function calc_heights(songbook, cfg) {
 
     // category index
     if(cfg.DISPLAY_CAT_INDEX != INDEX_OFF) {
-      let cat_index = songbook.cat_index;
+      cat_index = songbook.cat_index;
       songbook.cat_index.height = cfg.INDEX_TITLE_SIZE + cfg.INDEX_TITLE_SPACE;
       songbook.cat_index.cat_height = cfg.INDEX_CAT_SIZE + cfg.INDEX_CAT_SPACE + cfg.INDEX_CAT_B4;
     }
     else {
-      let cat_index = {};
+      cat_index = {};
     }
 
     // scripture index
     if(cfg.DISPLAY_SCRIP_INDEX != INDEX_OFF) {
-      let scrip_index = songbook.scrip_index;
+      scrip_index = songbook.scrip_index;
       songbook.scrip_index.height = cfg.INDEX_TITLE_SIZE + cfg.INDEX_TITLE_SPACE;
       if(cfg.DISPLAY_SCRIP_INDEX == INDEX_NO_PAGE_BREAK) {  // only add space before if not starting on a new page
         songbook.scrip_index.height += cfg.INDEX_TITLE_B4;
       }
     }
     else {
-      let scrip_index = []; // make scripture index height calculation loop be empty
+      scrip_index = []; // make scripture index height calculation loop be empty
     }
 
     // index
     if(cfg.DISPLAY_INDEX != INDEX_OFF) {
-      let index = songbook.index;
+      index = songbook.index;
       songbook.index.height = cfg.INDEX_TITLE_SIZE + cfg.INDEX_TITLE_SPACE;
       if(cfg.DISPLAY_INDEX == INDEX_NO_PAGE_BREAK){  // only add space before if not starting on a new page
         songbook.index.height += cfg.INDEX_TITLE_B4;
       }
     }
     else {
-      let index = []; // make index height calculation loop be empty
+      index = []; // make index height calculation loop be empty
     }
   }
 
 
   for(let song of list_of_songs) {
     song.height = 0;
+    let song_title;
 
     if(cfg.SCRIPTURE_LOCATION == SCRIPTURE_IN_TITLE && song.scripture_ref) {
-      let song_title = cfg.SONGTITLE_FORMAT.safe_substitute(num=song.num, title=song.title + ' (%s)' % song.scripture_ref);
+      let num = song.num;
+      let title = song.title + ' (%s)' % song.scripture_ref;
+      song_title = cfg.SONGTITLE_FORMAT;
     }
     else {
-      let song_title = cfg.SONGTITLE_FORMAT.safe_substitute(num=song.num, title=song.title);
+      let num = song.num;
+      let title = song.title;
+      song_title = cfg.SONGTITLE_FORMAT;
     }
 
-    song.num_width = myStringWidth(cfg.SONGTITLE_FORMAT.safe_substitute(num=song.num, title=''), cfg.FONT_FACE, cfg.SONGTITLE_SIZE)*1.5;
+    song.num_width = myStringWidth(function(){let title = ''; let num = song.num; return cfg.SONGTITLE_FORMAT}, cfg.FONT_FACE, cfg.SONGTITLE_SIZE)*1.5;
 
     // Word wrap title as needed
-    song.title_wrapped = word_wrap(song_title, width=cfg.page_layout.get_page_width(),
-        font=cfg.FONT_FACE, size=cfg.SONGTITLE_SIZE, hanging_indent=song.num_width);
+    song.title_wrapped = word_wrap(song_title, cfg.page_layout.get_page_width(), cfg.FONT_FACE, cfg.SONGTITLE_SIZE, song.num_width);
     // add to height for each line
     //song.height += sum(cfg.SONGTITLE_SIZE + cfg.SONGTITLE_SPACE for line in song.title_wrapped);
     song.height += (cfg.SONGTITLE_SIZE + cfg.SONGTITLE_SPACE)*song.title_wrapped.length;
@@ -1200,8 +1223,7 @@ function calc_heights(songbook, cfg) {
 
     // wrap small_text
     small_text = small_text.join(' '*8);
-    song.small_text = word_wrap(small_text, width=cfg.page_layout.get_page_width(),
-        font=cfg.FONT_FACE, size=cfg.SMALL_SIZE, hanging_indent=0);
+    song.small_text = word_wrap(small_text, cfg.page_layout.get_page_width(), cfg.FONT_FACE, cfg.SMALL_SIZE, 0);
     // add height of wrapped small_text
     //song.height += sum(cfg.SMALL_SIZE + cfg.SMALL_SPACE for line in song.small_text)
     song.height += (cfg.SMALL_SIZE + cfg.SMALL_SPACE)*song.small_text.length;
@@ -1219,8 +1241,8 @@ function calc_heights(songbook, cfg) {
       if(cfg.RESIZE_PERCENT == 0) {
         let split_lines = [];
         for(let line of chunk.lines) {
-          let split_line = word_wrap(line, width=(cfg.page_layout.get_page_width() - myStringWidth('8)   ', cfg.FONT_FACE, 
-            cfg.SONGLINE_SIZE)), font=cfg.FONT_FACE, size=cfg.SONGLINE_SIZE, hanging_indent=0); 
+          let split_line = word_wrap(line, (cfg.page_layout.get_page_width() - myStringWidth('8)   ', cfg.FONT_FACE, 
+            cfg.SONGLINE_SIZE)), cfg.FONT_FACE, cfg.SONGLINE_SIZE, 0); 
           //myStringWdith('8 is copied from format_page - keep them in sync 
           split_lines += split_line;
         }
@@ -1256,8 +1278,7 @@ function calc_heights(songbook, cfg) {
       }
 
       song.chunks[-1].last_chunk = true;  // lets the formatter know to print the copyright_footer
-      song.chunks[-1].copyright_footer = word_wrap(copyright_text, width=cfg.page_layout.get_page_width(),
-                                                   font=cfg.FONT_FACE, size=cfg.COPYRIGHT_SIZE);
+      song.chunks[-1].copyright_footer = word_wrap(copyright_text, cfg.page_layout.get_page_width(), cfg.FONT_FACE, cfg.COPYRIGHT_SIZE);
       // add space for each line in copyright_footer
       song.chunks[-1].height += cfg.SONGCHUNK_B4 + (cfg.COPYRIGHT_SIZE + cfg.COPYRIGHT_SPACE)*song.chunks[-1].copyright_footer.length;
     }
@@ -1327,7 +1348,7 @@ function format_page(pdf, cfg, page_mapping) {
     //if isinstance(item, Songbook):
     if(item instanceof Songbook) {
       // add to outline
-      let key = str(hash(('SONGBOOK ' + item.title)));
+      let key = String(hash(('SONGBOOK ' + item.title)));
       pdf.bookmarkPage(key, left=page_mapping.startx, top=page_mapping.starty-y);
       outline_level = 0;
       pdf.addOutlineEntry(item.title, key, level=outline_level);
@@ -1335,21 +1356,21 @@ function format_page(pdf, cfg, page_mapping) {
 
       // SONGBOOK TITLE
       if(!cfg.HIDE_BOOKTITLE) {
-        y = print_line(pdf, font_face=cfg.FONT_FACE, font_size=cfg.BOOKTITLE_SIZE, y_offset=y,
-                        line_space=cfg.BOOKTITLE_SPACE, page_mapping=page_mapping, line=item.title);
+        y = print_line(pdf, cfg.FONT_FACE, cfg.BOOKTITLE_SIZE, y, 0, cfg.BOOKTITLE_SPACE, page_mapping, item.title);
       }
     }
     // SONG
     else if(item instanceof Song) {
       // add to outline
-      let key = str(hash('SONG(%d): %s' % (item.num, item.title)));
+      let key = String(hash('SONG(%d): %s' % (item.num, item.title)));
       pdf.bookmarkPage(key, left=page_mapping.startx, top=page_mapping.starty-y);
       pdf.addOutlineEntry(item.title, key, level=outline_level);
       //XXX: here we could add stuff to make index entries linkable
 
       // SONG TITLE
-      for(const [i, title_line] of Object.entries(entries.title_wrapped)) {
+      for(const [i, title_line] of Object.entries(item.title_wrapped)) {
       //for i, title_line in enumerate(item.title_wrapped):
+        let indent;
         if(i == 0){ // first line
           indent = 0;
         }
@@ -1357,27 +1378,24 @@ function format_page(pdf, cfg, page_mapping) {
           indent = item.num_width;
         }
 
-        y = print_line(pdf, font_face=cfg.FONT_FACE, font_size=cfg.SONGTITLE_SIZE, y_offset=y,
-                        x_offset=indent, line_space=cfg.SONGTITLE_SPACE, page_mapping=page_mapping, line=title_line);
+        y = print_line(pdf, cfg.FONT_FACE, cfg.SONGTITLE_SIZE, y, indent, cfg.SONGTITLE_SPACE, page_mapping, title_line);
       }
 
       // small_text after title
       for(let sm_line of item.small_text) {
-        y = print_line(pdf, font_face=cfg.FONT_FACE, font_size=cfg.SMALL_SIZE, y_offset=y,
-                       line_space=cfg.SMALL_SPACE, page_mapping=page_mapping, line=sm_line);
+        y = print_line(pdf, cfg.FONT_FACE, cfg.SMALL_SIZE, y, 0, cfg.SMALL_SPACE, page_mapping, sm_line);
       }
 
       // introduction if applicable -- not shown when chords are not shown
       if(item.introduction && cfg.DISPLAY_CHORDS) {
-        y = print_line(pdf, font_face=cfg.FONT_FACE, font_size=cfg.SONGCHORD_SIZE, y_offset=y,
-                       line_space=cfg.SONGCHORD_SPACE, page_mapping=page_mapping, line=item.introduction);
+        y = print_line(pdf, cfg.FONT_FACE, cfg.SONGCHORD_SIZE, y, 0, cfg.SONGCHORD_SPACE, page_mapping, item.introduction);
       }
     }
 
     // VERSE OR CHORUS
     else if( item instanceof Chunk) {
       y += cfg.SONGCHUNK_B4;
-
+      let label;
       // calulate prefix text for the chunk
       if(item.type == 'chorus') {
         label = 'Chorus:';
@@ -1404,9 +1422,9 @@ function format_page(pdf, cfg, page_mapping) {
         label = '';
       }
 
-
+      let label_length;
       if(VARIABLE_INDENT.indexOf(item.type) == -1) {  // these chunks are indented by num of chars in label
-        let label_length = Math.max(myStringWidth(label+'  ', cfg.FONT_FACE, cfg.SONGLINE_SIZE), STANDARD_LABEL_INDENT_LENGTH);
+        label_length = Math.max(myStringWidth(label+'  ', cfg.FONT_FACE, cfg.SONGLINE_SIZE), STANDARD_LABEL_INDENT_LENGTH);
         // type indented no label gets an extra indent
         if(item.type == INDENT_NO_LABEL) {
           label_length *= 2;
@@ -1424,12 +1442,12 @@ function format_page(pdf, cfg, page_mapping) {
         for(const [count, line] of Object.entries(item.lines)) {
         //for count, line in enumerate(item.lines):
           if(count == 0) { // on the first line in the chunk write the label: chorus, 1), 2), 3) ...
+            let new_y;
             if(cfg.DISPLAY_CHORDS && item.has_chords() && item.type == 'verse') { //for verses with chords, we move the label down 
-              new_y = print_line(pdf, font_face=cfg.FONT_FACE, font_size=cfg.SONGLINE_SIZE, y_offset=y+cfg.SONGCHORD_SIZE+cfg.SONGCHORD_SPACE, x_offset=0, line_space=cfg.SONGLINE_SPACE, page_mapping=page_mapping, line=label);
+              new_y = print_line(pdf, cfg.FONT_FACE, cfg.SONGLINE_SIZE, y+cfg.SONGCHORD_SIZE+cfg.SONGCHORD_SPACE, 0, cfg.SONGLINE_SPACE, page_mapping, label);
             }
             else {
-              new_y = print_line(pdf, font_face=cfg.FONT_FACE, font_size=cfg.SONGLINE_SIZE, y_offset=y, x_offset=0,
-                               line_space=cfg.SONGLINE_SPACE, page_mapping=page_mapping, line=label);
+              new_y = print_line(pdf, cfg.FONT_FACE, cfg.SONGLINE_SIZE, y, 0, cfg.SONGLINE_SPACE, page_mapping, label);
             }
             if(VARIABLE_INDENT.indexOf(item.type) == -1) { // standard indent, with chunk body on next line
               y = new_y;                          // so we update y ... in other cases y not updated, so same line used
@@ -1455,10 +1473,9 @@ function format_page(pdf, cfg, page_mapping) {
           // we have a font -- lets use it
           //DBG:sav_y = y
           if(cfg.DISPLAY_CHORDS && item.has_chords()) {
-            y = print_chords(pdf, cfg, font_size=font_size, y_offset=y, x_offset=label_length, page_mapping=page_mapping, line=line);
+            y = print_chords(pdf, cfg, font_size, y, label_length, page_mapping, line);
           }
-          y = print_line(pdf, font_face=cfg.FONT_FACE, font_size=font_size, y_offset=y, x_offset=label_length,
-                         line_space=cfg.SONGLINE_SPACE, page_mapping=page_mapping, line=line.text);
+          y = print_line(pdf, cfg.FONT_FACE, font_size, y, label_length, cfg.SONGLINE_SPACE, page_mapping, line.text);
           //DBG:pdf.setStrokeColor('green')
           //DBG:pdf.rect(page_mapping.startx+label_length, page_mapping.starty-(sav_y),
           //DBG:    pdf.stringWidth(line.text, cfg.FONT_FACE, font_size), -line.height)
@@ -1474,8 +1491,7 @@ function format_page(pdf, cfg, page_mapping) {
       if(item.last_chunk) {
         y += cfg.SONGCHUNK_B4;
         for(let line of item.copyright_footer) {
-          y = print_line(pdf, font_face=cfg.FONT_FACE, font_size=cfg.COPYRIGHT_SIZE, y_offset=y,
-                         line_space=0, page_mapping=page_mapping, line=line);
+          y = print_line(pdf, cfg.FONT_FACE, cfg.COPYRIGHT_SIZE, y, 0, 0, page_mapping, line);
           y += cfg.COPYRIGHT_SPACE;        // COPYRIGHT SPACE is padding between copyright lines 
         }
       }
@@ -1490,8 +1506,7 @@ function format_page(pdf, cfg, page_mapping) {
       if(cfg.DISPLAY_INDEX == INDEX_NO_PAGE_BREAK) {
         y += cfg.INDEX_TITLE_B4;  // only add space when index not starting on a new page
       }
-      y = print_line(pdf, font_face=cfg.INDEX_TITLE_FONT, font_size=cfg.INDEX_TITLE_SIZE, y_offset=y, 
-                      line_space=cfg.INDEX_TITLE_SPACE, page_mapping=page_mapping, line="Alphabetical Index");
+      y = print_line(pdf, cfg.INDEX_TITLE_FONT, cfg.INDEX_TITLE_SIZE, y, 0, cfg.INDEX_TITLE_SPACE, page_mapping, "Alphabetical Index");
     }
 
     // SCRIP INDEX
@@ -1499,37 +1514,35 @@ function format_page(pdf, cfg, page_mapping) {
       if(cfg.DISPLAY_SCRIP_INDEX == INDEX_NO_PAGE_BREAK) {
         y += cfg.INDEX_TITLE_B4;  // only add space when scrip index not starting on a new page
       }
-      y = print_line(pdf, font_face=cfg.INDEX_TITLE_FONT, font_size=cfg.INDEX_TITLE_SIZE, y_offset=y, 
-                      line_space=cfg.INDEX_TITLE_SPACE, page_mapping=page_mapping, line="Scripture Index");
+      y = print_line(pdf, cfg.INDEX_TITLE_FONT, cfg.INDEX_TITLE_SIZE, y, 0, cfg.INDEX_TITLE_SPACE, page_mapping, "Scripture Index");
     }
     // CAT INDEX
     else if((item instanceof CatIndex) && cfg.DISPLAY_CAT_INDEX != INDEX_OFF) { // top-level cat_index which contains index entries
       if(cfg.DISPLAY_CAT_INDEX == INDEX_NO_PAGE_BREAK) {
         y += cfg.INDEX_TITLE_B4;  // adding space because cat_index not starting on a new page
       }
-      y = print_line(pdf, font_face=cfg.INDEX_TITLE_FONT, font_size=cfg.INDEX_TITLE_SIZE, y_offset=y, 
-                      line_space=cfg.INDEX_TITLE_SPACE, page_mapping=page_mapping, line="Category Index");
+      y = print_line(pdf, cfg.INDEX_TITLE_FONT, cfg.INDEX_TITLE_SIZE, y, 0, cfg.INDEX_TITLE_SPACE, page_mapping, "Category Index");
     }
 
     // CAT INDEX Category
     else if((item instanceof Category) && cfg.DISPLAY_CAT_INDEX != INDEX_OFF) { // Category inside cat_index
       y += cfg.INDEX_CAT_B4;  // add space before the category
-      y = print_line(pdf, font_face=cfg.INDEX_CAT_FONT, font_size=cfg.INDEX_CAT_SIZE, y_offset=y, 
-                      line_space=cfg.INDEX_CAT_SPACE, page_mapping=page_mapping, line=item.category);
+      y = print_line(pdf, cfg.INDEX_CAT_FONT, cfg.INDEX_CAT_SIZE, y, 0, cfg.INDEX_CAT_SPACE, page_mapping, item.category);
     }
 
     // CAT INDEX ITEM
     else if((item instanceof CatIndexEntry) && cfg.DISPLAY_CAT_INDEX != INDEX_OFF) {
       // print only the song number at this time -- don't save y since we are going to print on the line again
-      print_line(pdf, font_face=cfg.INDEX_SONG_FONT, font_size=cfg.INDEX_SONG_SIZE, y_offset=y, line_space=cfg.INDEX_SONG_SPACE,
-          page_mapping=page_mapping, line=str(item.song.num));
+      print_line(pdf, cfg.INDEX_SONG_FONT, cfg.INDEX_SONG_SIZE, y, 0, cfg.INDEX_SONG_SPACE, page_mapping, String(item.song.num));
       // now print the index text with a consistent x offset so everything lines up
-      y = print_line(pdf, font_face=cfg.INDEX_SONG_FONT, font_size=cfg.INDEX_SONG_SIZE, y_offset=y, line_space=cfg.INDEX_SONG_SPACE,
-          x_offset=max(cfg.INDEX_SONG_SIZE, cfg.INDEX_FIRST_LINE_SIZE)*2, page_mapping=page_mapping, line=item.index_text);
+      y = print_line(pdf, cfg.INDEX_SONG_FONT, cfg.INDEX_SONG_SIZE, y, Math.max(cfg.INDEX_SONG_SIZE, cfg.INDEX_FIRST_LINE_SIZE)*2, cfg.INDEX_SONG_SPACE, page_mapping, item.index_text);
     }
 
     // INDEX ITEMS (after CatIndexEntry because CatIndexEntry is a subclass of IndexEntry)
     else if((item instanceof IndexEntry) && (cfg.DISPLAY_INDEX != INDEX_OFF || cfg.DISPLAY_SCRIP_INDEX != INDEX_OFF)) {
+      let LINE_SIZE;
+      let LINE_SPACE;
+      let FONT;
       if(item.is_song_title) {
         LINE_SIZE = cfg.INDEX_SONG_SIZE;
         LINE_SPACE= cfg.INDEX_SONG_SPACE;
@@ -1542,11 +1555,9 @@ function format_page(pdf, cfg, page_mapping) {
       }
 
       // print only the song number at this time -- don't save y since we are going to print on the line again
-      print_line(pdf, font_face=FONT, font_size=LINE_SIZE, y_offset=y, line_space=LINE_SPACE,
-          page_mapping=page_mapping, line=str(item.song.num));
+      print_line(pdf, FONT, LINE_SIZE, y, 0, LINE_SPACE, page_mapping, String(item.song.num));
       // now print the index text with a consistent x offset so everything lines up
-      y = print_line(pdf, font_face=FONT, font_size=LINE_SIZE, y_offset=y, line_space=LINE_SPACE,
-          x_offset=max(cfg.INDEX_SONG_SIZE, cfg.INDEX_FIRST_LINE_SIZE)*2, page_mapping=page_mapping, line=item.index_text);
+      y = print_line(pdf, FONT, LINE_SIZE, y, Math.max(cfg.INDEX_SONG_SIZE, cfg.INDEX_FIRST_LINE_SIZE)*2, LINE_SPACE, page_mapping, item.index_text);
     }
   }
   
@@ -1579,9 +1590,9 @@ function format(songbook, pdf, cfg) {
 
   // returns a list of pages: each page is a list of things to show on that page 
   // Songbook and Song objects only count for titles and headers chunks have to be listed separate
-  pages = paginate(songbook, cfg);
+  let pages = paginate(songbook, cfg);
 
-  pages_ordered = cfg.page_layout.page_order(pages);
+  let pages_ordered = cfg.page_layout.page_order(pages);
 
   // pdf object creation must be after the page layout methods are run because the page layout can change the paper size
   pdf = canvas.Canvas(pdf, pagesize=(cfg.PAPER_WIDTH, cfg.PAPER_HEIGHT));
@@ -1625,75 +1636,75 @@ function read_config(config_array) {
   options.SONGS_TO_PRINT =         ((config_array.print_a == null) ? '' : 'a') + 
                                    ((config_array.print_n == null) ? '' : 'n') + 
                                    ((config_array.print_r == null) ? '' : 'r');
-  options.SONGS_TO_PRINT =         songs_to_print;             //type="string",          
-  options.PAPER_SIZE =             paper_size;                 //type="string"          
-  options.PAPER_ORIENTATION =      paper_orientation;          //type="string"          
-  options.PAPER_MARGIN_LEFT =      paper_margin_left;          //type="float"           
-  options.PAPER_MARGIN_RIGHT=      paper_margin_right;         //type="float"           
-  options.PAPER_MARGIN_TOP =       paper_margin_top;           //type="float"           
-  options.PAPER_MARGIN_BOTTOM =    paper_margin_bottom;        //type="float"           
+  options.SONGS_TO_PRINT =         config_array.songs_to_print;             //type="string",          
+  options.PAPER_SIZE =             config_array.paper_size;                 //type="string"          
+  options.PAPER_ORIENTATION =      config_array.paper_orientation;          //type="string"          
+  options.PAPER_MARGIN_LEFT =      config_array.paper_margin_left;          //type="float"           
+  options.PAPER_MARGIN_RIGHT=      config_array.paper_margin_right;         //type="float"           
+  options.PAPER_MARGIN_TOP =       config_array.paper_margin_top;           //type="float"           
+  options.PAPER_MARGIN_BOTTOM =    config_array.paper_margin_bottom;        //type="float"           
 
-  options.PAGE_LAYOUT_NAME =       page_layout;                //type="string"          
-  options.PAGE_MARGIN_LEFT =       page_margin_left;           //type="float"           
-  options.PAGE_MARGIN_RIGHT =      page_margin_right;          //type="float"           
-  options.PAGE_MARGIN_TOP =        page_margin_top;            //type="float"           
-  options.PAGE_MARGIN_BOTTOM =     page_margin_bottom;         //type="float"           
+  options.PAGE_LAYOUT_NAME =       config_array.page_layout;                //type="string"          
+  options.PAGE_MARGIN_LEFT =       config_array.page_margin_left;           //type="float"           
+  options.PAGE_MARGIN_RIGHT =      config_array.page_margin_right;          //type="float"           
+  options.PAGE_MARGIN_TOP =        config_array.page_margin_top;            //type="float"           
+  options.PAGE_MARGIN_BOTTOM =     config_array.page_margin_bottom;         //type="float"           
 
-  options.BINDER_MARGIN =          binder_margin;              //type="float"           
+  options.BINDER_MARGIN =          config_array.binder_margin;              //type="float"           
 
-  options.FONT_FACE =              font_face;                  //type="string"          
+  options.FONT_FACE =              config_array.font_face;                  //type="string"          
 
-  options.CCLI =                   ccli;                       //type="string"          
+  options.CCLI =                   config_array.ccli;                       //type="string"          
 
-  options.COLUMNS =                columns;                    //type="int"             
+  options.COLUMNS =                config_array.columns;                    //type="int"             
 
-  options.BOOKTITLE_SIZE =         booktitle_size;             //type="int"             
-  options.BOOKTITLE_SPACE =        booktitle_space;            //type="int"             
-  options.HIDE_BOOKTITLE =         hide_booktitle;             //type="string"          
+  options.BOOKTITLE_SIZE =         config_array.booktitle_size;             //type="int"             
+  options.BOOKTITLE_SPACE =        config_array.booktitle_space;            //type="int"             
+  options.HIDE_BOOKTITLE =         config_array.hide_booktitle;             //type="string"          
 
-  options.START_SONG_ON_NEW_PAGE = start_song_on_new_page;     //type="string"          
-  options.SONGTITLE_FORMAT =       songtitle_format;           //type="string"          
-  options.SONGTITLE_SIZE =         songtitle_size;             //type="int"             
-  options.SONGTITLE_SPACE =        songtitle_space;            //type="int"             
-  options.SONG_SPACE_AFTER =       song_space_after;           //type="int"             
-  options.SONGCHUNK_B4 =           songchunk_b4;               //type="int"             
-  options.SONGLINE_SIZE =          songline_size;              //type="int"             
-  options.SONGLINE_SPACE =         songline_space;             //type="int"             
-  options.SONGCHORD_SIZE =         songchord_size;             //type="int"             
-  options.SONGCHORD_SPACE =        songchord_space;            //type="int"             
-  options.DISPLAY_CHORDS =         display_chords;             //type="string"          
+  options.START_SONG_ON_NEW_PAGE = config_array.start_song_on_new_page;     //type="string"          
+  options.SONGTITLE_FORMAT =       config_array.songtitle_format;           //type="string"          
+  options.SONGTITLE_SIZE =         config_array.songtitle_size;             //type="int"             
+  options.SONGTITLE_SPACE =        config_array.songtitle_space;            //type="int"             
+  options.SONG_SPACE_AFTER =       config_array.song_space_after;           //type="int"             
+  options.SONGCHUNK_B4 =           config_array.songchunk_b4;               //type="int"             
+  options.SONGLINE_SIZE =          config_array.songline_size;              //type="int"             
+  options.SONGLINE_SPACE =         config_array.songline_space;             //type="int"             
+  options.SONGCHORD_SIZE =         config_array.songchord_size;             //type="int"             
+  options.SONGCHORD_SPACE =        config_array.songchord_space;            //type="int"             
+  options.DISPLAY_CHORDS =         config_array.display_chords;             //type="string"          
 
-  options.SMALL_SIZE =             small_size;                 //type="int"            
-  options.SMALL_SPACE =            small_space;                //type="int"             
+  options.SMALL_SIZE =             config_array.small_size;                 //type="int"            
+  options.SMALL_SPACE =            config_array.small_space;                //type="int"             
 
-  options.SCRIPTURE_LOCATION =     scripture_location;         //type="string"          
+  options.SCRIPTURE_LOCATION =     config_array.scripture_location;         //type="string"          
 
-  options.COPYRIGHT_SIZE =         copyright_size;             //type="int"             
-  options.COPYRIGHT_SPACE =        copyright_space_b4;         //type="int"             
+  options.COPYRIGHT_SIZE =         config_array.copyright_size;             //type="int"             
+  options.COPYRIGHT_SPACE =        config_array.copyright_space_b4;         //type="int"             
 
-  options.RESIZE_PERCENT =         resize_percent;             //type="int"             
+  options.RESIZE_PERCENT =         config_array.resize_percent;             //type="int"             
 
-  options.DISPLAY_CAT_INDEX =      display_cat_index;          //type="string"          
-  options.DISPLAY_SCRIP_INDEX =    display_scrip_index;        //type="string"          
-  options.DISPLAY_INDEX =          display_index;              //type="string"          
-  options.INCLUDE_FIRST_LINE =     include_first_line;         //type="string"          
-  options.INDEX_TITLE_FONT =       index_title_font;           //type="string"          
-  options.INDEX_TITLE_B4 =         index_title_b4;             //type="int"             
-  options.INDEX_TITLE_SIZE =       index_title_size;           //type="int"             
-  options.INDEX_TITLE_SPACE =      index_title_space;          //type="int"             
-  options.INDEX_CAT_FONT =         index_cat_font;             //type="string"          
-  options.INDEX_CAT_B4 =           index_cat_b4;               //type="int"             
-  options.INDEX_CAT_SIZE =         index_cat_size;             //type="int"             
-  options.INDEX_CAT_SPACE =        index_cat_space;            //type="int"             
-  options.INDEX_CAT_EXCLUDE =      index_cat_exclude;          //type="string"          
-  options.INDEX_SONG_FONT =        index_song_font;            //type="string"          
-  options.INDEX_SONG_SIZE =        index_song_size;            //type="int"             
-  options.INDEX_SONG_SPACE =       index_song_space;           //type="int"             
-  options.INDEX_FIRST_LINE_FONT =  index_first_line_font;      //type="string"          
-  options.INDEX_FIRST_LINE_SIZE =  index_first_line_size;      //type="int"             
-  options.INDEX_FIRST_LINE_SPACE = index_first_line_space;     //type="int"             
+  options.DISPLAY_CAT_INDEX =      config_array.display_cat_index;          //type="string"          
+  options.DISPLAY_SCRIP_INDEX =    config_array.display_scrip_index;        //type="string"          
+  options.DISPLAY_INDEX =          config_array.display_index;              //type="string"          
+  options.INCLUDE_FIRST_LINE =     config_array.include_first_line;         //type="string"          
+  options.INDEX_TITLE_FONT =       config_array.index_title_font;           //type="string"          
+  options.INDEX_TITLE_B4 =         config_array.index_title_b4;             //type="int"             
+  options.INDEX_TITLE_SIZE =       config_array.index_title_size;           //type="int"             
+  options.INDEX_TITLE_SPACE =      config_array.index_title_space;          //type="int"             
+  options.INDEX_CAT_FONT =         config_array.index_cat_font;             //type="string"          
+  options.INDEX_CAT_B4 =           config_array.index_cat_b4;               //type="int"             
+  options.INDEX_CAT_SIZE =         config_array.index_cat_size;             //type="int"             
+  options.INDEX_CAT_SPACE =        config_array.index_cat_space;            //type="int"             
+  options.INDEX_CAT_EXCLUDE =      config_array.index_cat_exclude;          //type="string"          
+  options.INDEX_SONG_FONT =        config_array.index_song_font;            //type="string"          
+  options.INDEX_SONG_SIZE =        config_array.index_song_size;            //type="int"             
+  options.INDEX_SONG_SPACE =       config_array.index_song_space;           //type="int"             
+  options.INDEX_FIRST_LINE_FONT =  config_array.index_first_line_font;      //type="string"          
+  options.INDEX_FIRST_LINE_SIZE =  config_array.index_first_line_size;      //type="int"             
+  options.INDEX_FIRST_LINE_SPACE = config_array.index_first_line_space;     //type="int"             
 
-  options.DEBUG_MARGINS =          debug_margins;              //type="string"          
+  options.DEBUG_MARGINS =          config_array.debug_margins;              //type="string"          
 
   //(options, args) = config.parse_args(config_string.split())
 
@@ -1706,14 +1717,14 @@ function read_config(config_array) {
 
   if (options.SONGTITLE_FORMAT) {
     if (options.SONGTITLE_FORMAT == '') {  // special case for when the option field is left blank in HTML
-      options.SONGTITLE_FORMAT = string.Template('$title');
+      options.SONGTITLE_FORMAT = `${title}`;
     }
     else {
-      options.SONGTITLE_FORMAT = string.Template(options.SONGTITLE_FORMAT.replace(/\s/, ' ') + ' $title');
+      options.SONGTITLE_FORMAT = String.Template(options.SONGTITLE_FORMAT.replace(/\s/, ' ') + ' ${title}');
     }
   }
   else {
-    options.SONGTITLE_FORMAT = string.Template(/$num. $title/);
+    options.SONGTITLE_FORMAT = `${num}. ${title}`;
   }
 
   if (options.HIDE_BOOKTITLE && options.HIDE_BOOKTITLE.lower() == 'yes') {
