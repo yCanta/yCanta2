@@ -1,12 +1,25 @@
 /*jshint esversion: 6 */
-
 var lorem =
   'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam in suscipit purus. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; Vivamus nec hendrerit felis. Morbi aliquam facilisis risus eu lacinia. Sed eu leo in turpis fringilla hendrerit. Ut nec accumsan nisl. Suspendisse rhoncus nisl posuere tortor tempus et dapibus elit porta. Cras leo neque, elementum a rhoncus ut, vestibulum non nibh. Phasellus pretium justo turpis. Etiam vulputate, odio vitae tincidunt ultricies, eros odio dapibus nisi, ut tincidunt lacus arcu eu elit. Aenean velit erat, vehicula eget lacinia ut, dignissim non tellus. Aliquam nec lacus mi, sed vestibulum nunc. Suspendisse potenti. Curabitur vitae sem turpis. Vestibulum sed neque eget dolor dapibus porttitor at sit amet sem. Fusce a turpis lorem. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae;\nMauris at ante tellus. Vestibulum a metus lectus. Praesent tempor purus a lacus blandit eget gravida ante hendrerit. Cras et eros metus. Sed commodo malesuada eros, vitae interdum augue semper quis. Fusce id magna nunc. Curabitur sollicitudin placerat semper. Cras et mi neque, a dignissim risus. Nulla venenatis porta lacus, vel rhoncus lectus tempor vitae. Duis sagittis venenatis rutrum. Curabitur tempor massa tortor.';
-
+var doc;
+var inch = 72;
 function makePDF(PDFDocument, blobStream, lorem, iframe) {
+  
   // create a document and pipe to a blob
-  var doc = new PDFDocument();
+  let options = {size: 'A6', layout: 'landscape'};
+  const doc = new PDFDocument(options);
   var stream = doc.pipe(blobStream());
+  
+  let doinks = read_config_form();
+
+  //format(window.exportObject, "", read_config_form());
+
+
+  
+  //console.log(doc.page);
+
+ // doc.addPage({
+   // layout: 'portrait', size: 'A6'});
 
   //What structure for songs to be worked through?
 
@@ -78,39 +91,39 @@ try:
     from collections import defaultdict
 except:
     class defaultdict(dict):
-        constructor(self, default_factory=null, *a, **kw):
+        constructor(this, default_factory=null, *a, **kw):
             if (default_factory is not null and
                 not hasattr(default_factory, '__call__')):
                 raise TypeError('first argument must be callable')
-            dict.__init__(self, *a, **kw)
-            self.default_factory = default_factory
-        def __getitem__(self, key):
+            dict.__init__(this, *a, **kw)
+            this.default_factory = default_factory
+        def __getitem__(this, key):
             try:
-                return dict.__getitem__(self, key)
+                return dict.__getitem__(this, key)
             except KeyError:
-                return self.__missing__(key)
-        def __missing__(self, key):
-            if self.default_factory is null:
+                return this.__missing__(key)
+        def __missing__(this, key):
+            if this.default_factory is null:
                 raise KeyError(key)
-            self[key] = value = self.default_factory()
+            this[key] = value = this.default_factory()
             return value
-        def __reduce__(self):
-            if self.default_factory is null:
+        def __reduce__(this):
+            if this.default_factory is null:
                 args = tuple()
             else:
-                args = self.default_factory,
-            return type(self), args, null, null, self.items()
-        def copy(self):
-            return self.__copy__()
-        def __copy__(self):
-            return type(self)(self.default_factory, self)
-        def __deepcopy__(self, memo):
+                args = this.default_factory,
+            return type(this), args, null, null, this.items()
+        def copy(this):
+            return this.__copy__()
+        def __copy__(this):
+            return type(this)(this.default_factory, this)
+        def __deepcopy__(this, memo):
             import copy
-            return type(self)(self.default_factory,
-                              copy.deepcopy(self.items()))
-        def __repr__(self):
-            return 'defaultdict(%s, %s)' % (self.default_factory,
-                                            dict.__repr__(self))
+            return type(this)(this.default_factory,
+                              copy.deepcopy(this.items()))
+        def __repr__(this):
+            return 'defaultdict(%s, %s)' % (this.default_factory,
+                                            dict.__repr__(this))
 */
 class defaultdict {
   constructor(defaultInit) {
@@ -143,61 +156,61 @@ var BIBLE_BOOK_ORDER_DICT = {'gen':1,'genesis':1,'ex':2,'exod':2,'exodus':2,'lev
 // our data objects
 // ================*/
 class Songbook {
-  constructor(self, title, ccli=''){
-    self.title = title;
-    self.ccli = ccli;
-    self.songs = [];
-    self.scrip_index = ScripIndex(); // list of IndexEntry's
-    self.index = Index();            // list of IndexEntry's
-    self.cat_index = CatIndex();     // dict of CatIndexEntry's
-    self.height = 0;
-    self.height_after = 0;
+  constructor(title, ccli=''){
+    this.title = title;
+    this.ccli = ccli;
+    this.songs = [];
+    this.scrip_index = new ScripIndex(this); // list of IndexEntry's
+    this.index = new Index(this);            // list of IndexEntry's
+    this.cat_index = new CatIndex(this);     // dict of CatIndexEntry's
+    this.height = 0;
+    this.height_after = 0;
   }
 }
 
-class Index {
-  constructor(self) {
-    var star_args = Array.prototype.slice.call (arguments, func.length);
-    Array.call(self, star_args);
-    self.height = 0;
-    self.height_after = 0;
+class Index extends Array {
+  constructor() {
+    var star_args = Array.prototype.slice.call(arguments, constructor.length);
+    super(star_args);
+    this.height = 0;
+    this.height_after = 0;
   }
 }
 
-class ScripIndex {
-  constructor(self){
-    var star_args = Array.prototype.slice.call (arguments, func.length);
-    Array.call(self, star_args);
-    self.height = 0;
-    self.height_after = 0;
+class ScripIndex extends Array {
+  constructor(){
+    var star_args = Array.prototype.slice.call(arguments, constructor.length);
+    super(star_args);
+    this.height = 0;
+    this.height_after = 0;
   }
 }
 
-class CatIndex {
-  constructor(self){
-    var star_args = Array.prototype.slice.call (arguments, func.length);
-    //defaultdict.call(self, list, star_args)
-    defaultdict.call(self, star_args);
-    self.height = 0;
-    self.height_after = 0;
+class CatIndex extends defaultdict {
+  constructor(){
+    var star_args = Array.prototype.slice.call(arguments, constructor.length);
+    //defaultdict.call(this, list, star_args)
+    super(star_args);
+    this.height = 0;
+    this.height_after = 0;
   }
 }
 
 class Category {
-  constructor(self, category, height){
-    self.category = category;
-    self.height = height;
-    self.height_after = 0;
+  constructor(category, height){
+    this.category = category;
+    this.height = height;
+    this.height_after = 0;
   }
 }
 
 class IndexEntry {
-  constructor(self, song, index_text, is_song_title){
-    self.song = song;
-    self.index_text = index_text.trim();
-    self.is_song_title = is_song_title;
-    self.height = 0;
-    self.height_after = 0;
+  constructor(song, index_text, is_song_title){
+    this.song = song;
+    this.index_text = index_text.trim();
+    this.is_song_title = is_song_title;
+    this.height = 0;
+    this.height_after = 0;
   }
 }
 
@@ -206,46 +219,46 @@ class CatIndexEntry {
 }
 
 class Song {
-  constructor(self, title, author, copyright='', ccli='', scripture_ref='', key='', introduction=null, categories=null){
-    self.title = title.trim();
-    self.author = author.trim();
-    self.copyright = copyright.trim();
-    self.ccli = ccli.trim();
-    self.scripture_ref = scripture_ref.trim();
-    self.key = key.trim();
-    if (self.key){
-      self.key = 'Key: ' + self.key;
+  constructor(title, author, copyright='', ccli='', scripture_ref='', key='', introduction=null, categories=null){
+    this.title = title.trim();
+    this.author = author.trim();
+    this.copyright = copyright.trim();
+    this.ccli = ccli.trim();
+    this.scripture_ref = scripture_ref.trim();
+    this.key = key.trim();
+    if (this.key){
+      this.key = 'Key: ' + this.key;
     }
-    self.introduction = introduction;
-    self.categories = categories || [];
+    this.introduction = introduction;
+    this.categories = categories || [];
 
-    self.chunks = [];
-    self.num = null;  // song number in songbook
-    self.height = 0;
-    self.height_after = 0;
+    this.chunks = [];
+    this.num = null;  // song number in songbook
+    this.height = 0;
+    this.height_after = 0;
   }
 }
 
 class Chunk {
-  constructor(self, type){
-    self.type = type;
-    self.lines = [];
-    self.num = null; // verse number if self.type == 'verse' else null
-    self.height = 0;
-    self.height_after = 0;
+  constructor(type){
+    this.type = type;
+    this.lines = [];
+    this.num = null; // verse number if this.type == 'verse' else null
+    this.height = 0;
+    this.height_after = 0;
   }
 
   has_chords() {
-    return self.lines.filter(l => l.chords).length !== 0;
+    return this.lines.filter(l => l.chords).length !== 0;
   }
 }
 
 class Line {
-  constructor(self, text, chords){
-    self.text = text;
-    self.chords = chords;
-    self.height = 0;
-    self.height_after = 0;
+  constructor(text, chords){
+    this.text = text;
+    this.chords = chords;
+    this.height = 0;
+    this.height_after = 0;
   }
 }
 
@@ -356,17 +369,18 @@ function parse_song(song_object){  //json song object
 
       // done parsing line -- add it
       line = Line(text, chords);
-      chunk.lines.append(line);
+      chunk.lines.push(line);
     }
 
     // done parsing chunk -- add it
-    song.chunks.append(chunk);
+    song.chunks.push(chunk);
   }
   return song;
 }
 
 
 function parse(export_object, cfg) {
+  console.log(export_object.title);
   // if xml passed as filename, convert to object
   /*if isinstance(xml, basestring) and os.path.isfile(xml):
     xml = etree_parse(xml).getroot()*/
@@ -402,11 +416,11 @@ function parse(export_object, cfg) {
     song_num += 1;
 
     // done parsing song -- add it
-    songbook.songs.append(song);
+    songbook.songs.push(song);
 
     // generate index entries for this song
     if(cfg.DISPLAY_INDEX != INDEX_OFF){
-      songbook.index.append(IndexEntry(song, song.title, true));
+      songbook.index.push(IndexEntry(song, song.title, true));
     }
     for(let cat of song.categories){  // an entry for each category in the song
       let exclude = false;
@@ -417,14 +431,14 @@ function parse(export_object, cfg) {
         }
       }
       if(!exclude){
-        songbook.cat_index[cat].append(CatIndexEntry(song, song.title, true));
+        songbook.cat_index[cat].push(CatIndexEntry(song, song.title, true));
       }
     }
     // add entries for scripture ref
     if(song.scripture_ref && cfg.DISPLAY_SCRIP_INDEX != INDEX_OFF){
       let scripture_refs = song.scripture_ref.split(/[,;]\s(?=[A-Za-z])/);
       for(let scripture_ref of scripture_refs){
-        songbook.scrip_index.append(IndexEntry(song, scripture_ref, true));
+        songbook.scrip_index.push(IndexEntry(song, scripture_ref, true));
       }
     }
     // add some first line index entries
@@ -433,8 +447,8 @@ function parse(export_object, cfg) {
       for(let chunk of song.chunks){
         // if this is a chorus chunk or a first verse chunk AND the first line is not the same as the song title
         if((chunk.type == 'chorus' || ((('verse', 'no label', INDENT_NO_LABEL).indexOf(chunk.type) > -1) && first_verse)) && 
-          (chunk.lines.length > 0) && (chunk.lines[0].text.replace(/[^A-Za-z]/, '').lower() != song.title.replace(/[^A-Za-z]/, '').lower())) {
-          songbook.index.append(IndexEntry(song, chunk.lines[0].text, false));
+          (chunk.lines.length > 0) && (chunk.lines[0].text.replace(/[^A-Za-z]/, '').toLowerCase() != song.title.replace(/[^A-Za-z]/, '').toLowerCase())) {
+          songbook.index.push(IndexEntry(song, chunk.lines[0].text, false));
           // TODO? at the moment, not including first line entries in cat index
 
           // don't do any more verse index entries -- we aren't on the first verse anymore
@@ -451,38 +465,38 @@ function parse(export_object, cfg) {
 
 
 class PageMapping{
-  constructor(self, page=null, startx=null, starty=null, endx=null, endy=null){
+  constructor(page=null, startx=null, starty=null, endx=null, endy=null){
     //assert page is not null and startx is not null and starty is not null and endx is not null and endy is not null
-    self.page = page;
-    self.startx = startx;
-    self.starty = starty;
-    self.endx = endx;
-    self.endy = endy;
+    this.page = page;
+    this.startx = startx;
+    this.starty = starty;
+    this.endx = endx;
+    this.endy = endy;
   }
 }
 
 class PageLayout{
   //"""Interface required for objects doing page layout and ordering"""
-  constructor(self, options) {
+  constructor(options) {
     //pass
   }
 
-  get_page_width(self) {
+  get_page_width() {
     //'''Returns the width of each page (not piece of paper) based on the options passed to __init__'''
    // pass
   }
 
-  get_page_height(self) {
+  get_page_height() {
     //'''Returns the height of each page (not piece of paper) based on the options passed to __init__'''
     //pass
   }
 
-  page_order(self, pages) {
+  page_order(pages) {
     //'''Returns a list of lists -- each inner list maps 0..n virtual pages to the physical paper'''
     //pass
   }
 
-  previous_page_visible(self, previous_pages) {
+  previous_page_visible(previous_pages) {
     //'''Returns True or False -- looks at previous_pages to determine if the chorus needs to be duplicated'''
     //pass
   }
@@ -501,22 +515,22 @@ function get_page_layouts() {
 }
 
 class PageLayoutSimple {
-  constructor(self, options) {
-    self.cfg = options;
+  constructor(options) {
+    this.cfg = options;
   }
 
-  get_page_width(self) {
-    return self.cfg.PAPER_WIDTH - (self.cfg.PAPER_MARGIN_RIGHT + self.cfg.PAPER_MARGIN_LEFT
-                                  +self.cfg.PAGE_MARGIN_RIGHT  + self.cfg.PAGE_MARGIN_LEFT);
+  get_page_width() {
+    return this.cfg.PAPER_WIDTH - (this.cfg.PAPER_MARGIN_RIGHT + this.cfg.PAPER_MARGIN_LEFT
+                                  +this.cfg.PAGE_MARGIN_RIGHT  + this.cfg.PAGE_MARGIN_LEFT);
   }
 
-  get_page_height(self) {
-    return self.cfg.PAPER_HEIGHT - (self.cfg.PAPER_MARGIN_TOP + self.cfg.PAPER_MARGIN_BOTTOM
-                                   +self.cfg.PAGE_MARGIN_TOP  + self.cfg.PAGE_MARGIN_BOTTOM);
+  get_page_height() {
+    return this.cfg.PAPER_HEIGHT - (this.cfg.PAPER_MARGIN_TOP + this.cfg.PAPER_MARGIN_BOTTOM
+                                   +this.cfg.PAGE_MARGIN_TOP  + this.cfg.PAGE_MARGIN_BOTTOM);
   }
 
-  page_order(self, pages) {
-    let cfg = self.cfg;
+  page_order(pages) {
+    let cfg = this.cfg;
     // helper function
     function _make_mapping(p) {
       return PageMapping(
@@ -530,7 +544,7 @@ class PageLayoutSimple {
     return pages.map(p => _make_mapping(p));
   }
 
-  previous_page_visible(self, previous_pages){
+  previous_page_visible(previous_pages){
     return false;
   }
 }
@@ -538,51 +552,51 @@ class PageLayoutSimple {
 //register_page_layout('simple', PageLayoutSimple)
 
 class PageLayoutColumn {
-  constructor(self, options) {
-    self.cfg = options;
+  constructor(options) {
+    this.cfg = options;
   }
 
-  get_page_width(self, margin=1) {
-    let ret = (self.cfg.PAPER_WIDTH - (self.cfg.PAPER_MARGIN_RIGHT + self.cfg.PAPER_MARGIN_LEFT)) / self.cfg.COLUMNS;
+  get_page_width(margin=1) {
+    let ret = (this.cfg.PAPER_WIDTH - (this.cfg.PAPER_MARGIN_RIGHT + this.cfg.PAPER_MARGIN_LEFT)) / this.cfg.COLUMNS;
     if (margin) {
-      ret = ret - (self.cfg.PAGE_MARGIN_RIGHT + self.cfg.PAGE_MARGIN_LEFT);
+      ret = ret - (this.cfg.PAGE_MARGIN_RIGHT + this.cfg.PAGE_MARGIN_LEFT);
     }
     return ret;
   }
 
-  get_page_height(self) {
-    return self.cfg.PAPER_HEIGHT - (self.cfg.PAPER_MARGIN_TOP + self.cfg.PAPER_MARGIN_BOTTOM
-                                   +self.cfg.PAGE_MARGIN_TOP  + self.cfg.PAGE_MARGIN_BOTTOM);
+  get_page_height() {
+    return this.cfg.PAPER_HEIGHT - (this.cfg.PAPER_MARGIN_TOP + this.cfg.PAPER_MARGIN_BOTTOM
+                                   +this.cfg.PAGE_MARGIN_TOP  + this.cfg.PAGE_MARGIN_BOTTOM);
   }
 
-  page_order(self, pages) {
+  page_order(pages) {
     let ret = [];
     let curent_paper_page = [];
     
     for(let p of pages) {
-      let sx=self.cfg.PAPER_MARGIN_LEFT+self.cfg.PAGE_MARGIN_LEFT + curent_paper_page.length*self.get_page_width(0);
-      let sy=self.cfg.PAPER_HEIGHT - (self.cfg.PAPER_MARGIN_TOP + self.cfg.PAGE_MARGIN_TOP);
-      let ex=sx + self.get_page_width(1); // margin=1 so margins not included in calc
-      let ey=self.cfg.PAPER_MARGIN_BOTTOM + self.cfg.PAGE_MARGIN_BOTTOM;
+      let sx=this.cfg.PAPER_MARGIN_LEFT+this.cfg.PAGE_MARGIN_LEFT + curent_paper_page.length*this.get_page_width(0);
+      let sy=this.cfg.PAPER_HEIGHT - (this.cfg.PAPER_MARGIN_TOP + this.cfg.PAGE_MARGIN_TOP);
+      let ex=sx + this.get_page_width(1); // margin=1 so margins not included in calc
+      let ey=this.cfg.PAPER_MARGIN_BOTTOM + this.cfg.PAGE_MARGIN_BOTTOM;
 
-      curent_paper_page.append(PageMapping(p, sx, sy, ex, ey));
+      curent_paper_page.push(new PageMapping(p, sx, sy, ex, ey));
       
-      if(curent_paper_page.length >= self.cfg.COLUMNS) {
-        ret.append(curent_paper_page);
+      if(curent_paper_page.length >= this.cfg.COLUMNS) {
+        ret.push(curent_paper_page);
         curent_paper_page = [];
       }
     }
 
     if(curent_paper_page.length > 0) {
-      ret.append(curent_paper_page);
+      ret.push(curent_paper_page);
     }
 
     return ret;
   }
 
-  previous_page_visible(self, previous_pages) {
+  previous_page_visible(previous_pages) {
     // if the previous_pages just completed the last column on the previous physical page
-    if(previous_pages.length % self.cfg.COLUMNS == 0) {
+    if(previous_pages.length % this.cfg.COLUMNS == 0) {
       return false;
     }
 
@@ -603,23 +617,23 @@ function shift_mappings(mappings, right=0) {
   return mappings;
 }
 
-class PageLayoutColumn1Sided {
-  constructor(self, options) {
-    PageLayoutColumn.__init__(self, options);
+class PageLayoutColumn1Sided extends PageLayoutColumn {
+  constructor(options) {
+    super(options);
 
     // save old width and apply binder
-    self.old_width = self.cfg.PAPER_WIDTH;
-    self.cfg.PAPER_WIDTH = self.old_width - self.cfg.BINDER_MARGIN;
+    this.old_width = this.cfg.PAPER_WIDTH;
+    this.cfg.PAPER_WIDTH = this.old_width - this.cfg.MARGIN_GUTTER;
   }
 
-  page_order(self, pages) {
-    pages = PageLayoutColumn.page_order(self, pages);
+  page_order(pages) {
+    pages = PageLayoutColumn.prototype.page_order.call(this, pages);
     for(let pg of pages) {
-      shift_mappings(pg, self.cfg.BINDER_MARGIN);
+      shift_mappings(pg, this.cfg.MARGIN_GUTTER);
     }
 
     // return page size to normal
-    self.cfg.PAPER_WIDTH = self.old_width;
+    this.cfg.PAPER_WIDTH = this.old_width;
 
     return pages;
   }
@@ -628,25 +642,25 @@ class PageLayoutColumn1Sided {
 register_page_layout('single-sided', PageLayoutColumn1Sided);
 
 
-class PageLayoutColumn2Sided {
-  constructor(self, options) {
-    PageLayoutColumn.__init__(self, options);
+class PageLayoutColumn2Sided extends PageLayoutColumn {
+  constructor(options) {
+    super(options);
 
     // save old width and apply binder
-    self.old_width = self.cfg.PAPER_WIDTH;
-    self.cfg.PAPER_WIDTH = self.old_width - self.cfg.BINDER_MARGIN;
+    this.old_width = this.cfg.PAPER_WIDTH;
+    this.cfg.PAPER_WIDTH = this.old_width - this.cfg.MARGIN_GUTTER;
   }
 
-  page_order(self, pages) {
-    pages = PageLayoutColumn.page_order(self, pages);
+  page_order(pages) {
+    pages = PageLayoutColumn.page_order(pages);
     for(const [i, pg] of Object.entries(pages)) {
       if(i % 2 == 0) {  // every other page must be shifted since we are printing double sided
-        shift_mappings(pg, self.cfg.BINDER_MARGIN);
+        shift_mappings(pg, this.cfg.MARGIN_GUTTER);
       }
     }
 
     // return page size to normal
-    self.cfg.PAPER_WIDTH = self.old_width;
+    this.cfg.PAPER_WIDTH = this.old_width;
 
     return pages;
   }
@@ -655,21 +669,21 @@ class PageLayoutColumn2Sided {
 register_page_layout('double-sided', PageLayoutColumn2Sided);
 
 
-class PageLayoutBooklet {
-  constructor(self, options) {
-    PageLayoutColumn.__init__(self, options); // call super
+class PageLayoutBooklet extends PageLayoutColumn {
+  constructor(options) {
+    super(options); // call super
 
     // mess with paper size -- make it half size with new height being old width and new width being 1/2 old height
     // we won't keep this messed up size, but it is needs to be messed up prior to the formatting stage
-    self.old_width = self.cfg.PAPER_WIDTH;
-    self.old_height = self.cfg.PAPER_HEIGHT;
-    self.cfg.PAPER_HEIGHT = self.old_width;
-    self.cfg.PAPER_WIDTH = (self.old_height - self.cfg.BINDER_MARGIN) / 2.0;
+    this.old_width = this.cfg.PAPER_WIDTH;
+    this.old_height = this.cfg.PAPER_HEIGHT;
+    this.cfg.PAPER_HEIGHT = this.old_width;
+    this.cfg.PAPER_WIDTH = (this.old_height - this.cfg.MARGIN_GUTTER) / 2.0;
   }
 
-  page_order(self, pages) {
+  page_order(pages) {
     // first run through our parent (column layout) page order algorithm
-    pages = PageLayoutColumn.page_order(self, pages);
+    pages = PageLayoutColumn.page_order(pages);
     
     // now pages is a list of lists of PageMappings -- we need to map 4 of the inner lists onto each sheet of paper
     let paper_pages = [];
@@ -691,20 +705,20 @@ class PageLayoutBooklet {
     // process pages in groups of 4
     for(let i of range(0, pages.length, 4)) {
       if ((i+0) < pages.length) {  // page 1 on physical paper
-        page1 = shift_mappings(pages[i+0], self.cfg.PAPER_WIDTH + self.cfg.BINDER_MARGIN);  // shift right (include binder)
+        page1 = shift_mappings(pages[i+0], this.cfg.PAPER_WIDTH + this.cfg.MARGIN_GUTTER);  // shift right (include binder)
       }
       if ((i+1) < pages.length) {  // page 2 on physical paper
         page2 = pages[i+1];                                                   // no shift
       }
       if ((i+2) < pages.length) {  // page 3 on physical paper
-        page3 = shift_mappings(pages[i+2], self.cfg.PAPER_WIDTH + self.cfg.BINDER_MARGIN);  // shift right (include binder)
+        page3 = shift_mappings(pages[i+2], this.cfg.PAPER_WIDTH + this.cfg.MARGIN_GUTTER);  // shift right (include binder)
       }
       if ((i+3) < pages.length) {  // page 4 on physical paper
         page4 = pages[i+3];                                                   // no shift
 
         // all 4 pages have now been found and shifted as needed
-        paper_pages.append(page4+page1);  // 4 and 1 on same page
-        paper_pages.append(page2+page3);  // 2 and 3 on following page
+        paper_pages.push(page4+page1);  // 4 and 1 on same page
+        paper_pages.push(page2+page3);  // 2 and 3 on following page
         
         // discard saved pages -- they are now in page list
         page1 = [];
@@ -716,27 +730,27 @@ class PageLayoutBooklet {
 
     // add any pages that were defined but not added (adds only done in the loop when page 4 is reached)
     if (page1==[]) {
-      paper_pages.append(page1);
+      paper_pages.push(page1);
     }
     if (page2==[] || page3==[]) {
-      paper_pages.append(page2+page3);
+      paper_pages.push(page2+page3);
     }
 
     // set the paper sizes back to normal (but flipped 90 degrees)
-    self.cfg.PAPER_WIDTH = self.old_height;
-    self.cfg.PAPER_HEIGHT = self.old_width;
+    this.cfg.PAPER_WIDTH = this.old_height;
+    this.cfg.PAPER_HEIGHT = this.old_width;
 
     return paper_pages;
   }
 
-  previous_page_visible(self, previous_pages) {
+  previous_page_visible(previous_pages) {
     // base our decision on what parent PageLayoutColumn would do
-    let crosses_pages =  PageLayoutColumn.previous_page_visible(self, previous_pages);
+    let crosses_pages =  PageLayoutColumn.previous_page_visible(previous_pages);
 
     // but we have page 2 and page 3 opening across from each other
     // and page 4 and 1 open across from each other when the little booklets go together
     // ... so in one case we can see previous page even when columns say we shouldn't
-    let physical_pages = previous_pages.length / self.cfg.COLUMNS;      // self.cfg.COLUMNS per page
+    let physical_pages = previous_pages.length / this.cfg.COLUMNS;      // this.cfg.COLUMNS per page
 
 
     // if this is page 2 or 4 now, then prev. page is visible 
@@ -752,22 +766,26 @@ class PageLayoutBooklet {
 register_page_layout('booklet', PageLayoutBooklet);
 
 
-class PageLayoutAdobeBooklet{
-  constructor(self, options) {
-    PageLayoutColumn.__init__(self, options); // call super
+class PageLayoutAdobeBooklet extends PageLayoutColumn {
+  constructor(options) {
+    super(options); // call super
 
     // mess with paper size -- make it half size with new height being old width and new width being 1/2 old height
-    let old_width = self.cfg.PAPER_WIDTH;
-    let old_height = self.cfg.PAPER_HEIGHT;
-    self.cfg.PAPER_HEIGHT = old_width;
-    self.cfg.PAPER_WIDTH = old_height / 2.0;
+    let old_width = this.cfg.PAPER_WIDTH;
+    let old_height = this.cfg.PAPER_HEIGHT;
+    this.cfg.PAPER_HEIGHT = old_width;
+    this.cfg.PAPER_WIDTH = old_height / 2.0;
   }
 }
 
 register_page_layout('adobe-booklet', PageLayoutAdobeBooklet);
 
 function myStringWidth(text, font, size) {
-  let s = stringWidth(text, font, size);  //PDFFUNCTION!!!!!!!!!
+  doc.font(font);
+  doc.fontSize(size);
+
+  let s = doc.widthOfString(text);
+  //let s = stringWidth(text, font, size);  //PDFFUNCTION!!!!!!!!!
   return s;
 }
 
@@ -811,14 +829,14 @@ function word_wrap(text, width, font, size, hanging_indent=0) {
           delete chords[item];
         }
       }
-      out.append(Line(new_text,new_chords));
+      out.push(Line(new_text,new_chords));
       for(let item of chords.keys()){
         chords[item - new_text.length] = chords[item];
         delete chords[item];
       }
     }
     else {  //normal text
-      out.append(new_text);
+      out.push(new_text);
     }
 
     // we just added the first line
@@ -920,12 +938,12 @@ function paginate(songbook, cfg) {
     // if cfg says each song on a new page and this isn't the first song in the book
     // or if we can't fit the song header and a non-intro chunk on the page go to the next page
     if(cfg.START_SONG_ON_NEW_PAGE && songs_have_been_added || page_height(p) + song.height + height_of_introduction_plus_first_chunk(song.chunks) > USABLE_HEIGHT) {
-      pages.append(p);
+      pages.push(p);
       p = []; // new page
     }
 
     // song header will fit
-    p.append(song);
+    p.push(song);
 
     // now songs have been added :-)
     songs_have_been_added = true;
@@ -949,7 +967,7 @@ function paginate(songbook, cfg) {
 
       // this chunk doesn't fit -- next page 
       if(page_height(p) + (chunk.height - songline_correct) > USABLE_HEIGHT) {
-        pages.append(p);
+        pages.push(p);
         p = []; // new page
 
         // duplicate the chorus on each new page/column/etc if the page layout says it is needed
@@ -959,26 +977,26 @@ function paginate(songbook, cfg) {
           // this chunk and at least one more are still to go -- so do chunk, chorus, chunk... end-of-song
           // UNLESS this chunk is a chorus, in which case we want to print any pre-choruses first
           if(idx+1 < song.chunks.length && chunk.type.indexOf('chorus') == -1) {
-            p.append(chunk);
+            p.push(chunk);
             p.extend(chorus); // extend with chorus(es)
           }
           else {  // this is the last chunk in the song -- do chorus, chunk, end-of-song
             p.extend(chorus); // extend with chorus(es)
-            p.append(chunk);
+            p.push(chunk);
           }
         }
 
         else { // no chorus stuff ... just add it 
-          p.append(chunk);
+          p.push(chunk);
         }
       }
 
       else { // space for this chunk
-        p.append(chunk);
+        p.push(chunk);
       }
 
       if(chunk.type.indexOf('chorus')) {
-        chorus.append(chunk);
+        chorus.push(chunk);
       }
     }
     // done with chunks in song -- on to next song
@@ -988,12 +1006,12 @@ function paginate(songbook, cfg) {
   if(cfg.DISPLAY_CAT_INDEX == INDEX_ON_NEW_PAGE) {
     // Fresh page if current page has anything on it.
     if(p.length != 0) {
-      pages.append(p);
+      pages.push(p);
       p = [];
     }
     // add pages until previous page not visible so index is not visible from last song 
     while(cfg.page_layout.previous_page_visible(pages)) {
-      pages.append(p);
+      pages.push(p);
       p = [];
     }
   }
@@ -1002,32 +1020,31 @@ function paginate(songbook, cfg) {
   if((songbook instanceof Songbook) && cfg.DISPLAY_CAT_INDEX != INDEX_OFF) {
     // create a new page if no room on current page
     if(page_height(p) + songbook.cat_index.height > USABLE_HEIGHT) {
-      pages.append(p);
+      pages.push(p);
       p = [];
     }
 
     // add cat_index title to page
-    p.append(songbook.cat_index);
-
-    for(let cat of songbook.cat_index.keys().sort()) {
+    p.push(songbook.cat_index);
+    for(let cat of songbook.cat_index.keys()) { //!!!!IS THIS SORTED ?
       if((page_height(p) + songbook.cat_index.cat_height + songbook.cat_index[cat][0].height) > USABLE_HEIGHT) {  // can't fit category + one index entry
-        pages.append(p);
+        pages.push(p);
         p = [];
       }
-      p.append(Category(cat, songbook.cat_index.cat_height));
+      p.push(Category(cat, songbook.cat_index.cat_height));
 
       // sort cat_index entries then add to page
-      let entries = songbook.cat_index[cat].sort(function(a,b) {return a.index_text.lower().replace(/^([^a-z0-9]*the +|[^a-z0-9]+)/, '');});
+      let entries = songbook.cat_index[cat].sort(function(a,b) {return a.index_text.toLowerCase().replace(/^([^a-z0-9]*the +|[^a-z0-9]+)/, '');});
 
       for(let index_entry of entries) {
         // if there is no room for this entry, then the page is complete and we start a new one
         if ((page_height(p) + index_entry.height) > USABLE_HEIGHT) {
-          pages.append(p);
+          pages.push(p);
           p = [];
         }
 
         // add the cat_index entry
-        p.append(index_entry);
+        p.push(index_entry);
       }
     }
   }
@@ -1036,12 +1053,12 @@ function paginate(songbook, cfg) {
   if(cfg.DISPLAY_SCRIP_INDEX == INDEX_ON_NEW_PAGE) { 
     // Fresh page if current page has anything on it.
     if(p.length != 0) {
-      pages.append(p);
+      pages.push(p);
       p = [];
     }
     // add pages until previous index is not visible so index is not visible
     while(cfg.page_layout.previous_page_visible(pages)){
-      pages.append(p);
+      pages.push(p);
       p = [];
     }
   }
@@ -1050,27 +1067,27 @@ function paginate(songbook, cfg) {
   if(songbook instanceof Songbook && cfg.DISPLAY_SCRIP_INDEX != INDEX_OFF) {
     // create a new page if no room on current page
     if(page_height(p) + songbook.index.height > USABLE_HEIGHT) {
-      pages.append(p);
+      pages.push(p);
       p = [];
     }
 
     // add index title to page
-    p.append(songbook.scrip_index);
+    p.push(songbook.scrip_index);
 
     // sort index entries then add to page
-    //entries = sorted(songbook.scrip_index, key=lambda m: sort_scrip_index(re.sub(r'(?i)^([^a-z0-9]*the +|[^a-z0-9]+)', '', m.index_text.lower())));
-    let entries = songbook.scrip_index.sort(function(a,b) { return sort_scrip_index(a.index_text.lower().replace(/^([^a-z0-9]*the +|[^a-z0-9]+)/, ''));});
+    //entries = sorted(songbook.scrip_index, key=lambda m: sort_scrip_index(re.sub(r'(?i)^([^a-z0-9]*the +|[^a-z0-9]+)', '', m.index_text.toLowerCase())));
+    let entries = songbook.scrip_index.sort(function(a,b) { return sort_scrip_index(a.index_text.toLowerCase().replace(/^([^a-z0-9]*the +|[^a-z0-9]+)/, ''));});
 
 
     for(let index_entry of entries) {
       // if there is no room for this entry, then the page is complete and we start a new one
       if ((page_height(p) + index_entry.height) > USABLE_HEIGHT) {
-        pages.append(p);
+        pages.push(p);
         p = [];
       }
 
       // add the index entry
-      p.append(index_entry);
+      p.push(index_entry);
     }
   }
 
@@ -1078,12 +1095,12 @@ function paginate(songbook, cfg) {
   if(cfg.DISPLAY_INDEX == INDEX_ON_NEW_PAGE) {
     // Fresh page if current page has anything on it.
     if (p.length != 0) {
-      pages.append(p);
+      pages.push(p);
       p = [];
     }
     // add pages until previous index is not visible so index is not visible
     while(cfg.page_layout.previous_page_visible(pages)) {
-      pages.append(p);
+      pages.push(p);
       p = [];
     }
   }
@@ -1092,33 +1109,33 @@ function paginate(songbook, cfg) {
   if(songbook instanceof Songbook && cfg.DISPLAY_INDEX != INDEX_OFF) {
     // create a new page if no room on current page
     if(page_height(p) + songbook.index.height > USABLE_HEIGHT) {
-      pages.append(p);
+      pages.push(p);
       p = [];
     }
 
     // add index title to page
-    p.append(songbook.index);
+    p.push(songbook.index);
 
     // sort index entries then add to page
-    //entries = sorted(songbook.index, key=lambda m: re.sub(r'(?i)^([^a-z0-9]*the +|[^a-z0-9]+)', '', m.index_text.lower()))
-    let entries = songbook.index.sort(function(a,b) { return a.index_text.lower().replace(/^([^a-z0-9]*the +|[^a-z0-9]+)/, '');});
+    //entries = sorted(songbook.index, key=lambda m: re.sub(r'(?i)^([^a-z0-9]*the +|[^a-z0-9]+)', '', m.index_text.toLowerCase()))
+    let entries = songbook.index.sort(function(a,b) { return a.index_text.toLowerCase().replace(/^([^a-z0-9]*the +|[^a-z0-9]+)/, '');});
 
 
     for(let index_entry of entries) {
       // if there is no room for this entry, then the page is complete and we start a new one
       if((page_height(p) + index_entry.height) > USABLE_HEIGHT) {
-        pages.append(p);
+        pages.push(p);
         p = [];
       }
 
       // add the index entry
-      p.append(index_entry);
+      p.push(index_entry);
     }
   }
 
   // add final page (index or last song page if index is disabled)
   if(p.length != 0) {
-    pages.append(p);
+    pages.push(p);
   }
 
   return pages;
@@ -1148,6 +1165,7 @@ function calc_heights(songbook, cfg) {
     else {
       songbook.height = 0;
     }
+    console.log(songbook.height);
 
     // category index
     if(cfg.DISPLAY_CAT_INDEX != INDEX_OFF) {
@@ -1211,15 +1229,15 @@ function calc_heights(songbook, cfg) {
     // small text that goes under the title
     let small_text = [];
     if(song.author) {
-      small_text.append(song.author);
+      small_text.push(song.author);
     }
 
     if(cfg.SCRIPTURE_LOCATION == SCRIPTURE_UNDER_TITLE && song.scripture_ref) {
-      small_text.append(song.scripture_ref);
+      small_text.push(song.scripture_ref);
     }
 
     if(song.key) {
-      small_text.append(song.key);
+      small_text.push(song.key);
     }
 
     // wrap small_text
@@ -1582,12 +1600,14 @@ function format_page(pdf, cfg, page_mapping) {
 
 
 function format(songbook, pdf, cfg) {
-  if (typeof songbook == 'string') {
+  console.log(songbook);
+  if (typeof songbook == 'object') {
     songbook = parse(songbook, cfg);    // parse the XML into objects
   }
 
   // calculate the space needed for the songbook pieces
   calc_heights(songbook, cfg);
+  console.log(songbook);
 
   // returns a list of pages: each page is a list of things to show on that page 
   // Songbook and Song objects only count for titles and headers chunks have to be listed separate
@@ -1622,13 +1642,12 @@ function format(songbook, pdf, cfg) {
   //return read_config(open(filename).read())
 
 function read_config_form(){
-  return read_config($('#export_form').serializeArray().map(
-    obj =>{ 
-      var rObj = [];
-      rObj[obj.name] = obj.value;
-      return rObj;
-    })
-  );
+  let opts = $('#export_form').serializeArray();
+  let new_opts = [];
+  for(let opt of opts) {
+    new_opts[opt.name] = opt.value;
+  }
+  return read_config(new_opts);
 }
 
 function read_config(config_array) {
@@ -1646,12 +1665,12 @@ function read_config(config_array) {
   options.PAPER_MARGIN_BOTTOM =    config_array.paper_margin_bottom;        //type="float"           
 
   options.PAGE_LAYOUT_NAME =       config_array.page_layout;                //type="string"          
-  options.PAGE_MARGIN_LEFT =       config_array.page_margin_left;           //type="float"           
-  options.PAGE_MARGIN_RIGHT =      config_array.page_margin_right;          //type="float"           
-  options.PAGE_MARGIN_TOP =        config_array.page_margin_top;            //type="float"           
-  options.PAGE_MARGIN_BOTTOM =     config_array.page_margin_bottom;         //type="float"           
+  options.PAGE_MARGIN_LEFT =       0;//config_array.page_margin_left;           //type="float"           
+  options.PAGE_MARGIN_RIGHT =      0;//config_array.page_margin_right;          //type="float"           
+  options.PAGE_MARGIN_TOP =        0;//config_array.page_margin_top;            //type="float"           
+  options.PAGE_MARGIN_BOTTOM =     0;//config_array.page_margin_bottom;         //type="float"           
 
-  options.BINDER_MARGIN =          config_array.binder_margin;              //type="float"           
+  options.MARGIN_GUTTER =          config_array.margin_gutter;              //type="float"           
 
   options.FONT_FACE =              config_array.font_face;                  //type="string"          
 
@@ -1710,10 +1729,14 @@ function read_config(config_array) {
   //(options, args) = config.parse_args(config_string.split())
 
   if (options.PAPER_ORIENTATION == 'portrait') {
-    options.PAPER_WIDTH = options.PAPER_HEIGHT = getattr(reportlab.lib.pagesizes, options.PAPER_SIZE);
+    options.PAPER_WIDTH = 60;//doc.page.width;
+    options.PAPER_HEIGHT = 60;//doc.page.height;
+    //getattr(reportlab.lib.pagesizes, options.PAPER_SIZE);
   }
   else {
-    options.PAPER_HEIGHT = options.PAPER_WIDTH = getattr(reportlab.lib.pagesizes, options.PAPER_SIZE);
+    options.PAPER_HEIGHT = 60;//doc.page.height;
+    options.PAPER_WIDTH = 60;//doc.page.width;
+    //getattr(reportlab.lib.pagesizes, options.PAPER_SIZE);
   }
 
   if (options.SONGTITLE_FORMAT) {
@@ -1721,65 +1744,65 @@ function read_config(config_array) {
       options.SONGTITLE_FORMAT = `${title}`;
     }
     else {
-      options.SONGTITLE_FORMAT = String.Template(options.SONGTITLE_FORMAT.replace(/\s/, ' ') + ' ${title}');
+      options.SONGTITLE_FORMAT = options.SONGTITLE_FORMAT.replace(/\s/, ' ') + ' ${title}';
     }
   }
   else {
     options.SONGTITLE_FORMAT = `${num}. ${title}`;
   }
 
-  if (options.HIDE_BOOKTITLE && options.HIDE_BOOKTITLE.lower() == 'yes') {
+  if (options.HIDE_BOOKTITLE && options.HIDE_BOOKTITLE.toLowerCase() == 'yes') {
     options.HIDE_BOOKTITLE = true;
   }
   else {
     options.HIDE_BOOKTITLE = false;
   }
 
-  if (options.START_SONG_ON_NEW_PAGE && options.START_SONG_ON_NEW_PAGE.lower() == 'yes') {
+  if (options.START_SONG_ON_NEW_PAGE && options.START_SONG_ON_NEW_PAGE.toLowerCase() == 'yes') {
     options.START_SONG_ON_NEW_PAGE = true;
   }
   else {
     options.START_SONG_ON_NEW_PAGE = false;
   }
 
-  if (options.DISPLAY_CHORDS && options.DISPLAY_CHORDS.lower() == 'yes') {
+  if (options.DISPLAY_CHORDS && options.DISPLAY_CHORDS.toLowerCase() == 'yes') {
     options.DISPLAY_CHORDS = true;
   }
   else {
     options.DISPLAY_CHORDS = false;
   }
 
-  if (options.DEBUG_MARGINS && options.DEBUG_MARGINS.lower() == 'yes') {
+  if (options.DEBUG_MARGINS && options.DEBUG_MARGINS.toLowerCase() == 'yes') {
     options.DEBUG_MARGINS = true;
   }
   else {
     options.DEBUG_MARGINS = false;
   }
 
-  if (options.DISPLAY_INDEX && options.DISPLAY_INDEX.lower() == INDEX_ON_NEW_PAGE.lower()) {
+  if (options.DISPLAY_INDEX && options.DISPLAY_INDEX.toLowerCase() == INDEX_ON_NEW_PAGE.toLowerCase()) {
     options.DISPLAY_INDEX = INDEX_ON_NEW_PAGE;
   }
-  else if (options.DISPLAY_INDEX && options.DISPLAY_INDEX.lower() == INDEX_NO_PAGE_BREAK.lower()) {
+  else if (options.DISPLAY_INDEX && options.DISPLAY_INDEX.toLowerCase() == INDEX_NO_PAGE_BREAK.toLowerCase()) {
     options.DISPLAY_INDEX = INDEX_NO_PAGE_BREAK;
   }
   else {
     options.DISPLAY_INDEX = INDEX_OFF;
   }
 
-  if (options.DISPLAY_SCRIP_INDEX && options.DISPLAY_SCRIP_INDEX.lower() == INDEX_ON_NEW_PAGE.lower()) {
+  if (options.DISPLAY_SCRIP_INDEX && options.DISPLAY_SCRIP_INDEX.toLowerCase() == INDEX_ON_NEW_PAGE.toLowerCase()) {
     options.DISPLAY_SCRIP_INDEX = INDEX_ON_NEW_PAGE;
   }
-  else if (options.DISPLAY_SCRIP_INDEX && options.DISPLAY_SCRIP_INDEX.lower() == INDEX_NO_PAGE_BREAK.lower()) {
+  else if (options.DISPLAY_SCRIP_INDEX && options.DISPLAY_SCRIP_INDEX.toLowerCase() == INDEX_NO_PAGE_BREAK.toLowerCase()) {
     options.DISPLAY_SCRIP_INDEX = INDEX_NO_PAGE_BREAK;
   }
   else {
     options.DISPLAY_SCRIP_INDEX = INDEX_OFF;
   }
 
-  if (options.DISPLAY_CAT_INDEX && options.DISPLAY_CAT_INDEX.lower() == INDEX_ON_NEW_PAGE.lower()) {
+  if (options.DISPLAY_CAT_INDEX && options.DISPLAY_CAT_INDEX.toLowerCase() == INDEX_ON_NEW_PAGE.toLowerCase()) {
     options.DISPLAY_CAT_INDEX = INDEX_ON_NEW_PAGE;
   }
-  else if (options.DISPLAY_CAT_INDEX && options.DISPLAY_CAT_INDEX.lower() == INDEX_NO_PAGE_BREAK.lower()) {
+  else if (options.DISPLAY_CAT_INDEX && options.DISPLAY_CAT_INDEX.toLowerCase() == INDEX_NO_PAGE_BREAK.toLowerCase()) {
     options.DISPLAY_CAT_INDEX = INDEX_NO_PAGE_BREAK;
   }
   else {
@@ -1811,11 +1834,11 @@ function read_config(config_array) {
   options.PAGE_MARGIN_TOP = options.PAGE_MARGIN_TOP * inch;
   options.PAGE_MARGIN_BOTTOM = options.PAGE_MARGIN_BOTTOM * inch;
 
-  options.BINDER_MARGIN = options.BINDER_MARGIN * inch;
+  options.MARGIN_GUTTER = options.MARGIN_GUTTER * inch || "";
 
 
   // page layout init after almost everything so it can play with options as needed
-  options.page_layout     = page_layouts[options.PAGE_LAYOUT_NAME](options); 
+  options.page_layout     = new page_layouts[options.PAGE_LAYOUT_NAME](options); 
 
   // these go last since they are derived from the layout
   options.PAGE_WIDTH      = options.page_layout.get_page_width();
@@ -1824,7 +1847,7 @@ function read_config(config_array) {
   if (!options.CCLI || options.CCLI == 'null') {
     options.CCLI          = '__________';
   }
-
+  console.log(options);
   return options;
 }
 /*
