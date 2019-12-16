@@ -565,6 +565,13 @@
 
       bindToSongEdit();
       initializeSongbooksList();
+      $("#export_form > label").click(function(e){
+        if(this.previousElementSibling.checked){
+          e.stopPropagation();
+          e.preventDefault();
+          this.previousElementSibling.checked = false;
+        };
+      });
       $('.column').click(function(e){
         var h = this.offsetHeight;
         var w = this.offsetWidth;
