@@ -114,7 +114,7 @@ except:
 */
 class defaultdict {
   constructor(defaultInit) {
-    return new Proxy({}, {
+    return new Proxy([], {
       get: (target, name) => name in target ?
         target[name] :
         (target[name] = typeof defaultInit === 'function' ?
@@ -344,7 +344,7 @@ function parse_song(song_object){  //json song object
     // parse lines and chords in chunk
     for(let line of chunk_ob[1]) {
       let text = line;
-      let chords = {};
+      let chords = [];
 
 //REWRITE!!!
       // parse chords and rest of line text
@@ -487,9 +487,9 @@ class PageLayout{
   }
 }
 
-var page_layouts = {};
+var page_layouts = [];
 function register_page_layout(name, klass) {
-  if(page_layouts.indexOf(name)) {
+  if(page_layouts.indexOf(name)!=-1) {
     console.log('ERROR!!!');
   }
   page_layouts[name] = klass;
@@ -801,7 +801,7 @@ function word_wrap(text, width, font, size, hanging_indent=0) {
     let new_text = text.slice(0, num_words).join(' ');
     text = text.splice(0, num_words); // remove the text that is now in our output
 
-    let new_chords = {};
+    let new_chords = [];
 
     if(Line_object) {
       for(let item of chords.keys()){
@@ -1137,7 +1137,7 @@ function calc_heights(songbook, cfg) {
     list_of_songs = [songbook];
     index = [];
     scrip_index = [];
-    cat_index = {};
+    cat_index = [];
   }
   else {
     list_of_songs = songbook.songs;
@@ -1155,7 +1155,7 @@ function calc_heights(songbook, cfg) {
       songbook.cat_index.cat_height = cfg.INDEX_CAT_SIZE + cfg.INDEX_CAT_SPACE + cfg.INDEX_CAT_B4;
     }
     else {
-      cat_index = {};
+      cat_index = [];
     }
 
     // scripture index
@@ -1623,7 +1623,7 @@ function format(songbook, pdf, cfg) {
 function read_config_form(){
   return read_config($('#export_form').serializeArray().map(
     obj =>{ 
-      var rObj = {};
+      var rObj = [];
       rObj[obj.name] = obj.value;
       return rObj;
     })
