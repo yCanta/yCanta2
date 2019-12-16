@@ -158,7 +158,7 @@ class Songbook {
 class Index {
   constructor(self) {
     var star_args = Array.prototype.slice.call (arguments, func.length);
-    array.call(self, star_args);
+    Array.call(self, star_args);
     self.height = 0;
     self.height_after = 0;
   }
@@ -167,7 +167,7 @@ class Index {
 class ScripIndex {
   constructor(self){
     var star_args = Array.prototype.slice.call (arguments, func.length);
-    array.call(self, star_args);
+    Array.call(self, star_args);
     self.height = 0;
     self.height_after = 0;
   }
@@ -176,7 +176,8 @@ class ScripIndex {
 class CatIndex {
   constructor(self){
     var star_args = Array.prototype.slice.call (arguments, func.length);
-    defaultdict.call(self, list, star_args);
+    //defaultdict.call(self, list, star_args)
+    defaultdict.call(self, star_args);
     self.height = 0;
     self.height_after = 0;
   }
@@ -836,7 +837,7 @@ function print_chords(pdf, cfg=null, font_size=null, y_offset=null, x_offset=nul
   pdf.setFont(cfg.FONT_FACE, cfg.SONGCHORD_SIZE);
 
   // loop through chords
-  let char_offsets = sorted(line.chords.keys());
+  let char_offsets = line.chords.keys().sort();
   for(let char_offset of char_offsets) {
     let chord_offset = pdf.stringWidth(line.text.slice(0, char_offset), cfg.FONT_FACE, font_size);
     pdf.drawString(page_mapping.startx + x_offset + chord_offset, page_mapping.starty - y_offset, line.chords[char_offset]);
@@ -1008,7 +1009,7 @@ function paginate(songbook, cfg) {
     // add cat_index title to page
     p.append(songbook.cat_index);
 
-    for(let cat of sorted(songbook.cat_index.keys())) {
+    for(let cat of songbook.cat_index.keys().sort()) {
       if((page_height(p) + songbook.cat_index.cat_height + songbook.cat_index[cat][0].height) > USABLE_HEIGHT) {  // can't fit category + one index entry
         pages.append(p);
         p = [];
@@ -1016,7 +1017,7 @@ function paginate(songbook, cfg) {
       p.append(Category(cat, songbook.cat_index.cat_height));
 
       // sort cat_index entries then add to page
-      let entries = songbook.cat_index[cat].sort(function(a,b) {return a.index_text.lower().replace(/(?i)^([^a-z0-9]*the +|[^a-z0-9]+)/, '')});
+      let entries = songbook.cat_index[cat].sort(function(a,b) {return a.index_text.lower().replace(/^([^a-z0-9]*the +|[^a-z0-9]+)/, '');});
 
       for(let index_entry of entries) {
         // if there is no room for this entry, then the page is complete and we start a new one
@@ -1058,7 +1059,7 @@ function paginate(songbook, cfg) {
 
     // sort index entries then add to page
     //entries = sorted(songbook.scrip_index, key=lambda m: sort_scrip_index(re.sub(r'(?i)^([^a-z0-9]*the +|[^a-z0-9]+)', '', m.index_text.lower())));
-    let entries = songbook.scrip_index.sort(function(a,b) { return sort_scrip_index(a.index_text.lower().replace(/(?i)^([^a-z0-9]*the +|[^a-z0-9]+)/, ''))});
+    let entries = songbook.scrip_index.sort(function(a,b) { return sort_scrip_index(a.index_text.lower().replace(/^([^a-z0-9]*the +|[^a-z0-9]+)/, ''));});
 
 
     for(let index_entry of entries) {
@@ -1100,7 +1101,7 @@ function paginate(songbook, cfg) {
 
     // sort index entries then add to page
     //entries = sorted(songbook.index, key=lambda m: re.sub(r'(?i)^([^a-z0-9]*the +|[^a-z0-9]+)', '', m.index_text.lower()))
-    let entries = songbook.index.sort(function(a,b) { return a.index_text.lower().replace(/(?i)^([^a-z0-9]*the +|[^a-z0-9]+)/, '')});
+    let entries = songbook.index.sort(function(a,b) { return a.index_text.lower().replace(/^([^a-z0-9]*the +|[^a-z0-9]+)/, '');});
 
 
     for(let index_entry of entries) {
@@ -1199,7 +1200,7 @@ function calc_heights(songbook, cfg) {
       song_title = cfg.SONGTITLE_FORMAT;
     }
 
-    song.num_width = myStringWidth(function(){let title = ''; let num = song.num; return cfg.SONGTITLE_FORMAT}, cfg.FONT_FACE, cfg.SONGTITLE_SIZE)*1.5;
+    song.num_width = myStringWidth(function(){let title = ''; let num = song.num; return cfg.SONGTITLE_FORMAT;}, cfg.FONT_FACE, cfg.SONGTITLE_SIZE)*1.5;
 
     // Word wrap title as needed
     song.title_wrapped = word_wrap(song_title, cfg.page_layout.get_page_width(), cfg.FONT_FACE, cfg.SONGTITLE_SIZE, song.num_width);
