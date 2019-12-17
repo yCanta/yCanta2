@@ -3,66 +3,9 @@ var lorem =
   'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam in suscipit purus. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; Vivamus nec hendrerit felis. Morbi aliquam facilisis risus eu lacinia. Sed eu leo in turpis fringilla hendrerit. Ut nec accumsan nisl. Suspendisse rhoncus nisl posuere tortor tempus et dapibus elit porta. Cras leo neque, elementum a rhoncus ut, vestibulum non nibh. Phasellus pretium justo turpis. Etiam vulputate, odio vitae tincidunt ultricies, eros odio dapibus nisi, ut tincidunt lacus arcu eu elit. Aenean velit erat, vehicula eget lacinia ut, dignissim non tellus. Aliquam nec lacus mi, sed vestibulum nunc. Suspendisse potenti. Curabitur vitae sem turpis. Vestibulum sed neque eget dolor dapibus porttitor at sit amet sem. Fusce a turpis lorem. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae;\nMauris at ante tellus. Vestibulum a metus lectus. Praesent tempor purus a lacus blandit eget gravida ante hendrerit. Cras et eros metus. Sed commodo malesuada eros, vitae interdum augue semper quis. Fusce id magna nunc. Curabitur sollicitudin placerat semper. Cras et mi neque, a dignissim risus. Nulla venenatis porta lacus, vel rhoncus lectus tempor vitae. Duis sagittis venenatis rutrum. Curabitur tempor massa tortor.';
 var doc;
 var inch = 72;
-function makePDF(PDFDocument, blobStream, lorem, iframe) {
-  
-  // create a document and pipe to a blob
-  let options = {size: 'A6', layout: 'landscape'};
-  const doc = new PDFDocument(options);
-  var stream = doc.pipe(blobStream());
+function makePDF(lorem, iframe) {
+  format(window.exportObject, iframe, read_config_form());
 
-  format(window.exportObject, "", read_config_form());
-
-
-  
-  //console.log(doc.page);
-
- // doc.addPage({
-   // layout: 'portrait', size: 'A6'});
-
-  //What structure for songs to be worked through?
-
-
-/*
-  // draw some text
-  doc.fontSize(25).text('Here is some vector graphics...', 100, 80);
-
-  // some vector graphics
-  doc
-    .save()
-    .moveTo(100, 150)
-    .lineTo(100, 250)
-    .lineTo(200, 250)
-    .fill('//FF3300');
-
-  doc.circle(280, 200, 50).fill('//6600FF');
-
-  // an SVG path
-  doc
-    .scale(0.6)
-    .translate(470, 130)
-    .path('M 250,75 L 323,301 131,161 369,161 177,301 z')
-    .fill('red', 'even-odd')
-    .restore();
-
-  */// and some justified text wrapped into columns
-  doc
-    .text('And here is some wrapped text...', 100, 300)
-    .font('Times-Roman', 13)
-    .moveDown()
-    .text(lorem, {
-      width: 412,
-      align: 'justify',
-      indent: 30,
-      columns: 2,
-      height: 300,
-      ellipsis: true
-    });
-
-  // end and display the document in the iframe to the right
-  doc.end();
-  stream.on('finish', function() {
-    iframe.src = stream.toBlobURL('application/pdf');
-  });
 }
 
 ////!/usr/bin/env python
@@ -1599,7 +1542,7 @@ function format_page(pdf, cfg, page_mapping) {
 }
 
 
-function format(songbook, pdf, cfg) {
+function format(songbook, iframe, cfg) {
   if (typeof songbook == 'object') {
     songbook = parse(songbook, cfg);    // parse into objects
   }
@@ -1609,17 +1552,59 @@ console.log(songbook);
   // returns a list of pages: each page is a list of things to show on that page 
   // Songbook and Song objects only count for titles and headers chunks have to be listed separate
   let pages = paginate(songbook, cfg);
-  console.log(pages);
+console.log(pages);
 
   let pages_ordered = cfg.page_layout.page_order(pages);
 console.log(pages_ordered);
+
+console.log(cfg);
+
   // pdf object creation must be after the page layout methods are run because the page layout can change the paper size
-  pdf = canvas.Canvas(pdf, pagesize=(cfg.PAPER_WIDTH, cfg.PAPER_HEIGHT));
+  
+  //pdf = canvas.Canvas(pdf, pagesize=(cfg.PAPER_WIDTH, cfg.PAPER_HEIGHT));
+  let options = {size: cfg.PAPER_SIZE, layout: cfg.PAPER_ORIENTATION};
+  const doc = new PDFDocument(options);
+  var stream = doc.pipe(blobStream());
 
   // set the PDF title
-  pdf.setTitle(songbook.title);
+  //pdf.setTitle(songbook.title);
+  doc.info = {Title: songbook.title};
 
-  for(const physical_page of pages_ordered) {
+  doc
+  .text('And here is some wrapped text...', 100, 300)
+  .font('Times-Roman', 13)
+  .moveDown()
+  .text(lorem, {
+    width: 412,
+    align: 'justify',
+    indent: 30,
+    columns: 2,
+    height: 300,
+    ellipsis: true
+  });
+ /* for(const physical_page of pages_ordered) {
+    for(const page_mapping of physical_page) {
+      format_page(pdf, cfg, page_mapping);
+    }
+
+    // debug -- print page (small page here) rect
+    //pdf.rect(cfg.PAPER_MARGIN_LEFT, cfg.PAPER_HEIGHT-cfg.PAPER_MARGIN_TOP,
+        //cfg.PAPER_WIDTH-cfg.PAPER_MARGIN_RIGHT-cfg.PAPER_MARGIN_LEFT,(cfg.PAPER_MARGIN_BOTTOM+cfg.PAPER_MARGIN_TOP)-cfg.PAPER_HEIGHT,
+        //fill=0)
+    // done with (sub/virtual) pages that are written on one physical page -- on to next page
+    pdf.showPage();
+  }
+
+
+
+  // end and display the document in the iframe to the right
+  doc.end();
+  stream.on('finish', function() {
+    iframe.src = stream.toBlobURL('application/pdf');
+  });
+  
+
+ /* for(const physical_page of pages_ordered) {
     for(const page_mapping of physical_page) {
       format_page(pdf, cfg, page_mapping);
     }
@@ -1633,7 +1618,7 @@ console.log(pages_ordered);
   }
 
   // now save
-  pdf.save();
+  pdf.save();*/
 }
 
 //def read_config_file(filename):
