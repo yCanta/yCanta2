@@ -9,10 +9,8 @@ function makePDF(PDFDocument, blobStream, lorem, iframe) {
   let options = {size: 'A6', layout: 'landscape'};
   const doc = new PDFDocument(options);
   var stream = doc.pipe(blobStream());
-  
-  let doinks = read_config_form();
 
-  //format(window.exportObject, "", read_config_form());
+  format(window.exportObject, "", read_config_form());
 
 
   
@@ -160,8 +158,8 @@ class Songbook {
     this.title = title;
     this.ccli = ccli;
     this.songs = [];
-    this.scrip_index = new ScripIndex(this); // list of IndexEntry's
-    this.index = new Index(this);            // list of IndexEntry's
+    this.scrip_index = new ScripIndex(); // list of IndexEntry's
+    this.index = new Index();            // list of IndexEntry's
     this.cat_index = new CatIndex(this);     // dict of CatIndexEntry's
     this.height = 0;
     this.height_after = 0;
@@ -170,8 +168,8 @@ class Songbook {
 
 class Index extends Array {
   constructor() {
-    var star_args = Array.prototype.slice.call(arguments, constructor.length);
-    super(star_args);
+    //var star_args = Array.prototype.slice.call(arguments, constructor.length);
+    super();
     this.height = 0;
     this.height_after = 0;
   }
@@ -179,8 +177,8 @@ class Index extends Array {
 
 class ScripIndex extends Array {
   constructor(){
-    var star_args = Array.prototype.slice.call(arguments, constructor.length);
-    super(star_args);
+    //var star_args = Array.prototype.slice.call(arguments, constructor.length);
+    super();
     this.height = 0;
     this.height_after = 0;
   }
@@ -280,7 +278,7 @@ function sort_scrip_index(scrip_ref){
   catch(error) {
     book_number = '99';
   }
-  book_number = book_number.padstart(2,'0');
+  book_number = book_number.padStart(2,'0');
   
   // get chapter number YYY
   try {
@@ -290,7 +288,7 @@ function sort_scrip_index(scrip_ref){
     chapter_number = '000';
   }
   if (chapter_number.length < 4){
-    chapter_number = chapter_number.padstart(3,'0');
+    chapter_number = chapter_number.padStart(3,'0');
   }
   else {
     chapter_number = '999';
@@ -300,7 +298,7 @@ function sort_scrip_index(scrip_ref){
   try {
     verse_number = x[1].split(':')[1].split(/[-,]/)[0];
     //verse_number = re.split('[-,]',x[1].split(':')[1])[0];
-    verse_number = verse_number.padstart(3,'0');
+    verse_number = verse_number.padStart(3,'0');
     if (verse_number.length > 3) {
       verse_number = '000';
     }
@@ -342,7 +340,7 @@ function parse_song(song_object){  //json song object
   // parse song chunks
   let verse_num = 1;
   for(let chunk_ob of song_ob.content) {
-    let type = chunk_ob.type;
+    let type = chunk_ob[0].type;
     let chunk = new Chunk(type);
     
     // skip comment chunks
@@ -362,13 +360,13 @@ function parse_song(song_object){  //json song object
 
 //REWRITE!!!
       // parse chords and rest of line text
-      for(let c of line.findall('c')) {
+      /*for(let c of line.findall('c')) {
         chords[text.length] = c.text; // len(text) is offset in text where chord appears
         text += c.tail || '';
-      }
+      }*/
 
       // done parsing line -- add it
-      line = Line(text, chords);
+      line = new Line(text, chords);
       chunk.lines.push(line);
     }
 
@@ -380,7 +378,7 @@ function parse_song(song_object){  //json song object
 
 
 function parse(export_object, cfg) {
-  console.log(export_object.title);
+  console.log(export_object);
   // if xml passed as filename, convert to object
   /*if isinstance(xml, basestring) and os.path.isfile(xml):
     xml = etree_parse(xml).getroot()*/
@@ -403,11 +401,12 @@ function parse(export_object, cfg) {
 
   let song_num = 1;
   // iterate through all songs in the songbook
+
   for(let i = 0; i < export_object.songrefs.length; i++) {
 //  for(var songref;  of export_object.songrefs') {
     //song_xml = etree_parse(songref.attrib['ref'])
     
-    if(!export_object.songrefs[i].status.startsWith(cfg.SONGS_TO_PRINT)){
+    if(cfg.SONGS_TO_PRINT.indexOf(export_object.songrefs[i].status)==-1){
       continue;
     }
 
@@ -420,7 +419,7 @@ function parse(export_object, cfg) {
 
     // generate index entries for this song
     if(cfg.DISPLAY_INDEX != INDEX_OFF){
-      songbook.index.push(IndexEntry(song, song.title, true));
+      songbook.index.push(new IndexEntry(song, song.title, true));
     }
     for(let cat of song.categories){  // an entry for each category in the song
       let exclude = false;
@@ -431,14 +430,14 @@ function parse(export_object, cfg) {
         }
       }
       if(!exclude){
-        songbook.cat_index[cat].push(CatIndexEntry(song, song.title, true));
+        songbook.cat_index[cat].push(new CatIndexEntry(song, song.title, true));
       }
     }
     // add entries for scripture ref
     if(song.scripture_ref && cfg.DISPLAY_SCRIP_INDEX != INDEX_OFF){
       let scripture_refs = song.scripture_ref.split(/[,;]\s(?=[A-Za-z])/);
       for(let scripture_ref of scripture_refs){
-        songbook.scrip_index.push(IndexEntry(song, scripture_ref, true));
+        songbook.scrip_index.push(new IndexEntry(song, scripture_ref, true));
       }
     }
     // add some first line index entries
@@ -781,6 +780,8 @@ class PageLayoutAdobeBooklet extends PageLayoutColumn {
 register_page_layout('adobe-booklet', PageLayoutAdobeBooklet);
 
 function myStringWidth(text, font, size) {
+  const doc = new PDFDocument();
+
   doc.font(font);
   doc.fontSize(size);
 
@@ -812,13 +813,12 @@ function word_wrap(text, width, font, size, hanging_indent=0) {
   while(text.length > 0) {
     let num_words = text.length;
 
-    while(num_words > 1 && myStringWidth(text.slice(0, num_words).join(' '), font, size) > width) {
+    while((num_words > 1) && (myStringWidth(text.slice(0, num_words).join(' '), font, size) > width)) {
       num_words = num_words - 1; // try again minus one word
     }
-
+    
     // num_words is now the most that can fit this line
-    let new_text = text.slice(0, num_words).join(' ');
-    text = text.splice(0, num_words); // remove the text that is now in our output
+    let new_text = text.splice(0, num_words).join(' ');
 
     let new_chords = [];
 
@@ -840,7 +840,7 @@ function word_wrap(text, width, font, size, hanging_indent=0) {
     }
 
     // we just added the first line
-    if(out.length == 1) { 
+    if(out.length == 1) {
       width -= hanging_indent;
     }
   }
@@ -978,10 +978,10 @@ function paginate(songbook, cfg) {
           // UNLESS this chunk is a chorus, in which case we want to print any pre-choruses first
           if(idx+1 < song.chunks.length && chunk.type.indexOf('chorus') == -1) {
             p.push(chunk);
-            p.extend(chorus); // extend with chorus(es)
+            p.push(...chorus); // extend with chorus(es)
           }
           else {  // this is the last chunk in the song -- do chorus, chunk, end-of-song
-            p.extend(chorus); // extend with chorus(es)
+            p.push(...chorus); // extend with chorus(es)
             p.push(chunk);
           }
         }
@@ -1296,15 +1296,15 @@ function calc_heights(songbook, cfg) {
         copyright_text = copyright_text + '  Used By Permission. CCLI License //'+cfg.CCLI;
       }
 
-      song.chunks[-1].last_chunk = true;  // lets the formatter know to print the copyright_footer
-      song.chunks[-1].copyright_footer = word_wrap(copyright_text, cfg.page_layout.get_page_width(), cfg.FONT_FACE, cfg.COPYRIGHT_SIZE);
+      song.chunks[song.chunks.length-1].last_chunk = true;  // lets the formatter know to print the copyright_footer
+      song.chunks[song.chunks.length-1].copyright_footer = word_wrap(copyright_text, cfg.page_layout.get_page_width(), cfg.FONT_FACE, cfg.COPYRIGHT_SIZE);
       // add space for each line in copyright_footer
-      song.chunks[-1].height += cfg.SONGCHUNK_B4 + (cfg.COPYRIGHT_SIZE + cfg.COPYRIGHT_SPACE)*song.chunks[-1].copyright_footer.length;
+      song.chunks[song.chunks.length-1].height += cfg.SONGCHUNK_B4 + (cfg.COPYRIGHT_SIZE + cfg.COPYRIGHT_SPACE)*song.chunks[song.chunks.length-1].copyright_footer.length;
     }
 
     // end of song -- add SONG_SPACE_AFTER to last chunk (will be after the copyright) if there are chunks in song
     if(song.chunks.length > 0) {
-      song.chunks[-1].height_after = cfg.SONG_SPACE_AFTER;
+      song.chunks[song.chunks.length-1].height_after = cfg.SONG_SPACE_AFTER;
     }
   }
 
@@ -1600,21 +1600,19 @@ function format_page(pdf, cfg, page_mapping) {
 
 
 function format(songbook, pdf, cfg) {
-  console.log(songbook);
   if (typeof songbook == 'object') {
-    songbook = parse(songbook, cfg);    // parse the XML into objects
+    songbook = parse(songbook, cfg);    // parse into objects
   }
-
   // calculate the space needed for the songbook pieces
   calc_heights(songbook, cfg);
-  console.log(songbook);
-
+console.log(songbook);
   // returns a list of pages: each page is a list of things to show on that page 
   // Songbook and Song objects only count for titles and headers chunks have to be listed separate
   let pages = paginate(songbook, cfg);
+  console.log(pages);
 
   let pages_ordered = cfg.page_layout.page_order(pages);
-
+console.log(pages_ordered);
   // pdf object creation must be after the page layout methods are run because the page layout can change the paper size
   pdf = canvas.Canvas(pdf, pagesize=(cfg.PAPER_WIDTH, cfg.PAPER_HEIGHT));
 
@@ -1749,15 +1747,18 @@ function read_config(config_array) {
   options.DEBUG_MARGINS =          safe_var(config_array.debug_margins,              'string');
 
   //(options, args) = config.parse_args(config_string.split())
+  if (options.SONGS_TO_PRINT == '') {
+    options.SONGS_TO_PRINT = 'anr';
+  }
 
   if (options.PAPER_ORIENTATION == 'portrait') {
-    options.PAPER_WIDTH = 600;//doc.page.width;
-    options.PAPER_HEIGHT = 600;//doc.page.height;
+    options.PAPER_WIDTH = 612;//doc.page.width;
+    options.PAPER_HEIGHT = 792;//doc.page.height;
     //getattr(reportlab.lib.pagesizes, options.PAPER_SIZE);
   }
   else {
-    options.PAPER_HEIGHT = 600;//doc.page.height;
-    options.PAPER_WIDTH = 600;//doc.page.width;
+    options.PAPER_HEIGHT = 612;//doc.page.height;
+    options.PAPER_WIDTH = 792;//doc.page.width;
     //getattr(reportlab.lib.pagesizes, options.PAPER_SIZE);
   }
 
