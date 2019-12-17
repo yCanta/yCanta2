@@ -604,7 +604,7 @@ class PageLayoutColumn2Sided extends PageLayoutColumn {
   }
 
   page_order(pages) {
-    pages = PageLayoutColumn.page_order(pages);
+    pages = PageLayoutColumn.prototype.page_order.call(this, pages);
     for(const [i, pg] of Object.entries(pages)) {
       if(i % 2 == 0) {  // every other page must be shifted since we are printing double sided
         shift_mappings(pg, this.cfg.PAPER_MARGIN_GUTTER);
@@ -635,7 +635,7 @@ class PageLayoutBooklet extends PageLayoutColumn {
 
   page_order(pages) {
     // first run through our parent (column layout) page order algorithm
-    pages = PageLayoutColumn.page_order(pages);
+    pages = PageLayoutColumn.prototype.page_order.call(this, pages);
     
     // now pages is a list of lists of PageMappings -- we need to map 4 of the inner lists onto each sheet of paper
     let paper_pages = [];
