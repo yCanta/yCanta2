@@ -83,6 +83,16 @@ function* range(start, end) {
     if (start === end) return;
     yield* range(start + 1, end);
 }
+function hash(string) { 
+    var hash = 0; 
+    if (string.length == 0) return hash; 
+    for (i = 0; i < string.length; i++) { 
+        char = string.charCodeAt(i); 
+        hash = ((hash << 5) - hash) + char; 
+        hash = hash & hash; 
+    } 
+    return hash; 
+} 
 
 var INDENT_NO_LABEL = 'indented no label';
 var VARIABLE_INDENT = ('verse', 'no label', INDENT_NO_LABEL, 'introduction');
@@ -164,7 +174,7 @@ class Song {
     this.title = title.trim();
     this.author = author.trim();
     this.copyright = copyright.trim();
-    this.ccli = ccli.trim();
+    this.ccli = ccli;
     this.scripture_ref = scripture_ref.trim();
     this.key = key.trim();
     if (this.key){
@@ -808,7 +818,7 @@ function print_chords(pdf, cfg=null, font_size=null, y_offset=null, x_offset=nul
 }
 
 
-function print_line(pdf, font_face=null, font_size=null, y_offset=null, x_offset=0, line_space=null, page_mapping=null, line=null) { 
+function print_line(doc, font_face=null, font_size=null, y_offset=null, x_offset=0, line_space=null, page_mapping=null, line=null) { 
   //assert null not in (pdf, font_face, font_size, y_offset, line_space, page_mapping, line)
 
   y_offset += font_size;
@@ -830,8 +840,8 @@ function print_line(pdf, font_face=null, font_size=null, y_offset=null, x_offset
 //DBG  pdf.setStrokeColor('black')
 //DBG  pdf.setFillColor('black')
 
-  pdf.setFont(font_face, font_size);
-  pdf.drawString(page_mapping.startx+x_offset, page_mapping.starty - y_offset, line);
+  doc.font(font_face).fontSize(font_size);
+  doc.text(line, page_mapping.startx+x_offset, page_mapping.starty - y_offset);
   
   return y_offset + line_space;
 }
@@ -1280,53 +1290,63 @@ function calc_heights(songbook, cfg) {
 }
 
 
-function format_page(pdf, cfg, page_mapping) {
+function format_page(doc, cfg, page_mapping) {
+  const { outline } = doc;
+
   //"""Format a page onto the PDF -- calculations MUST be kept in sync with calc_heights and paginate"""
 
   // pick a standard indent that almost every chunk will fit (except for intros and probably verse 10 and greater)
   let STANDARD_LABEL_INDENT_LENGTH = myStringWidth('8)   ', cfg.FONT_FACE, cfg.SONGLINE_SIZE);
 
-  // REMEMBER: we are in the 1st Quadrant (like Math) ... lower left is (0,0)
+  // REMEMBER: we are in the 4th Quadrant (like Math) ... top left is (0,0)
+  // ---------
+  // | 2 | 1 |
+  // ---------
+  // | 3 | 4 |
+  // ---------
+  // PYTHON we were in the 1st quadrant - bottom left was (0,0)
   let y = 0;
 
   let outline_level = 0;
 
   // set clip region
-  pdf.saveState(); // so we can restore to no clip after this page
-
+  doc.save(); // so we can restore to no clip after this page
+console.log(page_mapping);
   if(cfg.DEBUG_MARGINS) {
-    pdf.rect(page_mapping.startx, page_mapping.starty,
+    doc.rect(page_mapping.startx, page_mapping.starty,
         page_mapping.endx-page_mapping.startx,page_mapping.endy-page_mapping.starty);
   }
 
   // make a bounding box to keep from printing out of bounds
-  let p = pdf.beginPath();
-  p.rect(page_mapping.startx, page_mapping.starty,
-      page_mapping.endx-page_mapping.startx,page_mapping.endy-page_mapping.starty);
-  pdf.clipPath(p, stroke=0);
+  doc
+  .rect(page_mapping.startx, page_mapping.starty,
+      page_mapping.endx-page_mapping.startx,page_mapping.endy-page_mapping.starty)
+  .clip();
 
   // draw page items
   for(let item of page_mapping.page) {
     //if isinstance(item, Songbook):
     if(item instanceof Songbook) {
       // add to outline
-      let key = String(hash(('SONGBOOK ' + item.title)));
-      pdf.bookmarkPage(key, left=page_mapping.startx, top=page_mapping.starty-y);
-      outline_level = 0;
-      pdf.addOutlineEntry(item.title, key, level=outline_level);
-      outline_level = 1;
+      //let key = String(hash(('SONGBOOK ' + item.title)));
+      //doc.bookmarkPage(key, left=page_mapping.startx, top=page_mapping.starty-y);
+      //outline_level = 0;
+      //doc.addOutlineEntry(item.title, key, level=outline_level);
+      outline.addItem(item.title);
+      //outline_level = 1;
 
       // SONGBOOK TITLE
       if(!cfg.HIDE_BOOKTITLE) {
-        y = print_line(pdf, cfg.FONT_FACE, cfg.BOOKTITLE_SIZE, y, 0, cfg.BOOKTITLE_SPACE, page_mapping, item.title);
+        y = print_line(doc, cfg.FONT_FACE, cfg.BOOKTITLE_SIZE, y, 0, cfg.BOOKTITLE_SPACE, page_mapping, item.title);
       }
     }
     // SONG
     else if(item instanceof Song) {
       // add to outline
-      let key = String(hash('SONG(%d): %s' % (item.num, item.title)));
-      pdf.bookmarkPage(key, left=page_mapping.startx, top=page_mapping.starty-y);
-      pdf.addOutlineEntry(item.title, key, level=outline_level);
+      //let key = String(hash('SONG(%d): %s' % (item.num, item.title)));
+      //doc.bookmarkPage(key, left=page_mapping.startx, top=page_mapping.starty-y);
+      //doc.addOutlineEntry(item.title, key, level=outline_level);
+      outline.addItem(item.title);  
       //XXX: here we could add stuff to make index entries linkable
 
       // SONG TITLE
@@ -1340,17 +1360,17 @@ function format_page(pdf, cfg, page_mapping) {
           indent = item.num_width;
         }
 
-        y = print_line(pdf, cfg.FONT_FACE, cfg.SONGTITLE_SIZE, y, indent, cfg.SONGTITLE_SPACE, page_mapping, title_line);
+        y = print_line(doc, cfg.FONT_FACE, cfg.SONGTITLE_SIZE, y, indent, cfg.SONGTITLE_SPACE, page_mapping, title_line);
       }
 
       // small_text after title
       for(let sm_line of item.small_text) {
-        y = print_line(pdf, cfg.FONT_FACE, cfg.SMALL_SIZE, y, 0, cfg.SMALL_SPACE, page_mapping, sm_line);
+        y = print_line(doc, cfg.FONT_FACE, cfg.SMALL_SIZE, y, 0, cfg.SMALL_SPACE, page_mapping, sm_line);
       }
 
       // introduction if applicable -- not shown when chords are not shown
       if(item.introduction && cfg.DISPLAY_CHORDS) {
-        y = print_line(pdf, cfg.FONT_FACE, cfg.SONGCHORD_SIZE, y, 0, cfg.SONGCHORD_SPACE, page_mapping, item.introduction);
+        y = print_line(doc, cfg.FONT_FACE, cfg.SONGCHORD_SIZE, y, 0, cfg.SONGCHORD_SPACE, page_mapping, item.introduction);
       }
     }
 
@@ -1406,10 +1426,10 @@ function format_page(pdf, cfg, page_mapping) {
           if(count == 0) { // on the first line in the chunk write the label: chorus, 1), 2), 3) ...
             let new_y;
             if(cfg.DISPLAY_CHORDS && item.has_chords() && item.type == 'verse') { //for verses with chords, we move the label down 
-              new_y = print_line(pdf, cfg.FONT_FACE, cfg.SONGLINE_SIZE, y+cfg.SONGCHORD_SIZE+cfg.SONGCHORD_SPACE, 0, cfg.SONGLINE_SPACE, page_mapping, label);
+              new_y = print_line(doc, cfg.FONT_FACE, cfg.SONGLINE_SIZE, y+cfg.SONGCHORD_SIZE+cfg.SONGCHORD_SPACE, 0, cfg.SONGLINE_SPACE, page_mapping, label);
             }
             else {
-              new_y = print_line(pdf, cfg.FONT_FACE, cfg.SONGLINE_SIZE, y, 0, cfg.SONGLINE_SPACE, page_mapping, label);
+              new_y = print_line(doc, cfg.FONT_FACE, cfg.SONGLINE_SIZE, y, 0, cfg.SONGLINE_SPACE, page_mapping, label);
             }
             if(VARIABLE_INDENT.indexOf(item.type) == -1) { // standard indent, with chunk body on next line
               y = new_y;                          // so we update y ... in other cases y not updated, so same line used
@@ -1435,25 +1455,25 @@ function format_page(pdf, cfg, page_mapping) {
           // we have a font -- lets use it
           //DBG:sav_y = y
           if(cfg.DISPLAY_CHORDS && item.has_chords()) {
-            y = print_chords(pdf, cfg, font_size, y, label_length, page_mapping, line);
+            y = print_chords(doc, cfg, font_size, y, label_length, page_mapping, line);
           }
-          y = print_line(pdf, cfg.FONT_FACE, font_size, y, label_length, cfg.SONGLINE_SPACE, page_mapping, line.text);
-          //DBG:pdf.setStrokeColor('green')
-          //DBG:pdf.rect(page_mapping.startx+label_length, page_mapping.starty-(sav_y),
-          //DBG:    pdf.stringWidth(line.text, cfg.FONT_FACE, font_size), -line.height)
-          //DBG:pdf.setStrokeColor('red')
-          //DBG:pdf.rect(page_mapping.startx+label_length, page_mapping.starty-(sav_y),
-          //DBG:    pdf.stringWidth(line.text, cfg.FONT_FACE, font_size), sav_y-y)
+          y = print_line(doc, cfg.FONT_FACE, font_size, y, label_length, cfg.SONGLINE_SPACE, page_mapping, line.text);
+          //DBG:doc.setStrokeColor('green')
+          //DBG:doc.rect(page_mapping.startx+label_length, page_mapping.starty-(sav_y),
+          //DBG:    doc.stringWidth(line.text, cfg.FONT_FACE, font_size), -line.height)
+          //DBG:doc.setStrokeColor('red')
+          //DBG:doc.rect(page_mapping.startx+label_length, page_mapping.starty-(sav_y),
+          //DBG:    doc.stringWidth(line.text, cfg.FONT_FACE, font_size), sav_y-y)
           //DBG:// reset
-          //DBG:pdf.setStrokeColor('black')
-          //DBG:pdf.setFillColor('black')
+          //DBG:doc.setStrokeColor('black')
+          //DBG:doc.setFillColor('black')
         }
       }
 
       if(item.last_chunk) {
         y += cfg.SONGCHUNK_B4;
         for(let line of item.copyright_footer) {
-          y = print_line(pdf, cfg.FONT_FACE, cfg.COPYRIGHT_SIZE, y, 0, 0, page_mapping, line);
+          y = print_line(doc, cfg.FONT_FACE, cfg.COPYRIGHT_SIZE, y, 0, 0, page_mapping, line);
           y += cfg.COPYRIGHT_SPACE;        // COPYRIGHT SPACE is padding between copyright lines 
         }
       }
@@ -1462,13 +1482,13 @@ function format_page(pdf, cfg, page_mapping) {
       y += item.height_after;
     }
 
-        //DBG:pdf.rect(page_mapping.startx+5, page_mapping.starty - (starty+cfg.SONGLINE_SIZE), 20, starty-y)
+        //DBG:doc.rect(page_mapping.startx+5, page_mapping.starty - (starty+cfg.SONGLINE_SIZE), 20, starty-y)
     // INDEX
     else if((item instanceof Index) && cfg.DISPLAY_INDEX != INDEX_OFF) { // top-level index which contains index entries
       if(cfg.DISPLAY_INDEX == INDEX_NO_PAGE_BREAK) {
         y += cfg.INDEX_TITLE_B4;  // only add space when index not starting on a new page
       }
-      y = print_line(pdf, cfg.INDEX_TITLE_FONT, cfg.INDEX_TITLE_SIZE, y, 0, cfg.INDEX_TITLE_SPACE, page_mapping, "Alphabetical Index");
+      y = print_line(doc, cfg.INDEX_TITLE_FONT, cfg.INDEX_TITLE_SIZE, y, 0, cfg.INDEX_TITLE_SPACE, page_mapping, "Alphabetical Index");
     }
 
     // SCRIP INDEX
@@ -1476,28 +1496,28 @@ function format_page(pdf, cfg, page_mapping) {
       if(cfg.DISPLAY_SCRIP_INDEX == INDEX_NO_PAGE_BREAK) {
         y += cfg.INDEX_TITLE_B4;  // only add space when scrip index not starting on a new page
       }
-      y = print_line(pdf, cfg.INDEX_TITLE_FONT, cfg.INDEX_TITLE_SIZE, y, 0, cfg.INDEX_TITLE_SPACE, page_mapping, "Scripture Index");
+      y = print_line(doc, cfg.INDEX_TITLE_FONT, cfg.INDEX_TITLE_SIZE, y, 0, cfg.INDEX_TITLE_SPACE, page_mapping, "Scripture Index");
     }
     // CAT INDEX
     else if((item instanceof CatIndex) && cfg.DISPLAY_CAT_INDEX != INDEX_OFF) { // top-level cat_index which contains index entries
       if(cfg.DISPLAY_CAT_INDEX == INDEX_NO_PAGE_BREAK) {
         y += cfg.INDEX_TITLE_B4;  // adding space because cat_index not starting on a new page
       }
-      y = print_line(pdf, cfg.INDEX_TITLE_FONT, cfg.INDEX_TITLE_SIZE, y, 0, cfg.INDEX_TITLE_SPACE, page_mapping, "Category Index");
+      y = print_line(doc, cfg.INDEX_TITLE_FONT, cfg.INDEX_TITLE_SIZE, y, 0, cfg.INDEX_TITLE_SPACE, page_mapping, "Category Index");
     }
 
     // CAT INDEX Category
     else if((item instanceof Category) && cfg.DISPLAY_CAT_INDEX != INDEX_OFF) { // Category inside cat_index
       y += cfg.INDEX_CAT_B4;  // add space before the category
-      y = print_line(pdf, cfg.INDEX_CAT_FONT, cfg.INDEX_CAT_SIZE, y, 0, cfg.INDEX_CAT_SPACE, page_mapping, item.category);
+      y = print_line(doc, cfg.INDEX_CAT_FONT, cfg.INDEX_CAT_SIZE, y, 0, cfg.INDEX_CAT_SPACE, page_mapping, item.category);
     }
 
     // CAT INDEX ITEM
     else if((item instanceof CatIndexEntry) && cfg.DISPLAY_CAT_INDEX != INDEX_OFF) {
       // print only the song number at this time -- don't save y since we are going to print on the line again
-      print_line(pdf, cfg.INDEX_SONG_FONT, cfg.INDEX_SONG_SIZE, y, 0, cfg.INDEX_SONG_SPACE, page_mapping, String(item.song.num));
+      print_line(doc, cfg.INDEX_SONG_FONT, cfg.INDEX_SONG_SIZE, y, 0, cfg.INDEX_SONG_SPACE, page_mapping, String(item.song.num));
       // now print the index text with a consistent x offset so everything lines up
-      y = print_line(pdf, cfg.INDEX_SONG_FONT, cfg.INDEX_SONG_SIZE, y, Math.max(cfg.INDEX_SONG_SIZE, cfg.INDEX_FIRST_LINE_SIZE)*2, cfg.INDEX_SONG_SPACE, page_mapping, item.index_text);
+      y = print_line(doc, cfg.INDEX_SONG_FONT, cfg.INDEX_SONG_SIZE, y, Math.max(cfg.INDEX_SONG_SIZE, cfg.INDEX_FIRST_LINE_SIZE)*2, cfg.INDEX_SONG_SPACE, page_mapping, item.index_text);
     }
 
     // INDEX ITEMS (after CatIndexEntry because CatIndexEntry is a subclass of IndexEntry)
@@ -1517,25 +1537,25 @@ function format_page(pdf, cfg, page_mapping) {
       }
 
       // print only the song number at this time -- don't save y since we are going to print on the line again
-      print_line(pdf, FONT, LINE_SIZE, y, 0, LINE_SPACE, page_mapping, String(item.song.num));
+      print_line(doc, FONT, LINE_SIZE, y, 0, LINE_SPACE, page_mapping, String(item.song.num));
       // now print the index text with a consistent x offset so everything lines up
-      y = print_line(pdf, FONT, LINE_SIZE, y, Math.max(cfg.INDEX_SONG_SIZE, cfg.INDEX_FIRST_LINE_SIZE)*2, LINE_SPACE, page_mapping, item.index_text);
+      y = print_line(doc, FONT, LINE_SIZE, y, Math.max(cfg.INDEX_SONG_SIZE, cfg.INDEX_FIRST_LINE_SIZE)*2, LINE_SPACE, page_mapping, item.index_text);
     }
   }
   
   // restore original clip settings
-  pdf.restoreState();
+  doc.restore();
 
   // debug -- print page (small page here) rect
   //DBG:print '%d x %d rect at (%d, %d)' % (page_mapping.endx-page_mapping.startx, page_mapping.endy-page_mapping.starty,
   //DBG:    page_mapping.startx, page_mapping.starty)
   //XXX: uncomment last 2 lines to have a border around each page
-  //pdf.rect(page_mapping.startx, page_mapping.starty,
+  //doc.rect(page_mapping.startx, page_mapping.starty,
   //    page_mapping.endx-page_mapping.startx,page_mapping.endy-page_mapping.starty,
   //    fill=0)
   if(page_height(page_mapping.page) != y) {
-    console.log('Page:', pdf.getPageNumber(), 'Expected page height:', page_height(page_mapping.page), 'not equal to actual page height:', y);
-    //DBG:pdf.rect(page_mapping.startx, page_mapping.starty,
+    //console.log('Page:', doc.getPageNumber(), 'Expected page height:', page_height(page_mapping.page), 'not equal to actual page height:', y);
+    //DBG:doc.rect(page_mapping.startx, page_mapping.starty,
     //DBG:    page_mapping.endx-page_mapping.startx,-page_height(page_mapping.page),
     //DBG:    fill=0)
   }
@@ -1570,21 +1590,9 @@ console.log(cfg);
   //pdf.setTitle(songbook.title);
   doc.info = {Title: songbook.title};
 
-  doc
-  .text('And here is some wrapped text...', 100, 300)
-  .font('Times-Roman', 13)
-  .moveDown()
-  .text(lorem, {
-    width: 412,
-    align: 'justify',
-    indent: 30,
-    columns: 2,
-    height: 300,
-    ellipsis: true
-  });
- /* for(const physical_page of pages_ordered) {
+  for(const physical_page of pages_ordered) {
     for(const page_mapping of physical_page) {
-      format_page(pdf, cfg, page_mapping);
+      format_page(doc, cfg, page_mapping);
     }
 
     // debug -- print page (small page here) rect
@@ -1592,7 +1600,7 @@ console.log(cfg);
         //cfg.PAPER_WIDTH-cfg.PAPER_MARGIN_RIGHT-cfg.PAPER_MARGIN_LEFT,(cfg.PAPER_MARGIN_BOTTOM+cfg.PAPER_MARGIN_TOP)-cfg.PAPER_HEIGHT,
         //fill=0)
     // done with (sub/virtual) pages that are written on one physical page -- on to next page
-    pdf.showPage();
+    //pdf.showPage();
   }
 
 

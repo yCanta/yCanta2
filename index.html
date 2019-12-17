@@ -538,7 +538,7 @@
           <div class="subcolumn sidebar" id="exportPreview">
             <div>
               <div class="sticky">
-                <h3>Preview<button onclick="$(this).closest('#exportPreview').removeClass('sidebar-open');" class="icon-fl-right close-icon">&times;</button></h3>
+                <h3>Preview<button onclick="$(this).closest('#exportPreview').removeClass('sidebar-open');" class="icon-fl-right close-icon">&times;</button></h3><input id="auto_refresh" name="auto_refresh" type="checkbox"><label for="auto_refresh">Automatic refresh?</label>
                   <!-- can't seem to get chrome to display this in iframe, objects or any other thingy without crashing on src change.  I get an "awSnap!" message and closed out tab -->
                 <embed width="320" height="450">
                   <br>
@@ -582,7 +582,7 @@
           location.hash = $(this).find('.title_link').attr('href');
         }
       });
-      $('.content-inner').change(function(){ makePDF(window.exportObject, document.querySelector('embed')) });
+      $('.content-inner').change(function(){ if($('#auto_refresh').is(":checked")){makePDF(window.exportObject, document.querySelector('embed'))} });
       $(function () {
         $('input.deletable').wrap('<span class="deleteicon" />').after($('<span/>').click(function() {
           $(this).prev('input').val('').trigger('change').focus()[0].dispatchEvent(new KeyboardEvent("keyup"));
