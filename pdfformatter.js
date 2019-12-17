@@ -623,13 +623,13 @@ class PageLayoutColumn1Sided extends PageLayoutColumn {
 
     // save old width and apply binder
     this.old_width = this.cfg.PAPER_WIDTH;
-    this.cfg.PAPER_WIDTH = this.old_width - this.cfg.MARGIN_GUTTER;
+    this.cfg.PAPER_WIDTH = this.old_width - this.cfg.PAPER_MARGIN_GUTTER;
   }
 
   page_order(pages) {
     pages = PageLayoutColumn.prototype.page_order.call(this, pages);
     for(let pg of pages) {
-      shift_mappings(pg, this.cfg.MARGIN_GUTTER);
+      shift_mappings(pg, this.cfg.PAPER_MARGIN_GUTTER);
     }
 
     // return page size to normal
@@ -648,14 +648,14 @@ class PageLayoutColumn2Sided extends PageLayoutColumn {
 
     // save old width and apply binder
     this.old_width = this.cfg.PAPER_WIDTH;
-    this.cfg.PAPER_WIDTH = this.old_width - this.cfg.MARGIN_GUTTER;
+    this.cfg.PAPER_WIDTH = this.old_width - this.cfg.PAPER_MARGIN_GUTTER;
   }
 
   page_order(pages) {
     pages = PageLayoutColumn.page_order(pages);
     for(const [i, pg] of Object.entries(pages)) {
       if(i % 2 == 0) {  // every other page must be shifted since we are printing double sided
-        shift_mappings(pg, this.cfg.MARGIN_GUTTER);
+        shift_mappings(pg, this.cfg.PAPER_MARGIN_GUTTER);
       }
     }
 
@@ -678,7 +678,7 @@ class PageLayoutBooklet extends PageLayoutColumn {
     this.old_width = this.cfg.PAPER_WIDTH;
     this.old_height = this.cfg.PAPER_HEIGHT;
     this.cfg.PAPER_HEIGHT = this.old_width;
-    this.cfg.PAPER_WIDTH = (this.old_height - this.cfg.MARGIN_GUTTER) / 2.0;
+    this.cfg.PAPER_WIDTH = (this.old_height - this.cfg.PAPER_MARGIN_GUTTER) / 2.0;
   }
 
   page_order(pages) {
@@ -705,13 +705,13 @@ class PageLayoutBooklet extends PageLayoutColumn {
     // process pages in groups of 4
     for(let i of range(0, pages.length, 4)) {
       if ((i+0) < pages.length) {  // page 1 on physical paper
-        page1 = shift_mappings(pages[i+0], this.cfg.PAPER_WIDTH + this.cfg.MARGIN_GUTTER);  // shift right (include binder)
+        page1 = shift_mappings(pages[i+0], this.cfg.PAPER_WIDTH + this.cfg.PAPER_MARGIN_GUTTER);  // shift right (include binder)
       }
       if ((i+1) < pages.length) {  // page 2 on physical paper
         page2 = pages[i+1];                                                   // no shift
       }
       if ((i+2) < pages.length) {  // page 3 on physical paper
-        page3 = shift_mappings(pages[i+2], this.cfg.PAPER_WIDTH + this.cfg.MARGIN_GUTTER);  // shift right (include binder)
+        page3 = shift_mappings(pages[i+2], this.cfg.PAPER_WIDTH + this.cfg.PAPER_MARGIN_GUTTER);  // shift right (include binder)
       }
       if ((i+3) < pages.length) {  // page 4 on physical paper
         page4 = pages[i+3];                                                   // no shift
@@ -1651,91 +1651,113 @@ function read_config_form(){
 }
 
 function read_config(config_array) {
-  //config = OptionParser()
+  function safe_var(variable, type) {
+    if(type == 'string') {
+      return String(variable);
+    }
+    else if(type == 'float') {
+      let parsed = parseFloat(variable);
+      if(isNaN(parsed)) {
+        return 0;
+      }
+      return parsed;
+    }
+    else if(type == 'int') {
+      let parsed = parseInt(variable, 10);
+      if(isNaN(parsed)) {
+        return 0;
+      }
+      return parsed;
+    }
+    else {
+      return 'You missed something!';
+    }
+  }
+  //console.log(config_array);
   var options = [];
-  options.SONGS_TO_PRINT =         ((config_array.print_a == null) ? '' : 'a') + 
-                                   ((config_array.print_n == null) ? '' : 'n') + 
-                                   ((config_array.print_r == null) ? '' : 'r');
-  options.SONGS_TO_PRINT =         config_array.songs_to_print;             //type="string",          
-  options.PAPER_SIZE =             config_array.paper_size;                 //type="string"          
-  options.PAPER_ORIENTATION =      config_array.paper_orientation;          //type="string"          
-  options.PAPER_MARGIN_LEFT =      config_array.paper_margin_left;          //type="float"           
-  options.PAPER_MARGIN_RIGHT=      config_array.paper_margin_right;         //type="float"           
-  options.PAPER_MARGIN_TOP =       config_array.paper_margin_top;           //type="float"           
-  options.PAPER_MARGIN_BOTTOM =    config_array.paper_margin_bottom;        //type="float"           
+  options.SONGS_TO_PRINT =         ((config_array.print_a == 'on') ? 'a' : '') + 
+                                   ((config_array.print_n == 'on') ? 'n' : '') + 
+                                   ((config_array.print_r == 'on') ? 'r' : '');
+  options.PAPER_SIZE =             safe_var(config_array.paper_size,                 'string');
+  options.PAPER_ORIENTATION =      safe_var(config_array.paper_orientation,          'string');  
+  options.PAPER_MARGIN_LEFT =      safe_var(config_array.paper_margin_left,          'float');   
+  options.PAPER_MARGIN_RIGHT=      safe_var(config_array.paper_margin_right,         'float');         //type="float"           
+  options.PAPER_MARGIN_TOP =       safe_var(config_array.paper_margin_top,           'float');           //type="float"           
+  options.PAPER_MARGIN_BOTTOM =    safe_var(config_array.paper_margin_bottom,        'float');        //type="float"           
 
-  options.PAGE_LAYOUT_NAME =       config_array.page_layout;                //type="string"          
+  options.PAGE_LAYOUT_NAME =       safe_var(config_array.page_layout,                'string');                //type="string"          
   options.PAGE_MARGIN_LEFT =       0;//config_array.page_margin_left;           //type="float"           
   options.PAGE_MARGIN_RIGHT =      0;//config_array.page_margin_right;          //type="float"           
   options.PAGE_MARGIN_TOP =        0;//config_array.page_margin_top;            //type="float"           
   options.PAGE_MARGIN_BOTTOM =     0;//config_array.page_margin_bottom;         //type="float"           
 
-  options.MARGIN_GUTTER =          config_array.margin_gutter;              //type="float"           
+  options.PAPER_MARGIN_GUTTER =    safe_var(config_array.PAPER_MARGIN_GUTTER,        'float');           
 
-  options.FONT_FACE =              config_array.font_face;                  //type="string"          
+  options.FONT_FACE =              safe_var(config_array.font_face,                  'string');          
 
-  options.CCLI =                   config_array.ccli;                       //type="string"          
+  options.CCLI =                   safe_var(config_array.ccli,                       'string');
 
-  options.COLUMNS =                config_array.columns;                    //type="int"             
+  options.COLUMNS =                safe_var(config_array.columns,                    'int');   
+  options.COLUMN_GUTTER =          safe_var(config_array.column_gutter,              'float');
 
-  options.BOOKTITLE_SIZE =         config_array.booktitle_size;             //type="int"             
-  options.BOOKTITLE_SPACE =        config_array.booktitle_space;            //type="int"             
-  options.HIDE_BOOKTITLE =         config_array.hide_booktitle;             //type="string"          
+  options.BOOKTITLE_SIZE =         safe_var(config_array.booktitle_size,             'int');
+  options.BOOKTITLE_SPACE =        safe_var(config_array.booktitle_space,            'int');
+  options.HIDE_BOOKTITLE =         safe_var(config_array.hide_booktitle,             'string');
 
-  options.START_SONG_ON_NEW_PAGE = config_array.start_song_on_new_page;     //type="string"          
-  options.SONGTITLE_FORMAT =       config_array.songtitle_format;           //type="string"          
-  options.SONGTITLE_SIZE =         config_array.songtitle_size;             //type="int"             
-  options.SONGTITLE_SPACE =        config_array.songtitle_space;            //type="int"             
-  options.SONG_SPACE_AFTER =       config_array.song_space_after;           //type="int"             
-  options.SONGCHUNK_B4 =           config_array.songchunk_b4;               //type="int"             
-  options.SONGLINE_SIZE =          config_array.songline_size;              //type="int"             
-  options.SONGLINE_SPACE =         config_array.songline_space;             //type="int"             
-  options.SONGCHORD_SIZE =         config_array.songchord_size;             //type="int"             
-  options.SONGCHORD_SPACE =        config_array.songchord_space;            //type="int"             
-  options.DISPLAY_CHORDS =         config_array.display_chords;             //type="string"          
+  options.START_SONG_ON_NEW_PAGE = safe_var(config_array.start_song_on_new_page,     'string');
+  options.SONGTITLE_FORMAT =       safe_var(config_array.songtitle_format,           'string');
+  options.SONGTITLE_SIZE =         safe_var(config_array.songtitle_size,             'int');
+  options.SONGTITLE_SPACE =        safe_var(config_array.songtitle_space,            'int');
+  options.SONG_SPACE_AFTER =       safe_var(config_array.song_space_after,           'int');
+  options.SONGCHUNK_B4 =           safe_var(config_array.songchunk_b4,               'int');
+  options.SONGLINE_SIZE =          safe_var(config_array.songline_size,              'int');
+  options.SONGLINE_SPACE =         safe_var(config_array.songline_space,             'int');
+  options.SONGCHORD_SIZE =         safe_var(config_array.songchord_size,             'int');
+  options.SONGCHORD_SPACE =        safe_var(config_array.songchord_space,            'int');
+  options.DISPLAY_CHORDS =         safe_var(config_array.display_chords,             'string');
 
-  options.SMALL_SIZE =             config_array.small_size;                 //type="int"            
-  options.SMALL_SPACE =            config_array.small_space;                //type="int"             
+  options.SMALL_SIZE =             safe_var(config_array.small_size,                 'int');
+  options.SMALL_SPACE =            safe_var(config_array.small_space,                'int');
 
-  options.SCRIPTURE_LOCATION =     config_array.scripture_location;         //type="string"          
+  options.SCRIPTURE_LOCATION =     safe_var(config_array.scripture_location,         'string');
 
-  options.COPYRIGHT_SIZE =         config_array.copyright_size;             //type="int"             
-  options.COPYRIGHT_SPACE =        config_array.copyright_space_b4;         //type="int"             
+  options.COPYRIGHT_SIZE =         safe_var(config_array.copyright_size,             'int');
+  options.COPYRIGHT_SPACE =        safe_var(config_array.copyright_space_b4,         'int');
 
-  options.RESIZE_PERCENT =         config_array.resize_percent;             //type="int"             
+  options.RESIZE_PERCENT =         safe_var(config_array.resize_percent,             'int');
 
-  options.DISPLAY_CAT_INDEX =      config_array.display_cat_index;          //type="string"          
-  options.DISPLAY_SCRIP_INDEX =    config_array.display_scrip_index;        //type="string"          
-  options.DISPLAY_INDEX =          config_array.display_index;              //type="string"          
-  options.INCLUDE_FIRST_LINE =     config_array.include_first_line;         //type="string"          
-  options.INDEX_TITLE_FONT =       config_array.index_title_font;           //type="string"          
-  options.INDEX_TITLE_B4 =         config_array.index_title_b4;             //type="int"             
-  options.INDEX_TITLE_SIZE =       config_array.index_title_size;           //type="int"             
-  options.INDEX_TITLE_SPACE =      config_array.index_title_space;          //type="int"             
-  options.INDEX_CAT_FONT =         config_array.index_cat_font;             //type="string"          
-  options.INDEX_CAT_B4 =           config_array.index_cat_b4;               //type="int"             
-  options.INDEX_CAT_SIZE =         config_array.index_cat_size;             //type="int"             
-  options.INDEX_CAT_SPACE =        config_array.index_cat_space;            //type="int"             
-  options.INDEX_CAT_EXCLUDE =      config_array.index_cat_exclude;          //type="string"          
-  options.INDEX_SONG_FONT =        config_array.index_song_font;            //type="string"          
-  options.INDEX_SONG_SIZE =        config_array.index_song_size;            //type="int"             
-  options.INDEX_SONG_SPACE =       config_array.index_song_space;           //type="int"             
-  options.INDEX_FIRST_LINE_FONT =  config_array.index_first_line_font;      //type="string"          
-  options.INDEX_FIRST_LINE_SIZE =  config_array.index_first_line_size;      //type="int"             
-  options.INDEX_FIRST_LINE_SPACE = config_array.index_first_line_space;     //type="int"             
+  options.DISPLAY_CAT_INDEX =      safe_var(config_array.display_cat_index,          'string');
+  options.DISPLAY_SCRIP_INDEX =    safe_var(config_array.display_scrip_index,        'string');
+  options.DISPLAY_INDEX =          safe_var(config_array.display_index,              'string');
+  options.INCLUDE_FIRST_LINE =     ((config_array.include_first_line == 'on') ? true : false);        //type="string"          
+  options.INDEX_TITLE_FONT =       safe_var(config_array.index_title_font,           'string');
+  options.INDEX_TITLE_B4 =         safe_var(config_array.index_title_b4,             'int');
+  options.INDEX_TITLE_SIZE =       safe_var(config_array.index_title_size,           'int');
+  options.INDEX_TITLE_SPACE =      safe_var(config_array.index_title_space,          'int');
+  options.INDEX_CAT_FONT =         safe_var(config_array.index_cat_font,             'string');
+  options.INDEX_CAT_B4 =           safe_var(config_array.index_cat_b4,               'int');
+  options.INDEX_CAT_SIZE =         safe_var(config_array.index_cat_size,             'int');
+  options.INDEX_CAT_SPACE =        safe_var(config_array.index_cat_space,            'int');
+  options.INDEX_CAT_EXCLUDE =      safe_var(config_array.index_cat_exclude,          'string');
+  options.INDEX_SONG_FONT =        safe_var(config_array.index_song_font,            'string');
+  options.INDEX_SONG_SIZE =        safe_var(config_array.index_song_size,            'int');
+  options.INDEX_SONG_SPACE =       safe_var(config_array.index_song_space,           'int');
+  options.INDEX_FIRST_LINE_FONT =  safe_var(config_array.index_first_line_font,      'string');
+  options.INDEX_FIRST_LINE_SIZE =  safe_var(config_array.index_first_line_size,      'int');
+  options.INDEX_FIRST_LINE_SPACE = safe_var(config_array.index_first_line_space,     'int');
 
-  options.DEBUG_MARGINS =          config_array.debug_margins;              //type="string"          
+  options.DEBUG_MARGINS =          safe_var(config_array.debug_margins,              'string');
 
   //(options, args) = config.parse_args(config_string.split())
 
   if (options.PAPER_ORIENTATION == 'portrait') {
-    options.PAPER_WIDTH = 60;//doc.page.width;
-    options.PAPER_HEIGHT = 60;//doc.page.height;
+    options.PAPER_WIDTH = 600;//doc.page.width;
+    options.PAPER_HEIGHT = 600;//doc.page.height;
     //getattr(reportlab.lib.pagesizes, options.PAPER_SIZE);
   }
   else {
-    options.PAPER_HEIGHT = 60;//doc.page.height;
-    options.PAPER_WIDTH = 60;//doc.page.width;
+    options.PAPER_HEIGHT = 600;//doc.page.height;
+    options.PAPER_WIDTH = 600;//doc.page.width;
     //getattr(reportlab.lib.pagesizes, options.PAPER_SIZE);
   }
 
@@ -1758,7 +1780,7 @@ function read_config(config_array) {
     options.HIDE_BOOKTITLE = false;
   }
 
-  if (options.START_SONG_ON_NEW_PAGE && options.START_SONG_ON_NEW_PAGE.toLowerCase() == 'yes') {
+  if (options.START_SONG_ON_NEW_PAGE && options.START_SONG_ON_NEW_PAGE.toLowerCase() == 'on') {
     options.START_SONG_ON_NEW_PAGE = true;
   }
   else {
@@ -1834,7 +1856,7 @@ function read_config(config_array) {
   options.PAGE_MARGIN_TOP = options.PAGE_MARGIN_TOP * inch;
   options.PAGE_MARGIN_BOTTOM = options.PAGE_MARGIN_BOTTOM * inch;
 
-  options.MARGIN_GUTTER = options.MARGIN_GUTTER * inch || "";
+  options.PAPER_MARGIN_GUTTER = options.PAPER_MARGIN_GUTTER * inch;
 
 
   // page layout init after almost everything so it can play with options as needed
