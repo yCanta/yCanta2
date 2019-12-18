@@ -310,16 +310,24 @@ function parse_song(song_object){  //json song object
     for(let line of chunk_ob[1]) {
       let text = line;
       let chords = [];
-
+      let tmp_line = expand_chord(line).split('\n');
 //REWRITE!!!
-      // parse chords and rest of line text
-      /*for(let c of line.findall('c')) {
-        chords[text.length] = c.text; // len(text) is offset in text where chord appears
-        text += c.tail || '';
-      }*/
+      //parse chords and rest of line text
+      //split line by <c> and </c>
+      console.log(tmp_line);
+      let tmp_chord = tmp_line[0].split(' ');
+      console.log(tmp_chord);
+      for(let i=0; i < tmp_chord.length; i++) {
+        console.log(i, tmp_chord[i]);
+        if(tmp_chord[i] != "") {
+          chords[i+1] = tmp_chord[i]; // len(text) is offset in text where chord appears  
+        }
+      }
+      text = tmp_line[1];
 
       // done parsing line -- add it
       line = new Line(text, chords);
+      console.log(line);
       chunk.lines.push(line);
     }
 
@@ -801,17 +809,17 @@ function word_wrap(text, width, font, size, hanging_indent=0) {
   return out;
 }
 
-function print_chords(pdf, cfg=null, font_size=null, y_offset=null, x_offset=null, page_mapping=null, line=null) {
-  //assert null not in (pdf, cfg, font_size, y_offset, x_offset, page_mapping, line)
+function print_chords(doc, cfg=null, font_size=null, y_offset=null, x_offset=null, page_mapping=null, line=null) {
+  //assert null not in (doc, cfg, font_size, y_offset, x_offset, page_mapping, line)
 
   y_offset += cfg.SONGCHORD_SIZE;
-  pdf.setFont(cfg.FONT_FACE, cfg.SONGCHORD_SIZE);
+  doc.font(cfg.FONT_FACE).fontSize(cfg.SONGCHORD_SIZE);
 
   // loop through chords
-  let char_offsets = line.chords.keys().sort();
+  let char_offsets = line.chords.keys();
   for(let char_offset of char_offsets) {
-    let chord_offset = pdf.stringWidth(line.text.slice(0, char_offset), cfg.FONT_FACE, font_size);
-    pdf.drawString(page_mapping.startx + x_offset + chord_offset, page_mapping.starty - y_offset, line.chords[char_offset]);
+    let chord_offset = myStringWidth(line.text.slice(0, char_offset), cfg.FONT_FACE, font_size);
+    doc.text(line.chords[char_offset], page_mapping.startx + x_offset + chord_offset, page_mapping.starty - y_offset);
   }
 
   return y_offset + cfg.SONGCHORD_SPACE;
