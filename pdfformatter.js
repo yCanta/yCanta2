@@ -314,11 +314,11 @@ function parse_song(song_object){  //json song object
 //REWRITE!!!
       //parse chords and rest of line text
       //split line by <c> and </c>
-      console.log(tmp_line);
+
       let tmp_chord = tmp_line[0].split(' ');
-      console.log(tmp_chord);
+
       for(let i=0; i < tmp_chord.length; i++) {
-        console.log(i, tmp_chord[i]);
+        
         if(tmp_chord[i] != "") {
           chords[i+1] = tmp_chord[i]; // len(text) is offset in text where chord appears  
         }
@@ -327,7 +327,7 @@ function parse_song(song_object){  //json song object
 
       // done parsing line -- add it
       line = new Line(text, chords);
-      console.log(line);
+      
       chunk.lines.push(line);
     }
 
@@ -339,7 +339,6 @@ function parse_song(song_object){  //json song object
 
 
 function parse(export_object, cfg) {
-  console.log(export_object);
   // if xml passed as filename, convert to object
   /*if isinstance(xml, basestring) and os.path.isfile(xml):
     xml = etree_parse(xml).getroot()*/
@@ -494,11 +493,11 @@ class PageLayoutSimple {
     // helper function
     function _make_mapping(p) {
       return PageMapping(
-          p,
-          cfg.PAPER_MARGIN_LEFT+cfg.PAGE_MARGIN_LEFT,
-          cfg.PAPER_HEIGHT-(cfg.PAPER_MARGIN_TOP+cfg.PAGE_MARGIN_TOP),
-          cfg.PAPER_WIDTH-(cfg.PAPER_MARGIN_RIGHT+cfg.PAGE_MARGIN_RIGHT),
-          cfg.PAPER_MARGIN_BOTTOM+cfg.PAGE_MARGIN_BOTTOM);
+          p,                                                                  //p
+          cfg.PAPER_MARGIN_LEFT+cfg.PAGE_MARGIN_LEFT,                         //sx
+          cfg.PAPER_MARGIN_TOP+cfg.PAGE_MARGIN_TOP,                           //sy
+          cfg.PAPER_WIDTH-(cfg.PAPER_MARGIN_RIGHT+cfg.PAGE_MARGIN_RIGHT),     //ex
+          cfg.PAPER_HEIGHT-(cfg.PAPER_MARGIN_BOTTOM+cfg.PAGE_MARGIN_BOTTOM)); //ey
     }
 
     return pages.map(p => _make_mapping(p));
@@ -535,9 +534,9 @@ class PageLayoutColumn {
     
     for(let p of pages) {
       let sx=this.cfg.PAPER_MARGIN_LEFT+this.cfg.PAGE_MARGIN_LEFT + curent_paper_page.length*this.get_page_width(0);
-      let sy=this.cfg.PAPER_HEIGHT - (this.cfg.PAPER_MARGIN_TOP + this.cfg.PAGE_MARGIN_TOP);
+      let sy=this.cfg.PAPER_MARGIN_TOP+this.cfg.PAGE_MARGIN_TOP;
       let ex=sx + this.get_page_width(1); // margin=1 so margins not included in calc
-      let ey=this.cfg.PAPER_MARGIN_BOTTOM + this.cfg.PAGE_MARGIN_BOTTOM;
+      let ey=this.cfg.PAPER_HEIGHT-(this.cfg.PAPER_MARGIN_BOTTOM + this.cfg.PAGE_MARGIN_BOTTOM);
 
       curent_paper_page.push(new PageMapping(p, sx, sy, ex, ey));
       
@@ -677,8 +676,9 @@ class PageLayoutBooklet extends PageLayoutColumn {
         page4 = pages[i+3];                                                   // no shift
 
         // all 4 pages have now been found and shifted as needed
-        paper_pages.push(page4+page1);  // 4 and 1 on same page
-        paper_pages.push(page2+page3);  // 2 and 3 on following page
+        //used to be push(pag4 + page1) was causing problems !!!!!!!!!STILL ERROR HERE
+        paper_pages.push(page4,page1);  // 4 and 1 on same page
+        paper_pages.push(page2,page3);  // 2 and 3 on following page
         
         // discard saved pages -- they are now in page list
         page1 = [];
@@ -693,19 +693,21 @@ class PageLayoutBooklet extends PageLayoutColumn {
       paper_pages.push(page1);
     }
     if (page2==[] || page3==[]) {
-      paper_pages.push(page2+page3);
+      paper_pages.push(page2,page3);
     }
 
     // set the paper sizes back to normal (but flipped 90 degrees)
     this.cfg.PAPER_WIDTH = this.old_height;
     this.cfg.PAPER_HEIGHT = this.old_width;
 
+    console.log(paper_pages)
+
     return paper_pages;
   }
 
   previous_page_visible(previous_pages) {
     // base our decision on what parent PageLayoutColumn would do
-    let crosses_pages =  PageLayoutColumn.previous_page_visible(previous_pages);
+    let crosses_pages =  PageLayoutColumn.prototype.previous_page_visible.call(this, previous_pages);
 
     // but we have page 2 and page 3 opening across from each other
     // and page 4 and 1 open across from each other when the little booklets go together
@@ -790,7 +792,7 @@ function word_wrap(text, width, font, size, hanging_indent=0) {
           delete chords[item];
         }
       }
-      out.push(Line(new_text,new_chords));
+      out.push(new Line(new_text,new_chords));
       for(let item of chords.keys()){
         chords[item - new_text.length] = chords[item];
         delete chords[item];
@@ -819,7 +821,7 @@ function print_chords(doc, cfg=null, font_size=null, y_offset=null, x_offset=nul
   let char_offsets = line.chords.keys();
   for(let char_offset of char_offsets) {
     let chord_offset = myStringWidth(line.text.slice(0, char_offset), cfg.FONT_FACE, font_size);
-    doc.text(line.chords[char_offset], page_mapping.startx + x_offset + chord_offset, page_mapping.starty - y_offset);
+    doc.text(line.chords[char_offset], page_mapping.startx + x_offset + chord_offset, page_mapping.starty + y_offset, { lineBreak: false });
   }
 
   return y_offset + cfg.SONGCHORD_SPACE;
@@ -849,14 +851,17 @@ function print_line(doc, font_face=null, font_size=null, y_offset=null, x_offset
 //DBG  pdf.setFillColor('black')
 
   doc.font(font_face).fontSize(font_size);
-  doc.text(line, page_mapping.startx+x_offset, page_mapping.starty - y_offset);
+  doc.text(line, page_mapping.startx+x_offset, page_mapping.starty + y_offset, { lineBreak: false });
   
   return y_offset + line_space;
 }
 
 function page_height(p) {
-  //return sum(i.height + i.height_after for i in p)
-  return  p.map(i =>  i.height + i.height_after);
+  let h = 0; 
+  for(i of p) {
+    h += i.height + i.height_after;
+  }
+  return h;
 }
 
 function paginate(songbook, cfg) {
@@ -1125,7 +1130,6 @@ function calc_heights(songbook, cfg) {
     else {
       songbook.height = 0;
     }
-    console.log(songbook.height);
 
     // category index
     if(cfg.DISPLAY_CAT_INDEX != INDEX_OFF) {
@@ -1169,13 +1173,13 @@ function calc_heights(songbook, cfg) {
 
     if(cfg.SCRIPTURE_LOCATION == SCRIPTURE_IN_TITLE && song.scripture_ref) {
       let num = song.num;
-      let title = song.title + ' (%s)' % song.scripture_ref;
-      song_title = cfg.SONGTITLE_FORMAT;
+      let title = song.title + '(' + song.scripture_ref + ')';
+      song_title = cfg.SONGTITLE_FORMAT.replace('${title}',title).replace('${num}',song.num);
     }
     else {
       let num = song.num;
       let title = song.title;
-      song_title = cfg.SONGTITLE_FORMAT;
+      song_title = cfg.SONGTITLE_FORMAT.replace('${title}',title).replace('${num}',song.num);
     }
 
     song.num_width = myStringWidth(function(){let title = ''; let num = song.num; return cfg.SONGTITLE_FORMAT;}, cfg.FONT_FACE, cfg.SONGTITLE_SIZE)*1.5;
@@ -1318,7 +1322,7 @@ function format_page(doc, cfg, page_mapping) {
 
   // set clip region
   doc.save(); // so we can restore to no clip after this page
-console.log(page_mapping);
+
   if(cfg.DEBUG_MARGINS) {
     doc.rect(page_mapping.startx, page_mapping.starty,
         page_mapping.endx-page_mapping.startx,page_mapping.endy-page_mapping.starty);
@@ -1390,7 +1394,7 @@ console.log(page_mapping);
         label = 'Chorus:';
       }
       else if(item.type == 'verse') {
-        label = '%d)' % item.num;
+        label = item.num + ')';
       }
       else if(item.type == 'bridge') {
         label = 'Bridge:';
@@ -1575,21 +1579,16 @@ function format(songbook, iframe, cfg) {
   }
   // calculate the space needed for the songbook pieces
   calc_heights(songbook, cfg);
-console.log(songbook);
   // returns a list of pages: each page is a list of things to show on that page 
   // Songbook and Song objects only count for titles and headers chunks have to be listed separate
   let pages = paginate(songbook, cfg);
-console.log(pages);
 
   let pages_ordered = cfg.page_layout.page_order(pages);
-console.log(pages_ordered);
-
-console.log(cfg);
 
   // pdf object creation must be after the page layout methods are run because the page layout can change the paper size
   
   //pdf = canvas.Canvas(pdf, pagesize=(cfg.PAPER_WIDTH, cfg.PAPER_HEIGHT));
-  let options = {size: cfg.PAPER_SIZE, layout: cfg.PAPER_ORIENTATION};
+  let options = {size: cfg.PAPER_SIZE, layout: cfg.PAPER_ORIENTATION, autoFirstPage: false};
   const doc = new PDFDocument(options);
   var stream = doc.pipe(blobStream());
 
@@ -1598,10 +1597,10 @@ console.log(cfg);
   doc.info = {Title: songbook.title};
 
   for(const physical_page of pages_ordered) {
+    doc.addPage();
     for(const page_mapping of physical_page) {
       format_page(doc, cfg, page_mapping);
     }
-
     // debug -- print page (small page here) rect
     //pdf.rect(cfg.PAPER_MARGIN_LEFT, cfg.PAPER_HEIGHT-cfg.PAPER_MARGIN_TOP,
         //cfg.PAPER_WIDTH-cfg.PAPER_MARGIN_RIGHT-cfg.PAPER_MARGIN_LEFT,(cfg.PAPER_MARGIN_BOTTOM+cfg.PAPER_MARGIN_TOP)-cfg.PAPER_HEIGHT,
@@ -1764,14 +1763,14 @@ function read_config(config_array) {
 
   if (options.SONGTITLE_FORMAT) {
     if (options.SONGTITLE_FORMAT == '') {  // special case for when the option field is left blank in HTML
-      options.SONGTITLE_FORMAT = `${title}`;
+      options.SONGTITLE_FORMAT = '${title}';
     }
     else {
-      options.SONGTITLE_FORMAT = options.SONGTITLE_FORMAT.replace(/\s/, ' ') + ' ${title}';
+      options.SONGTITLE_FORMAT = options.SONGTITLE_FORMAT + ' ${title}';
     }
   }
   else {
-    options.SONGTITLE_FORMAT = `${num}. ${title}`;
+    options.SONGTITLE_FORMAT = '${num}. ${title}';
   }
 
   if (options.HIDE_BOOKTITLE && options.HIDE_BOOKTITLE.toLowerCase() == 'yes') {
@@ -1870,7 +1869,6 @@ function read_config(config_array) {
   if (!options.CCLI || options.CCLI == 'null') {
     options.CCLI          = '__________';
   }
-  console.log(options);
   return options;
 }
 /*

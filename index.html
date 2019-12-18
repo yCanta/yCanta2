@@ -206,6 +206,8 @@
           <div class="subcolumn">
             <div class="content" style="min-width: 300px; max-width: 425px">
               <h3>Export</h3>
+              <button style="background-color: lightgray" class="btn" onclick="makePDF(window.exportObject, document.querySelector('embed'))">Generate</button>
+              <br><br>
               <form id="export_form">
                 <input id="collapsible1" class="toggle" type="radio" name="accordion">
                 <label for="collapsible1" class="lbl-toggle">Page Options</label>
@@ -409,9 +411,9 @@
                             <option value="no">no</option><option value="yes">yes</option>
                           </select>
                         </dd>
-                        <dt title="($num substitutes the song number; \s must be used for spaces)">Song number format:</dt>
+                        <dt title="(${num} substitutes the song number)">Song number format:</dt>
                         <dd>
-                          <input size="10" type="text" id="songtitle_format" value="$num\s" name="songtitle_format">
+                          <input size="10" type="text" id="songtitle_format" value="${num} " name="songtitle_format">
                         </dd>
                       </span>
                       <dt>Scripture reference location</dt>
@@ -659,7 +661,7 @@
               return window.exportObject = window.song;
             }).then(function(values){
               console.log(window.exportObject);
-              makePDF(window.exportObject, document.querySelector('embed'));
+              //makePDF(window.exportObject, document.querySelector('embed'));
 
               //Initiate song export
               $('body').attr('class', 'song export');
@@ -721,7 +723,7 @@
                 });
               });
             }).then(function(values){
-              makePDF(window.exportObject, document.querySelector('embed'));
+              //makePDF(window.exportObject, document.querySelector('embed'));
 
               $('body').attr('class', 'songList export');
               $('.active').removeClass('active');
