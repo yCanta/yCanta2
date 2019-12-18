@@ -70,7 +70,9 @@ function expand_chord(line){
     }
     else if(item.nodeName == '#text'){
       line += item.wholeText;
-      chord_line += ' '.repeat(line.length - chord_line.length);
+      if(line.length > chord_line.length) {
+        chord_line += ' '.repeat(line.length - chord_line.length);
+      }
     }
   });
   

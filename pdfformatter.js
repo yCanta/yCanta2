@@ -95,7 +95,7 @@ function hash(string) {
 } 
 
 var INDENT_NO_LABEL       = 'indented no label';
-var VARIABLE_INDENT       = ('verse', 'no label', INDENT_NO_LABEL, 'introduction');
+var VARIABLE_INDENT       = ['verse', 'no label', INDENT_NO_LABEL, 'introduction'];
 var SCRIPTURE_IN_TITLE    = 'in-title';
 var SCRIPTURE_UNDER_TITLE = 'under-title';
 var INDEX_ON_NEW_PAGE     = 'on-new-page';
