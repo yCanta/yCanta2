@@ -958,8 +958,7 @@ function paginate(songbook, cfg) {
       else { // space for this chunk
         p.push(chunk);
       }
-
-      if(chunk.type.indexOf('chorus')) {
+      if(chunk.type.indexOf('chorus') > -1) {
         chorus.push(chunk);
       }
     }
@@ -1601,10 +1600,12 @@ function format(songbook, iframe, cfg) {
     doc.addPage();
     for(const page_mapping of physical_page) {
       format_page(doc, cfg, page_mapping);
+     // console.log(page_mapping);
     }
     //This won't work until we start messaging via web workers - UI is frozen until js finishes.
-    window.document.getElementById('pdf_progress').style.width = ((parseInt(i,10)+1) / pages_ordered.length)*100 +'%';
-    window.document.getElementById('pdf_progress_text').innerHTML = ((parseInt(i,10)+1) / pages_ordered.length)*100 +'%';
+   // console.log(parseInt(((parseInt(i,10)+1) / pages_ordered.length)*100, 10) +'%');
+    window.document.getElementById('pdf_progress').style.width = parseInt(((parseInt(i,10)+1) / pages_ordered.length)*100,10) +'%';
+    window.document.getElementById('pdf_progress_text').innerHTML = parseInt(((parseInt(i,10)+1) / pages_ordered.length)*100,10) +'%';
     // debug -- print page (small page here) rect
     //pdf.rect(cfg.PAPER_MARGIN_LEFT, cfg.PAPER_HEIGHT-cfg.PAPER_MARGIN_TOP,
         //cfg.PAPER_WIDTH-cfg.PAPER_MARGIN_RIGHT-cfg.PAPER_MARGIN_LEFT,(cfg.PAPER_MARGIN_BOTTOM+cfg.PAPER_MARGIN_TOP)-cfg.PAPER_HEIGHT,
