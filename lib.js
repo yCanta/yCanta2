@@ -1,22 +1,22 @@
 String.prototype.count=function(s1) { 
     return (this.length - this.replace(new RegExp(s1,"g"), '').length) / s1.length;
-}
+};
 
 window.addEventListener("resize", function(){
   window.setTimeout(function(){
     document.activeElement.scrollIntoView({block: 'start'});
   },0);
-})
+});
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js', {
     scope: './'
   })
   .then((serviceWorker) => {
-    console.log('service worker registration successful')
+    console.log('service worker registration successful');
   })
   .catch((err) => {
-    console.error('service worker registration failed')
+    console.error('service worker registration failed');
     console.error(err);
   });
 } else {
@@ -25,7 +25,7 @@ if ('serviceWorker' in navigator) {
 
 function scaleRemove(el, time=250) {
   el.style = "transform: scale(1.2,0); background-color: orangered;";
-  setTimeout(function(){ el.remove() }, time);
+  setTimeout(function(){ el.remove(); }, time);
 }
 
 function isChord(line) {
@@ -70,7 +70,9 @@ function expand_chord(line){
     }
     else if(item.nodeName == '#text'){
       line += item.wholeText;
-      chord_line += ' '.repeat(line.length - chord_line.length);
+      if(line.length > chord_line.length) {
+        chord_line += ' '.repeat(line.length - chord_line.length);
+      }
     }
   });
   
@@ -102,8 +104,8 @@ function combine(chord, text) {
   //combine
   var line = text;
   var chord_keys = Object.keys(chords);
-  chord_keys.sort((a, b) => b - a)
-  for (key in chord_keys) {
+  chord_keys.sort((a, b) => b - a);
+  for (let key in chord_keys) {
     line = line.substring(0,chord_keys[key])+'<c>'+chords[chord_keys[key]] + '</c>' + line.substring(chord_keys[key],line.length);
   }
   return line;
@@ -118,7 +120,7 @@ function parseHash(part) {
     return parts[0];
   }
   else {
-    return parts
+    return parts;
   }
 }
 function updateAllLinks(whatChanged='all') {
@@ -169,7 +171,7 @@ console.error = console.debug = console.info =  console.log
 */
 
 function toggleFullscreen(el){
-  var fullscreen = $(el).closest(".column")
+  var fullscreen = $(el).closest(".column");
   var full = fullscreen.hasClass('fullscreen');
   console.log(full);
 
@@ -180,14 +182,16 @@ function toggleFullscreen(el){
 }
 
 function bindSearchToList(list, id){
-  list.on('searchComplete', function(){$(id + ' .search + span').attr('data-number-visible',list.visibleItems.length)});
+  list.on('searchComplete', function(){
+    $(id + ' .search + span').attr('data-number-visible',list.visibleItems.length);
+  });
   $(id + ' .search+span').attr('data-number-visible', $(id + ' .list li').length);
 }
 
-bindToSongEdit = function() {
+function bindToSongEdit() {
   $('#song').on('change', '[type="checkbox"]', function() {
     //add/remove categories as checkboxes are modified
-    var cats = $('categories').text().trim()
+    var cats = $('categories').text().trim();
     if(cats != ''){
       cats = cats.split(',').map(Function.prototype.call, String.prototype.trim);
     }
@@ -212,7 +216,7 @@ function mapSongbookRowToValue(row) {
     'songbook-title':        't:' + row.doc.title,
     'link': '#'+row.doc._id,
     'name': row.doc.title
-  }
+  };
 }
 function mapSongRowToValue(row) {
   function formatArray(array, letter){
@@ -222,7 +226,7 @@ function mapSongRowToValue(row) {
     return (text != '' ? text : '!'+letter);
   }
   function formatSongContent(content){
-    var song_content = ''
+    var song_content = '';
     
     var i, j;
     for (i = 0; i < content.length; i++) { 
@@ -245,7 +249,7 @@ function mapSongRowToValue(row) {
     'song-content': formatSongContent(row.doc.content), 
     'link': '#'+window.songbook._id+'&'+row.doc._id,
     'name': row.doc.title
-  }
+  };
 }
 
 function buildSongbookList(songs, target_class='songbook_content', 
@@ -273,6 +277,7 @@ function buildSongbookList(songs, target_class='songbook_content',
   var i;
   for (i = 0; i < songs.length; i++) { 
     //I tried to use saved_list as a standin variable for the window object we save below - it never worked out so I'm using this clunky bit of code here.
+    let save_list;
     if(edit != true) {
       saved_list = window.songbook_list;
     }
@@ -287,9 +292,9 @@ function buildSongbookList(songs, target_class='songbook_content',
         var songRevInList = saved_list.get('song-rev', songs[i].doc._rev);
         if(songRevInList < 1){
           songIdInList[0].values(mapSongRowToValue(songs[i]));
-          console.log('heya!')
+          console.log('heya!');
         }
-        return
+        return;
       }
     }
     values.push(mapSongRowToValue(songs[i]));
@@ -305,10 +310,10 @@ function buildSongbookList(songs, target_class='songbook_content',
     window.songbook_edit_togglesongs_list = new List(target_class, options, values);
     bindSearchToList(window.songbook_edit_togglesongs_list, '#songListEdit');
   }
-  return 
+  return;
 }
 function dataxInBookUpdate(song, remove=false){
-  var songA = $('#songListEdit li[data-song-id="'+$(song).attr('data-song-id')+'"]')
+  var songA = $('#songListEdit li[data-song-id="'+$(song).attr('data-song-id')+'"]');
   var number=null;
   if(remove){
     number = parseInt(songA.attr('data-xInBook'))-1;
@@ -339,15 +344,15 @@ function bind_songbook_edit(song){
 }
 function bind_chunk_edit(chunk){
   chunk.setAttribute('draggable', 'true');  // Enable columns to be draggable.
-  chunk.addEventListener('dragstart', function(event){dragStart(event,'.wrap'), false});
-  chunk.addEventListener('dragenter', function(event){dragEnter(event,'.wrap'), false});
+  chunk.addEventListener('dragstart', function(event){dragStart(event,'.wrap');}, false);
+  chunk.addEventListener('dragenter', function(event){dragEnter(event,'.wrap');}, false);
   chunk.addEventListener('dragover', dragOver, false);
-  chunk.addEventListener('dragleave', function(event){dragLeave(event,'.wrap'), false});
-  chunk.addEventListener('drop', function(event){dragDrop(event,'.wrap'), false});
-  chunk.addEventListener('dragend', function(event){dragEnd(event,'.wrap'), false});
+  chunk.addEventListener('dragleave', function(event){dragLeave(event,'.wrap');}, false);
+  chunk.addEventListener('drop', function(event){dragDrop(event,'.wrap');}, false);
+  chunk.addEventListener('dragend', function(event){dragEnd(event,'.wrap');}, false);
   $(chunk).children().hover(
-    function(){chunk.setAttribute('draggable', 'false')},
-    function(){chunk.setAttribute('draggable', 'true')}
+    function(){chunk.setAttribute('draggable', 'false');},
+    function(){chunk.setAttribute('draggable', 'true');}
   );
 }
 
@@ -387,7 +392,7 @@ function editSongbook() {
     [].forEach.call(document.querySelectorAll('#songList #songbook_edit_togglesongs ul li'), function (song) {
       bind_songbook_edit(song);
       song.addEventListener('click', function( e ) {
-        var copySong = $(e.target).closest('li')[0].cloneNode(true)
+        var copySong = $(e.target).closest('li')[0].cloneNode(true);
         bind_songbook_edit(copySong);
         dataxInBookUpdate(copySong);
         $(copySong).find('a').after('<button>&#128465;</button>');
@@ -429,9 +434,9 @@ function editSong() {
     bind_chunk_edit($(this).closest('.wrap')[0]);
   });
 
-  $('#song authors').html($('#song author').map(function(){return $(this).text()}).get().join(', '));
-  $('#song categories').html($('#song cat').map(function(){return $(this).text()}).get().join(', '));
-  $('#song scripture_ref').html($('#song cat').map(function(){return $(this).text()}).get().join(', '));
+  $('#song authors').html($('#song author').map(function(){return $(this).text();}).get().join(', '));
+  $('#song categories').html($('#song cat').map(function(){return $(this).text();}).get().join(', '));
+  $('#song scripture_ref').html($('#song cat').map(function(){return $(this).text();}).get().join(', '));
   $('#song').first('.subcolumn').find('stitle,authors,scripture_ref,introduction,key,chunk,copyright').toTextarea({
     allowHTML: false,//allow HTML formatting with CTRL+b, CTRL+i, etc.
     allowImg: false,//allow drag and drop images
@@ -441,8 +446,9 @@ function editSong() {
     placeholder: false//a placeholder when no text is entered. This can also be set by a placeholder="..." or data-placeholder="..." attribute
   });
   $('#song categories').addClass('contenteditable-disabled').prop('tabindex',"0")
-    .on('click', function(){$('#song-edit').toggleClass('sidebar-open')
-    .find('.search').focus()});
+    .on('click', function(){
+      $('#song-edit').toggleClass('sidebar-open').find('.search').focus();
+    });
   window.editing = true;
 
   //load categories
@@ -453,7 +459,7 @@ function editSong() {
       if(window.categories_list != undefined){
         var catInList = window.categories_list.get('name',cat);
         if(catInList.length > 0){
-          return
+          return;
         }
       }
       values.push({ 'name': cat});
@@ -491,7 +497,7 @@ function prepSaveSong(element) {
         else{  //we have a line
           content += '<line>'+this+'</line>';
         }
-      })
+      });
       $(this).html(content);
     });
     resolve('song is prepped for saving');
@@ -502,14 +508,20 @@ function prepSaveSong(element) {
   }).catch(function (err) {
     console.log(err);
   });
-};
+}
+function prepExport(){
+  document.getElementById('pdf_progress').style.width = 0 +'%';
+  document.getElementById('pdf_progress_text').innerHTML = 0 +'%';
+  document.querySelector('iframe').src = "";
+}
 //Making things work with touch coolness
 function makeDraggable(dragCaptureEl, dragEl, dragAction, dragSide='right') {
-  var startx = 0;
-  var starty = 0;
-  var dist = 0;
-  var disty = 0;
-  var width = 0;
+  let startx = 0;
+  let starty = 0;
+  let dist = 0;
+  let disty = 0;
+  let width = 0;
+  let height = 0;
 
   dragCaptureEl.addEventListener('touchstart', function(e){
     document.documentElement.className = 'no-overscroll';
@@ -574,7 +586,7 @@ function makeDraggable(dragCaptureEl, dragEl, dragAction, dragSide='right') {
       e.preventDefault();
     }
   }, false); 
-};
+}
 
 function sayHi(message) {
   window.alert(message);
@@ -600,29 +612,29 @@ window.addEventListener('load', function(){
 window.addEventListener('load', function(){
   makeDraggable(document.getElementById('songbookList'),
                 document.getElementById('header'),
-                function(){if(!confirmWhenEditing()) {window.location.hash = ''}}, 'top');
+                function(){if(!confirmWhenEditing()) {window.location.hash = '';}}, 'top');
 }, false);
 window.addEventListener('load', function(){
   makeDraggable(document.getElementById('songList'),
                 document.getElementById('songbookList'),
-                function(){if(!confirmWhenEditing()) {window.location.hash = '#songbooks'}}, 'top');
+                function(){if(!confirmWhenEditing()) {window.location.hash = '#songbooks';}}, 'top');
 }, false);
 window.addEventListener('load', function(){
   makeDraggable(document.getElementById('song'),
                 document.getElementById('songList'),
-                function(){if(!confirmWhenEditing()) {window.location.hash = '#'+window.songbook._id}}, 'top');
+                function(){if(!confirmWhenEditing()) {window.location.hash = '#'+window.songbook._id;}}, 'top');
 }, false);
 window.addEventListener('load', function(){
   makeDraggable(document.getElementById('export'),
                 document.getElementById('song'),
-                function(){if(!confirmWhenEditing()) {window.location.hash = window.location.hash.replace('&export','')}}, 'top');
+                function(){if(!confirmWhenEditing()) {window.location.hash = window.location.hash.replace('&export','');}}, 'top');
 }, false);
 
 
 function bindSearch(element, search_prefix) {
   $('body').on('click', element, function() {
     if(window.editing){
-      return
+      return;
     }
     $('#songbook_content .search').val(search_prefix+$(this).text())[0]
       .dispatchEvent(new KeyboardEvent("keyup"));
@@ -633,15 +645,15 @@ function confirmWhenEditing() {
   if(window.editing){
     if (confirm("If you leave this page you will lose your unsaved changes!")) {
       window.editing=false; //It's ok to lose changes
-      return false
+      return false;
     } else { //we aren't leaving 
-      return true
+      return true;
     }
   }
 }
 
 //fun little function for counting syllables.  Need to create breaks in the line instead... if we were to use this for Chord positioning.
-var count = function(word) {
+function count(word) {
   word = word.toLowerCase(); 
   word = word.replace(/(?:[^laeiouy]|ed|[^laeiouy]e)$/, ''); 
   word = word.replace(/^y/, ''); 

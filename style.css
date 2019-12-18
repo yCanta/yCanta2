@@ -38,6 +38,13 @@ stitle, cat, author, scrip_ref, key, copyright {
   z-index: 10;
   padding-top: 0.1px;
 }
+.export_header { 
+  position: sticky;
+  z-index: 10;
+  top: 0;
+  padding-top: 0.1px;
+  background-color: bisque;
+}
 #songbooks_header {
   position: sticky;
   top: 0;
@@ -211,6 +218,7 @@ body {
   background-color: lightsalmon;
 }
 .btn {
+  box-shadow: 0px 2px 4px 2px rgba(0, 0, 0, 0.8);
   font-weight: bold;
   border-radius: 1rem;
   padding: 5px 15px 5px 15px;
@@ -400,6 +408,14 @@ body.edit .sidebar-open {
   flex: 0 0 280px;
 }
 /*Focus export*/
+body.export.song #song, 
+body.export.songList #songList {
+  flex-shrink: 1;
+}
+body.export.song #songList,
+body.export.songList #songbookList {
+  flex-shrink: 2;
+}
 body.export #export .sidebar {
   background-color: lightgray;
   z-index:7;
@@ -593,6 +609,12 @@ input[type="number"] {
   display: inline-block;
   height: 2rem;
 }
+.index_options {
+  display: none;
+}
+.songList .index_options {
+  display: block;
+}   
 /*For Mobile devices only*/
 @media only screen and (max-width: 639px) {
   header {
@@ -830,5 +852,11 @@ only screen and (max-height: 500px) {
   #song .content,
   #songbook_content {
     width: 400px;
+  }
+  body.export #export {
+    flex: 0 0.2 800px;
+  }
+  body.export #export .sidebar {
+    flex: 0 0 360px;
   }
 }
