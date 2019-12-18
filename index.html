@@ -206,8 +206,19 @@
           <div class="subcolumn">
             <div class="content" style="min-width: 300px; max-width: 425px">
               <h3 class="export_header">Export</h3>
-              <button style="background-color: lightgray" class="btn" onclick="makePDF(window.exportObject, document.querySelector('embed'))">Generate</button>
-              <br><br>
+              <table>
+                <td>
+                  <button style="background-color: lightgray" class="btn" onclick="makePDF(window.exportObject, document.querySelector('iframe'))">Generate</button>
+                </td>
+                <td style="width: 100%">
+                  <div id='pdf_progress_bar' style='border: 1px solid black; position: relative;'>
+                    <div style='border-right: 1px solid gray; background-color: white; width:0%; height:1.2em;text-align: center;' id='pdf_progress'>
+                    </div>
+                    <span id='pdf_progress_text' style='font-size:small; white-space:nowrap; position: absolute; top:0; right: 0; left: 0; bottom: 0; text-align: center;'></span>
+                  </div>
+                </td>
+              </table>
+              <br>
               <form id="export_form">
                 <input id="collapsible1" class="toggle" type="radio" name="accordion">
                 <label for="collapsible1" class="lbl-toggle">Page Options</label>
@@ -542,7 +553,7 @@
               <div class="sticky">
                 <h3>Preview<button onclick="$(this).closest('#exportPreview').removeClass('sidebar-open');" class="icon-fl-right close-icon">&times;</button></h3><input id="auto_refresh" name="auto_refresh" type="checkbox"><label for="auto_refresh">Automatic refresh?</label>
                   <!-- can't seem to get chrome to display this in iframe, objects or any other thingy without crashing on src change.  I get an "awSnap!" message and closed out tab -->
-                <embed width="320" height="450">
+                <iframe width="320" height="450" src=""></iframe>
                   <br>
                   <br>
                 <button class="btn" style="background-color: lightsalmon;">Download</button>
@@ -584,7 +595,7 @@
           location.hash = $(this).find('.title_link').attr('href');
         }
       });
-      $('.content-inner').change(function(){ if($('#auto_refresh').is(":checked")){makePDF(window.exportObject, document.querySelector('embed'))} });
+      $('.content-inner').change(function(){ if($('#auto_refresh').is(":checked")){makePDF(window.exportObject, document.querySelector('iframe'))} });
       $(function () {
         $('input.deletable').wrap('<span class="deleteicon" />').after($('<span/>').click(function() {
           $(this).prev('input').val('').trigger('change').focus()[0].dispatchEvent(new KeyboardEvent("keyup"));
@@ -660,6 +671,7 @@
             //get the song object db.get(id) and save it to window.exportObject
               return window.exportObject = window.song;
             }).then(function(values){
+              prepExport();
               console.log(window.exportObject);
               //makePDF(window.exportObject, document.querySelector('embed'));
 
@@ -717,6 +729,7 @@
                 }).then(function (result) {
                   window.exportObject.songs = result.rows;
                   console.log(window.exportObject);
+                  prepExport();
                   resolve('Its done')
                 }).catch(function (err) {
                   console.log(err);

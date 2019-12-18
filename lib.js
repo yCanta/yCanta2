@@ -507,6 +507,11 @@ function prepSaveSong(element) {
     console.log(err);
   });
 }
+function prepExport(){
+  document.getElementById('pdf_progress').style.width = 0 +'%';
+  document.getElementById('pdf_progress_text').innerHTML = 0 +'%';
+  document.querySelector('iframe').src = "";
+}
 //Making things work with touch coolness
 function makeDraggable(dragCaptureEl, dragEl, dragAction, dragSide='right') {
   let startx = 0;

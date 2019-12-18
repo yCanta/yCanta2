@@ -1576,6 +1576,8 @@ function format(songbook, iframe, cfg) {
   if (typeof songbook == 'object') {
     songbook = parse(songbook, cfg);    // parse into objects
   }
+  window.document.getElementById('pdf_progress').style.width = 0 +'%';
+  window.document.getElementById('pdf_progress_text').innerHTML = 0 +'%';
   // calculate the space needed for the songbook pieces
   calc_heights(songbook, cfg);
   // returns a list of pages: each page is a list of things to show on that page 
@@ -1595,11 +1597,14 @@ function format(songbook, iframe, cfg) {
   //pdf.setTitle(songbook.title);
   doc.info = {Title: songbook.title};
 
-  for(const physical_page of pages_ordered) {
+  for(const [i, physical_page] of Object.entries(pages_ordered)) {
     doc.addPage();
     for(const page_mapping of physical_page) {
       format_page(doc, cfg, page_mapping);
     }
+    //This won't work until we start messaging via web workers - UI is frozen until js finishes.
+    window.document.getElementById('pdf_progress').style.width = ((parseInt(i,10)+1) / pages_ordered.length)*100 +'%';
+    window.document.getElementById('pdf_progress_text').innerHTML = ((parseInt(i,10)+1) / pages_ordered.length)*100 +'%';
     // debug -- print page (small page here) rect
     //pdf.rect(cfg.PAPER_MARGIN_LEFT, cfg.PAPER_HEIGHT-cfg.PAPER_MARGIN_TOP,
         //cfg.PAPER_WIDTH-cfg.PAPER_MARGIN_RIGHT-cfg.PAPER_MARGIN_LEFT,(cfg.PAPER_MARGIN_BOTTOM+cfg.PAPER_MARGIN_TOP)-cfg.PAPER_HEIGHT,
