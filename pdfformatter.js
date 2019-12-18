@@ -308,18 +308,17 @@ function parse_song(song_object){  //json song object
     // parse lines and chords in chunk
     for(let line of chunk_ob[1]) {
       let text = line;
-      let chords = [];
+      let chords = {};
       let tmp_line = expand_chord(line).split('\n');
-//REWRITE!!!
+
       //parse chords and rest of line text
       //split line by <c> and </c>
 
-      let tmp_chord = tmp_line[0].split(' ');
+      let tmp_chord = tmp_line[0];
 
       for(let i=0; i < tmp_chord.length; i++) {
-        
-        if(tmp_chord[i] != "") {
-          chords[i+1] = tmp_chord[i]; // len(text) is offset in text where chord appears  
+        if(tmp_chord[i] != ' ') {
+          chords[i] = tmp_chord[i]; // len(text) is offset in text where chord appears  
         }
       }
       text = tmp_line[1];
@@ -817,7 +816,7 @@ function print_chords(doc, cfg=null, font_size=null, y_offset=null, x_offset=nul
   doc.font(cfg.FONT_FACE).fontSize(cfg.SONGCHORD_SIZE);
 
   // loop through chords
-  let char_offsets = line.chords.keys();
+  let char_offsets = Object.keys(line.chords);
   for(let char_offset of char_offsets) {
     let chord_offset = myStringWidth(line.text.slice(0, char_offset), cfg.FONT_FACE, font_size);
     doc.text(line.chords[char_offset], page_mapping.startx + x_offset + chord_offset, page_mapping.starty + y_offset, { lineBreak: false });

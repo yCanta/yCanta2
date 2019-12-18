@@ -609,6 +609,12 @@ input[type="number"] {
   display: inline-block;
   height: 2rem;
 }
+.index_options {
+  display: none;
+}
+.songList .index_options {
+  display: block;
+}   
 /*For Mobile devices only*/
 @media only screen and (max-width: 639px) {
   header {
