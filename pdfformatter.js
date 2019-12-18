@@ -79,23 +79,23 @@ class defaultdict {
 }
 
 function* range(start, end) {
-    yield start;
-    if (start === end) return;
-    yield* range(start + 1, end);
+  yield start;
+  if (start === end) return;
+  yield* range(start + 1, end);
 }
 function hash(string) { 
-    var hash = 0; 
-    if (string.length == 0) return hash; 
-    for (i = 0; i < string.length; i++) { 
-        char = string.charCodeAt(i); 
-        hash = ((hash << 5) - hash) + char; 
-        hash = hash & hash; 
-    } 
-    return hash; 
+  var hash = 0; 
+  if (string.length == 0) return hash; 
+  for (let i = 0; i < string.length; i++) { 
+    let char = string.charCodeAt(i); 
+    hash = ((hash << 5) - hash) + char; 
+    hash = hash & hash; 
+  } 
+  return hash; 
 } 
 
-var INDENT_NO_LABEL = 'indented no label';
-var VARIABLE_INDENT = ('verse', 'no label', INDENT_NO_LABEL, 'introduction');
+var INDENT_NO_LABEL       = 'indented no label';
+var VARIABLE_INDENT       = ('verse', 'no label', INDENT_NO_LABEL, 'introduction');
 var SCRIPTURE_IN_TITLE    = 'in-title';
 var SCRIPTURE_UNDER_TITLE = 'under-title';
 var INDEX_ON_NEW_PAGE     = 'on-new-page';
@@ -129,7 +129,7 @@ class Index extends Array {
 }
 
 class ScripIndex extends Array {
-  constructor(){
+  constructor() {
     //var star_args = Array.prototype.slice.call(arguments, constructor.length);
     super();
     this.height = 0;
@@ -138,7 +138,7 @@ class ScripIndex extends Array {
 }
 
 class CatIndex extends defaultdict {
-  constructor(){
+  constructor() {
     var star_args = Array.prototype.slice.call(arguments, constructor.length);
     //defaultdict.call(this, list, star_args)
     super(star_args);
@@ -874,7 +874,6 @@ function paginate(songbook, cfg) {
         break;
       }
     }
-
     return height;
   }
 
