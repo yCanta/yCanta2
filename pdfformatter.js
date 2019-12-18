@@ -265,34 +265,33 @@ function sort_scrip_index(scrip_ref){
 
 //Parse song_object
 function parse_song(song_object){  //json song object
-  let song_ob = song_object.doc;
-  let title = song_ob.title;
+  let title = song_object.title;
   if (title == '') {  // if not found title is null
     title = 'Untitled';
   }
 
-  let author = song_ob.authors;
+  let author = song_object.authors;
   author = author.join(', ');
   
-  let categories = song_ob.categories;
+  let categories = song_object.categories;
   
-  let ccli = song_ob.cclis;
+  let ccli = song_object.cclis;
 
-  let copyright = song_ob.copyright;
+  let copyright = song_object.copyright;
 
-  let scripture_ref = song_ob.scripture_ref;
+  let scripture_ref = song_object.scripture_ref;
   scripture_ref = scripture_ref.join(', ');
 
-  let key = song_ob.key;
+  let key = song_object.key;
 
-  let intro = song_ob.introduction;
+  let intro = song_object.introduction;
   
   //could sub some of these directly for song.____
   let song = new Song(title, author, copyright, ccli, scripture_ref, key, intro.trim(), categories);
 
   // parse song chunks
   let verse_num = 1;
-  for(let chunk_ob of song_ob.content) {
+  for(let chunk_ob of song_object.content) {
     let type = chunk_ob[0].type;
     let chunk = new Chunk(type);
     
@@ -370,7 +369,7 @@ function parse(export_object, cfg) {
       continue;
     }
 
-    let song = parse_song(export_object.songs[i]);
+    let song = parse_song(export_object.songs[i].doc);
     song.num = song_num;
     song_num += 1;
 
@@ -700,7 +699,7 @@ class PageLayoutBooklet extends PageLayoutColumn {
     this.cfg.PAPER_WIDTH = this.old_height;
     this.cfg.PAPER_HEIGHT = this.old_width;
 
-    console.log(paper_pages)
+    console.log(paper_pages);
 
     return paper_pages;
   }
@@ -858,7 +857,7 @@ function print_line(doc, font_face=null, font_size=null, y_offset=null, x_offset
 
 function page_height(p) {
   let h = 0; 
-  for(i of p) {
+  for(let i of p) {
     h += i.height + i.height_after;
   }
   return h;
@@ -1343,7 +1342,7 @@ function format_page(doc, cfg, page_mapping) {
       //doc.bookmarkPage(key, left=page_mapping.startx, top=page_mapping.starty-y);
       //outline_level = 0;
       //doc.addOutlineEntry(item.title, key, level=outline_level);
-      outline.addItem(item.title);
+//      outline.addItem(item.title);
       //outline_level = 1;
 
       // SONGBOOK TITLE
@@ -1357,7 +1356,7 @@ function format_page(doc, cfg, page_mapping) {
       //let key = String(hash('SONG(%d): %s' % (item.num, item.title)));
       //doc.bookmarkPage(key, left=page_mapping.startx, top=page_mapping.starty-y);
       //doc.addOutlineEntry(item.title, key, level=outline_level);
-      outline.addItem(item.title);  
+//      outline.addItem(item.title);  
       //XXX: here we could add stuff to make index entries linkable
 
       // SONG TITLE
