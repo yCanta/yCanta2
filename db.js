@@ -191,7 +191,7 @@ function loadSong(song_id) {
   });
 }
 function deleteSong(song_id) {
-  if (confirm("Are you sure you want to delete this song?")) {
+  if (confirm("Are you sure you want to delete song:\n\n" + window.song.title + "?")) {
     db.get(window.song._id).then(function (doc) {
       return db.remove(doc);
     }).then(function(){
@@ -205,7 +205,7 @@ function deleteSong(song_id) {
 }
 function deleteSongbook(songbook_id) {
   console.log(songbook_id);
-  if (confirm("Are you sure you want to delete this songbook?")) {
+  if (confirm("Are you sure you want to delete songbook:\n\n" + window.songbook.title + "?")) {
     db.get(window.songbook._id).then(function (doc) {
       return db.remove(doc);
     }).then(function(){

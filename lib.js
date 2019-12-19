@@ -473,6 +473,8 @@ function editSong() {
         $('label span:contains("'+cat.trim()+'")').prev().prop("checked", true);
       }
     });
+    $('#song .title_link').removeAttr('href');
+
   }).catch(function (err) {
     console.log(err);
     reject('got an error while working on categories');
