@@ -257,7 +257,6 @@ body main #song {
   z-index: 3;
 }
 body main #export {
-  background-color: lightgreen;
   flex: 0 0 0px;
   z-index: 4;
 }
@@ -698,8 +697,9 @@ input[type="number"] {
   }
   #songbooks,
   #song .content,
+  #export .content,
   #songbook_content {
-    width: 100vw;
+    width: 95vw;
   }
 }
 @media only screen and (max-height: 500px) {
@@ -854,6 +854,10 @@ only screen and (max-height: 500px) {
   }
   #songbooks {
     width: 300px;
+  }
+  #export .content {
+    min-width: 300px;
+    max-width: 425px;
   }
   #song .content,
   #songbook_content {
