@@ -808,7 +808,7 @@ only screen and (max-height: 500px) {
 }
 /* smartphones, touchscreens */
 @media (hover: none) and (pointer: coarse) {
- .column:not(:last-child):hover {
+ .column:not(:last-child) {
     cursor: pointer;
   }
 }
