@@ -805,6 +805,12 @@ only screen and (max-height: 500px) {
     content: ' //';
   }
 }
+/* smartphones, touchscreens */
+@media (hover: none) and (pointer: coarse) {
+ .column:not(:last-child):hover {
+    cursor: pointer;
+  }
+}
 @media only screen and (min-width: 640px) {
   
   ul li {

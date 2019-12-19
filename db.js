@@ -135,7 +135,7 @@ function loadSong(song_id) {
     function createSongHtml(song) {
       window.song = song;
       var song_html = '<song data-rev="' + song._rev + '" data-id="' + song._id + '">' + 
-        '<stitle class="title_link" data-song>' + song.title + '</stitle>' + 
+        '<a data-song class="title_link"><stitle class="title_link" data-song>' + song.title + '</stitle></a>' + 
         '<authors><author>' + song.authors.join('</author>, <author>') + '</author></authors>' + 
         '<scripture_ref><scrip_ref>' + song.scripture_ref.join('</scrip_ref>, <scrip_ref>') + '</scrip_ref></scripture_ref>' + 
         '<introduction>' + song.introduction + '</introduction>' + 

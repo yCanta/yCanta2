@@ -348,7 +348,7 @@
                           </td>
                           <td>
                             <input type="number" id="column_gutter" name="column_gutter" value="0.5" step="0.1">
-                            <select size="1" id="resize_percent" name="resize_percent">
+                            <select size="1" id="gutter_side" name="gutter_side">
                               <option value="left">Left</option>
                               <option value="top">Top</option>
                               <option value="inside">Inside</option>
@@ -598,7 +598,7 @@
       $('.column').click(function(e){
         var h = this.offsetHeight;
         var w = this.offsetWidth;
-        if((h <= 175 && h > 0) || ( w <= 175 && w > 0)) {
+        if((h <= 100 && h > 0) || ( w <= 60 && w > 0)) {
           e.preventDefault();
           e.stopPropagation();
           if (confirmWhenEditing()) { return };

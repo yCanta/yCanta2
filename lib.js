@@ -633,7 +633,7 @@ window.addEventListener('load', function(){
 
 function bindSearch(element, search_prefix) {
   $('body').on('click', element, function() {
-    if(window.editing){
+    if(window.editing || $('body').hasClass('export')) {
       return;
     }
     $('#songbook_content .search').val(search_prefix+$(this).text())[0]
