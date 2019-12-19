@@ -1171,7 +1171,7 @@ function calc_heights(songbook, cfg, doc) {
     }
   }
 
-
+  let chunk_width = (cfg.page_layout.get_page_width() - myStringWidth('8)   ', cfg.FONT_FACE, cfg.SONGLINE_SIZE, doc));
   for(let song of list_of_songs) {
     song.height = 0;
     let song_title;
@@ -1187,7 +1187,7 @@ function calc_heights(songbook, cfg, doc) {
       song_title = cfg.SONGTITLE_FORMAT.replace('${title}',title).replace('${num}',song.num);
     }
 
-    song.num_width = myStringWidth(function(){let title = ''; let num = song.num; return cfg.SONGTITLE_FORMAT;}, cfg.FONT_FACE, cfg.SONGTITLE_SIZE)*1.5;
+    song.num_width = myStringWidth(function(){let title = ''; let num = song.num; return cfg.SONGTITLE_FORMAT;}, cfg.FONT_FACE, cfg.SONGTITLE_SIZE, doc)*1.5;
 
     // Word wrap title as needed
     song.title_wrapped = word_wrap(song_title, cfg.page_layout.get_page_width(), cfg.FONT_FACE, cfg.SONGTITLE_SIZE, song.num_width, doc);
@@ -1221,7 +1221,6 @@ function calc_heights(songbook, cfg, doc) {
     if(song.introduction && cfg.DISPLAY_CHORDS){
       song.height += cfg.SONGCHORD_SIZE + cfg.SONGCHORD_SPACE;
     }
-
     for(let chunk of song.chunks) {
       chunk.last_chunk = false;  // the real last chunk is set true after loop
 
@@ -1229,8 +1228,7 @@ function calc_heights(songbook, cfg, doc) {
       if(cfg.RESIZE_PERCENT == 0) {  // 0 means we are wrapping
         let split_lines = [];
         for(let line of chunk.lines) {
-          let split_line = word_wrap(line, (cfg.page_layout.get_page_width() - myStringWidth('8)   ', cfg.FONT_FACE, 
-            cfg.SONGLINE_SIZE)), cfg.FONT_FACE, cfg.SONGLINE_SIZE, 0, doc); 
+          let split_line = word_wrap(line, chunk_width, cfg.FONT_FACE, cfg.SONGLINE_SIZE, 0, doc); 
           //myStringWdith('8 is copied from format_page - keep them in sync 
           split_lines.push(...split_line);
         }
