@@ -84,7 +84,7 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
         $(this).children().each(function(){ //add line contents
           lines.push($(this).html());
         });
-        chunks.push([{'type': $(this).attr('type')}, lines]);
+        chunks.push([{'type': $(this).attr('type').toLowerCase()}, lines]);
       });
       song.content      = chunks;
       song.copyright    = song_html.find('copyright').text();

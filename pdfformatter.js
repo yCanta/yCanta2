@@ -520,7 +520,7 @@ class PageLayoutColumn {
   }
 
   get_page_width(margin=1) {
-    let ret = (this.cfg.PAPER_WIDTH - (this.cfg.PAPER_MARGIN_RIGHT + this.cfg.PAPER_MARGIN_LEFT)) / this.cfg.COLUMNS;
+    let ret = (this.cfg.PAPER_WIDTH - (this.cfg.PAPER_MARGIN_RIGHT + this.cfg.PAPER_MARGIN_LEFT + this.cfg.COLUMN_GUTTER*(this.cfg.COLUMNS-1))) / this.cfg.COLUMNS;
     if (margin) {
       ret = ret - (this.cfg.PAGE_MARGIN_RIGHT + this.cfg.PAGE_MARGIN_LEFT);
     }
@@ -537,7 +537,7 @@ class PageLayoutColumn {
     let curent_paper_page = [];
     
     for(let p of pages) {
-      let sx=this.cfg.PAPER_MARGIN_LEFT+this.cfg.PAGE_MARGIN_LEFT + curent_paper_page.length*this.get_page_width(0);
+      let sx=this.cfg.PAPER_MARGIN_LEFT+this.cfg.PAGE_MARGIN_LEFT + (curent_paper_page.length)*(this.get_page_width(0)+this.cfg.COLUMN_GUTTER);
       let sy=this.cfg.PAPER_MARGIN_TOP+this.cfg.PAGE_MARGIN_TOP;
       let ex=sx + this.get_page_width(1); // margin=1 so margins not included in calc
       let ey=this.cfg.PAPER_HEIGHT-(this.cfg.PAPER_MARGIN_BOTTOM + this.cfg.PAGE_MARGIN_BOTTOM);
@@ -1419,7 +1419,7 @@ function format_page(doc, cfg, page_mapping) {
       }
 
       let label_length;
-      if(VARIABLE_INDENT.indexOf(item.type) == -1) {  // these chunks are indented by num of chars in label
+      if(VARIABLE_INDENT.indexOf(item.type) != -1) {  // these chunks are indented by num of chars in label
         label_length = Math.max(myStringWidth(label+'  ', cfg.FONT_FACE, cfg.SONGLINE_SIZE, doc), STANDARD_LABEL_INDENT_LENGTH);
         // type indented no label gets an extra indent
         if(item.type == INDENT_NO_LABEL) {
@@ -1700,7 +1700,7 @@ function read_config(config_array) {
   options.PAGE_MARGIN_TOP =        0;//config_array.page_margin_top;            //type="float"           
   options.PAGE_MARGIN_BOTTOM =     0;//config_array.page_margin_bottom;         //type="float"           
 
-  options.PAPER_MARGIN_GUTTER =    safe_var(config_array.PAPER_MARGIN_GUTTER,        'float');           
+  options.PAPER_MARGIN_GUTTER =    safe_var(config_array.paper_margin_gutter,        'float');           
 
   options.FONT_FACE =              safe_var(config_array.font_face,                  'string');          
 
@@ -1761,17 +1761,10 @@ function read_config(config_array) {
   if (options.SONGS_TO_PRINT == '') {
     options.SONGS_TO_PRINT = 'anr';
   }
-
-  if (options.PAPER_ORIENTATION == 'portrait') {
-    options.PAPER_WIDTH = 612;//doc.page.width;
-    options.PAPER_HEIGHT = 792;//doc.page.height;
-    //getattr(reportlab.lib.pagesizes, options.PAPER_SIZE);
-  }
-  else {
-    options.PAPER_HEIGHT = 612;//doc.page.height;
-    options.PAPER_WIDTH = 792;//doc.page.width;
-    //getattr(reportlab.lib.pagesizes, options.PAPER_SIZE);
-  }
+  let opts = {size: options.PAPER_SIZE, layout: options.PAPER_ORIENTATION, autoFirstPage: true};
+  let doc = new PDFDocument(opts);
+  options.PAPER_WIDTH = doc.page.width;
+  options.PAPER_HEIGHT = doc.page.height;
 
   if (options.SONGTITLE_FORMAT) {
     if (options.SONGTITLE_FORMAT == '') {  // special case for when the option field is left blank in HTML
@@ -1869,6 +1862,7 @@ function read_config(config_array) {
   options.PAGE_MARGIN_BOTTOM = options.PAGE_MARGIN_BOTTOM * inch;
 
   options.PAPER_MARGIN_GUTTER = options.PAPER_MARGIN_GUTTER * inch;
+  options.COLUMN_GUTTER = options.COLUMN_GUTTER * inch;
 
 
   // page layout init after almost everything so it can play with options as needed
