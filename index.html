@@ -104,8 +104,6 @@
           <button data-home onclick="deleteSongbook(window.songbook._id)" class="float-menu-item delete"><span class="float-menu-icon">&#128465;</span> Delete</button>
           <span class="float-menu-item"><span class="float-menu-icon">&#128253;</span> Present</span>
           <a data-songbook-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</a>
-          <button data-songbook class="float-menu-item float-menu-editing" onclick="window.editing=false; window.songbook._id=''; window.location.hash=$(this).attr('href');"><span class="float-menu-icon">&#128465;</span> Cancel</button>
-          <button data-songbook class="float-menu-item float-menu-editing" onclick="if($('#songbook_title').text().trim() == ''){alert('Please add a title before you save');}else{window.editing=false; saveSongbook(parseHash('sb-'));}"><span class="float-menu-icon">&#128190;</span> Save</button>
           <a data-songbook-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>
           <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>
         </div>
@@ -168,8 +166,6 @@
           <button data-songbook onclick="deleteSong(window.song._id)" class="float-menu-item"><span class="float-menu-icon">&#128465;</span> Delete</button>
           <a data-song-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</a>
           <span class="float-menu-item"><span class="float-menu-icon">&#128253;</span> Present</span>
-          <button data-song class="float-menu-item float-menu-editing" onclick="window.editing=false; window.location.hash=$(this).attr('href');"><span class="float-menu-icon">&#128465;</span> Cancel</button>
-          <button data-song class="float-menu-item float-menu-editing" onclick="if($('stitle').text().trim() == ''){alert('Please add a title before you save');}else{window.editing=false; prepSaveSong($(this));}"><span class="float-menu-icon">&#128190;</span> Save</button>
           <a data-song-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>
           <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>
         </div>

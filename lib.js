@@ -357,6 +357,12 @@ function bind_chunk_edit(chunk){
 }
 
 function editSongbook() {
+  let buttons = '<div class="edit_buttons"><button data-songbook class="btn" style="background-color: lightgray;" onclick="saveSongbook(parseHash(\'sb-\'));">Save</button>';
+  buttons += '<button data-songbook class="btn" style="background-color: lightgray;" onclick="window.editing=false; window.songbook._id=\'\'; window.location.hash=$(this).attr(\'href\'); $(\'.edit_buttons\').remove();">Cancel</button>';
+  buttons += '<button data-songbook class="btn" style="background-color: lightgray;" onclick="window.editing=false; location.reload()">Reset</button></div>';
+  $('#songbook_content').prepend(buttons).append(buttons);
+  updateAllLinks();
+
   //load all the songs into song adder
   db.allDocs({
     include_docs: true,
@@ -377,6 +383,9 @@ function editSongbook() {
       'song-item-template-edit', 
       true);
   }).then(function(result) {
+    $('.song-highlight').removeClass('song-highlight');
+    $('#songList #songbook_title').attr('contenteditable', 'true').parent().removeAttr('href');
+    $('#songList #songbook_content input.search').val('').parent().addClass('disabled-hidden')[0].disabled=true;    
     //remove all counts
     $('[data-xInBook]').removeAttr('data-xInBook');
     //bind events to the songbook list
@@ -408,15 +417,18 @@ function editSongbook() {
       this.addEventListener('drop', dragDrop, false);
       this.addEventListener('dragover', dragOver, false);
     });
-    $('.song-highlight').removeClass('song-highlight');
-    $('#songList #songbook_title').attr('contenteditable', 'true').parent().removeAttr('href');
-    $('#songList #songbook_content input.search').val('').parent().addClass('disabled-hidden')[0].disabled=true;    
+
   }).catch(function(err){
     console.log(err);
   });
 }
 
 function editSong() {
+  let buttons = '<div><button data-song class="btn" style="background-color: lightgray;" onclick="prepSaveSong($(this))">Save</button>';
+  buttons += '<button data-song class="btn" style="background-color: lightgray;" onclick="window.editing=false; window.location.hash=$(this).attr(\'href\');">Cancel</button>';
+  buttons += '<button data-song class="btn" style="background-color: lightgray;" onclick="window.editing=false; location.reload()">Reset</button></div>';
+  $('song').before(buttons).append(buttons);
+
   $('chunk').each(function(index){
     var content = [];
     $(this).children('line').each(function(index){
@@ -482,6 +494,13 @@ function editSong() {
   });  
 }
 function prepSaveSong(element) {
+  if($('stitle').text().trim() == ''){
+    alert('Please add a title before you save');
+    return
+  }
+  else{
+    window.editing=false;
+  }
   return new Promise(function(resolve, reject) {
     $('#song').first('.subcolumn').find('song').children().attr('contenteditable', 'false');
     $('song chunk').each(function(index){

@@ -220,6 +220,13 @@ function deleteSongbook(songbook_id) {
 }
 
 function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_url=true) {
+  if($('#songbook_title').text().trim() == ''){
+    alert('Please add a title before you save');
+    return
+  }
+  else{
+    window.editing=false;
+  }
   var new_songbook = false;
   return new Promise(function(resolve, reject) {
     function loadSongbookContent(songbook) {
@@ -270,6 +277,7 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
         if(change_url){
           window.location.hash = '#'+window.songbook._id;
         }
+        $('.edit_buttons').remove();
         initializeSongbooksList();
         resolve('all good!');
       }).catch(function (err) {
