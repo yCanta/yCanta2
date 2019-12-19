@@ -789,18 +789,18 @@ function word_wrap(text, width, font, size, hanging_indent=0, doc) {
     // num_words is now the most that can fit this line
     let new_text = text.splice(0, num_words).join(' ');
 
-    let new_chords = [];
+    let new_chords = {};
 
     if(Line_object) {
-      for(let item of chords.keys()){
+      for(let item of Object.keys(chords)){
         if(item < new_text.length){
           new_chords[item] = chords[item];
           delete chords[item];
         }
       }
       out.push(new Line(new_text,new_chords));
-      for(let item of chords.keys()){
-        chords[item - new_text.length] = chords[item];
+      for(let item of Object.keys(chords)){
+        chords[item - (new_text.length+1)] = chords[item];
         delete chords[item];
       }
     }
@@ -1226,13 +1226,13 @@ function calc_heights(songbook, cfg, doc) {
       chunk.last_chunk = false;  // the real last chunk is set true after loop
 
       // when word wrapping lines we need to split so chunk.lines is right length.
-      if(cfg.RESIZE_PERCENT == 0) {
+      if(cfg.RESIZE_PERCENT == 0) {  // 0 means we are wrapping
         let split_lines = [];
         for(let line of chunk.lines) {
           let split_line = word_wrap(line, (cfg.page_layout.get_page_width() - myStringWidth('8)   ', cfg.FONT_FACE, 
             cfg.SONGLINE_SIZE)), cfg.FONT_FACE, cfg.SONGLINE_SIZE, 0, doc); 
           //myStringWdith('8 is copied from format_page - keep them in sync 
-          split_lines += split_line;
+          split_lines.push(...split_line);
         }
 
         chunk.lines = split_lines;
