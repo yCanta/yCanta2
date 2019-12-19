@@ -200,7 +200,7 @@ class Chunk {
   }
 
   has_chords() {
-    return this.lines.filter(l => l.chords).length !== 0;
+    return this.lines.filter(l => Object.keys(l.chords).length).length !== 0;
   }
 }
 
