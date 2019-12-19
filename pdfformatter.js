@@ -315,10 +315,16 @@ function parse_song(song_object){  //json song object
       //split line by <c> and </c>
 
       let tmp_chord = tmp_line[0];
-
+      let offset = 0;
       for(let i=0; i < tmp_chord.length; i++) {
         if(tmp_chord[i] != ' ') {
-          chords[i] = tmp_chord[i]; // len(text) is offset in text where chord appears  
+          if(tmp_chord[i+1] && tmp_chord[i+1] == ' ') {
+            chords[i-offset] = tmp_chord.slice(i-offset,i+1); // len(text) is offset in text where chord appears  
+            offset = 0;
+          }
+          else {
+            offset += 1;
+          }
         }
       }
       text = tmp_line[1];
@@ -740,8 +746,10 @@ class PageLayoutAdobeBooklet extends PageLayoutColumn {
 
 register_page_layout('adobe-booklet', PageLayoutAdobeBooklet);
 
-function myStringWidth(text, font, size) {
-  const doc = new PDFDocument();
+function myStringWidth(text, font, size, doc=null) {
+  if(doc == null) {
+    doc = new PDFDocument();
+  }
 
   doc.font(font);
   doc.fontSize(size);
@@ -751,7 +759,7 @@ function myStringWidth(text, font, size) {
   return s;
 }
 
-function word_wrap(text, width, font, size, hanging_indent=0) {
+function word_wrap(text, width, font, size, hanging_indent=0, doc) {
   let Line_object;
   let orig_text;
   let chords;
@@ -774,7 +782,7 @@ function word_wrap(text, width, font, size, hanging_indent=0) {
   while(text.length > 0) {
     let num_words = text.length;
 
-    while((num_words > 1) && (myStringWidth(text.slice(0, num_words).join(' '), font, size) > width)) {
+    while((num_words > 1) && (myStringWidth(text.slice(0, num_words).join(' '), font, size, doc) > width)) {
       num_words = num_words - 1; // try again minus one word
     }
     
@@ -818,7 +826,7 @@ function print_chords(doc, cfg=null, font_size=null, y_offset=null, x_offset=nul
   // loop through chords
   let char_offsets = Object.keys(line.chords);
   for(let char_offset of char_offsets) {
-    let chord_offset = myStringWidth(line.text.slice(0, char_offset), cfg.FONT_FACE, font_size);
+    let chord_offset = myStringWidth(line.text.slice(0, char_offset), cfg.FONT_FACE, font_size, doc);
     doc.text(line.chords[char_offset], page_mapping.startx + x_offset + chord_offset, page_mapping.starty + y_offset, { lineBreak: false });
   }
 
@@ -1104,7 +1112,7 @@ function paginate(songbook, cfg) {
 }
 
 
-function calc_heights(songbook, cfg) {
+function calc_heights(songbook, cfg, doc) {
   //"""Calculates heights of songbook pieces -- calculations MUST be kept in sync with format_page and paginate"""
   // calc heights of elements and store in songbook object tree
 
@@ -1182,7 +1190,7 @@ function calc_heights(songbook, cfg) {
     song.num_width = myStringWidth(function(){let title = ''; let num = song.num; return cfg.SONGTITLE_FORMAT;}, cfg.FONT_FACE, cfg.SONGTITLE_SIZE)*1.5;
 
     // Word wrap title as needed
-    song.title_wrapped = word_wrap(song_title, cfg.page_layout.get_page_width(), cfg.FONT_FACE, cfg.SONGTITLE_SIZE, song.num_width);
+    song.title_wrapped = word_wrap(song_title, cfg.page_layout.get_page_width(), cfg.FONT_FACE, cfg.SONGTITLE_SIZE, song.num_width, doc);
     // add to height for each line
     //song.height += sum(cfg.SONGTITLE_SIZE + cfg.SONGTITLE_SPACE for line in song.title_wrapped);
     song.height += (cfg.SONGTITLE_SIZE + cfg.SONGTITLE_SPACE)*song.title_wrapped.length;
@@ -1203,7 +1211,7 @@ function calc_heights(songbook, cfg) {
 
     // wrap small_text
     small_text = small_text.join(' '*8);
-    song.small_text = word_wrap(small_text, cfg.page_layout.get_page_width(), cfg.FONT_FACE, cfg.SMALL_SIZE, 0);
+    song.small_text = word_wrap(small_text, cfg.page_layout.get_page_width(), cfg.FONT_FACE, cfg.SMALL_SIZE, 0, doc);
     // add height of wrapped small_text
     //song.height += sum(cfg.SMALL_SIZE + cfg.SMALL_SPACE for line in song.small_text)
     song.height += (cfg.SMALL_SIZE + cfg.SMALL_SPACE)*song.small_text.length;
@@ -1222,7 +1230,7 @@ function calc_heights(songbook, cfg) {
         let split_lines = [];
         for(let line of chunk.lines) {
           let split_line = word_wrap(line, (cfg.page_layout.get_page_width() - myStringWidth('8)   ', cfg.FONT_FACE, 
-            cfg.SONGLINE_SIZE)), cfg.FONT_FACE, cfg.SONGLINE_SIZE, 0); 
+            cfg.SONGLINE_SIZE)), cfg.FONT_FACE, cfg.SONGLINE_SIZE, 0, doc); 
           //myStringWdith('8 is copied from format_page - keep them in sync 
           split_lines += split_line;
         }
@@ -1258,7 +1266,7 @@ function calc_heights(songbook, cfg) {
       }
 
       song.chunks[song.chunks.length-1].last_chunk = true;  // lets the formatter know to print the copyright_footer
-      song.chunks[song.chunks.length-1].copyright_footer = word_wrap(copyright_text, cfg.page_layout.get_page_width(), cfg.FONT_FACE, cfg.COPYRIGHT_SIZE);
+      song.chunks[song.chunks.length-1].copyright_footer = word_wrap(copyright_text, cfg.page_layout.get_page_width(), cfg.FONT_FACE, cfg.COPYRIGHT_SIZE, 0, doc);
       // add space for each line in copyright_footer
       song.chunks[song.chunks.length-1].height += cfg.SONGCHUNK_B4 + (cfg.COPYRIGHT_SIZE + cfg.COPYRIGHT_SPACE)*song.chunks[song.chunks.length-1].copyright_footer.length;
     }
@@ -1304,7 +1312,7 @@ function format_page(doc, cfg, page_mapping) {
   //"""Format a page onto the PDF -- calculations MUST be kept in sync with calc_heights and paginate"""
 
   // pick a standard indent that almost every chunk will fit (except for intros and probably verse 10 and greater)
-  let STANDARD_LABEL_INDENT_LENGTH = myStringWidth('8)   ', cfg.FONT_FACE, cfg.SONGLINE_SIZE);
+  let STANDARD_LABEL_INDENT_LENGTH = myStringWidth('8)   ', cfg.FONT_FACE, cfg.SONGLINE_SIZE, doc);
 
   // REMEMBER: we are in the 4th Quadrant (like Math) ... top left is (0,0)
   // ---------
@@ -1414,7 +1422,7 @@ function format_page(doc, cfg, page_mapping) {
 
       let label_length;
       if(VARIABLE_INDENT.indexOf(item.type) == -1) {  // these chunks are indented by num of chars in label
-        label_length = Math.max(myStringWidth(label+'  ', cfg.FONT_FACE, cfg.SONGLINE_SIZE), STANDARD_LABEL_INDENT_LENGTH);
+        label_length = Math.max(myStringWidth(label+'  ', cfg.FONT_FACE, cfg.SONGLINE_SIZE, doc), STANDARD_LABEL_INDENT_LENGTH);
         // type indented no label gets an extra indent
         if(item.type == INDENT_NO_LABEL) {
           label_length *= 2;
@@ -1455,7 +1463,7 @@ function format_page(doc, cfg, page_mapping) {
           }   
           else {
             // reduce font size as much as needed but don't pass x% original
-            while ((label_length + myStringWidth(line.text, cfg.FONT_FACE, font_size)) > (page_mapping.endx - page_mapping.startx) && font_size > cfg.SONGLINE_SIZE * cfg.RESIZE_PERCENT) {
+            while ((label_length + myStringWidth(line.text, cfg.FONT_FACE, font_size, doc)) > (page_mapping.endx - page_mapping.startx) && font_size > cfg.SONGLINE_SIZE * cfg.RESIZE_PERCENT) {
               font_size = font_size * 0.99; // reduce 1%
               //print 'reducing from', cfg.SONGLINE_SIZE, 'to', font_size, '%2.2f%%' % (font_size / cfg.SONGLINE_SIZE)
             }
@@ -1571,13 +1579,15 @@ function format_page(doc, cfg, page_mapping) {
 
 
 function format(songbook, iframe, cfg) {
+  let old_time = new Date();
   if (typeof songbook == 'object') {
     songbook = parse(songbook, cfg);    // parse into objects
   }
   window.document.getElementById('pdf_progress').style.width = 0 +'%';
   window.document.getElementById('pdf_progress_text').innerHTML = 0 +'%';
   // calculate the space needed for the songbook pieces
-  calc_heights(songbook, cfg);
+  let doc = new PDFDocument();
+  calc_heights(songbook, cfg, doc);
   // returns a list of pages: each page is a list of things to show on that page 
   // Songbook and Song objects only count for titles and headers chunks have to be listed separate
   let pages = paginate(songbook, cfg);
@@ -1588,7 +1598,7 @@ function format(songbook, iframe, cfg) {
   
   //pdf = canvas.Canvas(pdf, pagesize=(cfg.PAPER_WIDTH, cfg.PAPER_HEIGHT));
   let options = {size: cfg.PAPER_SIZE, layout: cfg.PAPER_ORIENTATION, autoFirstPage: false};
-  const doc = new PDFDocument(options);
+  doc = new PDFDocument(options);
   var stream = doc.pipe(blobStream());
 
   // set the PDF title
@@ -1620,7 +1630,7 @@ function format(songbook, iframe, cfg) {
   stream.on('finish', function() {
     iframe.src = stream.toBlobURL('application/pdf');
   });
-  
+  console.log(new Date() - old_time);
 
  /* for(const physical_page of pages_ordered) {
     for(const page_mapping of physical_page) {
