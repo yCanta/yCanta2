@@ -524,10 +524,6 @@ input[type='radio'].toggle {
   cursor: pointer;
   border-radius: 8px;
 }
-
-.lbl-toggle:hover {
-  color: #444;
-}
 .lbl-toggle::before {
   transform: rotate(0) translateX(0);
   transition: all .2s;
@@ -786,9 +782,6 @@ only screen and (max-height: 500px) {
   }
 }
 @media only screen and (min-width: 640px) and (min-height: 501px){
-  .column:hover .float-menu-item{
-    opacity: 1;
-  }
   .float-menu:not(:last-child) {
     display: flex;
     flex-direction: row-reverse;
@@ -807,9 +800,17 @@ only screen and (max-height: 500px) {
   }
 }
 /* smartphones, touchscreens */
-@media (hover: none) and (pointer: coarse) {
- .column:not(:last-child):hover {
-    cursor: pointer;
+@media (hover: hover) and (min-width: 640px) {
+  .lbl-toggle:hover {
+    color: #444;
+  }
+  .column:not(:last-child):hover {
+    z-index: 6 !important;
+  }
+}
+@media (hover: hover) and (min-width: 640px) and (min-height: 501px) {
+  .column:hover .float-menu-item{
+    opacity: 1;
   }
 }
 @media only screen and (min-width: 640px) {
@@ -828,9 +829,6 @@ only screen and (max-height: 500px) {
   }
   .close-icon {
     display: none;
-  }
-  .column:not(:last-child):hover {
-    z-index: 6 !important;
   }
   body.edit .sidebar,
   body.export #export .sidebar {
