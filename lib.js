@@ -515,7 +515,7 @@ function prepSaveSong(element) {
         else if(isChord(this)){
           prev_is_chord = true;
         }
-        else{  //we have a line
+        else if(this.length > 0){  //we have a line
           content += '<line>'+this+'</line>';
         }
       });

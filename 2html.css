@@ -51,56 +51,37 @@ song {
   top: 1.2em;
 }
 [type=verse]:before {
- position: relative;
  top: 2.1em;
- right: 2em;
  content: counter(verse_n) ")";
  counter-increment: verse_n;
 }
 /*end of counter stuff */
-
+chunk:before {
+  position: relative;
+  right: 2em;
+}
 [type=chorus]:before {
- content: '\A Chorus: \A\A';
- position: relative;
- right: 2em;
-
+ content: 'Chorus: ';
 }
 [type=pre-chorus]:before {
- content: '\A Pre-Chorus:\A\A';
+ content: 'Pre-Chorus: ';
 }
 [type='final chorus']:before {
- content: '\A Final Chorus:\A\A';
+ content: 'Final Chorus: ';
 }
 [type=bridge]:before {
- content: '\A Bridge:\A\A';
+ content: 'Bridge: ';
 }
 [type=ending]:before {
- content: '\A Ending:\A\A';
+ content: 'Ending: ';
 }
 [type=comment]:before {
- content: '\A Comment:\A\A';
+ content: 'Comment: ';
  color: #555;
  font-style: italic;
 }
-.nochords [type=chorus]:before {
- content: '\A Chorus:';
-}
-.nochords [type=pre-chorus]:before {
- content: '\A Pre-Chorus:';
-}
-.nochords [type='final chorus']:before {
- content: '\A Final Chorus:';
-}
-.nochords [type=bridge]:before {
- content: '\A Bridge:';
-}
-.nochords [type=ending]:before {
- content: '\A Ending:';
-}
-.nochords [type=comment]:before {
- content: '\A Comment:';
-}
 .nochords chunk {
+  margin-top: 1em;
   margin-bottom: 0em;
 }
 .edit chunk {
@@ -123,8 +104,8 @@ song {
  color: #555;
  font-style: italic;
 }
-chunk:before {
- content: ' ';
+[type='indented no label'] line {
+  margin-left: 2em;
 }
 key:not(:empty):before {content: 'Key: '}
 copyright:before {
