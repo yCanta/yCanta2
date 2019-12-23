@@ -1,8 +1,18 @@
-*{box-sizing: border-box;transition: all .25s; outline: none;
-font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+*:focus {
+  outline: 1px;
+  outline-color: transparent;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, .5) !important;
+}
+*{
+  box-sizing: border-box;
+  transition: all .25s; 
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
 "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans",
-"Droid Sans", "Helvetica Neue", sans-serif;}
-.no-overscroll, .no-overscroll *{overscroll-behavior: contain;}
+"Droid Sans", "Helvetica Neue", sans-serif;
+}
+.no-overscroll, .no-overscroll *{
+  overscroll-behavior: contain;
+}
 html, body, main{
   height: 100%; 
   margin: 0;
@@ -56,11 +66,11 @@ stitle, cat, author, scrip_ref, key, copyright {
 .active #songbooks_header {
   padding-top: 0px;
 }
-.song-highlight {
+.song-highlight a {
   background-color: lightblue;
   border-color: darkcyan;
 }
-.songbook-highlight {
+.songbook-highlight a {
   background-color: lightsalmon;
   border-color: darksalmon;
 }
@@ -94,6 +104,8 @@ stitle, cat, author, scrip_ref, key, copyright {
 }
 #songListEdit [data-xInBook] {
   position: relative;
+}
+#songListEdit [data-xInBook] a {
   background-color: limegreen;
 }
 #songListEdit [data-xInBook]:before {
@@ -682,7 +694,7 @@ input[type="number"] {
   body.songList.export #songList .subcolumn {
     overflow: hidden;
   }
-  ul li {
+  ul li a{
     padding: 5px 10px 5px 10px;
     margin: 5px 0 5px 0px;
     border-top: 1px solid #EEE;
@@ -815,7 +827,7 @@ only screen and (max-height: 500px) {
 }
 @media only screen and (min-width: 640px) {
   
-  ul li {
+  ul li a{
     border-left: 1px solid #EEE;
     border-radius: 20px;
     padding: 2px 8px 2px 8px;

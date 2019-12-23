@@ -236,9 +236,9 @@
       var keyLinks = [];
       $(keys).each(function(i, key) {
           if (currentKey.name == key.name)
-              keyLinks.push("<a id='"+key.name.replace('#','_')+"' class='selected default'>" + key.name + "</a>");
+              keyLinks.push("<a tabindex='0' id='"+key.name.replace('#','_')+"' class='selected default'>" + key.name + "</a>");
           else
-              keyLinks.push("<a id='"+key.name.replace('#','_')+"'>" + key.name + "</a>");
+              keyLinks.push("<a tabindex='0' id='"+key.name.replace('#','_')+"'>" + key.name + "</a>");
       });
 
 
