@@ -28,7 +28,14 @@ a {
 stitle, cat, author, scrip_ref, key, copyright {
   cursor: pointer;
 }
-.song.edit stitle, .edit cat, .edit author, .edit scripture_ref, .edit key, .edit copyright {
+.song.edit .wrap {
+  cursor: move;
+}
+.song.edit .wrap:hover {
+  box-shadow: 0 0 0 1px rgb(143,186,200);
+  border-radius: 2px;
+}
+.song.edit .toTextarea {
   cursor: text;
 }
 .song.edit song select {
