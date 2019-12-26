@@ -1,12 +1,45 @@
 String.prototype.count=function(s1) { 
     return (this.length - this.replace(new RegExp(s1,"g"), '').length) / s1.length;
 };
+// Warn if overriding existing method
+if(Array.prototype.equals)
+    console.warn("Overriding existing Array.prototype.equals. Possible causes: New API defines the method, there's a framework conflict or you've got double inclusions in your code.");
+// attach the .equals method to Array's prototype to call it on any array
+Array.prototype.equals = function (array) {
+    // if the other array is a falsy value, return
+    if (!array)
+        return false;
+
+    // compare lengths - can save a lot of time 
+    if (this.length != array.length)
+        return false;
+
+    for (var i = 0, l=this.length; i < l; i++) {
+        // Check if we have nested arrays
+        if (this[i] instanceof Array && array[i] instanceof Array) {
+            // recurse into the nested arrays
+            if (!this[i].equals(array[i]))
+                return false;       
+        }           
+        else if (this[i] != array[i]) { 
+            // Warning - two different object instances will never be equal: {x:20} != {x:20}
+            return false;   
+        }           
+    }       
+    return true;
+}
+// Hide method from for-in loops
+Object.defineProperty(Array.prototype, "equals", {enumerable: false});
 
 window.addEventListener("resize", function(){
   window.setTimeout(function(){
     document.activeElement.scrollIntoView({block: 'start'});
   },0);
 });
+window.margins = []
+window.margins['narrow'] = [.5,.5,.5,.5];
+window.margins['wide'] = [1,2,1,2];
+window.margins['normal'] = [1,1,1,1];
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js', {
@@ -534,7 +567,45 @@ function prepExport(){
   document.getElementById('pdf_progress').style.width = 0 +'%';
   document.getElementById('pdf_progress_text').innerHTML = 0 +'%';
   document.querySelector('iframe').src = "";
+  $('#display_chords').trigger('change');
 }
+function export_form_summary_update() {
+  $('#page_icon').html('<span class="col"></span>'.repeat($('#columns').val()));
+  document.getElementById('page_icon').className = document.getElementById('page_layout').value.replace('-','_');
+  document.getElementById('page_icon').classList.add(document.getElementById('paper_orientation').value);
+  let margin_icon = document.getElementById('margin_icon');
+  let margins = [document.getElementById('paper_margin_top').value,
+                 document.getElementById('paper_margin_right').value,
+                 document.getElementById('paper_margin_bottom').value,
+                 document.getElementById('paper_margin_left').value]
+
+  let margin_name;
+
+  if(margins.equals(window.margins['normal'])){
+    margin_name = 'normal';
+  }
+  else if(margins.equals(window.margins['narrow'])){
+    margin_name = 'narrow';
+  }
+  else if(margins.equals(window.margins['wide'])){
+    margin_name = 'wide';
+  }
+  else {
+    margin_name = 'custom';
+  }
+  document.getElementById('margin').value = margin_name;
+  margin_icon.className = margin_name;
+  margin_icon.classList.add(document.getElementById('paper_orientation').value);
+  document.getElementById('margin_summary').innerHTML = margin_name;
+  document.getElementById('margin_summary_nums').innerHTML = margins[3] + "\"";
+
+  document.getElementById('page_size_summary').innerHTML = document.getElementById('paper_size').value;
+  document.getElementById('font_summary').innerHTML = document.getElementById('font_face').value;
+  if($('#auto_refresh').is(":checked")){
+    makePDF(window.exportObject, document.querySelector('iframe'))
+  }
+}
+
 //Making things work with touch coolness
 function makeDraggable(dragCaptureEl, dragEl, dragAction, dragSide='right') {
   let startx = 0;

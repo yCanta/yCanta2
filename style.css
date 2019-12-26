@@ -530,11 +530,20 @@ button {
 input[type='radio'].toggle {
   display: none;
 }
+.lbl-toggle * {
+  color: white;
+  font-size: 0.75rem;
+  font-family: monospace !important;
+  vertical-align: middle;
+}
+.lbl-toggle span {
+  display: inline-block;
+}
 .lbl-toggle {
   display: block;
 
   font-weight: bold;
-  font-family: monospace;
+  font-family: monospace !important;
   font-size: 1.2rem;
   text-transform: uppercase;
 
@@ -616,6 +625,9 @@ input[type="number"] {
 .art {  /*align right top */
   text-align: right;
   vertical-align: top;
+}
+.fr {
+  float: right;
 }
 .t3 > span, .t3 > select { /*t3 is a random class name*/
   float: right;
@@ -888,3 +900,108 @@ only screen and (max-height: 500px) {
     flex: 0 0 360px;
   }
 }
+#page_icon {
+  display: inline-flex;
+  width: .9rem;
+  height: 1.2rem;
+  border: 1px solid white;
+  padding: 0;
+  position: relative;
+}
+#page_icon.single_sided:before {
+  width: 100%;
+  height: 100%;
+  display: block;
+  position: absolute;
+  content: '';
+  top: -3px;
+  left: -4px;
+  border-left: 1px solid white;
+  border-top: 1px solid white;
+}
+#page_icon.double_sided:before {
+  width: 30%;
+  height: 30%;
+  display: block;
+  position: absolute;
+  content: '';
+  bottom: -4px;
+  right: -3px;
+  border-right: 1px solid white;
+  border-bottom: 1px solid white;
+}
+#page_icon.landscape {
+  width: 1.2rem;
+  height: 0.9rem;
+}
+#page_icon .col {
+  display: inline-block;
+  flex: 1 100%;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  border-right: 0.5px solid white;
+  border-left: 0.5px solid white;
+}
+#margin_icon {
+  width: 1rem;
+  height: 1.4rem;
+}
+#margin_icon.landscape {
+  width: 1.4rem;
+  height: 1rem;
+}
+.flex:not(:last-child) {
+  border-bottom: 1px white solid;
+}
+.flex {
+  height: 33%;
+  display: flex !important;
+  margin: 0;
+  padding: 0;
+  vertical-align: unset !important;
+}
+.flex .col:not(:last-child) {
+  border-right: 1px solid white;
+}
+.flex .col {
+  display: inline-block;
+  flex: 1 100%;
+  padding: 0;
+  margin: 0;
+}
+.normal .flex {
+  height: 25%;
+}
+.normal .flex:nth-child(2) {
+  height: 50%;
+}
+.normal .flex .col:nth-child(2) {
+  flex-basis: 200%;
+}
+.narrow .flex {
+  height: 17%;
+}
+.narrow .flex:nth-child(2) {
+  height: 66%;
+}
+.narrow .flex .col:nth-child(2) {
+  flex-basis: 300%;
+}
+.wide .flex {
+  height: 25%;
+}
+.wide .flex:nth-child(2) {
+  height: 50%;
+}
+.wide .flex .col:nth-child(2) {
+  flex-basis: 100%;
+}
+.custom .flex:nth-child(2) .col:nth-child(2):after {
+   content: '*';
+   color: red;
+   position: relative;
+   top: -2.5px;
+}
+
+

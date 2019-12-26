@@ -222,7 +222,34 @@
               <br>
               <form id="export_form">
                 <input id="collapsible1" class="toggle" type="radio" name="accordion">
-                <label for="collapsible1" class="lbl-toggle">Page Options</label>
+                <label for="collapsible1" class="lbl-toggle">Page Options
+                  <span id="page_icon"></span>
+                  <span>
+                    <div id="page_size_summary"></div>
+                    <div id="font_summary"></div>
+                  </span>
+                  <span id="margin_icon" class="normal">
+                    <span class="flex">
+                      <span class="col"></span>
+                      <span class="col"></span>
+                      <span class="col"></span>
+                    </span>
+                    <span class="flex">
+                      <span class="col"></span>
+                      <span class="col"></span>
+                      <span class="col"></span>
+                    </span>
+                    <span class="flex">
+                      <span class="col"></span>
+                      <span class="col"></span>
+                      <span class="col"></span>
+                    </span>                                        
+                  </span>
+                  <span>
+                    <div id="margin_summary">Normal</div>
+                    <div id="margin_summary_nums">1"</div>
+                  </span>
+                </label>
                 <div class="collapsible-content">
                   <div class="content-inner">
                     <table>
@@ -287,8 +314,13 @@
                         <option value="Courier">Courier</option><option value="Courier-Bold">Courier-Bold</option><option value="Courier-BoldOblique">Courier-BoldOblique</option><option value="Courier-Oblique">Courier-Oblique</option><option value="Helvetica" selected>Helvetica</option><option value="Helvetica-Bold">Helvetica-Bold</option><option value="Helvetica-BoldOblique">Helvetica-BoldOblique</option><option value="Helvetica-Oblique">Helvetica-Oblique</option><option value="Symbol">Symbol</option><option value="Times-Bold">Times-Bold</option><option value="Times-BoldItalic">Times-BoldItalic</option><option value="Times-Italic">Times-Italic</option><option value="Times-Roman">Times-Roman</option><option value="ZapfDingbats">ZapfDingbats</option>
                       </select>
                     </div>
-                    <h4>Margins</h4>
-                    <table class="table">
+                    <h4>Margins<select id="margin" class="fr">
+                      <option value='normal'>Normal</option>
+                      <option value='narrow'>Narrow</option>
+                      <option value='wide'>Wide</option>
+                      <option value='custom'>Custom</option>
+                    </select></h4>
+                    <table id="margin_table" class="table">
                       <thead>
                         <tr>
                           <th>
@@ -601,7 +633,18 @@
           location.hash = $(this).find('.title_link').attr('href');
         }
       });
-      $('.content-inner').change(function(){ if($('#auto_refresh').is(":checked")){makePDF(window.exportObject, document.querySelector('iframe'))} });
+      $('.content-inner').change(function(){
+        export_form_summary_update();
+      });
+      $('#margin').change(function() {
+        if(this.value != 'custom'){
+          let margins = window.margins[this.value];
+          document.getElementById('paper_margin_top').value = margins[0];
+          document.getElementById('paper_margin_right').value = margins[1];
+          document.getElementById('paper_margin_bottom').value = margins[2];
+          document.getElementById('paper_margin_left').value = margins[3];
+        }
+      });
       $(function () {
         $('input.deletable').wrap('<span class="deleteicon" />').after($('<span/>').click(function() {
           $(this).prev('input').val('').trigger('change').focus()[0].dispatchEvent(new KeyboardEvent("keyup"));
