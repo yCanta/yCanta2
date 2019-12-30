@@ -629,19 +629,16 @@ input[type="number"] {
 .fr {
   float: right;
 }
-.t3 > span, .t3 > select { /*t3 is a random class name*/
+.t3 > span, .t3 > select, .t3 > input { /*t3 is a random class name*/
   float: right;
 }
 .t3 > label {
   display: inline-block;
   height: 2rem;
 }
-.index_options {
+.song .hide_for_songs {
   display: none;
 }
-.songList .index_options {
-  display: block;
-}   
 /*For Mobile devices only*/
 @media only screen and (max-width: 639px) {
   header {

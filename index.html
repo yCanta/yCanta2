@@ -222,64 +222,25 @@
               <br>
               <form id="export_form">
                 <input id="collapsible1" class="toggle" type="radio" name="accordion">
-                <label for="collapsible1" class="lbl-toggle">Page Options
-                  <span id="page_icon"></span>
-                  <span>
-                    <div id="page_size_summary"></div>
-                    <div id="font_summary"></div>
-                  </span>
-                  <span id="margin_icon" class="normal">
-                    <span class="flex">
-                      <span class="col"></span>
-                      <span class="col"></span>
-                      <span class="col"></span>
+                <label for="collapsible1" class="lbl-toggle">Text Options
+                  <span style="display: inline-block;">
+                    <span>
+                      <div id="font_summary"></div>
+                      <div id="text_summary"></div>
                     </span>
-                    <span class="flex">
-                      <span class="col"></span>
-                      <span class="col"></span>
-                      <span class="col"></span>
+                    <span style="border-left: 1px solid white; padding-left: 0.5em;">
+                      <div id="song_title_summary"></div>
+                      <div id="ccli_summary"></div>
                     </span>
-                    <span class="flex">
-                      <span class="col"></span>
-                      <span class="col"></span>
-                      <span class="col"></span>
-                    </span>                                        
-                  </span>
-                  <span>
-                    <div id="margin_summary">Normal</div>
-                    <div id="margin_summary_nums">1"</div>
+                    <span style="border-left: 1px solid white; padding-left: 0.5em;">
+                      <div id="print_summary"></div>
+                      <div id="chords_summary"></div>
+                    </span>
                   </span>
                 </label>
                 <div class="collapsible-content">
                   <div class="content-inner">
-                    <table>
-                      <tr>
-                        <td style="width:40%">
-                          <label for="display_chords">Chords</label>
-                          <select size="1" id="display_chords" name="display_chords">
-                            <option value="no">no</option>
-                            <option value="yes">yes</option>
-                            <option value="yes">1st</option>
-                          </select>
-                        </td>
-                        <td class="hide_for_songs">
-                          <input type="checkbox" id="start_song_on_new_page" name="start_song_on_new_page">
-                          <label for="start_song_on_new_page">Start songs on new pages:</label>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td>
-                          <label for="columns">Columns</label>
-                          <input type="number" id="columns" name="columns" value="1">
-                        </td>
-                        <td> 
-                          <label for="ccli">CCLI license#</label>
-                          <input size="7" type="text" id="ccli" name="ccli">
-                        </td>
-                      </tr>
-                    </table>
-                    <h4>Page Setup</h4>
-                    <div class="t3" title="Choose the songs you want to print based on status">
+                    <div class="t3 hide_for_songs" title="Choose the songs you want to print based on status">
                       <label>Print</label>
                       <span>
                         <label for="print_a">👍</label>
@@ -290,109 +251,53 @@
                         <input type="checkbox" id="print_r" name="print_r">
                       </span>
                     </div>
-                    <div class="t3" title="Choose the physical layout of the songbook">
-                      <label for="page_layout">Layout</label>
-                      <select size="1" id="page_layout" name="page_layout">
-                        <option value="single-sided">single-sided</option><option value="booklet">booklet</option><option value="double-sided">double-sided</option><option value="adobe-booklet">adobe-booklet</option>
-                      </select>
-                    </div>
-                    <div class="t3">
-                      <label for="paper_orientation">Orientation</label>
-                      <select size="1" id="paper_orientation" name="paper_orientation">
-                        <option value="portrait">portrait</option><option value="landscape">landscape</option>
-                      </select>
-                    </div>
-                    <div class="t3">
-                      <label for="paper_size">Paper Size</label>
-                      <select size="1" id="paper_size" name="paper_size" style="display: inline-block;">
-                        <option value="A0">A0</option><option value="A1">A1</option><option value="A2">A2</option><option value="A3">A3</option><option value="A4">A4</option><option value="A5">A5</option><option value="A6">A6</option><option value="B0">B0</option><option value="B1">B1</option><option value="B2">B2</option><option value="B3">B3</option><option value="B4">B4</option><option value="B5">B5</option><option value="B6">B6</option><option value="TABLOID">11x17</option><option value="LEGAL">LEGAL</option><option value="LETTER" selected>LETTER</option>
-                      </select>
-                    </div>
                     <div class="t3" title="Font to be used in the songbook">
-                      <label for="font_face">Font</label>
+                      <label for="font_face">Default Font</label>
                       <select size="1" id="font_face" name="font_face" style="display: inline-block;">
                         <option value="Courier">Courier</option><option value="Courier-Bold">Courier-Bold</option><option value="Courier-BoldOblique">Courier-BoldOblique</option><option value="Courier-Oblique">Courier-Oblique</option><option value="Helvetica" selected>Helvetica</option><option value="Helvetica-Bold">Helvetica-Bold</option><option value="Helvetica-BoldOblique">Helvetica-BoldOblique</option><option value="Helvetica-Oblique">Helvetica-Oblique</option><option value="Symbol">Symbol</option><option value="Times-Bold">Times-Bold</option><option value="Times-BoldItalic">Times-BoldItalic</option><option value="Times-Italic">Times-Italic</option><option value="Times-Roman">Times-Roman</option><option value="ZapfDingbats">ZapfDingbats</option>
                       </select>
                     </div>
-                    <h4>Margins<select id="margin" class="fr">
-                      <option value='normal'>Normal</option>
-                      <option value='narrow'>Narrow</option>
-                      <option value='wide'>Wide</option>
+                    <div class="t3">
+                      <label for="display_chords">Display Chords?</label>
+                      <select size="1" id="display_chords" name="display_chords">
+                        <option value="no">no</option>
+                        <option value="yes">yes</option>
+                        <option value="yes">1st</option>
+                      </select>
+                    </div>
+                    <div class="t3 hide_for_songs">
+                      <label for="start_song_on_new_page">Start songs on new pages:</label>
+                      <input type="checkbox" id="start_song_on_new_page" name="start_song_on_new_page">
+                    </div>
+                    <div class="t3 hide_for_songs">
+                      <label for="hide_booktitle">Hide book title?</label>
+                      <select size="1" id="hide_booktitle" name="hide_booktitle">
+                        <option value="no">no</option><option value="yes">yes</option>
+                      </select>
+                    </div>
+                    <div class="t3">
+                      <label for="songtitle_format" title="${num} substitutes the song number">Song title # format:</label>
+                      <input size="10" type="text" id="songtitle_format" value="${num} " name="songtitle_format">
+                    </div>
+                    <div class="t3">
+                      <label for="scripture_location">Scripture reference:</label>
+                      <select size="1" id="scripture_location" name="scripture_location" style="display: inline-block;">
+                        <option value="in-title">in-title</option>
+                        <option value="under-title">under-title</option>
+                      </select>
+                    </div>
+                    <div class="t3">
+                      <label for="ccli">CCLI license#: </label>
+                      <input size="7" type="text" id="ccli" name="ccli">
+                    </div>
+                        
+                    <h4>Text Details<select id="text" class="fr">
+                      <option value='default'>Default</option>
+                      <option value='small'>Small</option>
+                      <option value='large'>Large</option>
                       <option value='custom'>Custom</option>
                     </select></h4>
-                    <table id="margin_table" class="table">
-                      <thead>
-                        <tr>
-                          <th>
-                          </th>
-                          <th>
-                            <small>Size</small>
-                          </th>
-                          <th>
-                          </th>
-                          <th>
-                            <small>Size</small>
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td>
-                            Top
-                          </td>
-                          <td>
-                            <input type="number" id="paper_margin_top" name="paper_margin_top" value="0.5" step="0.1" min="0">
-                          </td>
-                          <td>
-                            Bottom
-                          </td>
-                          <td>
-                            <input type="number" id="paper_margin_bottom" name="paper_margin_bottom" value="0.5" step="0.1" min="0">
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>
-                            <span data-booklet="Inside">Left</span>
-                          </td>
-                          <td>
-                            <input type="number" id="paper_margin_left" name="paper_margin_left" value="0.5" step="0.1" min="0">
-                          </td>
-                          <td>
-                            <span data-booklet="Outside">Right</span>
-                          </td>
-                          <td>
-                            <input type="number" id="paper_margin_right" name="paper_margin_right" value="0.5" step="0.1" min="0">
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>
-                            Gutter
-                          </td>
-                          <td>
-                            <input type="number" id="paper_margin_gutter" name="paper_margin_gutter" value="0.5" step="0.1" min="0">
-                          </td>
-                          <td>
-                            Column Gutter
-                          </td>
-                          <td>
-                            <input type="number" id="column_gutter" name="column_gutter" value="0.5" step="0.1" min="0">
-                            <select size="1" id="gutter_side" name="gutter_side">
-                              <option value="left">Left</option>
-                              <option value="top">Top</option>
-                              <option value="inside">Inside</option>
-                            </select>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                <input id="collapsible2" class="toggle" type="radio" name="accordion">
-                <label for="collapsible2" class="lbl-toggle">Text Options</label>
-                <div class="collapsible-content">
-                  <div class="content-inner">
-                    <table class="table">
+                    <table id="text_table" class="table">
                       <tr>
                         <th></th>
                         <th><small>Size</small></th>
@@ -451,60 +356,173 @@
                         <td></td>
                       </tr>
                     </table>
-                    <h4>Other Options</h4>
-                    <dl>
-                      <span class="hide_for_songs">
-                        <dt>Hide book title?</dt>
-                        <dd>
-                          <select size="1" id="hide_booktitle" name="hide_booktitle">
-                            <option value="no">no</option><option value="yes">yes</option>
-                          </select>
-                        </dd>
-                        <dt title="(${num} substitutes the song number)">Song number format:</dt>
-                        <dd>
-                          <input size="10" type="text" id="songtitle_format" value="${num} " name="songtitle_format">
-                        </dd>
-                      </span>
-                      <dt>Scripture reference location</dt>
-                      <dd>
-                        <select size="1" id="scripture_location" name="scripture_location" style="display: inline-block;">
-                          <option value="in-title">in-title</option><option value="under-title">under-title</option>
-                        </select>
-                      </dd>
-                    </dl>
                   </div>
                 </div>
 
-                <input id="collapsible3" class="toggle index_options" type="radio" name="accordion">
-                <label for="collapsible3" class="lbl-toggle index_options">Index Options</label>
-                <div class="collapsible-content index_options">
+                <input id="collapsible2" class="toggle" type="radio" name="accordion">
+                <label for="collapsible2" class="lbl-toggle">Page Options
+                  <span style="display: inline-block;">
+                    <span id="page_icon"></span>
+                    <span>
+                      <div id="page_size_summary"></div>
+                      <div id="margin_gutter"></div>
+                    </span>
+                    <span id="margin_icon" class="normal">
+                      <span class="flex">
+                        <span class="col"></span>
+                        <span class="col"></span>
+                        <span class="col"></span>
+                      </span>
+                      <span class="flex">
+                        <span class="col"></span>
+                        <span class="col"></span>
+                        <span class="col"></span>
+                      </span>
+                      <span class="flex">
+                        <span class="col"></span>
+                        <span class="col"></span>
+                        <span class="col"></span>
+                      </span>                                        
+                    </span>
+                    <span>
+                      <div id="margin_summary">Normal</div>
+                      <div id="margin_summary_nums">1"</div>
+                    </span>
+                  </span>
+                </label>
+                <div class="collapsible-content">
                   <div class="content-inner">
-                    <div class="hide_for_songs">
-                      <b>Include Indexes?</b><br><br>
-                      <div class="t3">
-                        <label for="display_cat_index">Categories</label>
-                        <select size="1" id="display_cat_index" name="display_cat_index">
-                          <option value="on-new-page">on-new-page</option><option value="no-page-break">no-page-break</option><option value="no-index">no-index</option>
-                        </select>
-                      </div>
-                      <div class="t3">
-                        <label for="display_scrip_index">Scripture</label>
-                        <select size="1" id="display_scrip_index" name="display_scrip_index">
-                          <option value="on-new-page">on-new-page</option><option value="no-page-break">no-page-break</option><option value="no-index">no-index</option>
-                        </select>
-                      </div>
-                      <div class="t3">
-                        <label for="display_index">Alphabetical</label>
-                        <select size="1" id="display_index" name="display_index">
-                          <option value="on-new-page">on-new-page</option><option value="no-page-break">no-page-break</option><option value="no-index">no-index</option>
-                        </select><br>
-                      </div>
-                      <span style="float: right;">
-                        <input type="checkbox" id="include_first_line" name="include_first_line"><label for="include_first_line">Include 1st verse and chorus?</label>
+                    <div class="t3" title="Number of columns">
+                      <label for="columns">Columns</label>
+                      <span>
+                        <input type="number" id="columns" name="columns" value="1">
                       </span>
                     </div>
-                    <br><br>
-                    <table class="table">
+                    <div class="t3" title="Choose the physical layout of the songbook">
+                      <label for="page_layout">Layout</label>
+                      <select size="1" id="page_layout" name="page_layout">
+                        <option value="single-sided">single-sided</option><option value="booklet">booklet</option><option value="double-sided">double-sided</option><option value="adobe-booklet">adobe-booklet</option>
+                      </select>
+                    </div>
+                    <div class="t3">
+                      <label for="paper_orientation">Orientation</label>
+                      <select size="1" id="paper_orientation" name="paper_orientation">
+                        <option value="portrait">portrait</option><option value="landscape">landscape</option>
+                      </select>
+                    </div>
+                    <div class="t3">
+                      <label for="paper_size">Paper Size</label>
+                      <select size="1" id="paper_size" name="paper_size" style="display: inline-block;">
+                        <option value="A0">A0</option><option value="A1">A1</option><option value="A2">A2</option><option value="A3">A3</option><option value="A4">A4</option><option value="A5">A5</option><option value="A6">A6</option><option value="B0">B0</option><option value="B1">B1</option><option value="B2">B2</option><option value="B3">B3</option><option value="B4">B4</option><option value="B5">B5</option><option value="B6">B6</option><option value="TABLOID">11x17</option><option value="LEGAL">LEGAL</option><option value="LETTER" selected>LETTER</option>
+                      </select>
+                    </div>
+                    <h4>Margins<select id="margin" class="fr">
+                      <option value='normal'>Normal</option>
+                      <option value='narrow'>Narrow</option>
+                      <option value='wide'>Wide</option>
+                      <option value='custom'>Custom</option>
+                    </select></h4>
+                    <table id="margin_table" class="table">
+                      <thead>
+                        <tr>
+                          <th>
+                          </th>
+                          <th>
+                            <small>Size</small>
+                          </th>
+                          <th>
+                          </th>
+                          <th>
+                            <small>Size</small>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>
+                            Top
+                          </td>
+                          <td>
+                            <input type="number" id="paper_margin_top" name="paper_margin_top" value="1" step="0.1" min="0">
+                          </td>
+                          <td>
+                            Bottom
+                          </td>
+                          <td>
+                            <input type="number" id="paper_margin_bottom" name="paper_margin_bottom" value="1" step="0.1" min="0">
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <span data-booklet="Inside">Left</span>
+                          </td>
+                          <td>
+                            <input type="number" id="paper_margin_left" name="paper_margin_left" value="1" step="0.1" min="0">
+                          </td>
+                          <td>
+                            <span data-booklet="Outside">Right</span>
+                          </td>
+                          <td>
+                            <input type="number" id="paper_margin_right" name="paper_margin_right" value="1" step="0.1" min="0">
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            Gutter
+                          </td>
+                          <td>
+                            <input type="number" id="paper_margin_gutter" name="paper_margin_gutter" value="0" step="0.1" min="0">
+                          </td>
+                          <td>
+                            Column Gutter
+                          </td>
+                          <td>
+                            <input type="number" id="column_gutter" name="column_gutter" value="1" step="0.1" min="0">
+                            <select size="1" id="gutter_side" name="gutter_side">
+                              <option value="left">Left</option>
+                              <option value="top">Top</option>
+                              <option value="inside">Inside</option>
+                            </select>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <input id="collapsible3" class="toggle hide_for_songs" type="radio" name="accordion">
+                <label for="collapsible3" class="lbl-toggle hide_for_songs">Index Options</label>
+                <div class="collapsible-content hide_for_songs">
+                  <div class="content-inner">
+                    <b>Include Indexes?</b><br><br>
+                    <div class="t3">
+                      <label for="display_cat_index">Categories</label>
+                      <select size="1" id="display_cat_index" name="display_cat_index">
+                        <option value="on-new-page">on-new-page</option><option value="no-page-break">no-page-break</option><option value="no-index">no-index</option>
+                      </select>
+                    </div>
+                    <div class="t3">
+                      <label for="display_scrip_index">Scripture</label>
+                      <select size="1" id="display_scrip_index" name="display_scrip_index">
+                        <option value="on-new-page">on-new-page</option><option value="no-page-break">no-page-break</option><option value="no-index">no-index</option>
+                      </select>
+                    </div>
+                    <div class="t3">
+                      <label for="display_index">Alphabetical</label>
+                      <select size="1" id="display_index" name="display_index">
+                        <option value="on-new-page">on-new-page</option><option value="no-page-break">no-page-break</option><option value="no-index">no-index</option>
+                      </select><br>
+                    </div>
+                    <span style="float: right;">
+                      <input type="checkbox" id="include_first_line" name="include_first_line"><label for="include_first_line">Include 1st verse and chorus?</label>
+                    </span><br>
+                    <h4>Index Details<select id="index" class="fr">
+                      <option value='normal'>Default</option>
+                      <option value='narrow'>Small</option>
+                      <option value='wide'>Large</option>
+                      <option value='custom'>Custom</option>
+                    </select></h4>
+                    <table id="" class="table">
                       <tr>
                         <th><small>Titles</small></th>
                         <th><small>Size</small></th>

@@ -598,9 +598,32 @@ function export_form_summary_update() {
   margin_icon.classList.add(document.getElementById('paper_orientation').value);
   document.getElementById('margin_summary').innerHTML = margin_name;
   document.getElementById('margin_summary_nums').innerHTML = margins[3] + "\"";
-
+  document.getElementById('margin_gutter').innerHTML = "Gutter: " + document.getElementById('paper_margin_gutter').value + "\"";
   document.getElementById('page_size_summary').innerHTML = document.getElementById('paper_size').value;
+
   document.getElementById('font_summary').innerHTML = document.getElementById('font_face').value;
+  document.getElementById('text_summary').innerHTML = document.getElementById('text').value;
+  let song_title_format = document.getElementById('songtitle_format').value.replace('${num}', '1') + 'Arise';
+  if(document.getElementById('scripture_location').value == 'in-title'){
+    song_title_format += ' (Jude 1)';
+  }
+  document.getElementById('song_title_summary').innerHTML = song_title_format;
+  document.getElementById('ccli_summary').innerHTML = 'CCLI: ' + (document.getElementById('ccli').value || 'none');
+  let print_summary = '';
+  if(document.getElementById('print_a').checked){
+    print_summary += '👍';
+  }
+  if(document.getElementById('print_n').checked){
+    print_summary += '⏱️';
+  }
+  if(document.getElementById('print_r').checked){
+    print_summary += '👎';
+  }
+  if(print_summary == ''){
+    print_summary = 'all';
+  }
+  document.getElementById('print_summary').innerHTML = 'Print: ' + print_summary;
+  document.getElementById('chords_summary').innerHTML = 'Chords: ' + document.getElementById('display_chords').value;
   if($('#auto_refresh').is(":checked")){
     makePDF(window.exportObject, document.querySelector('iframe'))
   }
