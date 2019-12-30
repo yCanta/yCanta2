@@ -842,7 +842,6 @@ only screen and (max-height: 500px) {
   }
 }
 @media only screen and (min-width: 640px) {
-  
   ul li a{
     border-left: 1px solid #EEE;
     border-radius: 20px;
@@ -863,8 +862,7 @@ only screen and (max-height: 500px) {
     flex: 0 0 280px;
   }
   body.edit.song #song, 
-  body.edit.songList #songList,
-  body.export #export {
+  body.edit.songList #songList {
     flex: 0 .2 740px;
   }
   body.song #songbookList #songbooks_header a {
@@ -883,7 +881,7 @@ only screen and (max-height: 500px) {
     width: 300px;
   }
   #export .content {
-    min-width: 300px;
+    min-width: 375px;
     max-width: 425px;
   }
   #song .content,
@@ -891,7 +889,7 @@ only screen and (max-height: 500px) {
     width: 400px;
   }
   body.export #export {
-    flex: 0 0.2 800px;
+    flex: 0 0.05 800px;
   }
   body.export #export .sidebar {
     flex: 0 0 360px;
