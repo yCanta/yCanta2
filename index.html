@@ -491,35 +491,53 @@
                 </div>
 
                 <input id="collapsible3" class="toggle hide_for_songs" type="radio" name="accordion">
-                <label for="collapsible3" class="lbl-toggle hide_for_songs">Index Options</label>
+                <label for="collapsible3" class="lbl-toggle hide_for_songs">Index Options
+                  <span style="display: inline-block;">
+                    <span>
+                      <div id="alphabetical_summary"></div>
+                      <div id="category_summary"></div>
+                    </span>
+                    <span style="border-left: 1px solid white; padding-left: 0.5em;">
+                      <div id="scripture_summary"></div>
+                      <div id="index_summary"></div>
+                    </span>
+                  </span>
+                </label>
                 <div class="collapsible-content hide_for_songs">
                   <div class="content-inner">
-                    <b>Include Indexes?</b><br><br>
+                    <h4>Print Indexes:</h4>
+                    <div class="t3">
+                      <label for="display_index">Index</label>
+                      <select size="1" id="display_index" name="display_index">
+                        <option value="on-new-page">On, new page</option>
+                        <option value="no-page-break">On, inline</option>
+                        <option value="no-index">Off</option>
+                      </select>
+                      <span style="text-align: right; width: 100%;">
+                        <label for="include_first_line">Include 1st verse and chorus?</label>
+                        <input type="checkbox" id="include_first_line" name="include_first_line">
+                      </span>
+                    </div>
                     <div class="t3">
                       <label for="display_cat_index">Categories</label>
                       <select size="1" id="display_cat_index" name="display_cat_index">
-                        <option value="on-new-page">on-new-page</option><option value="no-page-break">no-page-break</option><option value="no-index">no-index</option>
+                        <option value="on-new-page">On, new page</option>
+                        <option value="no-page-break">On, inline</option>
+                        <option value="no-index">Off</option>
                       </select>
                     </div>
                     <div class="t3">
                       <label for="display_scrip_index">Scripture</label>
                       <select size="1" id="display_scrip_index" name="display_scrip_index">
-                        <option value="on-new-page">on-new-page</option><option value="no-page-break">no-page-break</option><option value="no-index">no-index</option>
+                        <option value="on-new-page">On, new page</option>
+                        <option value="no-page-break">On, inline</option>
+                        <option value="no-index">Off</option>
                       </select>
                     </div>
-                    <div class="t3">
-                      <label for="display_index">Alphabetical</label>
-                      <select size="1" id="display_index" name="display_index">
-                        <option value="on-new-page">on-new-page</option><option value="no-page-break">no-page-break</option><option value="no-index">no-index</option>
-                      </select><br>
-                    </div>
-                    <span style="float: right;">
-                      <input type="checkbox" id="include_first_line" name="include_first_line"><label for="include_first_line">Include 1st verse and chorus?</label>
-                    </span><br>
                     <h4>Index Details<select id="index" class="fr">
-                      <option value='normal'>Default</option>
-                      <option value='narrow'>Small</option>
-                      <option value='wide'>Large</option>
+                      <option value='default'>Default</option>
+                      <option value='small'>Small</option>
+                      <option value='large'>Large</option>
                       <option value='custom'>Custom</option>
                     </select></h4>
                     <table id="" class="table">

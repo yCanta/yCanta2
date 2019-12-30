@@ -624,6 +624,12 @@ function export_form_summary_update() {
   }
   document.getElementById('print_summary').innerHTML = 'Print: ' + print_summary;
   document.getElementById('chords_summary').innerHTML = 'Chords: ' + document.getElementById('display_chords').value;
+
+  document.getElementById('alphabetical_summary').innerHTML = 'Index: ' + document.getElementById('display_index').options[document.getElementById('display_index').selectedIndex].text;
+  document.getElementById('category_summary').innerHTML = 'Category: ' + document.getElementById('display_cat_index').options[document.getElementById('display_cat_index').selectedIndex].text;
+  document.getElementById('scripture_summary').innerHTML = 'Scripture: ' + document.getElementById('display_scrip_index').options[document.getElementById('display_scrip_index').selectedIndex].text;
+  document.getElementById('index_summary').innerHTML = document.getElementById('index').value;
+
   if($('#auto_refresh').is(":checked")){
     makePDF(window.exportObject, document.querySelector('iframe'))
   }
