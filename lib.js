@@ -332,6 +332,9 @@ function buildSongbookList(songs, target_class='songbook_content',
     }
     values.push(mapSongRowToValue(songs[i]));
   }
+  db.get('categories').then(function(categories){
+    $('#category_filter select').html('<option value=""></option><option value="c:!c">No Category</option>'+categories.categories.map(cat => '<option value="c:'+cat+'">'+cat+'</option>').join("")); //Construct the options for the drop down from this list.
+  });
 
   //Creates list.min.js list for viewing the songbook
   if(edit != true) {

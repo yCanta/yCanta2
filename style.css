@@ -998,5 +998,38 @@ only screen and (max-height: 500px) {
    position: relative;
    top: -2.5px;
 }
-
-
+.cat_filter_btn {
+  padding: 5px 11px 5px 11px;
+  display: inline-block;
+  margin: 0 0 0 5px;
+}
+#category_filter_container.open .cat_filter_btn{
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+#category_filter_container {
+  display: inline-block;
+  position: relative;
+}
+#category_filter_container > * {
+  background-color: lightblue;
+  border-radius: 1rem;
+}
+#category_filter {
+  position: absolute;
+  left: -218px;
+  width: 285px;
+  transform: scaleY(0);
+  overflow: hidden;
+}
+#category_filter select {
+  background-color: lightcyan;
+  border-radius: 2rem;
+}
+.open #category_filter{
+  transform: scaleY(1);
+  padding: 5px;
+}
+.mb23 {
+  margin-bottom: 2.5em
+}

@@ -113,6 +113,16 @@
               <div id="songbook_header">
                 <a data-songbook class="title_link" href="#"><h3 id="songbook_title">All Songs</h3></a>
                 <input aria-label="Search" class="search deletable" type="text" data-target="#songbook_content" data-trigger="change" placeholder="Search">
+                <nav id="category_filter_container">
+                  <button class="cat_filter_btn" onclick="$('#category_filter_container').toggleClass('open'); $('#songbook_header').toggleClass('mb23');">⑂</button>
+                  <div id="category_filter">
+                    <label>Category: 
+                      <select onchange="$('#songbook_content .search').val($(this).val())[0].dispatchEvent(new KeyboardEvent('keyup'));">
+                      </select>
+                    </label>
+                  </div>
+                </nav>
+
               </div>
               <ul class="list"></ul>
             </div>
