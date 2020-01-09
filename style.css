@@ -1018,7 +1018,7 @@ only screen and (max-height: 500px) {
 #category_filter {
   position: absolute;
   left: -218px;
-  width: 285px;
+  width: 370px;
   transform: scaleY(0);
   overflow: hidden;
 }
