@@ -107,7 +107,7 @@ stitle, cat, author, scrip_ref, key, copyright {
 .disabled-hidden {
   opacity: 0;
   height: 0;
-  display:none;
+  display:none !important;
 }
 #songListEdit [data-xInBook] {
   position: relative;

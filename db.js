@@ -354,7 +354,8 @@ function loadSongbook(songbook_id) {
         });
         buildSongbookList(result.rows);
         $('#songbook_title').removeAttr('contenteditable');
-        $('#songbook_content .search').parent().removeAttr('disabled').removeClass('disabled-hidden');
+        $('#songbook_content .search').parent().removeAttr('disabled');
+        $('.disabled-hidden').removeClass('disabled-hidden');
         $('#songbook_title').html('<i>All Songs</i>').removeAttr('data-rev');
         $('#songList [data-songbook-edit], #songList .delete').hide()
         var dateAfter = new Date();
@@ -369,7 +370,8 @@ function loadSongbook(songbook_id) {
         window.songbook_list.clear();
       }
       $('#songbook_title').removeAttr('contenteditable');
-      $('#songbook_content .search').parent().removeAttr('disabled').removeClass('disabled-hidden');
+      $('#songbook_content .search').parent().removeAttr('disabled');
+      $('.disabled-hidden').removeClass('disabled-hidden');
       $('#songbook_title').text('').removeAttr('data-rev');
       resolve('loaded songbook');
     }
@@ -400,7 +402,8 @@ function loadSongbook(songbook_id) {
         });
         window.songbook = result;
         $('#songbook_title').removeAttr('contenteditable');
-        $('#songbook_content .search').parent().removeAttr('disabled').removeClass('disabled-hidden');
+        $('#songbook_content .search').parent().removeAttr('disabled');
+        $('.disabled-hidden').removeClass('disabled-hidden');
         $('#songbook_title').text(result.title).attr('data-rev',result._rev);
         var dateAfter = new Date();
         console.log(dateAfter-dateBefore);

@@ -397,7 +397,12 @@ function editSongbook() {
   buttons += '<button data-songbook class="btn" style="background-color: lightgray;" onclick="window.editing=false; window.songbook._id=\'\'; window.location.hash=$(this).attr(\'href\'); $(\'.edit_buttons\').remove();">Cancel</button>';
   buttons += '<button data-songbook class="btn" style="background-color: lightgray;" onclick="window.editing=false; location.reload()">Reset</button></div>';
   $('#songbook_content').prepend(buttons).append(buttons);
+  $('#songbook_content .search').val('')[0].dispatchEvent(new KeyboardEvent('keyup'));
   updateAllLinks();
+
+  $('#songList #songbook_title').attr('contenteditable', 'true').parent().removeAttr('href');
+  $('#songList #songbook_content input.search').parent().addClass('disabled-hidden')[0].disabled=true;
+  $('#songList #songbook_content nav').addClass('disabled-hidden');    
 
   //load all the songs into song adder
   db.allDocs({
@@ -420,8 +425,6 @@ function editSongbook() {
       true);
   }).then(function(result) {
     $('.song-highlight').removeClass('song-highlight');
-    $('#songList #songbook_title').attr('contenteditable', 'true').parent().removeAttr('href');
-    $('#songList #songbook_content input.search').val('').parent().addClass('disabled-hidden')[0].disabled=true;    
     //remove all counts
     $('[data-xInBook]').removeAttr('data-xInBook');
     //bind events to the songbook list

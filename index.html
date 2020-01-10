@@ -710,6 +710,9 @@
           // Check to see if we're editing
           if (confirmWhenEditing()) { return };
           
+          //remove edit buttons
+          $('.edit_buttons').remove();
+          
           //set the hash if necessary still
           window.location.hash = hashValue;
           return false;
