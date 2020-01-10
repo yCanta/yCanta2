@@ -36,10 +36,81 @@ window.addEventListener("resize", function(){
     document.activeElement.scrollIntoView({block: 'start'});
   },0);
 });
-window.margins = []
-window.margins['narrow'] = [.5,.5,.5,.5,.5];
-window.margins['wide'] = [1,2,1,2,1];
-window.margins['normal'] = [1,1,1,1,1];
+let export_form = {};
+
+let margins = [];
+margins['narrow'] = [.5,.5,.5,.5,.5];
+margins['wide'] = [1,2,1,2,1];
+margins['normal'] = [1,1,1,1,1];
+
+let text = [];
+text['default'] = [
+  ['booktitle_size',24],['booktitle_space',    26],
+  ['songtitle_size',14],['songtitle_space',    6 ],
+  ['small_size',    8 ],['small_space',        8 ],
+  ['songline_size', 12],['songline_space',     4 ],['resize_percent', 100],
+  ['songchord_size',12],['songchord_space',    1 ],
+  ['songchunk_b4',  12],['song_space_after',   12],
+  ['copyright_size',8 ],['copyright_space_b4', 3 ]
+];
+
+text['small'] = [
+  ['booktitle_size',18],['booktitle_space',    18],
+  ['songtitle_size',12],['songtitle_space',    4 ],
+  ['small_size',    6 ],['small_space',        6 ],
+  ['songline_size', 10],['songline_space',     2 ],['resize_percent', 75],
+  ['songchord_size', 8],['songchord_space',    1 ],
+  ['songchunk_b4',  10],['song_space_after',   10],
+  ['copyright_size',6 ],['copyright_space_b4', 2 ]
+];
+
+text['large'] = [
+  ['booktitle_size',36],['booktitle_space',    30],
+  ['songtitle_size',18],['songtitle_space',    10],
+  ['small_size',    10],['small_space',        10],
+  ['songline_size', 14],['songline_space',     6 ],['resize_percent', 100],
+  ['songchord_size',14],['songchord_space',    4 ],
+  ['songchunk_b4',  14],['song_space_after',   14],
+  ['copyright_size',10],['copyright_space_b4', 4 ]
+];
+
+let index = [];
+index['default'] = [
+  ['index_title_size',18],['index_title_space',6],['index_title_font','Helvetica'],
+  ['index_title_b4',  20],
+  ['index_cat_size',  14],['index_cat_space',  6],['index_cat_font',  'Helvetica'],
+  ['index_cat_b4',    12],
+  ['index_song_size', 12],['index_song_space', 4],['index_song_font', 'Helvetica'],
+  ['index_first_line_size', 11],['index_first_line_space', 4],['index_first_line_font', 'Helvetica-Oblique']  
+];
+index['small'] = [
+  ['index_title_size',14],['index_title_space',4],['index_title_font','Helvetica'],
+  ['index_title_b4',  16],
+  ['index_cat_size',  12],['index_cat_space',  4],['index_cat_font',  'Helvetica'],
+  ['index_cat_b4',    10],
+  ['index_song_size', 10],['index_song_space', 2],['index_song_font', 'Helvetica'],
+  ['index_first_line_size', 9],['index_first_line_space', 2],['index_first_line_font', 'Helvetica-Oblique']  
+];
+index['large'] = [
+  ['index_title_size',26],['index_title_space',10],['index_title_font','Helvetica'],
+  ['index_title_b4',  24],
+  ['index_cat_size',  18],['index_cat_space',  10],['index_cat_font',  'Helvetica'],
+  ['index_cat_b4',    16],
+  ['index_song_size', 16],['index_song_space', 8],['index_song_font', 'Helvetica'],
+  ['index_first_line_size', 14],['index_first_line_space', 6],['index_first_line_font', 'Helvetica-Oblique']  
+];
+
+
+export_form.margins = margins;
+export_form.text = text;
+export_form.index = index;
+window.export = export_form;
+
+function set_value_by_id(list) {
+  for(item of list) {
+    document.getElementById(item[0]).value = item[1];
+  }
+}
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js', {
@@ -587,14 +658,13 @@ function export_form_summary_update() {
                  document.getElementById('column_gutter').value]
 
   let margin_name;
-
-  if(margins.equals(window.margins['normal'])){
+  if(margins.equals(window.export.margins['normal'])){
     margin_name = 'normal';
   }
-  else if(margins.equals(window.margins['narrow'])){
+  else if(margins.equals(window.export.margins['narrow'])){
     margin_name = 'narrow';
   }
-  else if(margins.equals(window.margins['wide'])){
+  else if(margins.equals(window.export.margins['wide'])){
     margin_name = 'wide';
   }
   else {
@@ -609,7 +679,27 @@ function export_form_summary_update() {
   document.getElementById('page_size_summary').innerHTML = document.getElementById('paper_size').value;
 
   document.getElementById('font_summary').innerHTML = document.getElementById('font_face').value;
-  document.getElementById('text_summary').innerHTML = document.getElementById('text').value;
+
+  let text = [];
+  for(item of window.export.text['default']) {
+    text.push([item[0], document.getElementById(item[0]).value]);
+  }
+
+  let text_name;
+  if(text.equals(window.export.text['default'])){
+    text_name = 'default';
+  }
+  else if(text.equals(window.export.text['small'])){
+    text_name = 'small';
+  }
+  else if(text.equals(window.export.text['large'])){
+    text_name = 'large';
+  }
+  else {
+    text_name = 'custom';
+  }
+  document.getElementById('text').value = text_name;
+  document.getElementById('text_summary').innerHTML = text_name;
   let song_title_format = document.getElementById('songtitle_format').value.replace('${num}', '1') + 'Arise';
   if(document.getElementById('scripture_location').value == 'in-title'){
     song_title_format += ' (Jude 1)';
@@ -635,7 +725,26 @@ function export_form_summary_update() {
   document.getElementById('alphabetical_summary').innerHTML = 'Index: ' + document.getElementById('display_index').options[document.getElementById('display_index').selectedIndex].text;
   document.getElementById('category_summary').innerHTML = 'Category: ' + document.getElementById('display_cat_index').options[document.getElementById('display_cat_index').selectedIndex].text;
   document.getElementById('scripture_summary').innerHTML = 'Scripture: ' + document.getElementById('display_scrip_index').options[document.getElementById('display_scrip_index').selectedIndex].text;
-  document.getElementById('index_summary').innerHTML = document.getElementById('index').value;
+  let index = [];
+  for(item of window.export.index['default']) {
+    index.push([item[0], document.getElementById(item[0]).value]);
+  }
+
+  let index_name;
+  if(index.equals(window.export.index['default'])){
+    index_name = 'default';
+  }
+  else if(index.equals(window.export.index['small'])){
+    index_name = 'small';
+  }
+  else if(index.equals(window.export.index['large'])){
+    index_name = 'large';
+  }
+  else {
+    index_name = 'custom';
+  }
+  document.getElementById('index').value = index_name;
+  document.getElementById('index_summary').innerHTML = index_name;
 
   if($('#auto_refresh').is(":checked")){
     makePDF(window.exportObject, document.querySelector('iframe'))

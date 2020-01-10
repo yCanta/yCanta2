@@ -684,12 +684,24 @@
       });
       $('#margin').change(function() {
         if(this.value != 'custom'){
-          let margins = window.margins[this.value];
+          let margins = window.export.margins[this.value];
           document.getElementById('paper_margin_top').value = margins[0];
           document.getElementById('paper_margin_right').value = margins[1];
           document.getElementById('paper_margin_bottom').value = margins[2];
           document.getElementById('paper_margin_left').value = margins[3];
           document.getElementById('column_gutter').value = margins[4];
+        }
+      });
+      $('#text').change(function() {
+        if(this.value != 'custom'){
+          let text = window.export.text[this.value];
+          set_value_by_id(text);
+        }
+      });
+      $('#index').change(function() {
+        if(this.value != 'custom'){
+          let index = window.export.index[this.value];
+          set_value_by_id(index);
         }
       });
       $(function () {
@@ -713,7 +725,7 @@
           
           //remove edit buttons
           $('.edit_buttons').remove();
-          
+
           //set the hash if necessary still
           window.location.hash = hashValue;
           return false;
