@@ -37,9 +37,9 @@ window.addEventListener("resize", function(){
   },0);
 });
 window.margins = []
-window.margins['narrow'] = [.5,.5,.5,.5];
-window.margins['wide'] = [1,2,1,2];
-window.margins['normal'] = [1,1,1,1];
+window.margins['narrow'] = [.5,.5,.5,.5,.5];
+window.margins['wide'] = [1,2,1,2,1];
+window.margins['normal'] = [1,1,1,1,1];
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js', {
@@ -583,7 +583,8 @@ function export_form_summary_update() {
   let margins = [document.getElementById('paper_margin_top').value,
                  document.getElementById('paper_margin_right').value,
                  document.getElementById('paper_margin_bottom').value,
-                 document.getElementById('paper_margin_left').value]
+                 document.getElementById('paper_margin_left').value,
+                 document.getElementById('column_gutter').value]
 
   let margin_name;
 
