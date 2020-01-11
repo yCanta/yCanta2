@@ -1,6 +1,60 @@
 String.prototype.count=function(s1) { 
     return (this.length - this.replace(new RegExp(s1,"g"), '').length) / s1.length;
 };
+/*!
+ * Check if two objects or arrays are equal
+ * (c) 2017 Chris Ferdinandi, MIT License, https://gomakethings.com
+ * @param  {Object|Array}  value  The first object or array to compare
+ * @param  {Object|Array}  other  The second object or array to compare
+ * @return {Boolean}              Returns true if they're equal
+ */
+var isEqual = function (value, other) {
+  // Get the value type
+  var type = Object.prototype.toString.call(value);
+  // If the two objects are not the same type, return false
+  if (type !== Object.prototype.toString.call(other)) return false;
+  // If items are not an object or array, return false
+  if (['[object Array]', '[object Object]'].indexOf(type) < 0) return false;
+  // Compare the length of the length of the two items
+  var valueLen = type === '[object Array]' ? value.length : Object.keys(value).length;
+  var otherLen = type === '[object Array]' ? other.length : Object.keys(other).length;
+  if (valueLen !== otherLen) return false;
+  // Compare two items
+  var compare = function (item1, item2) {
+    // Get the object type
+    var itemType = Object.prototype.toString.call(item1);
+    // If an object or array, compare recursively
+    if (['[object Array]', '[object Object]'].indexOf(itemType) >= 0) {
+      if (!isEqual(item1, item2)) return false;
+    }
+    // Otherwise, do a simple comparison
+    else {
+      // If the two items are not the same type, return false
+      if (itemType !== Object.prototype.toString.call(item2)) return false;
+      // Else if it's a function, convert to a string and compare
+      // Otherwise, just compare
+      if (itemType === '[object Function]') {
+        if (item1.toString() !== item2.toString()) return false;
+      } else {
+        if (item1 !== item2) return false;
+      }
+    }
+  };
+  // Compare properties
+  if (type === '[object Array]') {
+    for (var i = 0; i < valueLen; i++) {
+      if (compare(value[i], other[i]) === false) return false;
+    }
+  } else {
+    for (var key in value) {
+      if (value.hasOwnProperty(key)) {
+        if (compare(value[key], other[key]) === false) return false;
+      }
+    }
+  }
+  // If nothing failed, return true
+  return true;
+};
 // Warn if overriding existing method
 if(Array.prototype.equals)
     console.warn("Overriding existing Array.prototype.equals. Possible causes: New API defines the method, there's a framework conflict or you've got double inclusions in your code.");
@@ -45,59 +99,59 @@ margins['normal'] = [1,1,1,1,1];
 
 let text = [];
 text['default'] = [
-  ['booktitle_size',24],['booktitle_space',    26],
-  ['songtitle_size',14],['songtitle_space',    6 ],
-  ['small_size',    8 ],['small_space',        8 ],
-  ['songline_size', 12],['songline_space',     4 ],['resize_percent', 100],
-  ['songchord_size',12],['songchord_space',    1 ],
-  ['songchunk_b4',  12],['song_space_after',   12],
-  ['copyright_size',8 ],['copyright_space_b4', 3 ]
+  {name: 'booktitle_size', value: '24'},{name: 'booktitle_space',    value:  '26'},
+  {name: 'songtitle_size', value: '14'},{name: 'songtitle_space',    value:  '6' },
+  {name: 'small_size',     value: '8' },{name: 'small_space',        value:  '8' },
+  {name: 'songline_size',  value: '12'},{name: 'songline_space',     value:  '4' },{name: 'resize_percent', value:  '100'},
+  {name: 'songchord_size', value: '12'},{name: 'songchord_space',    value:  '1' },
+  {name: 'songchunk_b4',   value: '12'},{name: 'song_space_after',   value:  '12'},
+  {name: 'copyright_size', value: '8' },{name: 'copyright_space_b4', value:  '3' }
 ];
 
 text['small'] = [
-  ['booktitle_size',18],['booktitle_space',    18],
-  ['songtitle_size',12],['songtitle_space',    4 ],
-  ['small_size',    6 ],['small_space',        6 ],
-  ['songline_size', 10],['songline_space',     2 ],['resize_percent', 75],
-  ['songchord_size', 8],['songchord_space',    1 ],
-  ['songchunk_b4',  10],['song_space_after',   10],
-  ['copyright_size',6 ],['copyright_space_b4', 2 ]
+  {name: 'booktitle_size', value: '18'},{name: 'booktitle_space',    value: '18'},
+  {name: 'songtitle_size', value: '12'},{name: 'songtitle_space',    value: '4' },
+  {name: 'small_size',     value: '6' },{name: 'small_space',        value: '6' },
+  {name: 'songline_size',  value: '10'},{name: 'songline_space',     value: '2' },{name: 'resize_percent', value: '75'},
+  {name: 'songchord_size', value: '8' },{name: 'songchord_space',    value: '1' },
+  {name: 'songchunk_b4',   value: '10'},{name: 'song_space_after',   value: '10'},
+  {name: 'copyright_size', value: '6' },{name: 'copyright_space_b4', value: '2' }
 ];
 
 text['large'] = [
-  ['booktitle_size',36],['booktitle_space',    30],
-  ['songtitle_size',18],['songtitle_space',    10],
-  ['small_size',    10],['small_space',        10],
-  ['songline_size', 14],['songline_space',     6 ],['resize_percent', 100],
-  ['songchord_size',14],['songchord_space',    4 ],
-  ['songchunk_b4',  14],['song_space_after',   14],
-  ['copyright_size',10],['copyright_space_b4', 4 ]
+  {name: 'booktitle_size', value: '36'},{name: 'booktitle_space',    value: '30'},
+  {name: 'songtitle_size', value: '18'},{name: 'songtitle_space',    value: '10'},
+  {name: 'small_size',     value: '10'},{name: 'small_space',        value: '10'},
+  {name: 'songline_size',  value: '14'},{name: 'songline_space',     value: '6' },{name: 'resize_percent', value: '100'},
+  {name: 'songchord_size', value: '14'},{name: 'songchord_space',    value: '4' },
+  {name: 'songchunk_b4',   value: '14'},{name: 'song_space_after',   value: '14'},
+  {name: 'copyright_size', value: '10'},{name: 'copyright_space_b4', value: '4' }
 ];
 
 let index = [];
 index['default'] = [
-  ['index_title_size',18],['index_title_space',6],['index_title_font','Helvetica'],
-  ['index_title_b4',  20],
-  ['index_cat_size',  14],['index_cat_space',  6],['index_cat_font',  'Helvetica'],
-  ['index_cat_b4',    12],
-  ['index_song_size', 12],['index_song_space', 4],['index_song_font', 'Helvetica'],
-  ['index_first_line_size', 11],['index_first_line_space', 4],['index_first_line_font', 'Helvetica-Oblique']  
+  {name: 'index_title_size', value: '18'},{name: 'index_title_space', value: '6'},{name: 'index_title_font', value: 'Helvetica'},
+  {name: 'index_title_b4',   value: '20'},
+  {name: 'index_cat_size',   value: '14'},{name: 'index_cat_space',   value: '6'},{name: 'index_cat_font',   value: 'Helvetica'},
+  {name: 'index_cat_b4',     value: '12'},
+  {name: 'index_song_size',  value: '12'},{name: 'index_song_space',  value: '4'},{name: 'index_song_font',  value: 'Helvetica'},
+  {name: 'index_first_line_size',  value: '11'},{name: 'index_first_line_space',  value: '4'},{name: 'index_first_line_font',  value: 'Helvetica-Oblique'}  
 ];
 index['small'] = [
-  ['index_title_size',14],['index_title_space',4],['index_title_font','Helvetica'],
-  ['index_title_b4',  16],
-  ['index_cat_size',  12],['index_cat_space',  4],['index_cat_font',  'Helvetica'],
-  ['index_cat_b4',    10],
-  ['index_song_size', 10],['index_song_space', 2],['index_song_font', 'Helvetica'],
-  ['index_first_line_size', 9],['index_first_line_space', 2],['index_first_line_font', 'Helvetica-Oblique']  
+  {name: 'index_title_size', value: '14'},{name: 'index_title_space', value: '4'},{name: 'index_title_font', value: 'Helvetica'},
+  {name: 'index_title_b4',   value: '16'},
+  {name: 'index_cat_size',   value: '12'},{name: 'index_cat_space',   value: '4'},{name: 'index_cat_font',   value: 'Helvetica'},
+  {name: 'index_cat_b4',     value: '10'},
+  {name: 'index_song_size',  value: '10'},{name: 'index_song_space',  value: '2'},{name: 'index_song_font',  value: 'Helvetica'},
+  {name: 'index_first_line_size',  value: '9'},{name: 'index_first_line_space',  value: '2'},{name: 'index_first_line_font',  value: 'Helvetica-Oblique'}  
 ];
 index['large'] = [
-  ['index_title_size',26],['index_title_space',10],['index_title_font','Helvetica'],
-  ['index_title_b4',  24],
-  ['index_cat_size',  18],['index_cat_space',  10],['index_cat_font',  'Helvetica'],
-  ['index_cat_b4',    16],
-  ['index_song_size', 16],['index_song_space', 8],['index_song_font', 'Helvetica'],
-  ['index_first_line_size', 14],['index_first_line_space', 6],['index_first_line_font', 'Helvetica-Oblique']  
+  {name: 'index_title_size', value: '26'},{name: 'index_title_space', value: '10'},{name: 'index_title_font', value: 'Helvetica'},
+  {name: 'index_title_b4',   value: '24'},
+  {name: 'index_cat_size',   value: '18'},{name: 'index_cat_space',   value: '10'},{name: 'index_cat_font',   value: 'Helvetica'},
+  {name: 'index_cat_b4',     value: '16'},
+  {name: 'index_song_size',  value: '16'},{name: 'index_song_space',  value: '8'},{name: 'index_song_font',  value: 'Helvetica'},
+  {name: 'index_first_line_size',  value: '14'},{name: 'index_first_line_space',  value: '6'},{name: 'index_first_line_font',  value: 'Helvetica-Oblique'}  
 ];
 
 
@@ -108,7 +162,7 @@ window.export = export_form;
 
 function set_value_by_id(list) {
   for(item of list) {
-    document.getElementById(item[0]).value = item[1];
+    document.getElementById(item.name).value = item.value;
   }
 }
 
@@ -682,17 +736,17 @@ function export_form_summary_update() {
 
   let text = [];
   for(item of window.export.text['default']) {
-    text.push([item[0], document.getElementById(item[0]).value]);
+    text.push({name: item.name, value: document.getElementById(item.name).value});
   }
 
   let text_name;
-  if(text.equals(window.export.text['default'])){
+  if(isEqual(text, window.export.text['default'])){
     text_name = 'default';
   }
-  else if(text.equals(window.export.text['small'])){
+  else if(isEqual(text, window.export.text['small'])){
     text_name = 'small';
   }
-  else if(text.equals(window.export.text['large'])){
+  else if(isEqual(text, window.export.text['large'])){
     text_name = 'large';
   }
   else {
@@ -727,17 +781,17 @@ function export_form_summary_update() {
   document.getElementById('scripture_summary').innerHTML = 'Scripture: ' + document.getElementById('display_scrip_index').options[document.getElementById('display_scrip_index').selectedIndex].text;
   let index = [];
   for(item of window.export.index['default']) {
-    index.push([item[0], document.getElementById(item[0]).value]);
+    index.push({name: item.name, value:document.getElementById(item.name).value});
   }
 
   let index_name;
-  if(index.equals(window.export.index['default'])){
+  if(isEqual(index, window.export.index['default'])){
     index_name = 'default';
   }
-  else if(index.equals(window.export.index['small'])){
+  else if(isEqual(index, window.export.index['small'])){
     index_name = 'small';
   }
-  else if(index.equals(window.export.index['large'])){
+  else if(isEqual(index, window.export.index['large'])){
     index_name = 'large';
   }
   else {
