@@ -232,10 +232,7 @@
               <br>
               <form id="export_form">
                 <label for="format">Format</label>
-                <select style="width: calc(100% - 10px); background-color: lightblue;" class="btn lbl-toggle" id="format" name="format">
-                  <option name="simple">Simple</option>
-                  <option name="3-column">3-Column</option>
-                  
+                <select style="width: 100%; background-color: lightblue; margin: .5em 0 1em 0" class="lbl-toggle" id="format" name="format">
                 </select>
                 <input id="collapsible1" class="toggle" type="radio" name="accordion">
                 <label for="collapsible1" class="lbl-toggle">Text Options
@@ -687,6 +684,12 @@
       });
       $('.content-inner').change(function(){
         export_form_summary_update();
+      });
+      $('#format').change(function() {
+        if(this.value != 'custom'){
+          set_value_by_id(JSON.parse(this.value));
+          $('#paper_margin_top').trigger('change'); //random element to trigger
+        }
       });
       $('#margin').change(function() {
         if(this.value != 'custom'){

@@ -475,6 +475,116 @@ db.put(categories, function callback(err, result) {
     console.log(err);
   }
 });
+
+var simple_cfg = {
+  _id: 'cfg-simple',
+  title: 'simple',
+  cfg: [
+    {name: 'paper_orientation',   value: 'portrait'},
+    {name: 'paper_size',          value: 'LETTER'},
+    {name: 'paper_margin_left',   value: '0.5'},
+    {name: 'paper_margin_right',  value: '0.5'},
+    {name: 'paper_margin_top',    value: '0.5'},
+    {name: 'paper_margin_bottom', value: '0.5'},
+    {name: 'column_gutter',       value: '0.5'},
+    {name: 'page_layout',         value: 'single-sided'},
+    {name: 'paper_margin_gutter', value: '0'},
+    {name: 'font_face',           value: 'Helvetica'},
+    {name: 'booktitle_size',      value: '36'},
+    {name: 'booktitle_space',     value: '12'},
+    {name: 'songtitle_size',      value: '18'},
+    {name: 'songtitle_space',     value: '6'},
+    {name: 'song_space_after',    value: '12'},
+    {name: 'songchunk_b4',        value: '12'},
+    {name: 'songline_size',       value: '12'},
+    {name: 'songline_space',      value: '4'},
+    {name: 'songchord_size',      value: '12'},
+    {name: 'songchord_space',     value: '1'},
+    {name: 'small_size',          value: '8'},
+    {name: 'small_space',         value: '8'},
+    {name: 'copyright_size',      value: '8'},
+    {name: 'copyright_space_b4',  value: '3'},
+    {name: 'columns',             value: '1'},
+    {name: 'display_chords',      value: 'no'},
+    {name: 'index_title_font',    value: 'Helvetica'},
+    {name: 'index_title_b4',      value: '20'},
+    {name: 'index_title_size',    value: '18'},
+    {name: 'index_title_space',   value: '6'},
+    {name: 'index_cat_font',      value: 'Helvetica'},
+    {name: 'index_cat_b4',        value: '12'},
+    {name: 'index_cat_exclude',   value: 'Needs,Duplicate'},
+    {name: 'index_cat_size',      value: '14'},
+    {name: 'index_cat_space',     value: '6'},
+    {name: 'index_song_font',     value: 'Helvetica-Bold'},
+    {name: 'index_song_size',     value: '12'},
+    {name: 'index_song_space',    value: '4'},
+    {name: 'index_first_line_font',  value: 'Helvetica-Oblique'},
+    {name: 'index_first_line_size',  value: '11'},
+    {name: 'index_first_line_space', value: '4'},
+    {name: 'display_index',       value: 'on-new-page'},
+    {name: 'scripture_location',  value: 'under-title'}
+  ]
+}
+db.put(simple_cfg, function callback(err, result) {
+  if (!err) {
+    console.log('added simple_cfg');
+  }
+  else {
+    console.log(err);
+  }
+});
+var three_column_cfg = {
+  _id: 'cfg-3-column',
+  title: '3-column',
+  cfg: [
+    {name: 'paper_orientation',   value: 'landscape'},
+    {name: 'paper_size',          value: 'LETTER'},
+    {name: 'margin',              value: 'narrow'},
+    {name: 'page_layout',         value: 'single-sided'},
+    {name: 'font_face',           value: 'Helvetica'},
+    {name: 'booktitle_size',      value: '36'},
+    {name: 'booktitle_space',     value: '12'},
+    {name: 'songtitle_size',      value: '18'},
+    {name: 'songtitle_space',     value: '6'},
+    {name: 'song_space_after',    value: '12'},
+    {name: 'songchunk_b4',        value: '12'},
+    {name: 'songline_size',       value: '12'},
+    {name: 'songline_space',      value: '4'},
+    {name: 'songchord_size',      value: '12'},
+    {name: 'songchord_space',     value: '1'},
+    {name: 'small_size',          value: '8'},
+    {name: 'small_space',         value: '8'},
+    {name: 'copyright_size',      value: '8'},
+    {name: 'copyright_space_b4',  value: '3'},
+    {name: 'columns',             value: '3'},
+    {name: 'display_chords',      value: 'no'},
+    {name: 'index_title_font',    value: 'Helvetica'},
+    {name: 'index_title_b4',      value: '20'},
+    {name: 'index_title_size',    value: '18'},
+    {name: 'index_title_space',   value: '6'},
+    {name: 'index_cat_font',      value: 'Helvetica'},
+    {name: 'index_cat_b4',        value: '12'},
+    {name: 'index_cat_exclude',   value: 'Needs,Duplicate'},
+    {name: 'index_cat_size',      value: '14'},
+    {name: 'index_cat_space',     value: '6'},
+    {name: 'index_song_font',     value: 'Helvetica-Bold'},
+    {name: 'index_song_size',     value: '12'},
+    {name: 'index_song_space',    value: '4'},
+    {name: 'index_first_line_font',  value: 'Helvetica-Oblique'},
+    {name: 'index_first_line_size',  value: '11'},
+    {name: 'index_first_line_space', value: '4'},
+    {name: 'display_index',       value: 'on-new-page'},
+    {name: 'scripture_location',  value: 'under-title'}
+  ]
+}
+db.put(three_column_cfg, function callback(err, result) {
+  if (!err) {
+    console.log('added 3 column_cfg');
+  }
+  else {
+    console.log(err);
+  }
+});
 db.get('age').then(function(age){
   if(age.age < 190711) {
     db.destroy().then(function () {

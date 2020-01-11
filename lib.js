@@ -699,6 +699,15 @@ function prepExport(){
   document.getElementById('pdf_progress_text').innerHTML = 0 +'%';
   document.querySelector('iframe').src = "";
   $('#display_chords').trigger('change');
+  db.allDocs({
+    include_docs: true,
+    startkey: 'cfg-',
+    endkey: 'cfg-\ufff0',
+  }).then(function(result){
+    return $('#format').html("<option value='[]'></option>"+result.rows.map(function (row) {
+          return "<option value='"+JSON.stringify(row.doc.cfg)+"'>"+row.doc.title+"</option>"
+        }).join(''));
+  });
 }
 function export_form_summary_update() {
   $('#page_icon').html('<span class="col"></span>'.repeat($('#columns').val()));
