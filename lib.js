@@ -1,6 +1,25 @@
 String.prototype.count=function(s1) { 
     return (this.length - this.replace(new RegExp(s1,"g"), '').length) / s1.length;
 };
+const copyToClipboard = str => {
+  const el = document.createElement('textarea');  // Create a <textarea> element
+  el.value = str;                                 // Set its value to the string that you want copied
+  el.setAttribute('readonly', '');                // Make it readonly to be tamper-proof
+  el.style.position = 'absolute';                 
+  el.style.left = '-9999px';                      // Move outside the screen to make it invisible
+  document.body.appendChild(el);                  // Append the <textarea> element to the HTML document
+  const selected =            
+    document.getSelection().rangeCount > 0        // Check if there is any content selected previously
+      ? document.getSelection().getRangeAt(0)     // Store selection if found
+      : false;                                    // Mark as false to know no selection existed before
+  el.select();                                    // Select the <textarea> content
+  document.execCommand('copy');                   // Copy - only works as a result of a user action (e.g. click events)
+  document.body.removeChild(el);                  // Remove the <textarea> element
+  if (selected) {                                 // If a selection existed before copying
+    document.getSelection().removeAllRanges();    // Unselect everything on the HTML document
+    document.getSelection().addRange(selected);   // Restore the original selection
+  }
+};
 /*!
  * Check if two objects or arrays are equal
  * (c) 2017 Chris Ferdinandi, MIT License, https://gomakethings.com
@@ -154,9 +173,96 @@ index['large'] = [
   {name: 'index_first_line_size',  value: '14'},{name: 'index_first_line_space',  value: '6'},{name: 'index_first_line_font',  value: 'Helvetica-Oblique'}  
 ];
 
+let def_configs = [];
+def_configs['simple'] = [
+  {name: 'paper_orientation',   value: 'portrait'},
+  {name: 'paper_size',          value: 'LETTER'},
+  {name: 'paper_margin_left',   value: '0.5'},
+  {name: 'paper_margin_right',  value: '0.5'},
+  {name: 'paper_margin_top',    value: '0.5'},
+  {name: 'paper_margin_bottom', value: '0.5'},
+  {name: 'column_gutter',       value: '0.5'},
+  {name: 'page_layout',         value: 'single-sided'},
+  {name: 'paper_margin_gutter', value: '0'},
+  {name: 'font_face',           value: 'Helvetica'},
+  {name: 'booktitle_size',      value: '36'},
+  {name: 'booktitle_space',     value: '12'},
+  {name: 'songtitle_size',      value: '18'},
+  {name: 'songtitle_space',     value: '6'},
+  {name: 'song_space_after',    value: '12'},
+  {name: 'songchunk_b4',        value: '12'},
+  {name: 'songline_size',       value: '12'},
+  {name: 'songline_space',      value: '4'},
+  {name: 'songchord_size',      value: '12'},
+  {name: 'songchord_space',     value: '1'},
+  {name: 'small_size',          value: '8'},
+  {name: 'small_space',         value: '8'},
+  {name: 'copyright_size',      value: '8'},
+  {name: 'copyright_space_b4',  value: '3'},
+  {name: 'columns',             value: '1'},
+  {name: 'display_chords',      value: 'no'},
+  {name: 'index_title_font',    value: 'Helvetica'},
+  {name: 'index_title_b4',      value: '20'},
+  {name: 'index_title_size',    value: '18'},
+  {name: 'index_title_space',   value: '6'},
+  {name: 'index_cat_font',      value: 'Helvetica'},
+  {name: 'index_cat_b4',        value: '12'},
+  {name: 'index_cat_exclude',   value: 'Needs,Duplicate'},
+  {name: 'index_cat_size',      value: '14'},
+  {name: 'index_cat_space',     value: '6'},
+  {name: 'index_song_font',     value: 'Helvetica-Bold'},
+  {name: 'index_song_size',     value: '12'},
+  {name: 'index_song_space',    value: '4'},
+  {name: 'index_first_line_font',  value: 'Helvetica-Oblique'},
+  {name: 'index_first_line_size',  value: '11'},
+  {name: 'index_first_line_space', value: '4'},
+  {name: 'display_index',       value: 'on-new-page'},
+  {name: 'scripture_location',  value: 'under-title'}
+];
+def_configs['3-column'] = [
+  {name: 'paper_orientation',   value: 'landscape'},
+  {name: 'paper_size',          value: 'LETTER'},
+  {name: 'margin',              value: 'narrow'},
+  {name: 'page_layout',         value: 'single-sided'},
+  {name: 'font_face',           value: 'Helvetica'},
+  {name: 'booktitle_size',      value: '36'},
+  {name: 'booktitle_space',     value: '12'},
+  {name: 'songtitle_size',      value: '18'},
+  {name: 'songtitle_space',     value: '6'},
+  {name: 'song_space_after',    value: '12'},
+  {name: 'songchunk_b4',        value: '12'},
+  {name: 'songline_size',       value: '12'},
+  {name: 'songline_space',      value: '4'},
+  {name: 'songchord_size',      value: '12'},
+  {name: 'songchord_space',     value: '1'},
+  {name: 'small_size',          value: '8'},
+  {name: 'small_space',         value: '8'},
+  {name: 'copyright_size',      value: '8'},
+  {name: 'copyright_space_b4',  value: '3'},
+  {name: 'columns',             value: '3'},
+  {name: 'display_chords',      value: 'no'},
+  {name: 'index_title_font',    value: 'Helvetica'},
+  {name: 'index_title_b4',      value: '20'},
+  {name: 'index_title_size',    value: '18'},
+  {name: 'index_title_space',   value: '6'},
+  {name: 'index_cat_font',      value: 'Helvetica'},
+  {name: 'index_cat_b4',        value: '12'},
+  {name: 'index_cat_exclude',   value: 'Needs,Duplicate'},
+  {name: 'index_cat_size',      value: '14'},
+  {name: 'index_cat_space',     value: '6'},
+  {name: 'index_song_font',     value: 'Helvetica-Bold'},
+  {name: 'index_song_size',     value: '12'},
+  {name: 'index_song_space',    value: '4'},
+  {name: 'index_first_line_font',  value: 'Helvetica-Oblique'},
+  {name: 'index_first_line_size',  value: '11'},
+  {name: 'index_first_line_space', value: '4'},
+  {name: 'display_index',       value: 'on-new-page'},
+  {name: 'scripture_location',  value: 'under-title'}
+];
 
 export_form.margins = margins;
 export_form.text = text;
+export_form.def_configs = def_configs;
 export_form.index = index;
 window.export = export_form;
 
@@ -165,7 +271,6 @@ function set_value_by_id(list) {
     document.getElementById(item.name).value = item.value;
   }
 }
-
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js', {
     scope: './'
@@ -701,15 +806,46 @@ function prepExport(){
   $('#display_chords').trigger('change');
   db.allDocs({
     include_docs: true,
-    startkey: 'cfg-',
-    endkey: 'cfg-\ufff0',
+    startkey: 'cfg-'+window.exportObject._id,
+    endkey: 'cfg-'+window.exportObject._id+'\ufff0',
   }).then(function(result){
-    return $('#format').html("<option value='[]'></option>"+result.rows.map(function (row) {
-          return "<option value='"+JSON.stringify(row.doc.cfg)+"'>"+row.doc.title+"</option>"
-        }).join(''));
+    let innerhtml = '';
+    let user_id_cfg = 'cfg-'+window.exportObject._id+'USER'; //must keep in sync with db.js
+    result.rows.map(function (row) {
+      if(row.doc._id == user_id_cfg) {
+        innerhtml = "<option id='user_export_pref' value='"+JSON.stringify(row.doc.cfg)+"'>"+row.doc.title+"</option>" + innerhtml;
+      }
+      else {
+        innerhtml += "<option value='"+JSON.stringify(row.doc.cfg)+"'>"+row.doc.title+"</option>";
+      }
+    });
+
+    let opts = window.export.def_configs;
+    for(opt in opts) {
+      innerhtml += "<option value='"+JSON.stringify(opts[opt])+"'>"+opt+"</option>";
+    }
+    innerhtml += "<option value='[]'>Custom</option>";
+    $('#format').html(innerhtml).trigger('change');
   });
+
 }
 function export_form_summary_update() {
+  document.getElementById('format').value = JSON.stringify([]);
+  for(option of $('#format option')) {
+    let opts = [];
+    let values = JSON.parse(option.value);
+    if(isEqual(values,[])){
+      continue // this is empty!
+    }
+    for(item of values) {
+      opts.push({name: item.name, value: document.getElementById(item.name).value});
+    }
+    if(isEqual(opts, values)){
+      document.getElementById('format').value = JSON.stringify(values);
+      break // we've found a match
+    }
+  }
+
   $('#page_icon').html('<span class="col"></span>'.repeat($('#columns').val()));
   document.getElementById('page_icon').className = document.getElementById('page_layout').value.replace('-','_');
   document.getElementById('page_icon').classList.add(document.getElementById('paper_orientation').value);
@@ -747,7 +883,6 @@ function export_form_summary_update() {
   for(item of window.export.text['default']) {
     text.push({name: item.name, value: document.getElementById(item.name).value});
   }
-
   let text_name;
   if(isEqual(text, window.export.text['default'])){
     text_name = 'default';

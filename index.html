@@ -230,10 +230,10 @@
                 </td>
               </table>
               <br>
+              <label for="format">Format</label>
+              <select style="width: 100%; background-color: lightblue; margin: .5em 0 1em 0" class="lbl-toggle" id="format" name="format">
+              </select>
               <form id="export_form">
-                <label for="format">Format</label>
-                <select style="width: 100%; background-color: lightblue; margin: .5em 0 1em 0" class="lbl-toggle" id="format" name="format">
-                </select>
                 <input id="collapsible1" class="toggle" type="radio" name="accordion">
                 <label for="collapsible1" class="lbl-toggle">Text Options
                   <span style="display: inline-block;">
@@ -622,17 +622,17 @@
                     </table>
                   </div>
                 </div>
-
-                <input id="collapsible4" class="toggle" type="radio" name="accordion">
-                <label for="collapsible4" class="lbl-toggle">More Info</label>
-                <div class="collapsible-content">
-                  <div class="content-inner">
-                    <span>
-                      Settings:!
-                    </span>
-                  </div>
-                </div>
               </form>
+              <button class="btn" id="save_as_default"style="background-color: white" onclick="saveExportDefault();$(this).addClass('bluehighlight'); 
+                setTimeout(function(){ $('#save_as_default').removeClass('bluehighlight'); }, 300)">Save as my default</button>
+              <button class="btn" id="export_copy" onclick="copyToClipboard(JSON.stringify($('#export_form').serializeArray())); $(this).addClass('bluehighlight'); setTimeout(function(){ $('#export_copy').removeClass('bluehighlight'); }, 300)" style="background-color: white;padding: .15rem .55rem .15rem .55rem;font-size: 1.5rem;">⎘</button>
+              <button class="btn" id="export_paste" onclick="navigator.clipboard.readText().then(text => {
+                  set_value_by_id(JSON.parse(text)); $('#paper_margin_top').trigger('change');
+                }).catch(err => {
+                  console.error('Failed to read clipboard contents: ', err);
+                }); 
+                $(this).addClass('bluehighlight'); 
+                setTimeout(function(){ $('#export_paste').removeClass('bluehighlight'); }, 300)" style="background-color: white;padding: .5rem .6rem .5rem .6rem;">📋</button>
             </div>
           </div>
           <div class="subcolumn sidebar" id="exportPreview">
