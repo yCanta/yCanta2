@@ -388,7 +388,7 @@ function parse(export_object, cfg) {
     for(let cat of song.categories){  // an entry for each category in the song
       let exclude = false;
       for(let exc of cfg.INDEX_CAT_EXCLUDE){
-        if(exc.find(cat)){ // cat matches exclusion
+        if(exc.indexOf(cat) != -1) { // cat matches exclusion
           exclude = true;
           break;
         }

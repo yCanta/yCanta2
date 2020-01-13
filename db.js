@@ -354,7 +354,8 @@ function loadSongbook(songbook_id) {
         });
         buildSongbookList(result.rows);
         $('#songbook_title').removeAttr('contenteditable');
-        $('#songbook_content .search').parent().removeAttr('disabled').removeClass('disabled-hidden');
+        $('#songbook_content .search').parent().removeAttr('disabled');
+        $('.disabled-hidden').removeClass('disabled-hidden');
         $('#songbook_title').html('<i>All Songs</i>').removeAttr('data-rev');
         $('#songList [data-songbook-edit], #songList .delete').hide()
         var dateAfter = new Date();
@@ -369,7 +370,8 @@ function loadSongbook(songbook_id) {
         window.songbook_list.clear();
       }
       $('#songbook_title').removeAttr('contenteditable');
-      $('#songbook_content .search').parent().removeAttr('disabled').removeClass('disabled-hidden');
+      $('#songbook_content .search').parent().removeAttr('disabled');
+      $('.disabled-hidden').removeClass('disabled-hidden');
       $('#songbook_title').text('').removeAttr('data-rev');
       resolve('loaded songbook');
     }
@@ -400,7 +402,8 @@ function loadSongbook(songbook_id) {
         });
         window.songbook = result;
         $('#songbook_title').removeAttr('contenteditable');
-        $('#songbook_content .search').parent().removeAttr('disabled').removeClass('disabled-hidden');
+        $('#songbook_content .search').parent().removeAttr('disabled');
+        $('.disabled-hidden').removeClass('disabled-hidden');
         $('#songbook_title').text(result.title).attr('data-rev',result._rev);
         var dateAfter = new Date();
         console.log(dateAfter-dateBefore);
@@ -412,6 +415,27 @@ function loadSongbook(songbook_id) {
   });
 }
 
+function saveExportDefault() {
+  let opts = $('#export_form').serializeArray();
+  $('#user_export_pref').attr('value',JSON.stringify(opts));
+  $('#format').trigger('change');
+  let cfg = {
+    _id: 'cfg-'+window.exportObject._id+'USER', //must keep in sync with lib.js
+    title: 'Default:  USER',
+    cfg: opts
+  }
+  db.get(cfg._id).then(function(_doc) {
+    console.log('updating');
+    cfg._rev = _doc._rev;
+    return db.put(cfg);
+  }).catch( function (error) {
+    console.log('adding');
+    $('#format').html("<option id='user_export_pref' value='"+JSON.stringify(cfg.cfg)+"'>"+cfg.title+"</option>" + $('#format').html());
+    return db.put(cfg);
+  }).then(function(info){
+    console.log("id of record: " + info.id);
+  });
+}
 
 var song = {
   _id: 's-aSong.song',

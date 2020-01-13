@@ -1,6 +1,79 @@
 String.prototype.count=function(s1) { 
     return (this.length - this.replace(new RegExp(s1,"g"), '').length) / s1.length;
 };
+const copyToClipboard = str => {
+  const el = document.createElement('textarea');  // Create a <textarea> element
+  el.value = str;                                 // Set its value to the string that you want copied
+  el.setAttribute('readonly', '');                // Make it readonly to be tamper-proof
+  el.style.position = 'absolute';                 
+  el.style.left = '-9999px';                      // Move outside the screen to make it invisible
+  document.body.appendChild(el);                  // Append the <textarea> element to the HTML document
+  const selected =            
+    document.getSelection().rangeCount > 0        // Check if there is any content selected previously
+      ? document.getSelection().getRangeAt(0)     // Store selection if found
+      : false;                                    // Mark as false to know no selection existed before
+  el.select();                                    // Select the <textarea> content
+  document.execCommand('copy');                   // Copy - only works as a result of a user action (e.g. click events)
+  document.body.removeChild(el);                  // Remove the <textarea> element
+  if (selected) {                                 // If a selection existed before copying
+    document.getSelection().removeAllRanges();    // Unselect everything on the HTML document
+    document.getSelection().addRange(selected);   // Restore the original selection
+  }
+};
+/*!
+ * Check if two objects or arrays are equal
+ * (c) 2017 Chris Ferdinandi, MIT License, https://gomakethings.com
+ * @param  {Object|Array}  value  The first object or array to compare
+ * @param  {Object|Array}  other  The second object or array to compare
+ * @return {Boolean}              Returns true if they're equal
+ */
+var isEqual = function (value, other) {
+  // Get the value type
+  var type = Object.prototype.toString.call(value);
+  // If the two objects are not the same type, return false
+  if (type !== Object.prototype.toString.call(other)) return false;
+  // If items are not an object or array, return false
+  if (['[object Array]', '[object Object]'].indexOf(type) < 0) return false;
+  // Compare the length of the length of the two items
+  var valueLen = type === '[object Array]' ? value.length : Object.keys(value).length;
+  var otherLen = type === '[object Array]' ? other.length : Object.keys(other).length;
+  if (valueLen !== otherLen) return false;
+  // Compare two items
+  var compare = function (item1, item2) {
+    // Get the object type
+    var itemType = Object.prototype.toString.call(item1);
+    // If an object or array, compare recursively
+    if (['[object Array]', '[object Object]'].indexOf(itemType) >= 0) {
+      if (!isEqual(item1, item2)) return false;
+    }
+    // Otherwise, do a simple comparison
+    else {
+      // If the two items are not the same type, return false
+      if (itemType !== Object.prototype.toString.call(item2)) return false;
+      // Else if it's a function, convert to a string and compare
+      // Otherwise, just compare
+      if (itemType === '[object Function]') {
+        if (item1.toString() !== item2.toString()) return false;
+      } else {
+        if (item1 !== item2) return false;
+      }
+    }
+  };
+  // Compare properties
+  if (type === '[object Array]') {
+    for (var i = 0; i < valueLen; i++) {
+      if (compare(value[i], other[i]) === false) return false;
+    }
+  } else {
+    for (var key in value) {
+      if (value.hasOwnProperty(key)) {
+        if (compare(value[key], other[key]) === false) return false;
+      }
+    }
+  }
+  // If nothing failed, return true
+  return true;
+};
 // Warn if overriding existing method
 if(Array.prototype.equals)
     console.warn("Overriding existing Array.prototype.equals. Possible causes: New API defines the method, there's a framework conflict or you've got double inclusions in your code.");
@@ -36,11 +109,168 @@ window.addEventListener("resize", function(){
     document.activeElement.scrollIntoView({block: 'start'});
   },0);
 });
-window.margins = []
-window.margins['narrow'] = [.5,.5,.5,.5];
-window.margins['wide'] = [1,2,1,2];
-window.margins['normal'] = [1,1,1,1];
+let export_form = {};
 
+let margins = [];
+margins['narrow'] = [.5,.5,.5,.5,.5];
+margins['wide'] = [1,2,1,2,1];
+margins['normal'] = [1,1,1,1,1];
+
+let text = [];
+text['default'] = [
+  {name: 'booktitle_size', value: '24'},{name: 'booktitle_space',    value:  '26'},
+  {name: 'songtitle_size', value: '14'},{name: 'songtitle_space',    value:  '6' },
+  {name: 'small_size',     value: '8' },{name: 'small_space',        value:  '8' },
+  {name: 'songline_size',  value: '12'},{name: 'songline_space',     value:  '4' },{name: 'resize_percent', value:  '100'},
+  {name: 'songchord_size', value: '12'},{name: 'songchord_space',    value:  '1' },
+  {name: 'songchunk_b4',   value: '12'},{name: 'song_space_after',   value:  '12'},
+  {name: 'copyright_size', value: '8' },{name: 'copyright_space_b4', value:  '3' }
+];
+
+text['small'] = [
+  {name: 'booktitle_size', value: '18'},{name: 'booktitle_space',    value: '18'},
+  {name: 'songtitle_size', value: '12'},{name: 'songtitle_space',    value: '4' },
+  {name: 'small_size',     value: '6' },{name: 'small_space',        value: '6' },
+  {name: 'songline_size',  value: '10'},{name: 'songline_space',     value: '2' },{name: 'resize_percent', value: '75'},
+  {name: 'songchord_size', value: '8' },{name: 'songchord_space',    value: '1' },
+  {name: 'songchunk_b4',   value: '10'},{name: 'song_space_after',   value: '10'},
+  {name: 'copyright_size', value: '6' },{name: 'copyright_space_b4', value: '2' }
+];
+
+text['large'] = [
+  {name: 'booktitle_size', value: '36'},{name: 'booktitle_space',    value: '30'},
+  {name: 'songtitle_size', value: '18'},{name: 'songtitle_space',    value: '10'},
+  {name: 'small_size',     value: '10'},{name: 'small_space',        value: '10'},
+  {name: 'songline_size',  value: '14'},{name: 'songline_space',     value: '6' },{name: 'resize_percent', value: '100'},
+  {name: 'songchord_size', value: '14'},{name: 'songchord_space',    value: '4' },
+  {name: 'songchunk_b4',   value: '14'},{name: 'song_space_after',   value: '14'},
+  {name: 'copyright_size', value: '10'},{name: 'copyright_space_b4', value: '4' }
+];
+
+let index = [];
+index['default'] = [
+  {name: 'index_title_size', value: '18'},{name: 'index_title_space', value: '6'},{name: 'index_title_font', value: 'Helvetica'},
+  {name: 'index_title_b4',   value: '20'},
+  {name: 'index_cat_size',   value: '14'},{name: 'index_cat_space',   value: '6'},{name: 'index_cat_font',   value: 'Helvetica'},
+  {name: 'index_cat_b4',     value: '12'},
+  {name: 'index_song_size',  value: '12'},{name: 'index_song_space',  value: '4'},{name: 'index_song_font',  value: 'Helvetica'},
+  {name: 'index_first_line_size',  value: '11'},{name: 'index_first_line_space',  value: '4'},{name: 'index_first_line_font',  value: 'Helvetica-Oblique'}  
+];
+index['small'] = [
+  {name: 'index_title_size', value: '14'},{name: 'index_title_space', value: '4'},{name: 'index_title_font', value: 'Helvetica'},
+  {name: 'index_title_b4',   value: '16'},
+  {name: 'index_cat_size',   value: '12'},{name: 'index_cat_space',   value: '4'},{name: 'index_cat_font',   value: 'Helvetica'},
+  {name: 'index_cat_b4',     value: '10'},
+  {name: 'index_song_size',  value: '10'},{name: 'index_song_space',  value: '2'},{name: 'index_song_font',  value: 'Helvetica'},
+  {name: 'index_first_line_size',  value: '9'},{name: 'index_first_line_space',  value: '2'},{name: 'index_first_line_font',  value: 'Helvetica-Oblique'}  
+];
+index['large'] = [
+  {name: 'index_title_size', value: '26'},{name: 'index_title_space', value: '10'},{name: 'index_title_font', value: 'Helvetica'},
+  {name: 'index_title_b4',   value: '24'},
+  {name: 'index_cat_size',   value: '18'},{name: 'index_cat_space',   value: '10'},{name: 'index_cat_font',   value: 'Helvetica'},
+  {name: 'index_cat_b4',     value: '16'},
+  {name: 'index_song_size',  value: '16'},{name: 'index_song_space',  value: '8'},{name: 'index_song_font',  value: 'Helvetica'},
+  {name: 'index_first_line_size',  value: '14'},{name: 'index_first_line_space',  value: '6'},{name: 'index_first_line_font',  value: 'Helvetica-Oblique'}  
+];
+
+let def_configs = [];
+def_configs['simple'] = [
+  {name: 'paper_orientation',   value: 'portrait'},
+  {name: 'paper_size',          value: 'LETTER'},
+  {name: 'paper_margin_left',   value: '0.5'},
+  {name: 'paper_margin_right',  value: '0.5'},
+  {name: 'paper_margin_top',    value: '0.5'},
+  {name: 'paper_margin_bottom', value: '0.5'},
+  {name: 'column_gutter',       value: '0.5'},
+  {name: 'page_layout',         value: 'single-sided'},
+  {name: 'paper_margin_gutter', value: '0'},
+  {name: 'font_face',           value: 'Helvetica'},
+  {name: 'booktitle_size',      value: '36'},
+  {name: 'booktitle_space',     value: '12'},
+  {name: 'songtitle_size',      value: '18'},
+  {name: 'songtitle_space',     value: '6'},
+  {name: 'song_space_after',    value: '12'},
+  {name: 'songchunk_b4',        value: '12'},
+  {name: 'songline_size',       value: '12'},
+  {name: 'songline_space',      value: '4'},
+  {name: 'songchord_size',      value: '12'},
+  {name: 'songchord_space',     value: '1'},
+  {name: 'small_size',          value: '8'},
+  {name: 'small_space',         value: '8'},
+  {name: 'copyright_size',      value: '8'},
+  {name: 'copyright_space_b4',  value: '3'},
+  {name: 'columns',             value: '1'},
+  {name: 'display_chords',      value: 'no'},
+  {name: 'index_title_font',    value: 'Helvetica'},
+  {name: 'index_title_b4',      value: '20'},
+  {name: 'index_title_size',    value: '18'},
+  {name: 'index_title_space',   value: '6'},
+  {name: 'index_cat_font',      value: 'Helvetica'},
+  {name: 'index_cat_b4',        value: '12'},
+  {name: 'index_cat_exclude',   value: 'Needs,Duplicate'},
+  {name: 'index_cat_size',      value: '14'},
+  {name: 'index_cat_space',     value: '6'},
+  {name: 'index_song_font',     value: 'Helvetica-Bold'},
+  {name: 'index_song_size',     value: '12'},
+  {name: 'index_song_space',    value: '4'},
+  {name: 'index_first_line_font',  value: 'Helvetica-Oblique'},
+  {name: 'index_first_line_size',  value: '11'},
+  {name: 'index_first_line_space', value: '4'},
+  {name: 'display_index',       value: 'on-new-page'},
+  {name: 'scripture_location',  value: 'under-title'}
+];
+def_configs['3-column'] = [
+  {name: 'paper_orientation',   value: 'landscape'},
+  {name: 'paper_size',          value: 'LETTER'},
+  {name: 'margin',              value: 'narrow'},
+  {name: 'page_layout',         value: 'single-sided'},
+  {name: 'font_face',           value: 'Helvetica'},
+  {name: 'booktitle_size',      value: '36'},
+  {name: 'booktitle_space',     value: '12'},
+  {name: 'songtitle_size',      value: '18'},
+  {name: 'songtitle_space',     value: '6'},
+  {name: 'song_space_after',    value: '12'},
+  {name: 'songchunk_b4',        value: '12'},
+  {name: 'songline_size',       value: '12'},
+  {name: 'songline_space',      value: '4'},
+  {name: 'songchord_size',      value: '12'},
+  {name: 'songchord_space',     value: '1'},
+  {name: 'small_size',          value: '8'},
+  {name: 'small_space',         value: '8'},
+  {name: 'copyright_size',      value: '8'},
+  {name: 'copyright_space_b4',  value: '3'},
+  {name: 'columns',             value: '3'},
+  {name: 'display_chords',      value: 'no'},
+  {name: 'index_title_font',    value: 'Helvetica'},
+  {name: 'index_title_b4',      value: '20'},
+  {name: 'index_title_size',    value: '18'},
+  {name: 'index_title_space',   value: '6'},
+  {name: 'index_cat_font',      value: 'Helvetica'},
+  {name: 'index_cat_b4',        value: '12'},
+  {name: 'index_cat_exclude',   value: 'Needs,Duplicate'},
+  {name: 'index_cat_size',      value: '14'},
+  {name: 'index_cat_space',     value: '6'},
+  {name: 'index_song_font',     value: 'Helvetica-Bold'},
+  {name: 'index_song_size',     value: '12'},
+  {name: 'index_song_space',    value: '4'},
+  {name: 'index_first_line_font',  value: 'Helvetica-Oblique'},
+  {name: 'index_first_line_size',  value: '11'},
+  {name: 'index_first_line_space', value: '4'},
+  {name: 'display_index',       value: 'on-new-page'},
+  {name: 'scripture_location',  value: 'under-title'}
+];
+
+export_form.margins = margins;
+export_form.text = text;
+export_form.def_configs = def_configs;
+export_form.index = index;
+window.export = export_form;
+
+function set_value_by_id(list) {
+  for(item of list) {
+    document.getElementById(item.name).value = item.value;
+  }
+}
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js', {
     scope: './'
@@ -332,6 +562,9 @@ function buildSongbookList(songs, target_class='songbook_content',
     }
     values.push(mapSongRowToValue(songs[i]));
   }
+  db.get('categories').then(function(categories){
+    $('#category_filter select').html('<option value=""></option><option value="c:!c">No Category</option>'+categories.categories.map(cat => '<option value="c:'+cat+'">'+cat+'</option>').join("")); //Construct the options for the drop down from this list.
+  });
 
   //Creates list.min.js list for viewing the songbook
   if(edit != true) {
@@ -394,7 +627,12 @@ function editSongbook() {
   buttons += '<button data-songbook class="btn" style="background-color: lightgray;" onclick="window.editing=false; window.songbook._id=\'\'; window.location.hash=$(this).attr(\'href\'); $(\'.edit_buttons\').remove();">Cancel</button>';
   buttons += '<button data-songbook class="btn" style="background-color: lightgray;" onclick="window.editing=false; location.reload()">Reset</button></div>';
   $('#songbook_content').prepend(buttons).append(buttons);
+  $('#songbook_content .search').val('')[0].dispatchEvent(new KeyboardEvent('keyup'));
   updateAllLinks();
+
+  $('#songList #songbook_title').attr('contenteditable', 'true').parent().removeAttr('href');
+  $('#songList #songbook_content input.search').parent().addClass('disabled-hidden')[0].disabled=true;
+  $('#songList #songbook_content nav').addClass('disabled-hidden');    
 
   //load all the songs into song adder
   db.allDocs({
@@ -417,8 +655,6 @@ function editSongbook() {
       true);
   }).then(function(result) {
     $('.song-highlight').removeClass('song-highlight');
-    $('#songList #songbook_title').attr('contenteditable', 'true').parent().removeAttr('href');
-    $('#songList #songbook_content input.search').val('').parent().addClass('disabled-hidden')[0].disabled=true;    
     //remove all counts
     $('[data-xInBook]').removeAttr('data-xInBook');
     //bind events to the songbook list
@@ -568,8 +804,48 @@ function prepExport(){
   document.getElementById('pdf_progress_text').innerHTML = 0 +'%';
   document.querySelector('iframe').src = "";
   $('#display_chords').trigger('change');
+  db.allDocs({
+    include_docs: true,
+    startkey: 'cfg-'+window.exportObject._id,
+    endkey: 'cfg-'+window.exportObject._id+'\ufff0',
+  }).then(function(result){
+    let innerhtml = '';
+    let user_id_cfg = 'cfg-'+window.exportObject._id+'USER'; //must keep in sync with db.js
+    result.rows.map(function (row) {
+      if(row.doc._id == user_id_cfg) {
+        innerhtml = "<option id='user_export_pref' value='"+JSON.stringify(row.doc.cfg)+"'>"+row.doc.title+"</option>" + innerhtml;
+      }
+      else {
+        innerhtml += "<option value='"+JSON.stringify(row.doc.cfg)+"'>"+row.doc.title+"</option>";
+      }
+    });
+
+    let opts = window.export.def_configs;
+    for(opt in opts) {
+      innerhtml += "<option value='"+JSON.stringify(opts[opt])+"'>"+opt+"</option>";
+    }
+    innerhtml += "<option value='[]'>Custom</option>";
+    $('#format').html(innerhtml).trigger('change');
+  });
+
 }
 function export_form_summary_update() {
+  document.getElementById('format').value = JSON.stringify([]);
+  for(option of $('#format option')) {
+    let opts = [];
+    let values = JSON.parse(option.value);
+    if(isEqual(values,[])){
+      continue // this is empty!
+    }
+    for(item of values) {
+      opts.push({name: item.name, value: document.getElementById(item.name).value});
+    }
+    if(isEqual(opts, values)){
+      document.getElementById('format').value = JSON.stringify(values);
+      break // we've found a match
+    }
+  }
+
   $('#page_icon').html('<span class="col"></span>'.repeat($('#columns').val()));
   document.getElementById('page_icon').className = document.getElementById('page_layout').value.replace('-','_');
   document.getElementById('page_icon').classList.add(document.getElementById('paper_orientation').value);
@@ -577,17 +853,17 @@ function export_form_summary_update() {
   let margins = [document.getElementById('paper_margin_top').value,
                  document.getElementById('paper_margin_right').value,
                  document.getElementById('paper_margin_bottom').value,
-                 document.getElementById('paper_margin_left').value]
+                 document.getElementById('paper_margin_left').value,
+                 document.getElementById('column_gutter').value]
 
   let margin_name;
-
-  if(margins.equals(window.margins['normal'])){
+  if(margins.equals(window.export.margins['normal'])){
     margin_name = 'normal';
   }
-  else if(margins.equals(window.margins['narrow'])){
+  else if(margins.equals(window.export.margins['narrow'])){
     margin_name = 'narrow';
   }
-  else if(margins.equals(window.margins['wide'])){
+  else if(margins.equals(window.export.margins['wide'])){
     margin_name = 'wide';
   }
   else {
@@ -602,7 +878,26 @@ function export_form_summary_update() {
   document.getElementById('page_size_summary').innerHTML = document.getElementById('paper_size').value;
 
   document.getElementById('font_summary').innerHTML = document.getElementById('font_face').value;
-  document.getElementById('text_summary').innerHTML = document.getElementById('text').value;
+
+  let text = [];
+  for(item of window.export.text['default']) {
+    text.push({name: item.name, value: document.getElementById(item.name).value});
+  }
+  let text_name;
+  if(isEqual(text, window.export.text['default'])){
+    text_name = 'default';
+  }
+  else if(isEqual(text, window.export.text['small'])){
+    text_name = 'small';
+  }
+  else if(isEqual(text, window.export.text['large'])){
+    text_name = 'large';
+  }
+  else {
+    text_name = 'custom';
+  }
+  document.getElementById('text').value = text_name;
+  document.getElementById('text_summary').innerHTML = text_name;
   let song_title_format = document.getElementById('songtitle_format').value.replace('${num}', '1') + 'Arise';
   if(document.getElementById('scripture_location').value == 'in-title'){
     song_title_format += ' (Jude 1)';
@@ -628,7 +923,26 @@ function export_form_summary_update() {
   document.getElementById('alphabetical_summary').innerHTML = 'Index: ' + document.getElementById('display_index').options[document.getElementById('display_index').selectedIndex].text;
   document.getElementById('category_summary').innerHTML = 'Category: ' + document.getElementById('display_cat_index').options[document.getElementById('display_cat_index').selectedIndex].text;
   document.getElementById('scripture_summary').innerHTML = 'Scripture: ' + document.getElementById('display_scrip_index').options[document.getElementById('display_scrip_index').selectedIndex].text;
-  document.getElementById('index_summary').innerHTML = document.getElementById('index').value;
+  let index = [];
+  for(item of window.export.index['default']) {
+    index.push({name: item.name, value:document.getElementById(item.name).value});
+  }
+
+  let index_name;
+  if(isEqual(index, window.export.index['default'])){
+    index_name = 'default';
+  }
+  else if(isEqual(index, window.export.index['small'])){
+    index_name = 'small';
+  }
+  else if(isEqual(index, window.export.index['large'])){
+    index_name = 'large';
+  }
+  else {
+    index_name = 'custom';
+  }
+  document.getElementById('index').value = index_name;
+  document.getElementById('index_summary').innerHTML = index_name;
 
   if($('#auto_refresh').is(":checked")){
     makePDF(window.exportObject, document.querySelector('iframe'))

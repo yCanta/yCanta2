@@ -113,6 +113,16 @@
               <div id="songbook_header">
                 <a data-songbook class="title_link" href="#"><h3 id="songbook_title">All Songs</h3></a>
                 <input aria-label="Search" class="search deletable" type="text" data-target="#songbook_content" data-trigger="change" placeholder="Search">
+                <nav id="category_filter_container">
+                  <button class="cat_filter_btn" onclick="$('#category_filter_container').toggleClass('open'); $('#songbook_header').toggleClass('mb23');">⑂</button>
+                  <div id="category_filter">
+                    <label>Category: 
+                      <select onchange="$('#songbook_content .search').val($(this).val())[0].dispatchEvent(new KeyboardEvent('keyup'));">
+                      </select>
+                    </label>
+                  </div>
+                </nav>
+
               </div>
               <ul class="list"></ul>
             </div>
@@ -220,6 +230,9 @@
                 </td>
               </table>
               <br>
+              <label for="format">Format</label>
+              <select style="width: 100%; background-color: lightblue; margin: .5em 0 1em 0" class="lbl-toggle" id="format" name="format">
+              </select>
               <form id="export_form">
                 <input id="collapsible1" class="toggle" type="radio" name="accordion">
                 <label for="collapsible1" class="lbl-toggle">Text Options
@@ -609,17 +622,17 @@
                     </table>
                   </div>
                 </div>
-
-                <input id="collapsible4" class="toggle" type="radio" name="accordion">
-                <label for="collapsible4" class="lbl-toggle">More Info</label>
-                <div class="collapsible-content">
-                  <div class="content-inner">
-                    <span>
-                      Settings:!
-                    </span>
-                  </div>
-                </div>
               </form>
+              <button class="btn" id="save_as_default"style="background-color: white" onclick="saveExportDefault();$(this).addClass('bluehighlight'); 
+                setTimeout(function(){ $('#save_as_default').removeClass('bluehighlight'); }, 300)">Save as my default</button>
+              <button class="btn" id="export_copy" onclick="copyToClipboard(JSON.stringify($('#export_form').serializeArray())); $(this).addClass('bluehighlight'); setTimeout(function(){ $('#export_copy').removeClass('bluehighlight'); }, 300)" style="background-color: white;padding: .15rem .55rem .15rem .55rem;font-size: 1.5rem;">⎘</button>
+              <button class="btn" id="export_paste" onclick="navigator.clipboard.readText().then(text => {
+                  set_value_by_id(JSON.parse(text)); $('#paper_margin_top').trigger('change');
+                }).catch(err => {
+                  console.error('Failed to read clipboard contents: ', err);
+                }); 
+                $(this).addClass('bluehighlight'); 
+                setTimeout(function(){ $('#export_paste').removeClass('bluehighlight'); }, 300)" style="background-color: white;padding: .5rem .6rem .5rem .6rem;">📋</button>
             </div>
           </div>
           <div class="subcolumn sidebar" id="exportPreview">
@@ -672,13 +685,32 @@
       $('.content-inner').change(function(){
         export_form_summary_update();
       });
+      $('#format').change(function() {
+        if(this.value != 'custom'){
+          set_value_by_id(JSON.parse(this.value));
+          $('#paper_margin_top').trigger('change'); //random element to trigger
+        }
+      });
       $('#margin').change(function() {
         if(this.value != 'custom'){
-          let margins = window.margins[this.value];
+          let margins = window.export.margins[this.value];
           document.getElementById('paper_margin_top').value = margins[0];
           document.getElementById('paper_margin_right').value = margins[1];
           document.getElementById('paper_margin_bottom').value = margins[2];
           document.getElementById('paper_margin_left').value = margins[3];
+          document.getElementById('column_gutter').value = margins[4];
+        }
+      });
+      $('#text').change(function() {
+        if(this.value != 'custom'){
+          let text = window.export.text[this.value];
+          set_value_by_id(text);
+        }
+      });
+      $('#index').change(function() {
+        if(this.value != 'custom'){
+          let index = window.export.index[this.value];
+          set_value_by_id(index);
         }
       });
       $(function () {
@@ -693,33 +725,17 @@
         window.onbeforeunload = function() {
           return window.editing ? "If you leave this page you will lose your unsaved changes." : null;
         }
-        // keep hash from changing if editing
-        $('body').on('click', 'a[href]', function(e) {
-          e.preventDefault();
-          var $item = $(e.currentTarget), hashValue = $item.attr('href').slice(1);
-          // Check to see if we're editing
-          if (confirmWhenEditing()) { return };
-          
-          //set the hash if necessary still
-          window.location.hash = hashValue;
-          return false;
-        });
       });   
       function hashchanged(){
         var hash = location.hash;
         if(window.old_hash == hash){
           return
         }
-
         if(confirmWhenEditing()) {
           window.location.hash = window.old_hash;
           return
         }
-
-        /*/doesn't yet prevent - but does let you know need to restore the hash.
-        if(window.editing){
-          confirmWhenEditing();
-        }*/
+        $('.edit_buttons').remove();
         //if blank - should have to do nothing
         if(hash == ''){
          $('body').attr('class','header');
