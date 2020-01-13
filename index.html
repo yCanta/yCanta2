@@ -725,36 +725,17 @@
         window.onbeforeunload = function() {
           return window.editing ? "If you leave this page you will lose your unsaved changes." : null;
         }
-        // keep hash from changing if editing
-        $('body').on('click', 'a[href]', function(e) {
-          e.preventDefault();
-          var $item = $(e.currentTarget), hashValue = $item.attr('href').slice(1);
-          // Check to see if we're editing
-          if (confirmWhenEditing()) { return };
-          
-          //remove edit buttons
-          $('.edit_buttons').remove();
-
-          //set the hash if necessary still
-          window.location.hash = hashValue;
-          return false;
-        });
       });   
       function hashchanged(){
         var hash = location.hash;
         if(window.old_hash == hash){
           return
         }
-
         if(confirmWhenEditing()) {
           window.location.hash = window.old_hash;
           return
         }
-
-        /*/doesn't yet prevent - but does let you know need to restore the hash.
-        if(window.editing){
-          confirmWhenEditing();
-        }*/
+        $('.edit_buttons').remove();
         //if blank - should have to do nothing
         if(hash == ''){
          $('body').attr('class','header');
