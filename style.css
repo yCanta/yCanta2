@@ -245,7 +245,7 @@ body {
   padding: 5px 15px 5px 15px;
   display: inline-block;
   border: 1px solid gray;
-  margin: 1em .5em 1em .5em;
+  margin: 1rem .5rem 1rem .5rem;
 }
 .header header {
   flex: 0 1 100%;
