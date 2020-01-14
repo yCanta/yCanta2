@@ -274,7 +274,7 @@ function parse_song(song_object){  //json song object
   author = author.join(', ');
   
   let categories = song_object.categories;
-  
+
   let ccli = song_object.cclis;
 
   let copyright = song_object.copyright;
@@ -1187,7 +1187,8 @@ function calc_heights(songbook, cfg, doc) {
       song_title = cfg.SONGTITLE_FORMAT.replace('${title}',title).replace('${num}',song.num);
     }
 
-    song.num_width = myStringWidth(function(){let title = ''; let num = song.num; return cfg.SONGTITLE_FORMAT;}, cfg.FONT_FACE, cfg.SONGTITLE_SIZE, doc)*1.5;
+    song.num_width = myStringWidth(cfg.SONGTITLE_FORMAT.replace('${title}','').replace('${num}',song.num), cfg.FONT_FACE, cfg.SONGTITLE_SIZE, doc)*1.5;
+    console.log(song.num_width);
 
     // Word wrap title as needed
     song.title_wrapped = word_wrap(song_title, cfg.page_layout.get_page_width(), cfg.FONT_FACE, cfg.SONGTITLE_SIZE, song.num_width, doc);
