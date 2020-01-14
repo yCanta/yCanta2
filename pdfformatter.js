@@ -1170,7 +1170,8 @@ function calc_heights(songbook, cfg, doc) {
       index = []; // make index height calculation loop be empty
     }
   }
-
+  
+  //myStringWdith('8 is copied from format_page - keep them in sync 
   let chunk_width = (cfg.page_layout.get_page_width() - myStringWidth('8)   ', cfg.FONT_FACE, cfg.SONGLINE_SIZE, doc));
   for(let song of list_of_songs) {
     song.height = 0;
@@ -1230,7 +1231,6 @@ function calc_heights(songbook, cfg, doc) {
         let split_lines = [];
         for(let line of chunk.lines) {
           let split_line = word_wrap(line, chunk_width, cfg.FONT_FACE, cfg.SONGLINE_SIZE, 0, doc); 
-          //myStringWdith('8 is copied from format_page - keep them in sync 
           split_lines.push(...split_line);
         }
 
