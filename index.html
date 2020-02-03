@@ -829,7 +829,7 @@
                   keys: sb_song_ids, //we need error handling for missing ids
                 }).then(function (result) {
                   window.exportObject.songs = result.rows;
-                  console.log(window.exportObject);
+                  console.log(window.exportObject.songs);
                   prepExport();
                   resolve('Its done')
                 }).catch(function (err) {
