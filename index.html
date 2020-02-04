@@ -24,6 +24,8 @@
     <script src="pdfformatter.js"></script>
     <script src="pdfkit.standalone.js"></script>
     <script src="blob-stream.js"></script>
+    <script type="text/javascript" src="json-url.js"></script>
+    <script language="javascript" src="lzma.js"></script>
 
     <link rel="stylesheet" type="text/css" href="style.css">
     <link rel="stylesheet" type="text/css" href="jquery.myTransposer.css">
@@ -812,8 +814,11 @@
                   include_docs: true,
                   keys: sb_song_ids, //we need error handling for missing ids
                 }).then(function (result) {
+                  var lib = JsonUrl('lzma'); // JsonUrl is added to the window object
+                  lib.compress(result.rows).then(output => { result.value = output; console.log(result.value); console.log(lib.decompress(result.value).then(output => {console.log(output)}));});
+
                   window.exportObject.songs = result.rows;
-                  console.log(window.exportObject.songs);
+                  console.log(JSON.stringify(window.exportObject.songs));
                   prepExport();
                   resolve('Its done')
                 }).catch(function (err) {
