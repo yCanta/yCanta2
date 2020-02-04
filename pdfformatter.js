@@ -411,11 +411,11 @@ function parse(export_object, cfg) {
         // if this is a chorus chunk or a first verse chunk AND the first line is not the same as the song title
         if((chunk.type == 'chorus' || ((('verse', 'no label', INDENT_NO_LABEL).indexOf(chunk.type) > -1) && first_verse)) && 
           (chunk.lines.length > 0) && (chunk.lines[0].text.replace(/[^A-Za-z]/, '').toLowerCase() != song.title.replace(/[^A-Za-z]/, '').toLowerCase())) {
-          songbook.index.push(IndexEntry(song, chunk.lines[0].text, false));
+          songbook.index.push(new IndexEntry(song, chunk.lines[0].text, false));
           // TODO? at the moment, not including first line entries in cat index
 
           // don't do any more verse index entries -- we aren't on the first verse anymore
-          if(chunk.type in ('verse', 'no label', INDENT_NO_LABEL)){
+          if(('verse', 'no label', INDENT_NO_LABEL).indexOf(chunk.type)){
             first_verse = false;
           }
         }
