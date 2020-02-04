@@ -1189,7 +1189,6 @@ function calc_heights(songbook, cfg, doc) {
     }
 
     song.num_width = myStringWidth(cfg.SONGTITLE_FORMAT.replace('${title}','').replace('${num}',song.num), cfg.FONT_FACE, cfg.SONGTITLE_SIZE, doc)*1.5;
-    console.log(song.num_width);
 
     // Word wrap title as needed
     song.title_wrapped = word_wrap(song_title, cfg.page_layout.get_page_width(), cfg.FONT_FACE, cfg.SONGTITLE_SIZE, song.num_width, doc);
