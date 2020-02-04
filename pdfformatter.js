@@ -274,7 +274,7 @@ function parse_song(song_object){  //json song object
   author = author.join(', ');
   
   let categories = song_object.categories;
-  
+
   let ccli = song_object.cclis;
 
   let copyright = song_object.copyright;
@@ -411,11 +411,11 @@ function parse(export_object, cfg) {
         // if this is a chorus chunk or a first verse chunk AND the first line is not the same as the song title
         if((chunk.type == 'chorus' || ((('verse', 'no label', INDENT_NO_LABEL).indexOf(chunk.type) > -1) && first_verse)) && 
           (chunk.lines.length > 0) && (chunk.lines[0].text.replace(/[^A-Za-z]/, '').toLowerCase() != song.title.replace(/[^A-Za-z]/, '').toLowerCase())) {
-          songbook.index.push(IndexEntry(song, chunk.lines[0].text, false));
+          songbook.index.push(new IndexEntry(song, chunk.lines[0].text, false));
           // TODO? at the moment, not including first line entries in cat index
 
           // don't do any more verse index entries -- we aren't on the first verse anymore
-          if(chunk.type in ('verse', 'no label', INDENT_NO_LABEL)){
+          if(('verse', 'no label', INDENT_NO_LABEL).indexOf(chunk.type)){
             first_verse = false;
           }
         }
@@ -1170,7 +1170,8 @@ function calc_heights(songbook, cfg, doc) {
       index = []; // make index height calculation loop be empty
     }
   }
-
+  
+  //myStringWdith('8 is copied from format_page - keep them in sync 
   let chunk_width = (cfg.page_layout.get_page_width() - myStringWidth('8)   ', cfg.FONT_FACE, cfg.SONGLINE_SIZE, doc));
   for(let song of list_of_songs) {
     song.height = 0;
@@ -1187,7 +1188,8 @@ function calc_heights(songbook, cfg, doc) {
       song_title = cfg.SONGTITLE_FORMAT.replace('${title}',title).replace('${num}',song.num);
     }
 
-    song.num_width = myStringWidth(function(){let title = ''; let num = song.num; return cfg.SONGTITLE_FORMAT;}, cfg.FONT_FACE, cfg.SONGTITLE_SIZE, doc)*1.5;
+    song.num_width = myStringWidth(cfg.SONGTITLE_FORMAT.replace('${title}','').replace('${num}',song.num), cfg.FONT_FACE, cfg.SONGTITLE_SIZE, doc)*1.5;
+    console.log(song.num_width);
 
     // Word wrap title as needed
     song.title_wrapped = word_wrap(song_title, cfg.page_layout.get_page_width(), cfg.FONT_FACE, cfg.SONGTITLE_SIZE, song.num_width, doc);
@@ -1229,7 +1231,6 @@ function calc_heights(songbook, cfg, doc) {
         let split_lines = [];
         for(let line of chunk.lines) {
           let split_line = word_wrap(line, chunk_width, cfg.FONT_FACE, cfg.SONGLINE_SIZE, 0, doc); 
-          //myStringWdith('8 is copied from format_page - keep them in sync 
           split_lines.push(...split_line);
         }
 

@@ -174,6 +174,8 @@ stitle, cat, author, scrip_ref, key, copyright {
   top: 1em;
   right: 1em;
   z-index: 6;
+  padding: 0 .5rem 0.25rem .5rem;
+  border-radius: 2rem;
 }
 .icon-rotate {
   transform: rotateZ(45deg);
@@ -243,7 +245,7 @@ body {
   padding: 5px 15px 5px 15px;
   display: inline-block;
   border: 1px solid gray;
-  margin: 1em .5em 1em .5em;
+  margin: 1rem .5rem 1rem .5rem;
 }
 .header header {
   flex: 0 1 100%;

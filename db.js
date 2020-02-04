@@ -362,6 +362,7 @@ function loadSongbook(songbook_id) {
     else if(songbook_id == undefined || songbook_id == 'sb-allSongs') {
       songbook_id = 'sb-allSongs';
       window.songbook._id = songbook_id;  
+      window.songbook._rev = '';
       window.songbook.title = "All Songs";
       db.allDocs({
         include_docs: true,
@@ -387,6 +388,9 @@ function loadSongbook(songbook_id) {
           if(a.doc.title < b.doc.title) { return -1; }
           if(a.doc.title > b.doc.title) { return 1; }
           return 0;
+        });
+        window.songbook.songrefs = result.rows.map(function (row) {
+          return {id: row.id, status: 'n'};
         });
         buildSongbookList(result.rows);
         $('#songbook_title').removeAttr('contenteditable');
