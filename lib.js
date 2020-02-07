@@ -396,6 +396,7 @@ function updateAllLinks(whatChanged='all') {
   $('[data-song-export]').attr('href','#'+window.songbook._id+'&'+window.song._id+'&export');
   $('[data-songbook-edit]').attr('href','#'+window.songbook._id+'&edit');
   $('[data-songbook-edit="new"]').attr('href','#sb-new-songbook&edit');
+  $('[data-songbook-present]').attr('href', '#'+window.songbook._id+'&present');
   $('[data-songbook]').attr('href','#'+window.songbook._id);
   $('[data-songbook-export]').attr('href','#'+window.songbook._id+'&export');
   $('[data-home]').attr('href','#');

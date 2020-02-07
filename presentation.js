@@ -110,6 +110,9 @@ $(document).ready(function(){
     $('#searchbox input').val(''); // initialize to empty
 
     toggleHelp();
+    //var lib = JsonUrl('lzma'); // JsonUrl is added to the window object
+    console.log(window.songbook);
+    //lib.decompress($('footer').attr('data')).then(output => {console.log(output)});
 
 });
 
