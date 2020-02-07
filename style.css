@@ -460,7 +460,7 @@ body.export #export {
   position: absolute;
   transform: translateY(100%);
   border: 0px;
-  height: 100vh;
+  height: 0;
   width: 100vw;
   left: 0;
   top: 0;
@@ -471,6 +471,7 @@ body.export #export {
 }
 body.present.songList #presentation {
   transform: translateY(0);
+  height: 100vh;
 }
 
 /*normalize*/

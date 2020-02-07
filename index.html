@@ -847,11 +847,10 @@
                 }).then(function (result) {
                   //window.open('presentation');
                   window.presentationFrame = document.getElementById('presentation');
-
-
+                  window.presentationFrame.contentWindow.focus();
                   //var lib = JsonUrl('lzma'); // JsonUrl is added to the window object
-                    
-                  window.presentationFrame.onload = function() { 
+                  window.presentationFrame.onload = function() {
+                    result.rows.title = window.songbook.title; 
                     window.presentationFrame.contentWindow.songbook = result.rows;
                   };
                   window.presentationFrame.src = 'presentation.html';

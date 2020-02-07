@@ -109,9 +109,10 @@ $(document).ready(function(){
     $('#searchbox').blur(endSearch); // XXX: need to work on this
     $('#searchbox input').val(''); // initialize to empty
 
-    toggleHelp();
+    //toggleHelp();
     //var lib = JsonUrl('lzma'); // JsonUrl is added to the window object
     console.log(window.songbook);
+    document.getElementById('pres_title').innerHTML = window.songbook.title;
     //lib.decompress($('footer').attr('data')).then(output => {console.log(output)});
 
 });
