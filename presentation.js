@@ -146,11 +146,11 @@ function toggleChords() {
   }
   else if($("body").hasClass("nochords")){
     $('body').removeClass("nochords")
-    scaleText()
+    scaleText();
   }
   else {
     $('body').addClass("nochords")
-    scaleText()
+    scaleText();
   }
 }
 
