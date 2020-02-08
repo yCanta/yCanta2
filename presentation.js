@@ -16,10 +16,9 @@ catch(err) {
 }
 
 punctuation = /[^a-zA-Z0-9\s:-]/g
-// list of lists: [ [chunk or stitle, text with punctuation removed, text as is], [next...], ...]
-search_database = [];
   
 last_search_results = [];
+current_song = 0;
 secondary_windows = [];
 presentation_key_map = {
   'h'         : [ function() {if(! isSearching()) toggleHelp();},
@@ -37,27 +36,27 @@ presentation_key_map = {
   'f'         : [ function() {if(! isSearching()) whiteScreen(); },
                   "Toggle screen foreground to/from white" ],
 
-  'enter'     : [ function() {if(isSearching()) searchResult(0);},
+  'enter'     : [ function() {if(isSearching()) searchResult(1);},
                   "When in search mode show the first search result"              ],
-  '1'         : [ function() {numberHit(0);},
+  '1'         : [ function() {numberHit(1);},
                   "Show the first search result/verse depending on mode"          ],
-  '2'         : [ function() {numberHit(1);},
+  '2'         : [ function() {numberHit(2);},
                   "Show the second search result/verse depending on mode"         ],
-  '3'         : [ function() {numberHit(2);},
+  '3'         : [ function() {numberHit(3);},
                   "Show the third search result/verse depending on mode"          ],
-  '4'         : [ function() {numberHit(3);},
+  '4'         : [ function() {numberHit(4);},
                   "Show the fourth search result/verse depending on mode"         ],
-  '5'         : [ function() {numberHit(4);},
+  '5'         : [ function() {numberHit(5);},
                   "Show the fith search result/verse depending on mode"           ],
-  '6'         : [ function() {numberHit(5);},
+  '6'         : [ function() {numberHit(6);},
                   "Show the sixth verse"                ],
-  '7'         : [ function() {numberHit(6);},
+  '7'         : [ function() {numberHit(7);},
                   "Show the seventh verse"              ],
-  '8'         : [ function() {numberHit(7);},
+  '8'         : [ function() {numberHit(8);},
                   "Show the eighth verse"               ],
-  '9'         : [ function() {numberHit(8);},
+  '9'         : [ function() {numberHit(9);},
                   "Show the ninth verse"                ],
-  '0'         : [ function() {numberHit(9);},
+  '0'         : [ function() {numberHit(10);},
                   "Show the tenth verse"                ],
 
   'right'     : [ nextChunk         , "Go to the next verse/chunk"                ],
@@ -101,8 +100,6 @@ presentation_key_map = {
 $(document).ready(function(){
     $("stitle").click(toggleSongVisible);
 
-    initializeSearchDatabase();
-
     $(document).keypress({method: 'keypress'}, processKey);  // global key handler
     $(document).keydown({method: 'keydown'}, processKey);   
 
@@ -111,7 +108,6 @@ $(document).ready(function(){
 
     //toggleHelp();
     //var lib = JsonUrl('lzma'); // JsonUrl is added to the window object
-    console.log(window.songbook);
     document.getElementById('pres_title').innerHTML = window.songbook.title;
     //lib.decompress($('footer').attr('data')).then(output => {console.log(output)});
 
@@ -158,45 +154,24 @@ function toggleChords() {
   }
 }
 
-function initializeSearchDatabase(){
-  $('[type=comment]').remove(); //remove comments
-
-  var stitle = $("stitle");
-  stitle.each(function() {
-    var text = $(this).text().replace(punctuation, '');
-
-    search_database.push([$(this), text, $(this).text()]);
-  });
-
-  var song_lines = $("line");
-  song_lines.each(function() {
-    var chunk = $(this).parent();
-    var text = $(this).clone().children().remove().end().text().replace(punctuation,'');
-
-    search_database.push([chunk, text, chunk.parent().children('stitle').text()]);
-  });
-}
-
 function searchDatabase(){
   var text = $('#searchbox input').val();
-  if(jQuery.trim(text).length < 4){
+  if(jQuery.trim(text).length < 2){
     $('#searchresults').empty();
     return;
   }
 
   var re = new RegExp(text, 'i');
   var match_object = []
-  var matches = search_database.filter(function(item) { 
-      var result = re.test(item[1]);
+  var matches = window.songbook.songs.filter(function(item) { 
+      var result = re.test(item.doc.search);
       if(result == true){  //then test to see if we already have this line in the results
         for(var i=0; i<match_object.length; i++) {
-          if(item[2] == match_object[i][2]){
+          if(item.id == match_object[i].id){
             result = false;
             break;
           }
         }
-      }
-      if(result == true){
         match_object.push(item)
       }
       return result;
@@ -211,18 +186,15 @@ function searchDatabase(){
   var count = 0;
 
   var textmatches = matches.map(function(item) {
-      var m = re.exec(item[1]);
+      let m = re.exec(item.doc.search);
       count += 1;
-      if(item[0].parent().children('stitle').length != 1){
-        text = '';
-      }
 
-      return ('<div onclick="javascript:void(searchResult('+(count-1)+'));">' 
+      return ('<div onclick="javascript:void(searchResult('+(count)+'));">' 
         + '<span class="count">['+count+']</span> ' 
-        + '<span class="song">' + item[0].parent().children('stitle').text() + '</span>: ' 
-        + '<span class="matchline">' + item[1].substring(0, m.index) 
+        + '<span class="song">' + item.doc.title + '</span>: ' 
+        + '<span class="matchline">' + item.doc.search.substring((item.doc.search.substring(0,m.index).lastIndexOf('\n') || 0), m.index) 
         + '<span class="match">' + m[0] + '</span>' 
-        + item[1].substring(m.index + m[0].length, item[1].length) + '</span></div>');
+        + item.doc.search.substring(m.index + m[0].length, item.doc.search.indexOf('\n', m.index+m[0].length) || item.doc.search.length) + '</span></div>');
   });
 
   $('#searchresults').html(textmatches.join('\n'));
@@ -248,12 +220,12 @@ function endSearch(){
 }
 
 function searchResult(n){
-  if(n >= last_search_results.length){
+  if(n > last_search_results.length){
     return;
   }
-
-  var chunk = last_search_results[n][0];
-  showChunk(chunk.parent().children('chunk:first'));
+  current_song = last_search_results[n - 1];
+  current_song.chunk_index = 0;
+  showChunk('first');
   endSearch();
 }
 
@@ -261,18 +233,16 @@ function enterPresentation(){
   $('#help').hide();
   $("body").addClass("presentation");
 
-  // hide chunks
-  $('stitle,chunk,author,copyright').css({'display':'none'});
-
   // find the 'current' node if needed
-  if($('#current').length == 0){ 
-    $("chunk:first").attr("id", "current");
+  if(current_song == 0){
+    current_song = window.songbook.songs[0];
+    current_song.chunk_index = 0;
   }
-  showChunk($('#current')[0]);
+  showChunk('first');
 }
 function inPresentation(){ return $("body").hasClass("presentation"); }
 function exitPresentation(){ 
-  $("chunk,author,copyright,key,scripture_ref").css({'display':'none'}); // not visible to start -- toggled as needed
+  //$("chunk,author,copyright,key,scripture_ref").css({'display':'none'}); // not visible to start -- toggled as needed
   $("body").removeClass("presentation"); 
   $("stitle").css({'display': 'block'});
   resetText();
@@ -285,38 +255,54 @@ function toggleSongVisible(evt) {
     $(this).parent().find('chunk,author,copyright,scripture_ref,copyright').slideToggle("normal");
   }
 }
-function showChunk(chunk) {
-  chunk = $(chunk);
+function showChunk(name) {
   if(inPresentation()){
     resetText();
-    var cur = $('#current');
-    cur.hide();
-    cur.prevAll('author,stitle,scripture_ref,key').hide()
-    cur.nextAll('copyright').hide()
-    cur.removeAttr("id");
 
-    chunk.css("display","block").attr("id", "current");  //changed from .show() because of bug in jquery
+    /*
+    depending on chunk name, display and format the chunk
+    first, last, 1-9, chorus, ending, bridge
+
+    */
+    var cur = $('#cur_slide');
+    //cur.hide();
+    //cur.removeAttr("id");
+    let content = '';
+    let chunk = current_song.doc.content[current_song.chunk_index];
+
+    if(current_song.chunk_index == 0){ //no previous chunk
+      content += '<stitle>'+current_song.doc.title+'</stitle>'
+               + '<author>'+current_song.doc.authors.join(', ')+'</author>'
+               + '<scripture_ref>'+current_song.doc.scripture_ref.join(', ')+'</scripture_ref>'
+               + '<key>'+current_song.doc.key+'</key>';
+    }
     
-    if(chunk.prev().filter('chunk').length == 0){ //no previous chunk
-      chunk.prevAll('author,stitle,scripture_ref,key').css("display","block")  //changed from .show() because of bug in jquery
-    }
-    if(chunk.next().filter('chunk').length == 0){ //last chunk
-      chunk.nextAll('copyright').show()
-    } 
-    var verse_number = chunk.prevAll('[type=verse]').length + 1;
-    if(chunk.attr('type') == 'verse'){
-      if(chunk.children('span').length == 0){
-        chunk.prepend('<span></span>')
+    let verse_number = 1;
+    for(let chunk_index = 0; chunk_index < current_song.chunk_index; chunk_index++) {
+      console.log(verse_number);
+      if(current_song.doc.content[chunk_index][0].type == 'verse') {
+        verse_number += 1;
       }
-      chunk.children('span').text(verse_number+':');
     }
+    content += '<chunk type="' + chunk[0].type + '">';
+    if(chunk[0].type == 'verse'){
+      content += '<span>'+verse_number+':</span>';
+    }
+    chunk[1].forEach(function(line){
+      content += '<line>' + line + '</line>';
+    });
+    content += '</chunk>';
 
-    var pos = chunk.prevAll('chunk').length + 1;
-    var total = chunk.siblings('chunk').length + 1;
-    $('#progress').css('width', ''+((pos / total) * 100)+'%'); // set progress bar
+    if(current_song.doc.content.length == current_song.chunk_index + 1){ //last chunk
+      content += '<copyright>'+current_song.doc.copyright+'</copyright>';
+    }
+    $('#cur_slide').html(content);
 
-    scaleText(); 
-   
+    var total = current_song.doc.content.length;
+    $('#progress').css('width', ''+(((current_song.chunk_index + 1) / total) * 100)+'%'); // set progress bar
+
+    scaleText();
+
     $.each(secondary_windows, function(index,value) { 
       try{
         $(this.document).find('body #songbook').html($("#current").parent().clone())
@@ -338,26 +324,18 @@ function firstSong(){
   if(! inPresentation()){ // presentation mode only
     return;
   }
-
-  var cur = $("#current");
-
-  // go to first song
-  var next = $('chunk:first');
-
-  showChunk(next);
+  current_song = window.songbook.songs[0];
+  current_song.chunk_index = 0;
+  showChunk('first_song');
 }
 
 function lastSong(){
   if(! inPresentation()){ // presentation mode only
     return;
   }
-
-  var cur = $("#current");
-
-  // go to last song
-  var next = $('song:last chunk:first');
-
-  showChunk(next);
+  current_song = window.songbook.songs[window.songbook.songs.length - 1];
+  current_song.chunk_index = 0;
+  showChunk('last_song');
 }
 
 
@@ -365,140 +343,141 @@ function nextSong(){
   if(! inPresentation()){ // presentation mode only
     return;
   }
-
-  var cur = $("#current");
-
-  // go to next song
-  var next = cur.parent().next().children('chunk:first');
-
-  if(next.length == 0){ // no next song -- wrap to beginning
-    next = $('chunk:first');
+  for(let i = 0; i <= window.songbook.songs.length; i++) {
+    if(window.songbook.songs[i].id == current_song.id) {
+      if(i == window.songbook.songs.length - 1) {
+        current_song = window.songbook.songs[0];
+      }
+      else {
+        current_song = window.songbook.songs[i + 1];
+      }
+      break
+    }
   }
-
-  showChunk(next);
+  current_song.chunk_index = 0;
+  showChunk('next_song');
 }
 
 function nextChunk(){
   if(! inPresentation()){ // presentation mode only
     return;
   }
-
-  var cur = $("#current");
-  var next = cur.next('chunk');
-
-  if(next.length == 0){ // );end of current song -- go to next
-    next = cur.parent().next().children('chunk:first');
+  if(current_song.chunk_index == current_song.doc.content.length - 1) {
+    nextSong();
   }
-
-  if(next.length == 0){ // no next song -- wrap to beginning
-    next = $('chunk:first');
+  else {
+    current_song.chunk_index += 1;
+    showChunk('next_chunk');  
   }
-  next = $(next[0]); // only pick first if many selected
-
-  showChunk(next);
 }
 
-function prevSong(){
+function prevSong(last=false){
   if(! inPresentation()){ // presentation mode only
     return;
   }
-
-  var cur = $("#current");
-
-  // go to prev song
-  var prev = cur.parent().prev().children('chunk:first');
-
-  if(prev.length == 0){ // no prev song -- wrap to end
-    prev = $('song:last chunk:first');
+  for(let i = 0; i <= window.songbook.songs.length; i++) {
+    if(window.songbook.songs[i].id == current_song.id) {
+      if(i == 0) {
+        current_song = window.songbook.songs[window.songbook.songs.length - 1];
+      }
+      else {
+        current_song = window.songbook.songs[i - 1];
+      }
+      break
+    }
   }
-
-  showChunk(prev);
+  if(last) {
+    current_song.chunk_index = current_song.doc.content.length - 1;
+  }
+  else {
+    current_song.chunk_index = 0;
+  }
+  showChunk('prev_song');
 }
 
 function prevChunk(){
   if(! inPresentation()){ // presentation mode only
     return;
   }
-
-  var cur = $("#current");
-  var prev = cur.prev('chunk');
-
-  if(prev.length == 0){ // end of current song -- go to prev
-    prev = cur.parent().prev().children('chunk:last');
+  if(current_song.chunk_index == 0) {
+    prevSong(true);
   }
-
-  if(prev.length == 0){ // no prev song -- wrap to end
-    prev = $('chunk:last');
+  else {
+    current_song.chunk_index -= 1;
+    showChunk('prev_chunk');  
   }
-  prev = $(prev[0]); // only pick first if many selected
-
-  showChunk(prev);
 }
 
 function gotoChorus(){
   if(! inPresentation()){ // presentation mode only
     return;
   }
-
-  var cur = $("#current");
-
   // First we look for a chorus type AFTER the current chunk and take the first one
-  var chorus = cur.nextAll('[type=pre-chorus], [type=chorus], [type="final chorus"]').eq(0);
-
-  if (chorus.length == 0){ // no chorus type following current chunk search whole song and take the first
-    chorus = cur.parent().children('[type=pre-chorus], [type=chorus], [type="final chorus"]').eq(0);
-  }
-
-  if(chorus.length != 0){
-    showChunk(chorus);
+  for(let i = current_song.chunk_index + 1; i <= current_song.doc.content.length; i++){
+    console.log(i, current_song.doc.content.length);
+    if(i == current_song.doc.content.length) {
+      i = 0;
+    }
+    if(['pre-chorus','chorus','final chorus'].indexOf(current_song.doc.content[i][0].type) > -1){
+      current_song.chunk_index = i;
+      return showChunk('chorus');
+    }
+    if(i == current_song.chunk_index) {
+      break; // there is no chorus
+    }
   }
 }
 
 function gotoBridge(){
   if(! inPresentation()){ // presentation mode only
     return;
+  }  // First we look for a chorus type AFTER the current chunk and take the first one
+  for(let i = current_song.chunk_index + 1; i < current_song.doc.content.length; i++){
+    if(current_song.doc.content[i][0].type == 'bridge'){
+      current_song.chunk_index = i;
+      return showChunk('bridge');
+    }
+    if(i == current_song.doc.content.length - 1) {
+      i = 0;
+    }
+    if(i == current_song.chunk_index) {
+      break; // there is no bridge
+    }
   }
-
-  var cur = $("#current");
-  var bridge = cur.parent().children('[type=bridge]:first');
-
-  if(bridge.length == 0){ // no bridge -- do nothing
-    bridge = cur; // we show bridge next so its ok
-  }
-
-  showChunk(bridge);
 }
 
 function gotoEnding(){
   if(! inPresentation()){ // presentation mode only
     return;
   }
-
-  var cur = $("#current");
-  var ending = cur.parent().children('[type=ending]:first');
-
-  if(ending.length == 0){ // no bridge -- do nothing
-    ending = cur; // we show bridge next so its ok
+  for(let i = current_song.chunk_index + 1; i < current_song.doc.content.length; i++){
+    if(current_song.doc.content[i][0].type == 'ending'){
+      current_song.chunk_index = i;
+      return showChunk('ending');
+    }
+    if(i == current_song.doc.content.length - 1) {
+      i = 0;
+    }
+    if(i == current_song.chunk_index) {
+      break; // there is no ending
+    }
   }
-
-  showChunk(ending);
 }
 
 function gotoVerse(num){
   if(! inPresentation()){
     return;
   }
-
-  var cur = $("#current");
-  var verse = cur.parent().children('[type=verse]:eq('+num+')');
-
-  if(verse.length == 0){ // no verse -- fall back to picking the nth unlabeled chunk
-    verse = cur.parent().children('[type="no label"], [type="indented no label"]').eq(num);
-    if(verse.length == 0){ // still got nothing, go with current
-      verse = cur;
+  let verse_count = 0;
+  for(let i = 0; i < current_song.doc.content.length; i++){
+    if(current_song.doc.content[i][0].type == 'verse'){
+      verse_count += 1;
+      if(verse_count == num) {
+        current_song.chunk_index = i;
+        return showChunk('verse');
+      }
     }
   }
-  showChunk(verse);
 }
 
 function whiteScreen(){
@@ -526,7 +505,7 @@ function blackScreen(){
 }
 
 function numberHit(num){
-  if(isSearching() & num < 5){
+  if(isSearching() & num <= 5){
     searchResult(num)
   }
   else if(inPresentation()){
@@ -582,15 +561,15 @@ function scaleText() {
     return;
   }
 
-  var container = $("#current").parent();
+  var container = $("#cur_slide");
   var container_dom = container.get(0); // always only 1 because we use ID selector
   var win       = $(window);
   var win_width = win.width();
   var win_height= win.height();
 
   var copyright_height = 0;
-  if($("#current").next().filter('chunk').length == 0){ //last chunk
-    copyright_height = $("#current").nextAll('copyright').height();
+  if($("#cur_slide").filter('chunk').length == 0){ //last chunk
+    copyright_height = $("#cur_slide").nextAll('copyright').height();
   }
 
   var small     = 50;
@@ -623,6 +602,7 @@ function scaleText() {
 
     percent = (big + small) / 2;
   }
+  container.css("font-size", ""+(percent - 10) +"%");
 
 
   if(container_width() > win_width || container_height() > win_height){ // too big

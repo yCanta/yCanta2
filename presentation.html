@@ -17,6 +17,10 @@
       /* First non-presentation styles */
       /*===============================*/
 
+      #cur_slide {
+        padding: 1rem;
+      }
+
       body {
         color: #000;
         background-color: #fff;
@@ -28,19 +32,13 @@
         float: left;
         white-space: nowrap;
       }
-      chunk span {display: none;} 
       chunk {
-        display: none;
-        padding: 0.5em;
+        display: block;
       }
 
       stitle {
         font-weight: bold;
         counter-reset: verse;
-      }
-
-      chunk, author, copyright, scripture_ref {
-        display: none;
       }
       song chunk[type=verse]:before {
         content: counter(verse) ':';
@@ -65,7 +63,7 @@
       chunk[type=ending]:before {
         content: 'Ending:';
       }
-      cclis, key, categories, introduction, .no_display {display: none;}
+      .no_display {display: none;}
 
       #statusbar {
         position: fixed;
@@ -102,7 +100,6 @@
       body.presentation stitle,
       body.presentation chunk,
       body.presentation .booktitle {
-        display: none;
         clear: both;
         font-weight: bold;
       }
@@ -234,7 +231,7 @@
     <script id="tmp2" type="text/javascript">
     </script><script type="text/javascript">
       $(document).ready(function(){
-        //togglePresentation();
+        togglePresentation();
         //$("#tmp2").text('function alert2() {alert("hi");}');
         //setTimeout(function(){alert2();}, 3000);
        // console.log($('footer').attr('data'));
@@ -244,18 +241,13 @@
   <body class="nochords" data-songbookJson="">
   
   <!-- Dynamically loaded into these divs for transitions, etc.-->
-    <div id="pre_slide">
-    </div>
-    <div id="cur_slide">
-    </div>
-    <div id="post_slide">
-    </div>
-
-<!-- begin songbook content from database - modified to HTML -->
-<div id="songbook">
-  <div style="width: 100%;position: absolute; top: 40%;"><div style="width: 100%;text-align: center"><h1>Presenting</h1><h2><i id="pres_title">Lorem Ipsum</i></h2></div></div>
-</div>
-<!-- end songbook content from database -->
+  <div id="pre_slide">
+  </div>
+  <div id="cur_slide">
+    <div style="width: 100%;position: absolute; top: 40%;"><div style="width: 100%;text-align: center"><h1>Presenting</h1><h2><i id="pres_title">Lorem Ipsum</i></h2></div></div>
+  </div>
+  <div id="post_slide">
+  </div>
 
 <div id="statusbar">
   <div id="searchbox"><div id="searchresults"></div><input type="text"/><span class="info"></span></div>

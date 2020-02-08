@@ -850,8 +850,7 @@
                   window.presentationFrame.contentWindow.focus();
                   //var lib = JsonUrl('lzma'); // JsonUrl is added to the window object
                   window.presentationFrame.onload = function() {
-                    result.rows.title = window.songbook.title; 
-                    window.presentationFrame.contentWindow.songbook = result.rows;
+                    window.presentationFrame.contentWindow.songbook = {songs: result.rows, title: window.songbook.title};
                   };
                   window.presentationFrame.src = 'presentation.html';
                   /*
