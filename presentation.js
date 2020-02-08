@@ -279,7 +279,6 @@ function showChunk(name) {
     
     let verse_number = 1;
     for(let chunk_index = 0; chunk_index < current_song.chunk_index; chunk_index++) {
-      console.log(verse_number);
       if(current_song.doc.content[chunk_index][0].type == 'verse') {
         verse_number += 1;
       }
