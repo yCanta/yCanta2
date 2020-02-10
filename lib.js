@@ -421,6 +421,26 @@ $(function () {
   $('body').on('click', '.toggle-chords', function() {
     $('#song').toggleClass('nochords');
   });
+
+  $('#present').mousedown(function(event) {
+    switch (event.which) {
+      case 1:
+        //alert('Left mouse button pressed');
+        window.location = '#'+window.songbook._id+'&present';
+        break;
+      case 2:
+        //alert('Middle mouse button pressed');
+        window.location = '#'+window.songbook._id+'&present+new';
+        break;
+      case 3:
+        //alert('Right mouse button pressed');
+        window.location = '#'+window.songbook._id+'&present+new';
+        break;
+      default:
+        //alert('You have a strange mouse');
+        window.location = '#'+window.songbook._id+'&present';
+    }
+  });
 });
 
 //initial logging of alerts... probably better not to have it be the console ultimately?

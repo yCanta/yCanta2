@@ -103,7 +103,7 @@
         <div class="float-menu">
           <a data-song-edit="new" class="float-menu-item"><span class="float-menu-icon">+</span> Add Song</a>
           <button data-home onclick="deleteSongbook(window.songbook._id)" class="float-menu-item delete"><span class="float-menu-icon">&#128465;</span> Delete</button>
-          <a data-songbook-present class="float-menu-item"><span class="float-menu-icon">&#128253;</span> Present</a>
+          <button data-songbook-present class="float-menu-item" id="present"><span class="float-menu-icon">&#128253;</span> Present</button>
           <a data-songbook-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</a>
           <a data-songbook-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>
           <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>
@@ -845,32 +845,32 @@
                   include_docs: true,
                   keys: sb_song_ids, //we need error handling for missing ids
                 }).then(function (result) {
-                  //window.open('presentation');
-                  window.presentationFrame = document.getElementById('presentation');
-                  window.presentationFrame.contentWindow.focus();
-                  //var lib = JsonUrl('lzma'); // JsonUrl is added to the window object
-                  window.presentationFrame.onload = function() {
-                    window.presentationFrame.contentWindow.songbook = {songs: result.rows, title: window.songbook.title};
-                  };
-                  window.presentationFrame.src = 'presentation.html';
-                  /*
-                  lib.compress(result.rows).then(output => { result.value = output; console.log(result.value);
-                    window.presentationFrame.onload = function() { window.presentationFrame.contentWindow.document.getElementById('data').setAttribute('data', output);}; 
-                    window.presentationFrame.src = 'presentation.html';
-                  });*/
+                  if(hash.indexOf('new') > -1){
+                    window.presentationFrame = window.open('presentation.html','_blank', height="200", width="200");
+                    window.presentationFrame.onload = function() {
+                      window.presentationFrame.songbook = {songs: result.rows, title: window.songbook.title};
+                      window.location = '#'+window.songbook._id;
+                    };
+                  }else {
+                    window.presentationFrame = document.getElementById('presentation');
+                    window.presentationFrame.contentWindow.focus();
+                    window.presentationFrame.onload = function() {
+                      window.presentationFrame.contentWindow.songbook = {songs: result.rows, title: window.songbook.title};
+                    };
+                    window.presentationFrame.src = 'presentation.html';  
+                  }
                   resolve('Its done')
                 }).catch(function (err) {
                   console.log(err);
                 });
               });
             }).then(function(values){
-              //makePDF(window.exportObject, document.querySelector('embed'));
-
+            if(hash.indexOf('new') == -1){
               $('body').attr('class', 'songList present');
               $('.active').removeClass('active');
-              $('#present').addClass('active');
               updateAllLinks();
               window.document.title = "yCanta2: Presenting " + window.songbook.title;
+            }
           });
         }
         //if songbook
