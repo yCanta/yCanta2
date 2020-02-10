@@ -1,19 +1,3 @@
-try {
-  console.log("Firebug enabled");
-}
-catch(err) {
-  console = new function() { 
-    this.log = function(){
-      /*if($('#log').length == 0) {
-        $('#help').prepend('<pre id="log"><b>LOG</b><br/></pre>');
-      }
-      for(var i = 0; i < arguments.length; i++) {
-        $('#log').append(''+arguments[i]+' ');
-      }
-      $('#log').append('<br/>');*/
-    };
-  }
-}
 
 punctuation = /[^a-zA-Z0-9\s:-]/g;
 
@@ -112,8 +96,19 @@ $(document).ready(function(){
 
     //toggleHelp();
     //var lib = JsonUrl('lzma'); // JsonUrl is added to the window object
-    document.getElementById('pres_title').innerHTML = window.songbook.title;
     //lib.decompress($('footer').attr('data')).then(output => {console.log(output)});
+
+    if(window.songbook) {
+      let myString = JSON.stringify(window.songbook);
+      $('footer').attr('data', myString);
+    }
+    else {
+      let myString = $('footer').attr('data');
+      window.songbook = JSON.parse(myString);
+    }
+
+    document.getElementById('pres_title').innerHTML = window.songbook.title;
+    window.document.title = "yCanta2: Presenting " + window.songbook.title;
 
     //PREPROCESS THE SONGBOOK OBJECT
     // -- REMOVE ALL COMMENTS
