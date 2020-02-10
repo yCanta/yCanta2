@@ -16,9 +16,20 @@
       /*===============================*/
       /* First non-presentation styles */
       /*===============================*/
-
-      #cur_slide {
+      .slide {
         padding: 1rem;
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+      }
+      #pre_slide {
+        transform: translateX(-100%);
+      }
+
+      #post_slide {
+        transform: translateX(100%);
       }
 
       body {
@@ -241,12 +252,16 @@
   <body class="nochords" data-songbookJson="">
   
   <!-- Dynamically loaded into these divs for transitions, etc.-->
-  <div id="pre_slide">
+  <div id="pre_slide" class="slide">
+    <div class="content"></div>
   </div>
-  <div id="cur_slide">
-    <div style="width: 100%;position: absolute; top: 40%;"><div style="width: 100%;text-align: center"><h1>Presenting</h1><h2><i id="pres_title">Lorem Ipsum</i></h2></div></div>
+  <div id="cur_slide" class="slide">
+    <div class="content">
+      <div style="width: 100%;position: absolute; top: 40%;"><div style="width: 100%;text-align: center"><h1>Presenting</h1><h2><i id="pres_title">Lorem Ipsum</i></h2></div></div>
+    </div>
   </div>
-  <div id="post_slide">
+  <div id="post_slide" class="slide">
+    <div class="content"></div>
   </div>
 
 <div id="statusbar">

@@ -111,12 +111,16 @@ $(document).ready(function(){
     document.getElementById('pres_title').innerHTML = window.songbook.title;
     //lib.decompress($('footer').attr('data')).then(output => {console.log(output)});
 
+    //PREPROCESS THE SONGBOOK OBJECT
+    // -- REMOVE ALL COMMENTS
+    // -- REMOVE ALL EMPTY SONGS
+    //  - DO this in such a way that we preserve the original object?
 });
 
 function myEscape(text) { return text.replace('<', '&lt;').replace('>', '&gt;'); }
 
 function openWindow() {
-  secondary_windows.push(window.open('export2html?path=songbooks%2Fall.xml&secondary=true','_blank', height="200", width="200"))
+  secondary_windows.push(window.open('presentation?secondary=true','_blank', height="200", width="200"))
 }
 
 function toggleHelp() {
@@ -224,6 +228,14 @@ function searchResult(n){
     return;
   }
   current_song = last_search_results[n - 1];
+  console.log(current_song);
+  for(let i = 0; i < window.songbook.songs.length; i++) {
+    if(current_song.id == window.songbook.songs[i].id) {
+      window.songbook.song_index = i;
+      break;
+    }
+  }
+  current_song = last_search_results[n - 1];
   current_song.chunk_index = 0;
   showChunk('first');
   endSearch();
@@ -235,7 +247,8 @@ function enterPresentation(){
 
   // find the 'current' node if needed
   if(current_song == 0){
-    current_song = window.songbook.songs[0];
+    window.songbook.song_index = 0;
+    current_song = window.songbook.songs[window.songbook.song_index];
     current_song.chunk_index = 0;
   }
   showChunk('first');
@@ -264,38 +277,87 @@ function showChunk(name) {
     first, last, 1-9, chorus, ending, bridge
 
     */
-    var cur = $('#cur_slide');
-    //cur.hide();
-    //cur.removeAttr("id");
-    let content = '';
-    let chunk = current_song.doc.content[current_song.chunk_index];
+    function build_chunk(chunk, song=null) {
+      let content = '';
 
-    if(current_song.chunk_index == 0){ //no previous chunk
-      content += '<stitle>'+current_song.doc.title+'</stitle>'
-               + '<author>'+current_song.doc.authors.join(', ')+'</author>'
-               + '<scripture_ref>'+current_song.doc.scripture_ref.join(', ')+'</scripture_ref>'
-               + '<key>'+current_song.doc.key+'</key>';
-    }
-    
-    let verse_number = 1;
-    for(let chunk_index = 0; chunk_index < current_song.chunk_index; chunk_index++) {
-      if(current_song.doc.content[chunk_index][0].type == 'verse') {
-        verse_number += 1;
+      if(song == null) {
+        song = current_song;
       }
-    }
-    content += '<chunk type="' + chunk[0].type + '">';
-    if(chunk[0].type == 'verse'){
-      content += '<span>'+verse_number+':</span>';
-    }
-    chunk[1].forEach(function(line){
-      content += '<line>' + line + '</line>';
-    });
-    content += '</chunk>';
 
-    if(current_song.doc.content.length == current_song.chunk_index + 1){ //last chunk
-      content += '<copyright>'+current_song.doc.copyright+'</copyright>';
+      if(song.chunk_index == 0){ //no previous chunk
+        content += '<stitle>'+song.doc.title+'</stitle>'
+                 + '<author>'+song.doc.authors.join(', ')+'</author>'
+                 + '<scripture_ref>'+song.doc.scripture_ref.join(', ')+'</scripture_ref>'
+                 + '<key>'+song.doc.key+'</key>';
+      }
+      
+      let verse_number = 1;
+      for(let chunk_index = 0; chunk_index < song.chunk_index; chunk_index++) {
+        if(song.doc.content[chunk_index][0].type == 'verse') {
+          verse_number += 1;
+        }
+      }
+      content += '<chunk type="' + chunk[0].type + '">';
+      if(chunk[0].type == 'verse'){
+        content += '<span>'+verse_number+':</span>';
+      }
+      chunk[1].forEach(function(line){
+        content += '<line>' + line + '</line>';
+      });
+      content += '</chunk>';
+
+      if(song.doc.content.length == song.chunk_index + 1){ //last chunk
+        content += '<copyright>'+song.doc.copyright+'</copyright>';
+      }
+      return content;
     }
-    $('#cur_slide').html(content);
+
+    $('#cur_slide .content').html(build_chunk(current_song.doc.content[current_song.chunk_index]));
+
+    //now add the other chunks.
+    let pre_chunk;
+    let post_chunk;
+    let pre_song =  JSON.parse(JSON.stringify(current_song));
+    let post_song =  JSON.parse(JSON.stringify(current_song));
+    pre_song.chunk_index  -= 1;
+    post_song.chunk_index += 1;
+
+    //default, assume it all works!
+    pre_chunk = current_song.doc.content[current_song.chunk_index - 1];
+    post_chunk = current_song.doc.content[current_song.chunk_index + 1];
+
+    //now check edge cases
+    //beginning of a song - need to change pre_chunk and pre_song
+    if(current_song.chunk_index == 0) {
+      //previous chunk will be an earlier song
+      //if beginning of book move to last song
+      if(window.songbook.song_index == 0) {
+        pre_song = window.songbook.songs[window.songbook.songs.length - 1];
+      }
+      //go to previous song
+      else {
+        pre_song = window.songbook.songs[window.songbook.song_index - 1];
+      }
+      pre_song.chunk_index = pre_song.doc.content.length - 1;
+      pre_chunk = pre_song.doc.content[pre_song.chunk_index];
+    }
+    //we're at the end of the song - need to change post_chunk and post_song
+    if(current_song.chunk_index == current_song.doc.content.length - 1) {
+      //post chunk will be the next song
+      //if end of the book, move to first song
+      if(window.songbook.song_index == window.songbook.songs.length - 1){
+        post_song = window.songbook.songs[0];
+      }
+      //move to next song
+      else {
+        post_song = window.songbook.songs[window.songbook.song_index + 1];
+      }
+      post_song.chunk_index = 0;
+      post_chunk = post_song.doc.content[0];
+    }
+
+    $('#pre_slide .content').html(build_chunk(pre_chunk, pre_song));
+    $('#post_slide .content').html(build_chunk(post_chunk, post_song));
 
     var total = current_song.doc.content.length;
     $('#progress').css('width', ''+(((current_song.chunk_index + 1) / total) * 100)+'%'); // set progress bar
@@ -323,7 +385,8 @@ function firstSong(){
   if(! inPresentation()){ // presentation mode only
     return;
   }
-  current_song = window.songbook.songs[0];
+  window.songbook.song_index = 0;
+  current_song = window.songbook.song_index;
   current_song.chunk_index = 0;
   showChunk('first_song');
 }
@@ -332,7 +395,8 @@ function lastSong(){
   if(! inPresentation()){ // presentation mode only
     return;
   }
-  current_song = window.songbook.songs[window.songbook.songs.length - 1];
+  window.songbook.song_index = window.songbook.songs.length - 1;
+  current_song = window.songbook.songs[window.songbook.song_index];
   current_song.chunk_index = 0;
   showChunk('last_song');
 }
@@ -345,10 +409,12 @@ function nextSong(){
   for(let i = 0; i <= window.songbook.songs.length; i++) {
     if(window.songbook.songs[i].id == current_song.id) {
       if(i == window.songbook.songs.length - 1) {
-        current_song = window.songbook.songs[0];
+        window.songbook.song_index = 0;
+        current_song = window.songbook.songs[window.songbook.song_index];
       }
       else {
-        current_song = window.songbook.songs[i + 1];
+        window.songbook.song_index = i + 1;
+        current_song = window.songbook.songs[window.songbook.song_index];
       }
       break
     }
@@ -377,10 +443,12 @@ function prevSong(last=false){
   for(let i = 0; i <= window.songbook.songs.length; i++) {
     if(window.songbook.songs[i].id == current_song.id) {
       if(i == 0) {
-        current_song = window.songbook.songs[window.songbook.songs.length - 1];
+        window.songbook.song_index = window.songbook.songs.length - 1;
+        current_song = window.songbook.songs[window.songbook.song_index];
       }
       else {
-        current_song = window.songbook.songs[i - 1];
+        window.songbook.song_index = i - 1;
+        current_song = window.songbook.songs[window.songbook.song_index];
       }
       break
     }
@@ -547,69 +615,66 @@ function keyEventToString(e) {
 }
 
 function resetText() {
-  $("#current").parent().css("font-size", "100%");
+  $("#cur_slide .content").parent().css("font-size", "100%");
 }
 
 function scaleText() {
-
   // reset font to normal size to start
   resetText();
-
   if(! inPresentation()){
     // do nothing but reset text to 100%
     return;
   }
 
-  var container = $("#cur_slide");
-  var container_dom = container.get(0); // always only 1 because we use ID selector
-  var win       = $(window);
-  var win_width = win.width();
-  var win_height= win.height();
+  $('.slide').each(function(){
+    let slide = $(this);
+    var container = $(this).children(".content");
+    var container_dom = container.get(0); // always only 1 because we use ID selector
+    var win       = $(window);
+    var win_width = win.width();
+    var win_height= win.height();
 
-  var copyright_height = 0;
-  if($("#cur_slide").filter('chunk').length == 0){ //last chunk
-    copyright_height = $("#cur_slide").nextAll('copyright').height();
-  }
+    var small     = 50;
+    var big       = 1500;
+    var percent   = (big + small) / 2;
 
-  var small     = 50;
-  var big       = 1500;
-  var percent   = (big + small) / 2;
+    function container_height() {
+      return slide[0].scrollHeight;
+    }
 
-  function container_height() {
-    return $('body')[0].scrollHeight;
-  }
+    function container_width() {
+      return slide[0].scrollWidth;
+    }
 
-  function container_width() {
-    return $('body')[0].scrollWidth;
-  }
+    var oldWidth  = container_width();
+    var oldHeight = container_height();
 
-  var oldWidth  = container_width();
-  var oldHeight = container_height();
+    console.log('Starting font', container.css("font-size"));
+    console.log('c:', container_width(), 'w:', win_width);
 
-  console.log('Starting font', container.css("font-size"));
-  console.log('c:', container_width(), 'w:', win_width);
+    while(big - small > 10) { // iterate till we get within 10% of ideal
+      container.css("font-size", ""+percent+"%");
 
-  while(big - small > 10) { // iterate till we get within 10% of ideal
-    container.css("font-size", ""+percent+"%");
+      if(container_width() > win_width || container_height() > win_height){ // too big
+        big = percent;
+      }
+      else {
+        small = percent;
+      }
+
+      percent = (big + small) / 2;
+    }
+    container.css("font-size", ""+(percent - 10) +"%");
+
 
     if(container_width() > win_width || container_height() > win_height){ // too big
-      big = percent;
-    }
-    else {
-      small = percent;
+      container.css("font-size", ""+small+"%");
     }
 
-    percent = (big + small) / 2;
-  }
-  container.css("font-size", ""+(percent - 10) +"%");
+    console.log('Ending font', container.css("font-size"));
+    console.log('c:', container_width(), container, 'w:', $(window).width());
 
-
-  if(container_width() > win_width || container_height() > win_height){ // too big
-    container.css("font-size", ""+small+"%");
-  }
-
-  console.log('Ending font', container.css("font-size"));
-  console.log('c:', container_width(), container, 'w:', $(window).width());
+  });
 }
 
 function togglePresentation() {
@@ -645,7 +710,89 @@ function processKey(e){
 
   if(isSearching()){ 
     setTimeout(searchDatabase, 10);
-  }
-
-  
+  } 
 }
+
+window.addEventListener('load', function(){
+  makeDraggable(document.getElementById('cur_slide'),
+                document.getElementById('cur_slide'),
+                'dragToggleClass');
+}, false);
+
+function makeDraggable(dragCaptureEl, dragEl, dragAction, dragSide='right') {
+  let startx = 0;
+  let starty = 0;
+  let dist = 0;
+  let disty = 0;
+  let width = 0;
+  let height = 0;
+
+  dragCaptureEl.addEventListener('touchstart', function(e){
+    document.documentElement.className = 'no-overscroll';
+    var touchobj = e.changedTouches[0]; // reference first touch point (ie: first finger)
+    startx = parseInt(touchobj.clientX);
+    starty = parseInt(touchobj.clientY);
+    width = dragEl.offsetWidth; // get x position of touch point relative to left edge of browser
+    height = dragEl.offsetHeight; // get x position of touch point relative to left edge of browser
+
+/*    // only do stuff if in right place
+    if (dragSide == 'right'){
+      if (startx > dragCaptureEl.offsetLeft + dragCaptureEl.offsetWidth - width - 32 && startx < dragCaptureEl.offsetLeft + dragCaptureEl.offsetWidth - width + 32) { 
+        dragEl.style.transition = 'all 0s';
+        //e.preventDefault();
+      }
+      else {
+        startx = false;
+      }
+    }
+    else if (dragSide == 'top'){
+      if((starty > height) && (starty < height + 100)) { 
+        dragEl.style.transition = 'all 0s';
+        //e.preventDefault();
+      }
+      else {
+        startx = false;
+      }
+    }*/
+  }, {passive: true});
+
+  dragCaptureEl.addEventListener('touchmove', function(e){
+    if(startx){
+      var touchobj = e.changedTouches[0]; // reference first touch point for this event
+      var dist = parseInt(touchobj.clientX) - startx;
+      var disty = parseInt(touchobj.clientY) - starty;
+
+      dragEl.style.transform = 'translateX('+dist+'px)';
+      $('#pre_slide')[0].style.transform = 'translateX(calc('+dist+'px - 100%))';
+      $('#post_slide')[0].style.transform = 'translateX(calc('+dist+'px + 100%))';
+
+      /*if (dragSide == 'right'){
+        dragEl.style.flex = '0 0 '+ parseInt((width-dist)) + 'px';
+        e.preventDefault();
+      }
+      else if (dragSide == 'top'){
+        dragEl.style.flex = '0 0 '+ parseInt((height+disty)) + 'px';
+        e.preventDefault();   
+      }*/
+    }
+  }, false);
+
+  dragCaptureEl.addEventListener('touchend', function(e){
+    document.documentElement.className = '';
+    dragEl.style.removeProperty('transform');
+    dragEl.style.removeProperty('transition');
+    var touchobj = e.changedTouches[0]; // reference first touch point for this event
+    var dist = Math.abs(parseInt(touchobj.clientX) - startx);
+    var disty = Math.abs(parseInt(touchobj.clientY) - starty);
+    
+    if (startx && dragSide == 'right' && dist > 100 ){ //make sure that distance isn't just accidental
+      //dragAction(dragEl, 'sidebar-open');
+      e.preventDefault(); 
+    }
+    else if (startx && dragSide == 'top' && disty > 200 ){
+      //dragAction();
+      e.preventDefault();
+    }
+  }, false); 
+}
+
