@@ -232,7 +232,6 @@ function searchResult(n){
     return;
   }
   current_song = last_search_results[n - 1];
-  console.log(current_song);
   for(let i = 0; i < window.songbook.songs.length; i++) {
     if(current_song.id == window.songbook.songs[i].id) {
       window.songbook.song_index = i;
@@ -485,7 +484,6 @@ function gotoChorus(){
   }
   // First we look for a chorus type AFTER the current chunk and take the first one
   for(let i = current_song.chunk_index + 1; i <= current_song.doc.content.length; i++){
-    console.log(i, current_song.doc.content.length);
     if(i == current_song.doc.content.length) {
       i = 0;
     }
@@ -653,8 +651,8 @@ function scaleText() {
     var oldWidth  = container_width();
     var oldHeight = container_height();
 
-    console.log('Starting font', container.css("font-size"));
-    console.log('c:', container_width(), 'w:', win_width);
+    //console.log('Starting font', container.css("font-size"));
+    //console.log('c:', container_width(), 'w:', win_width);
 
     while(big - small > 10) { // iterate till we get within 10% of ideal
       container.css("font-size", ""+percent+"%");
@@ -675,8 +673,8 @@ function scaleText() {
       container.css("font-size", ""+small+"%");
     }
 
-    console.log('Ending font', container.css("font-size"));
-    console.log('c:', container_width(), container, 'w:', $(window).width());
+    //console.log('Ending font', container.css("font-size"));
+    //console.log('c:', container_width(), container, 'w:', $(window).width());
 
   });
 }
@@ -774,7 +772,6 @@ function makeDraggable() {
     var touchobj = e.changedTouches[0]; // reference first touch point for this event
     var dist = startx - parseInt(touchobj.clientX);
     var disty = Math.abs(parseInt(touchobj.clientY) - starty);
-    console.log(dist);
 
     $('.slide').removeAttr('style');
     document.getElementById('cur_slide').style.removeProperty('transition');
