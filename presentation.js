@@ -111,9 +111,20 @@ $(document).ready(function(){
     window.document.title = "yCanta2: Presenting " + window.songbook.title;
 
     //PREPROCESS THE SONGBOOK OBJECT
-    // -- REMOVE ALL COMMENTS
-    // -- REMOVE ALL EMPTY SONGS
-    //  - DO this in such a way that we preserve the original object?
+    let procesed_song = [];
+    for(song of window.songbook.songs) {
+      // -- REMOVE ALL COMMENTS
+      for(var i = song.doc.content.length - 1; i >= 0; i--) {
+        if(song.doc.content[i][0].type === 'comment') {
+          song.doc.content.splice(i, 1);
+        }
+      }
+      // -- REMOVE ALL EMPTY SONGS
+      if(song.doc.content.length != 0) {
+        procesed_song.push(song);        
+      }
+    }
+    window.songbook.songs = procesed_song;
 });
 
 function myEscape(text) { return text.replace('<', '&lt;').replace('>', '&gt;'); }
