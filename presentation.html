@@ -17,6 +17,7 @@
       /* First non-presentation styles */
       /*===============================*/
       .slide {
+        transition: .25s;
         padding: 1rem;
         position: fixed;
         top: 0;
@@ -242,7 +243,7 @@
     <script id="tmp2" type="text/javascript">
     </script><script type="text/javascript">
       $(document).ready(function(){
-        togglePresentation();
+        //togglePresentation();
         //$("#tmp2").text('function alert2() {alert("hi");}');
         //setTimeout(function(){alert2();}, 3000);
        // console.log($('footer').attr('data'));
@@ -252,24 +253,26 @@
   <body class="nochords" data-songbookJson="">
   
   <!-- Dynamically loaded into these divs for transitions, etc.-->
-  <div id="pre_slide" class="slide">
-    <div class="content"></div>
-  </div>
-  <div id="cur_slide" class="slide">
-    <div class="content">
-      <div style="width: 100%;position: absolute; top: 40%;"><div style="width: 100%;text-align: center"><h1>Presenting</h1><h2><i id="pres_title">Lorem Ipsum</i></h2></div></div>
+  <div id="slides">
+    <div id="pre_slide" class="slide">
+      <div class="content"></div>
+    </div>
+    <div id="cur_slide" class="slide">
+      <div class="content">
+        <div style="width: 100%;position: absolute; top: 40%;"><div style="width: 100%;text-align: center"><h1>Presenting</h1><h2><i id="pres_title">Lorem Ipsum</i></h2></div></div>
+      </div>
+    </div>
+    <div id="post_slide" class="slide">
+      <div class="content"></div>
     </div>
   </div>
-  <div id="post_slide" class="slide">
-    <div class="content"></div>
-  </div>
 
-<div id="statusbar">
-  <div id="searchbox"><div id="searchresults"></div><input type="text"/><span class="info"></span></div>
-  <div id="progress"></div>
-</div>
-<footer id="data">
-</footer>
+  <div id="statusbar">
+    <div id="searchbox"><div id="searchresults"></div><input type="text"/><span class="info"></span></div>
+    <div id="progress"></div>
+  </div>
+  <footer id="data">
+  </footer>
 
 </body>
 </html>

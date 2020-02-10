@@ -15,7 +15,9 @@ catch(err) {
   }
 }
 
-punctuation = /[^a-zA-Z0-9\s:-]/g
+punctuation = /[^a-zA-Z0-9\s:-]/g;
+
+var tappedTwice = false;
   
 last_search_results = [];
 current_song = 0;
@@ -105,6 +107,8 @@ $(document).ready(function(){
 
     $('#searchbox').blur(endSearch); // XXX: need to work on this
     $('#searchbox input').val(''); // initialize to empty
+  
+    makeDraggable();
 
     //toggleHelp();
     //var lib = JsonUrl('lzma'); // JsonUrl is added to the window object
@@ -713,13 +717,7 @@ function processKey(e){
   } 
 }
 
-window.addEventListener('load', function(){
-  makeDraggable(document.getElementById('cur_slide'),
-                document.getElementById('cur_slide'),
-                'dragToggleClass');
-}, false);
-
-function makeDraggable(dragCaptureEl, dragEl, dragAction, dragSide='right') {
+function makeDraggable() {
   let startx = 0;
   let starty = 0;
   let dist = 0;
@@ -727,72 +725,77 @@ function makeDraggable(dragCaptureEl, dragEl, dragAction, dragSide='right') {
   let width = 0;
   let height = 0;
 
-  dragCaptureEl.addEventListener('touchstart', function(e){
-    document.documentElement.className = 'no-overscroll';
+  document.getElementById('slides').addEventListener('touchstart', function(e) {
+    e.preventDefault();   
     var touchobj = e.changedTouches[0]; // reference first touch point (ie: first finger)
     startx = parseInt(touchobj.clientX);
     starty = parseInt(touchobj.clientY);
-    width = dragEl.offsetWidth; // get x position of touch point relative to left edge of browser
-    height = dragEl.offsetHeight; // get x position of touch point relative to left edge of browser
+    width = document.getElementById('cur_slide').offsetWidth; // get x position of touch point relative to left edge of browser
+    height = document.getElementById('cur_slide').offsetHeight; // get x position of touch point relative to left edge of browser
 
-/*    // only do stuff if in right place
-    if (dragSide == 'right'){
-      if (startx > dragCaptureEl.offsetLeft + dragCaptureEl.offsetWidth - width - 32 && startx < dragCaptureEl.offsetLeft + dragCaptureEl.offsetWidth - width + 32) { 
-        dragEl.style.transition = 'all 0s';
-        //e.preventDefault();
+    if(!tappedTwice) {
+      tappedTwice = true;
+      setTimeout( function() { tappedTwice = false; }, 300 );
+      return false;
+    }
+    //action on double tap goes below
+    if(tappedTwice) {
+      if(isSearching()){
+        endSearch();
       }
       else {
-        startx = false;
+        beginSearch();
       }
     }
-    else if (dragSide == 'top'){
-      if((starty > height) && (starty < height + 100)) { 
-        dragEl.style.transition = 'all 0s';
-        //e.preventDefault();
-      }
-      else {
-        startx = false;
-      }
-    }*/
-  }, {passive: true});
 
-  dragCaptureEl.addEventListener('touchmove', function(e){
+  }, {passive: false});
+
+  document.getElementById('slides').addEventListener('touchmove', function(e){
+    e.preventDefault();   
+
     if(startx){
       var touchobj = e.changedTouches[0]; // reference first touch point for this event
       var dist = parseInt(touchobj.clientX) - startx;
       var disty = parseInt(touchobj.clientY) - starty;
+      let cur_slide = document.getElementById('cur_slide');
+      let pre_slide = document.getElementById('pre_slide');
+      let post_slide = document.getElementById('post_slide');
 
-      dragEl.style.transform = 'translateX('+dist+'px)';
-      $('#pre_slide')[0].style.transform = 'translateX(calc('+dist+'px - 100%))';
-      $('#post_slide')[0].style.transform = 'translateX(calc('+dist+'px + 100%))';
-
-      /*if (dragSide == 'right'){
-        dragEl.style.flex = '0 0 '+ parseInt((width-dist)) + 'px';
-        e.preventDefault();
-      }
-      else if (dragSide == 'top'){
-        dragEl.style.flex = '0 0 '+ parseInt((height+disty)) + 'px';
-        e.preventDefault();   
-      }*/
+      cur_slide.style.transform = 'translateX('+dist+'px)';
+      cur_slide.style.transition = '0s';
+      pre_slide.style.transform = 'translateX(calc('+dist+'px - 100%))';
+      pre_slide.style.transition = '0s';
+      post_slide.style.transform = 'translateX(calc('+dist+'px + 100%))';
+      post_slide.style.transition = '0s';
     }
   }, false);
 
-  dragCaptureEl.addEventListener('touchend', function(e){
-    document.documentElement.className = '';
-    dragEl.style.removeProperty('transform');
-    dragEl.style.removeProperty('transition');
+  document.getElementById('slides').addEventListener('touchend', function(e){
     var touchobj = e.changedTouches[0]; // reference first touch point for this event
-    var dist = Math.abs(parseInt(touchobj.clientX) - startx);
+    var dist = startx - parseInt(touchobj.clientX);
     var disty = Math.abs(parseInt(touchobj.clientY) - starty);
-    
-    if (startx && dragSide == 'right' && dist > 100 ){ //make sure that distance isn't just accidental
-      //dragAction(dragEl, 'sidebar-open');
+    console.log(dist);
+
+    $('.slide').removeAttr('style');
+    document.getElementById('cur_slide').style.removeProperty('transition');
+
+    if(dist > 100 ){ //make sure that distance isn't just accidental
+      $('#pre_slide').remove();
+      $('#cur_slide').attr('id', 'pre_slide');
+      $('#post_slide').attr('id', 'cur_slide');
+      $('#cur_slide').after('<div id="post_slide" class="slide"><div class="content"></div></div>');
+
+      nextChunk();
       e.preventDefault(); 
     }
-    else if (startx && dragSide == 'top' && disty > 200 ){
-      //dragAction();
+    else if(dist < -100){
+      $('#post_slide').remove();
+      $('#cur_slide').attr('id', 'post_slide');
+      $('#pre_slide').attr('id', 'cur_slide');
+      $('#cur_slide').before('<div id="pre_slide" class="slide"><div class="content"></div></div>');
+
+      prevChunk();
       e.preventDefault();
     }
   }, false); 
 }
-
