@@ -848,16 +848,31 @@
                   if(hash.indexOf('new') > -1){
                     window.presentationFrame = window.open('presentation.html','_blank', height="200", width="200");
                     window.presentationFrame.onload = function() {
+
+                      //pass the presentation window the json object
                       window.presentationFrame.songbook = {songs: result.rows, title: window.songbook.title};
                       window.location = '#'+window.songbook._id;
+
+                      //Save json object to data id'd element
+                      let myString = JSON.stringify(window.presentationFrame.songbook);
+                      window.presentationFrame.document.getElementById('data').setAttribute('data', myString);
+
+                      //load the jquery and presentation.js file into script tags
+                      $.getScript("jquery-3.4.0.min.js", function(data) {
+                        window.presentationFrame.document.getElementById('jQuery_embed').innerHTML = data;
+                      });
+                      $.getScript("presentation.js", function(data) {
+                        window.presentationFrame.document.getElementById('presentation_embed').innerHTML = data;
+                      });
                     };
                   }else {
                     window.presentationFrame = document.getElementById('presentation');
                     window.presentationFrame.contentWindow.focus();
                     window.presentationFrame.onload = function() {
+                      //pass the presentation iframe the json object
                       window.presentationFrame.contentWindow.songbook = {songs: result.rows, title: window.songbook.title};
                     };
-                    window.presentationFrame.src = 'presentation.html';  
+                    window.presentationFrame.src = 'presentation_iframe.html';  
                   }
                   resolve('Its done')
                 }).catch(function (err) {
