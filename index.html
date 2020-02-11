@@ -753,11 +753,27 @@
           //Initiate song export
           Promise.all([loadSongbook(parseHash('sb-')), loadSong(parseHash('s-'))])
             .then(function(){
-            //get the song object db.get(id) and save it to window.exportObject
-              return window.exportObject = window.song;
+              window.exportObject = window.song;
+              console.log(exportObject);
+              //PREPROCESS THE SONG OBJECT
+              // -- REMOVE ALL COMMENTS
+              let chunks = [];
+              for(var i = 0; i < window.song.content.length; i++) {
+                if(window.song.content[i][0].type != 'comment') {
+                  chunks.push(window.song.content[i]);
+                }
+              }
+              if(chunks.length == 0) {
+                alert("You can't export a song with no verses, chorus, or other text");
+                window.location = '#'+window.songbook._id+'&'+window.song._id;
+              }
+              window.exportObject.content = chunks;
+              console.log(exportObject);
+
+              return 
             }).then(function(values){
               prepExport();
-              console.log(window.exportObject);
+              //console.log(window.exportObject);
               //makePDF(window.exportObject, document.querySelector('embed'));
 
               //Initiate song export
@@ -813,6 +829,22 @@
                   keys: sb_song_ids, //we need error handling for missing ids
                 }).then(function (result) {
                   window.exportObject.songs = result.rows;
+                  //PREPROCESS THE SONGBOOK OBJECT
+                  let procesed_song = [];
+                  for(song of window.exportObject.songs) {
+                    // -- REMOVE ALL COMMENTS
+                    for(var i = song.doc.content.length - 1; i >= 0; i--) {
+                      if(song.doc.content[i][0].type === 'comment') {
+                        song.doc.content.splice(i, 1);
+                      }
+                    }
+                    // -- REMOVE ALL EMPTY SONGS
+                    if(song.doc.content.length != 0) {
+                      procesed_song.push(song);        
+                    }
+                  }
+                  window.exportObject.songs = procesed_song;
+
                   prepExport();
                   resolve('Its done')
                 }).catch(function (err) {

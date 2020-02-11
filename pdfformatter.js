@@ -5,67 +5,8 @@ var doc;
 var inch = 72;
 function makePDF(lorem, iframe) {
   format(window.exportObject, iframe, read_config_form());
-
 }
 
-////!/usr/bin/env python
-//import os.path
-
-//import re
-//import string
-
-/*try: // try c version for speed then fall back to python
-  from xml.etree.cElementTree import Element
-  from xml.etree.cElementTree import parse as etree_parse
-except ImportError:
-  from xml.etree.ElementTree import Element
-  from xml.etree.ElementTree import parse as etree_parse
-
-import reportlab.lib.pagesizes
-from reportlab.pdfgen import canvas
-from reportlab.lib.units import toLength, inch
-from reportlab.pdfbase.pdfmetrics import stringWidth
-
-from optparse import OptionParser
-
-try:
-    from collections import defaultdict
-except:
-    class defaultdict(dict):
-        constructor(this, default_factory=null, *a, **kw):
-            if (default_factory is not null and
-                not hasattr(default_factory, '__call__')):
-                raise TypeError('first argument must be callable')
-            dict.__init__(this, *a, **kw)
-            this.default_factory = default_factory
-        def __getitem__(this, key):
-            try:
-                return dict.__getitem__(this, key)
-            except KeyError:
-                return this.__missing__(key)
-        def __missing__(this, key):
-            if this.default_factory is null:
-                raise KeyError(key)
-            this[key] = value = this.default_factory()
-            return value
-        def __reduce__(this):
-            if this.default_factory is null:
-                args = tuple()
-            else:
-                args = this.default_factory,
-            return type(this), args, null, null, this.items()
-        def copy(this):
-            return this.__copy__()
-        def __copy__(this):
-            return type(this)(this.default_factory, this)
-        def __deepcopy__(this, memo):
-            import copy
-            return type(this)(this.default_factory,
-                              copy.deepcopy(this.items()))
-        def __repr__(this):
-            return 'defaultdict(%s, %s)' % (this.default_factory,
-                                            dict.__repr__(this))
-*/
 class defaultdict {
   constructor(defaultInit) {
     return new Proxy([], {
@@ -101,8 +42,8 @@ var SCRIPTURE_UNDER_TITLE = 'under-title';
 var INDEX_ON_NEW_PAGE     = 'on-new-page';
 var INDEX_NO_PAGE_BREAK   = 'no-page-break';
 var INDEX_OFF             = 'no-index';
-//var BIBLE_BOOK_ORDER_DICT = {'gen':1,'genesis':1,'ex':2,'exod':2,'exodus':2,'lev':3,'leviticus':3,'num':4,'numbers':4,'deut':5,'deuteronomy':5,'josh':6,'joshua':6,'judg':7,'judges':7,'ruth':8,'ruth':8,'1 sam':9,'1 samuel':9,'2 sam':10,'2 samuel':10,'1 kings':11,'1 kings':11,'2 kings':12,'2 kings':12,'1 chr':13,'1 chron':13,'1 chronicles':13,'2 chr':14,'2 chron':14,'2 chronicles':14,'i sam':9,'i samuel':9,'ii sam':10,'ii samuel':10,'i kings':11,'i kings':11,'ii kings':12,'ii kings':12,'i chron':13,'i chronicles':13,'ii chron':14,'ii chronicles':14,'ezra':15,'ezra':15,'neh':16,'nehemiah':16,'esth':17,'esther':17,'job':18,'job':18,'ps':19,'psalm':19,'psalms':19,'prov':20,'proverbs':20,'eccles':21,'ecclesiastes':21,'song of sol':22,'song of solomon':22,'isa':23,'is':23,'isaiah':23,'jer':24,'jeremiah':24,'lam':25,'lamentations':25,'ezek':26,'ezekiel':26,'dan':27,'daniel':27,'hos':28,'hosea':28,'joel':29,'joel':29,'amos':30,'amos':30,'obad':31,'obadiah':31,'jon':32,'jonah':32,'mic':33,'micah':33,'nah':34,'nahum':34,'hab':35,'habakkuk':35,'zeph':36,'zephaniah':36,'hag':37,'haggai':37,'zech':38,'zechariah':38,'mal':39,'malachi':39,'matt':40,'mt':40,'matthew':40,'mk':41,'mark':41,'lk':42,'luke':42,'jn':43,'john':43,'act':44,'acts':44,'rom':45,'romans':45,'1 cor':46,'1 corinthians':46,'i cor':46,'i corinthians':46,'2 cor':47,'2 corinthians':47,'ii cor':47,'ii corinthians':47,'gal':48,'galatians':48,'eph':49,'ephesians':49,'phil':50,'philippians':50,'col':51,'colossians':51,'1 thess':52,'1 thessalonians':52,'i thess':52,'i thessalonians':52,'2 thess':53,'2 thessalonians':53,'ii thess':53,'ii thessalonians':53,'1 tim':54,'1 timothy':54,'2 tim':55,'2 timothy':55,'i tim':54,'i timothy':54,'ii tim':55,'ii timothy':55,'tit':56,'titus':56,'philem':57,'philemon':57,'heb':58,'hebrews':58,'jas':59,'james':59,'1 pet':60,'1 peter':60,'2 pet':61,'2 peter':61,'1 john':62,'1 john':62,'2 john':63,'2 john':63,'3 john':64,'3 john':64,'i pet':60,'i peter':60,'ii pet':61,'ii peter':61,'i john':62,'i john':62,'ii john':63,'ii john':63,'iii john':64,'iii john':64,'jude':65,'jude':65,'rev':66,'revelation':66};
 var BIBLE_BOOK_ORDER_DICT = {'gen':1,'genesis':1,'ex':2,'exod':2,'exodus':2,'lev':3,'leviticus':3,'num':4,'numbers':4,'deut':5,'deuteronomy':5,'josh':6,'joshua':6,'judg':7,'judges':7,'ruth':8,'1 sam':9,'1 samuel':9,'2 sam':10,'2 samuel':10,'1 kings':11,'2 kings':12,'1 chr':13,'1 chron':13,'1 chronicles':13,'2 chr':14,'2 chron':14,'2 chronicles':14,'i sam':9,'i samuel':9,'ii sam':10,'ii samuel':10,'i kings':11,'ii kings':12,'i chron':13,'i chronicles':13,'ii chron':14,'ii chronicles':14,'ezra':15,'neh':16,'nehemiah':16,'esth':17,'esther':17,'job':18,'ps':19,'psalm':19,'psalms':19,'prov':20,'proverbs':20,'eccles':21,'ecclesiastes':21,'song of sol':22,'song of solomon':22,'isa':23,'is':23,'isaiah':23,'jer':24,'jeremiah':24,'lam':25,'lamentations':25,'ezek':26,'ezekiel':26,'dan':27,'daniel':27,'hos':28,'hosea':28,'joel':29,'amos':30,'obad':31,'obadiah':31,'jon':32,'jonah':32,'mic':33,'micah':33,'nah':34,'nahum':34,'hab':35,'habakkuk':35,'zeph':36,'zephaniah':36,'hag':37,'haggai':37,'zech':38,'zechariah':38,'mal':39,'malachi':39,'matt':40,'mt':40,'matthew':40,'mk':41,'mark':41,'lk':42,'luke':42,'jn':43,'john':43,'act':44,'acts':44,'rom':45,'romans':45,'1 cor':46,'1 corinthians':46,'i cor':46,'i corinthians':46,'2 cor':47,'2 corinthians':47,'ii cor':47,'ii corinthians':47,'gal':48,'galatians':48,'eph':49,'ephesians':49,'phil':50,'philippians':50,'col':51,'colossians':51,'1 thess':52,'1 thessalonians':52,'i thess':52,'i thessalonians':52,'2 thess':53,'2 thessalonians':53,'ii thess':53,'ii thessalonians':53,'1 tim':54,'1 timothy':54,'2 tim':55,'2 timothy':55,'i tim':54,'i timothy':54,'ii tim':55,'ii timothy':55,'tit':56,'titus':56,'philem':57,'philemon':57,'heb':58,'hebrews':58,'jas':59,'james':59,'1 pet':60,'1 peter':60,'2 pet':61,'2 peter':61,'1 john':62,'2 john':63,'3 john':64,'i pet':60,'i peter':60,'ii pet':61,'ii peter':61,'i john':62,'ii john':63,'iii john':64,'jude':65,'rev':66,'revelation':66};
+
 /*================
 // our data objects
 // ================*/
@@ -140,7 +81,6 @@ class ScripIndex extends Array {
 class CatIndex extends defaultdict {
   constructor() {
     var star_args = Array.prototype.slice.call(arguments, constructor.length);
-    //defaultdict.call(this, list, star_args)
     super(star_args);
     this.height = 0;
     this.height_after = 0;
@@ -222,7 +162,6 @@ function sort_scrip_index(scrip_ref){
   let book_number;
   let chapter_number;
   let verse_number;
-  //x = re.split('\s(?=\d)', scrip_ref.trim().replace('.',''), 1);
   
   // get the book number XX
   try {
@@ -250,7 +189,6 @@ function sort_scrip_index(scrip_ref){
   // get verse number ZZZ
   try {
     verse_number = x[1].split(':')[1].split(/[-,]/)[0];
-    //verse_number = re.split('[-,]',x[1].split(':')[1])[0];
     verse_number = verse_number.padStart(3,'0');
     if (verse_number.length > 3) {
       verse_number = '000';
@@ -343,9 +281,6 @@ function parse_song(song_object){  //json song object
 
 
 function parse(export_object, cfg) {
-  // if xml passed as filename, convert to object
-  /*if isinstance(xml, basestring) and os.path.isfile(xml):
-    xml = etree_parse(xml).getroot()*/
 
   // check if we are parsing a song and not a songbook
   if (export_object._id.startsWith('s-')) {
@@ -364,11 +299,9 @@ function parse(export_object, cfg) {
   let songbook = new Songbook(title);
 
   let song_num = 1;
-  // iterate through all songs in the songbook
 
-  for(let i = 0; i < export_object.songrefs.length; i++) {
-//  for(var songref;  of export_object.songrefs') {
-    //song_xml = etree_parse(songref.attrib['ref'])
+  // iterate through all songs in the songbook
+  for(let i = 0; i < export_object.songs.length; i++) {
     
     if(cfg.SONGS_TO_PRINT.indexOf(export_object.songrefs[i].status)==-1){
       continue;
@@ -1214,7 +1147,6 @@ function calc_heights(songbook, cfg, doc) {
     small_text = small_text.join(' '*8);
     song.small_text = word_wrap(small_text, cfg.page_layout.get_page_width(), cfg.FONT_FACE, cfg.SMALL_SIZE, 0, doc);
     // add height of wrapped small_text
-    //song.height += sum(cfg.SMALL_SIZE + cfg.SMALL_SPACE for line in song.small_text)
     song.height += (cfg.SMALL_SIZE + cfg.SMALL_SPACE)*song.small_text.length;
 
 
@@ -1451,7 +1383,6 @@ function format_page(doc, cfg, page_mapping) {
             //else: ignore new_y and we print on same line below
           }
 
-
           // shrink font size, or wrap the line if that lets us fit
           // if resize != 0 we are shrinking, else we wrap
           let font_size = cfg.SONGLINE_SIZE;
@@ -1607,21 +1538,12 @@ function format(songbook, iframe, cfg) {
     doc.addPage();
     for(const page_mapping of physical_page) {
       format_page(doc, cfg, page_mapping);
-     // console.log(page_mapping);
     }
     //This won't work until we start messaging via web workers - UI is frozen until js finishes.
    // console.log(parseInt(((parseInt(i,10)+1) / pages_ordered.length)*100, 10) +'%');
     window.document.getElementById('pdf_progress').style.width = parseInt(((parseInt(i,10)+1) / pages_ordered.length)*100,10) +'%';
     window.document.getElementById('pdf_progress_text').innerHTML = parseInt(((parseInt(i,10)+1) / pages_ordered.length)*100,10) +'%';
-    // debug -- print page (small page here) rect
-    //pdf.rect(cfg.PAPER_MARGIN_LEFT, cfg.PAPER_HEIGHT-cfg.PAPER_MARGIN_TOP,
-        //cfg.PAPER_WIDTH-cfg.PAPER_MARGIN_RIGHT-cfg.PAPER_MARGIN_LEFT,(cfg.PAPER_MARGIN_BOTTOM+cfg.PAPER_MARGIN_TOP)-cfg.PAPER_HEIGHT,
-        //fill=0)
-    // done with (sub/virtual) pages that are written on one physical page -- on to next page
-    //pdf.showPage();
   }
-
-
 
   // end and display the document in the iframe to the right
   doc.end();
@@ -1630,25 +1552,7 @@ function format(songbook, iframe, cfg) {
   });
   console.log(new Date() - old_time);
 
- /* for(const physical_page of pages_ordered) {
-    for(const page_mapping of physical_page) {
-      format_page(pdf, cfg, page_mapping);
-    }
-
-    // debug -- print page (small page here) rect
-    //pdf.rect(cfg.PAPER_MARGIN_LEFT, cfg.PAPER_HEIGHT-cfg.PAPER_MARGIN_TOP,
-        //cfg.PAPER_WIDTH-cfg.PAPER_MARGIN_RIGHT-cfg.PAPER_MARGIN_LEFT,(cfg.PAPER_MARGIN_BOTTOM+cfg.PAPER_MARGIN_TOP)-cfg.PAPER_HEIGHT,
-        //fill=0)
-    // done with (sub/virtual) pages that are written on one physical page -- on to next page
-    pdf.showPage();
-  }
-
-  // now save
-  pdf.save();*/
 }
-
-//def read_config_file(filename):
-  //return read_config(open(filename).read())
 
 function read_config_form(){
   let opts = $('#export_form').serializeArray();
@@ -1682,7 +1586,7 @@ function read_config(config_array) {
       return 'You missed something!';
     }
   }
-  //console.log(config_array);
+
   var options = [];
   options.SONGS_TO_PRINT =         ((config_array.print_a == 'on') ? 'a' : '') + 
                                    ((config_array.print_n == 'on') ? 'n' : '') + 
@@ -1757,7 +1661,6 @@ function read_config(config_array) {
 
   options.DEBUG_MARGINS =          safe_var(config_array.debug_margins,              'string');
 
-  //(options, args) = config.parse_args(config_string.split())
   if (options.SONGS_TO_PRINT == '') {
     options.SONGS_TO_PRINT = 'anr';
   }
@@ -1877,44 +1780,3 @@ function read_config(config_array) {
   }
   return options;
 }
-/*
-def available_fonts():
-  import reportlab.pdfbase.pdfmetrics as pdfmetrics
-  // list(set(...)) to make list unique
-  return sorted(list(set(list(pdfmetrics.standardFonts) + pdfmetrics.getRegisteredFontNames())))
-
-def get_options(config_option):
-  if config_option == '--paper-size':
-    return [s for s in dir(reportlab.lib.pagesizes) if isinstance(getattr(reportlab.lib.pagesizes, s), tuple) ]
-
-  elif config_option in ('--font-face', '--index-title-font', '--index-cat-font', '--index-song-font', '--index-first-line-font'):
-    return available_fonts()
-
-  elif config_option == '--page-layout':
-    return get_page_layouts()
-
-  elif config_option == '--paper-orientation':
-    return ['portrait', 'landscape']
-
-  elif config_option in ('--display-chords', '--hide-booktitle', '--start-song-on-new-page'):
-    return ['no', 'yes']
-
-  elif config_option == '--display-index':
-    return [INDEX_ON_NEW_PAGE, INDEX_NO_PAGE_BREAK, INDEX_OFF]
-  //  return [INDEX_ON_NEW_PAGE, INDEX_AFTER_LAST_SONG, INDEX_OFF]
-
- // elif config_option == '--display-cat-index':
- //   return [INDEX_ON_NEW_PAGE, CAT_INDEX_AFTER_INDEX, INDEX_OFF]
-
-  elif config_option == '--scripture-location':
-    return [SCRIPTURE_IN_TITLE, SCRIPTURE_UNDER_TITLE]
-
-def format2pdf(songbook_file, pdf_out_file, config_string):
-  return format(songbook_file, pdf_out_file, read_config(config_string))
-
-
-if __name__ == '__main__':
-  import sys
-  format(sys.argv[1], sys.argv[2], read_config_file(sys.argv[3]))
-*/
-
