@@ -98,18 +98,20 @@ $(document).ready(function(){
     //var lib = JsonUrl('lzma'); // JsonUrl is added to the window object
     //lib.decompress($('footer').attr('data')).then(output => {console.log(output)});
 
-    if(window.songbook) {
-      let myString = JSON.stringify(window.songbook);
-      $('footer').attr('data', myString);
-    }
-    else {
+    if(!window.songbook) {
       let myString = $('footer').attr('data');
-      window.songbook = JSON.parse(myString);
+      if(myString == undefined) {
+        alert("Couldn't load presentation");
+      }
+      else {     
+        window.songbook = JSON.parse(myString);
+        enterPresentation();
+        exitPresentation(); 
+        $('#cur_slide .content').html('<div style="width: 100%;position: absolute; top: 40%;"><div style="width: 100%;text-align: center"><h1>Presenting</h1><h2><i id="pres_title">Lorem Ipsum</i></h2></div></div></div>');
+        document.getElementById('pres_title').innerHTML = window.songbook.title;
+        window.document.title = "yCanta2: Presenting " + window.songbook.title;
+      }
     }
-
-    document.getElementById('pres_title').innerHTML = window.songbook.title;
-    window.document.title = "yCanta2: Presenting " + window.songbook.title;
-
     //PREPROCESS THE SONGBOOK OBJECT
     let procesed_song = [];
     for(song of window.songbook.songs) {
@@ -130,7 +132,7 @@ $(document).ready(function(){
 function myEscape(text) { return text.replace('<', '&lt;').replace('>', '&gt;'); }
 
 function openWindow() {
-  secondary_windows.push(window.open('presentation?secondary=true','_blank', height="200", width="200"))
+  secondary_windows.push(window.open('presentation.html','_blank', height="200", width="200"))
 }
 
 function toggleHelp() {
@@ -375,7 +377,7 @@ function showChunk(name) {
 
     $.each(secondary_windows, function(index,value) { 
       try{
-        $(this.document).find('body #songbook').html($("#current").parent().clone())
+        $(this.document).find('#slides').html($("#cur_slide").clone());
         this.scaleText();
         $(this.document).find('#progress').css('width', ''+((pos / total) * 100)+'%'); // set progress bar
       }
