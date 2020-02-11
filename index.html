@@ -24,6 +24,7 @@
     <script src="pdfformatter.js"></script>
     <script src="pdfkit.standalone.js"></script>
     <script src="blob-stream.js"></script>
+    <!--script type="text/javascript" src="json-url.js"></script-->
 
     <link rel="stylesheet" type="text/css" href="style.css">
     <link rel="stylesheet" type="text/css" href="jquery.myTransposer.css">
@@ -102,7 +103,7 @@
         <div class="float-menu">
           <a data-song-edit="new" class="float-menu-item"><span class="float-menu-icon">+</span> Add Song</a>
           <button data-home onclick="deleteSongbook(window.songbook._id)" class="float-menu-item delete"><span class="float-menu-icon">&#128465;</span> Delete</button>
-          <span class="float-menu-item"><span class="float-menu-icon">&#128253;</span> Present</span>
+          <button data-songbook-present class="float-menu-item" id="present"><span class="float-menu-icon">&#128253;</span> Present</button>
           <a data-songbook-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</a>
           <a data-songbook-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>
           <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>
@@ -130,15 +131,7 @@
               <li id="song-item-template" 
                   data-song-id=""
                   data-song-rev=""
-                  data-song-title=""
-                  data-song-authors=""
-                  data-song-scripture_ref=""
-                  data-song-introduction=""
-                  data-song-key=""
-                  data-song-categories=""
-                  data-song-cclis=""
-                  data-song-content=""
-                  data-song-copyright="">
+                  data-song-search="">
                   <a href="" class="link name" tabindex="0"></a>
               </li>
             </ul>
@@ -155,15 +148,7 @@
                 <li id="song-item-template-edit" 
                   data-song-id=""
                   data-song-rev=""
-                  data-song-title=""
-                  data-song-authors=""
-                  data-song-scripture=""
-                  data-song-introduction=""
-                  data-song-key=""
-                  data-song-categories=""
-                  data-song-cclis=""
-                  data-song-content=""
-                  data-song-copyright="">
+                  data-song-search="">
                   <a href="" class="name"tabindex="0" ></a>
                 </li>
               </ul>
@@ -175,7 +160,6 @@
         <div class="float-menu">
           <button data-songbook onclick="deleteSong(window.song._id)" class="float-menu-item"><span class="float-menu-icon">&#128465;</span> Delete</button>
           <a data-song-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</a>
-          <span class="float-menu-item"><span class="float-menu-icon">&#128253;</span> Present</span>
           <a data-song-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>
           <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>
         </div>
@@ -653,13 +637,13 @@
         <div class="float-menu">
         </div>
       </div>
-      
     </main>
     <footer>
       <span style="float: right;">rev __________ 1</span>    
       <div id="debugDiv">
       </div>
     </footer>
+    <iframe id="presentation"></iframe>
     <script>
       $('#song .row').append('<button onclick="toggleFullscreen(this)" class="icon-rotate2x tr">&#8596;</button>');
 
@@ -829,7 +813,6 @@
                   keys: sb_song_ids, //we need error handling for missing ids
                 }).then(function (result) {
                   window.exportObject.songs = result.rows;
-                  console.log(window.exportObject);
                   prepExport();
                   resolve('Its done')
                 }).catch(function (err) {
@@ -846,6 +829,50 @@
               window.document.title = "yCanta2: Exporting " + window.songbook.title;
           });
         }
+        //if songbook present
+        else if((hash.search('#sb-') != -1) && (hash.search('&present') != -1)) {
+          //Initiate songbook export
+          Promise.resolve(loadSongbook(parseHash('sb-')))
+            .then(function(){
+              //get the songbook object and all songs and save them to window.exportObject
+              return new Promise(function(resolve, reject){
+                //Songbooks are already loaded into the window.songbook object
+                window.exportObject = window.songbook;
+                var sb_song_ids = window.songbook.songrefs.map(function (row) {
+                    return row.id
+                  });
+                db.allDocs({
+                  include_docs: true,
+                  keys: sb_song_ids, //we need error handling for missing ids
+                }).then(function (result) {
+                  if(hash.indexOf('new') > -1){
+                    window.presentationFrame = window.open('presentation.html','_blank', height="200", width="200");
+                    window.presentationFrame.onload = function() {
+                      window.presentationFrame.songbook = {songs: result.rows, title: window.songbook.title};
+                      window.location = '#'+window.songbook._id;
+                    };
+                  }else {
+                    window.presentationFrame = document.getElementById('presentation');
+                    window.presentationFrame.contentWindow.focus();
+                    window.presentationFrame.onload = function() {
+                      window.presentationFrame.contentWindow.songbook = {songs: result.rows, title: window.songbook.title};
+                    };
+                    window.presentationFrame.src = 'presentation.html';  
+                  }
+                  resolve('Its done')
+                }).catch(function (err) {
+                  console.log(err);
+                });
+              });
+            }).then(function(values){
+            if(hash.indexOf('new') == -1){
+              $('body').attr('class', 'songList present');
+              $('.active').removeClass('active');
+              updateAllLinks();
+              window.document.title = "yCanta2: Presenting " + window.songbook.title;
+            }
+          });
+        }
         //if songbook
         else if(hash.search('#sb-') != -1) {
           Promise.resolve(loadSongbook(parseHash('sb-')))
@@ -860,5 +887,5 @@
         window.old_hash = window.location.hash;
       }
     </script>
-  </body>
+  </body>  
 </html>

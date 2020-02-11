@@ -89,6 +89,42 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
       song.content      = chunks;
       song.copyright    = song_html.find('copyright').text();
 
+//Put together Search field.
+      let punctuation = /[^a-zA-Z0-9\s:-]/g;
+
+      function formatArray(array, letter){
+        return (array != '' ? array.join(' '+letter+':') : '!'+letter);
+      }
+      function formatText(text, letter){
+        return (text != '' ? text : '!'+letter);
+      }
+      function formatSongContent(content){
+        var song_content = '';
+        
+        var i, j;
+        for (i = 0; i < content.length; i++) { 
+          for (j = 0; j < content[i][1].length; j++ ) {
+            let new_line = escapeRegExp(remove_chords(content[i][1][j]).replace(/\s\s+/g,' ').replace(punctuation,'') + '\n');
+            if(song_content.search(new_line) === -1) {
+              //this content is not in the search, add it!
+              song_content += new_line;
+            }
+          }
+        }
+        return song_content;
+      }
+      let ssearch =  't:' + song.title
+                   + ' a:' + formatArray(song.authors, 'a')
+                   + ' s:' + formatArray(song.scripture_ref, 's')
+                   + ' i:' + formatText(song.introduction, 'i')
+                   + ' k:' + formatText(song.key, 'k')
+                   + ' c:' + formatArray(song.categories, 'c')
+                   + ' cp:' + formatText(song.copyright, 'cp')
+                   + ((song.cclis!='') ? ' cclis ' : ' !cclis ') 
+                   + ' ' + formatSongContent(song.content);
+
+      song.search = ssearch.replace(/\s\s+/g, ' ');
+
       db.put(song, function callback(err, result) {
         if (!err) {
           console.log('saved: ', song.title);
@@ -461,7 +497,8 @@ var song = {
     "Show us how to <c>E</c>serve",
     "The neighbors we<c>B</c> have from <c>E</c>You."]]
     ],
-  copyright: '© 1969 Hope Publishing Company'
+  copyright: '© 1969 Hope Publishing Company',
+  search: "t:Jesu Jesu a:Tom Colvin a:yolo s:!s i:!i k:E c:Children's Songs c:Humility c:Love for Others c:Servanthoodcp:© 1969 Hope Publishing CompanycclisJesu, Jesu, Fill us with you love, Show us how to serve The neighbors we have from You. Jesu, Jesu, Fill us with you love, Show us how to serve The neighbors we have from You. "
 };
 
 db.put(song, function callback(err, result) {

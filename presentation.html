@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+  <!-- keep this valid HTML5 http://html5.validator.nu/ -->
+  <head>
+    <meta charset="UTF-8" />
+
+    <script type="text/javascript" py:content="jQuery"></script>
+    <script src="jquery-3.4.0.min.js"></script>
+
+    <script type="text/javascript" py:content="presentation"> </script>
+    <script src="presentation.js"></script>
+    <!--script type="text/javascript" src="json-url.js"></script-->
+
+    <style type="text/css">
+
+      /*===============================*/
+      /* First non-presentation styles */
+      /*===============================*/
+      .slide {
+        transition: .25s;
+        padding: 1rem;
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+      }
+      #pre_slide {
+        transform: translateX(-100%);
+      }
+
+      #post_slide {
+        transform: translateX(100%);
+      }
+
+      body {
+        color: #000;
+        background-color: #fff;
+      }
+
+      stitle, author, scripture_ref, copyright, line {display: block; white-space: pre;}
+
+      #songbook {
+        float: left;
+        white-space: nowrap;
+      }
+      chunk {
+        display: block;
+      }
+
+      stitle {
+        font-weight: bold;
+        counter-reset: verse;
+      }
+      song chunk[type=verse]:before {
+        content: counter(verse) ':';
+        counter-increment: verse;
+      }
+      body.presentation chunk[type=verse]:before { /* hide counter in presentation */
+        content: '';
+      }
+      chunk:before {content: "";}
+      chunk[type=pre-chorus]:before {
+        content: 'Pre-Chorus:';
+      }
+      chunk[type=chorus]:before {
+        content: 'Chorus:';
+      }
+      chunk[type="final chorus"]:before {
+        content: 'Final Chorus:';
+      }
+      chunk[type=bridge]:before {
+        content: 'Bridge:';
+      }
+      chunk[type=ending]:before {
+        content: 'Ending:';
+      }
+      .no_display {display: none;}
+
+      #statusbar {
+        position: fixed;
+        bottom: 0px;
+        border: solid 1px gray;
+        background-color: white;
+        width: 100%;
+      }
+
+      #progress {
+        background-color: gray;
+        height: 0.25em;
+        width: 0%;
+      }
+
+      #searchbox {
+        display: none;
+      }
+
+      #searchresults .count {
+        color: gray;
+      }
+      #searchresults .song {
+        font-weight: bold;
+      }
+      #searchresults .match {
+        color: red;
+      }
+
+      /*====================================*/
+      /* Presentation style overrides below */
+      /*====================================*/
+      body.presentation chunk span {display: block;}
+      body.presentation stitle,
+      body.presentation chunk,
+      body.presentation .booktitle {
+        clear: both;
+        font-weight: bold;
+      }
+
+      body.presentation copyright {
+        white-space: pre-wrap;                  //css-3
+        white-space: -moz-pre-wrap !important;  //Mozilla, since 1999
+        white-space: -pre-wrap;                 //Opera 4-6
+        white-space: -o-pre-wrap;               //Opera 7
+        word-wrap: break-word;                  //Internet Explorer 5.5+
+      }
+
+      body.presentation author, 
+      body.presentation copyright,
+      body.presentation scripture_ref {
+        padding-right: 1em;
+        font-size: x-large;
+        font-style: italic;
+        float: left;
+      }
+      body.presentation key {
+        padding-right: 1em;
+        font-size: x-large;
+        font-style: italic;
+        float: right;
+      }
+      body.presentation key:not(:empty):before {
+        content: 'Key: ';
+      }
+
+      body.presentation #songbook #current {
+        display: block;
+      }
+
+      body.presentation #songbook #current stitle {
+        display: block;
+      }
+
+      html, body, #songboook {
+        padding: 0px;
+        margin: 0px;
+      }
+
+      #help {
+        border-top: solid 1px black;
+        border-bottom: solid 1px black;
+        margin-bottom: 30px;
+        border-collapse: collapse;
+      }
+
+      #help td.description {
+        padding-left: 1em;
+      }
+
+      #help .newdescription td {
+        border-top: solid 1px black;
+        padding-top: 5px;
+        margin-top: 5px;
+      }
+
+      /* black and white screen clearing */
+      body.black {
+        background-color: #000;
+      }
+      body.black #statusbar {
+        background-color: #222;
+      }
+      body.black #statusbar input {
+        background-color: #222;
+      }
+      body.black #statusbar #searchresults .match {
+        color: #500;
+      }
+
+      body.white {
+        color: #fff;
+      }
+      body.white #statusbar {
+        color: gray;
+      }
+      body.white #statusbar input {
+        color: gray;
+      }
+      /*====================================*/
+      /* Chord style overrides below        */
+      /*====================================*/
+      chunk:before {
+        display: block;
+        margin-bottom: 1em;
+        font-size: 60%;
+        font-style: italic; 
+        color: grey;
+      }
+      body.presentation chunk[type=verse] span {
+        font-size: 60%;
+        font-style: italic; 
+        color: gray;
+      }
+      body.nochords chunk:before {
+        margin-bottom: 0em;
+      }
+      chunk[type=verse]:before {
+        margin-bottom: 0em;
+      }
+      c {
+        position: absolute;
+        bottom: 1em;
+      }
+      body.nochords c {
+        display: none;
+      }
+      body.nochords line {
+        padding-top: 0em;
+        bottom: 0em;
+        margin-left: 0em;
+      }
+      line {
+        display: block;
+        position: relative;
+        padding-top: 1em;
+        margin-left: 2em;
+        bottom: 1em;
+      }
+
+    </style>
+
+    <title></title>
+    <script src="jquery-3.4.0.min.js"></script>
+    <script id="tmp2" type="text/javascript">
+    </script><script type="text/javascript">
+      $(document).ready(function(){
+        //togglePresentation();
+        //$("#tmp2").text('function alert2() {alert("hi");}');
+        //setTimeout(function(){alert2();}, 3000);
+       // console.log($('footer').attr('data'));
+      })
+    </script>
+  </head>
+  <body class="nochords" data-songbookJson="">
+  
+  <!-- Dynamically loaded into these divs for transitions, etc.-->
+  <div id="slides">
+    <div id="pre_slide" class="slide">
+      <div class="content"></div>
+    </div>
+    <div id="cur_slide" class="slide">
+      <div class="content">
+        <div style="width: 100%;position: absolute; top: 40%;"><div style="width: 100%;text-align: center"><h1>Presenting</h1><h2><i id="pres_title">Lorem Ipsum</i></h2></div></div>
+      </div>
+    </div>
+    <div id="post_slide" class="slide">
+      <div class="content"></div>
+    </div>
+  </div>
+
+  <div id="statusbar">
+    <div id="searchbox"><div id="searchresults"></div><input type="text"/><span class="info"></span></div>
+    <div id="progress"></div>
+  </div>
+  <footer id="data">
+  </footer>
+
+</body>
+</html>

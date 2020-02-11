@@ -1,6 +1,9 @@
 String.prototype.count=function(s1) { 
     return (this.length - this.replace(new RegExp(s1,"g"), '').length) / s1.length;
 };
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+}
 const copyToClipboard = str => {
   const el = document.createElement('textarea');  // Create a <textarea> element
   el.value = str;                                 // Set its value to the string that you want copied
@@ -393,6 +396,7 @@ function updateAllLinks(whatChanged='all') {
   $('[data-song-export]').attr('href','#'+window.songbook._id+'&'+window.song._id+'&export');
   $('[data-songbook-edit]').attr('href','#'+window.songbook._id+'&edit');
   $('[data-songbook-edit="new"]').attr('href','#sb-new-songbook&edit');
+  $('[data-songbook-present]').attr('href', '#'+window.songbook._id+'&present');
   $('[data-songbook]').attr('href','#'+window.songbook._id);
   $('[data-songbook-export]').attr('href','#'+window.songbook._id+'&export');
   $('[data-home]').attr('href','#');
@@ -416,6 +420,26 @@ $(function () {
   //chord toggling
   $('body').on('click', '.toggle-chords', function() {
     $('#song').toggleClass('nochords');
+  });
+
+  $('#present').mousedown(function(event) {
+    switch (event.which) {
+      case 1:
+        //alert('Left mouse button pressed');
+        window.location = '#'+window.songbook._id+'&present';
+        break;
+      case 2:
+        //alert('Middle mouse button pressed');
+        window.location = '#'+window.songbook._id+'&present+new';
+        break;
+      case 3:
+        //alert('Right mouse button pressed');
+        window.location = '#'+window.songbook._id+'&present+new';
+        break;
+      default:
+        //alert('You have a strange mouse');
+        window.location = '#'+window.songbook._id+'&present';
+    }
   });
 });
 
@@ -482,34 +506,9 @@ function mapSongbookRowToValue(row) {
   };
 }
 function mapSongRowToValue(row) {
-  function formatArray(array, letter){
-    return (array != '' ? array.join(' '+letter+':') : '!'+letter);
-  }
-  function formatText(text, letter){
-    return (text != '' ? text : '!'+letter);
-  }
-  function formatSongContent(content){
-    var song_content = '';
-    
-    var i, j;
-    for (i = 0; i < content.length; i++) { 
-      for (j = 0; j < content[i][1].length; j++ ) {
-        song_content += remove_chords(content[i][1][j]) + '\n';
-      }
-    }
-    return song_content;
-  }
   return { 'song-id':           row.doc._id,
     'song-rev':                 row.doc._rev,
-    'song-title':        't:' + row.doc.title,
-    'song-authors':      'a:' + formatArray(row.doc.authors, 'a'),
-    'song-scripture_ref':'s:' + formatArray(row.doc.scripture_ref, 's'),
-    'song-introduction': 'i:' + formatText(row.doc.introduction, 'i'),
-    'song-key':          'k:' + formatText(row.doc.key, 'k'),
-    'song-categories':   'c:' + formatArray(row.doc.categories, 'c'),
-    'song-copyright':    'c:' + formatText(row.doc.copyright, 'cp'),
-    'song-cclis': ((row.doc.cclis!='') ? 'cclis' : '!cclis'),
-    'song-content': formatSongContent(row.doc.content), 
+    'song-search':              row.doc.search,
     'link': '#'+window.songbook._id+'&'+row.doc._id,
     'name': row.doc.title
   };
@@ -522,15 +521,7 @@ function buildSongbookList(songs, target_class='songbook_content',
     valueNames: [
       { data: ['song-id'] },
       { data: ['song-rev'] },
-      { data: ['song-title'] },
-      { data: ['song-authors'] },
-      { data: ['song-scripture_ref'] },
-      { data: ['song-introduction'] },
-      { data: ['song-key'] },
-      { data: ['song-categories'] },
-      { data: ['song-cclis'] },
-      { data: ['song-content'] },
-      { data: ['song-copyright'] },
+      { data: ['song-search'] },
       { name: 'link', attr: 'href'},
       'name'
     ],
