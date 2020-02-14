@@ -101,7 +101,7 @@ $(document).ready(function(){
     if(!window.songbook) {
       let myString = $('footer').attr('data');
       if(myString == undefined) {
-        alert("Couldn't load presentation");
+        //alert("Couldn't load presentation");
       }
       else {     
         window.songbook = JSON.parse(myString);
