@@ -457,11 +457,11 @@ body.export #export {
 /*Focus Present */
 #presentation {
   display: block;
-  position: absolute;
+  position: fixed;
   transform: translateY(100%);
   border: 0px;
-  height: 0;
   width: 100vw;
+  height: 100vh;
   left: 0;
   top: 0;
   right: 0;
@@ -471,7 +471,6 @@ body.export #export {
 }
 body.present.songList #presentation {
   transform: translateY(0);
-  height: 100vh;
 }
 
 /*normalize*/
