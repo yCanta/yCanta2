@@ -13,8 +13,8 @@ presentation_key_map = {
                   "Show/hide help and key bindings for presentation mode"],
   'C'         : [ function() {if(! isSearching()) toggleChords();},
                   "Toggle Chords on/off"   ],
-  'p'         : [ togglePresentation, "Enter/exit fullscreen presentation mode"   ],
-  'F11'       : [ togglePresentation, "Enter/exit fullscreen presentation mode"   ],
+  //'p'         : [ togglePresentation, "Enter/exit fullscreen presentation mode"   ],
+  'F11'       : [ function(){}, "Enter/exit fullscreen presentation mode"   ],
   'escape'    : [ escapeAction      , "Exit search, help, or presentation mode"   ],
       
   't'         : [ function() {if(! isSearching()) blackScreen(); },
@@ -105,11 +105,6 @@ $(document).ready(function(){
       }
       else {     
         window.songbook = JSON.parse(myString);
-        enterPresentation();
-        exitPresentation(); 
-        $('#cur_slide .content').html('<div style="width: 100%;position: absolute; top: 40%;"><div style="width: 100%;text-align: center"><h1>Presenting</h1><h2><i id="pres_title">Lorem Ipsum</i></h2></div></div></div>');
-        document.getElementById('pres_title').innerHTML = window.songbook.title;
-        window.document.title = "yCanta2: Presenting " + window.songbook.title;
       }
     }
     //PREPROCESS THE SONGBOOK OBJECT
@@ -127,6 +122,15 @@ $(document).ready(function(){
       }
     }
     window.songbook.songs = procesed_song;
+
+    //Put default song
+    window.songbook.song_index = window.songbook.songs.length - 1;
+    current_song = window.songbook.songs[window.songbook.song_index];
+    current_song.chunk_index = current_song.doc.content.length - 1;
+    
+    $('#cur_slide .content').html('<div style="width: 100%;position: absolute; top: 40%;"><div style="width: 100%;text-align: center"><h1>Presenting</h1><h2><i id="pres_title">Lorem Ipsum</i></h2></div></div></div>');
+    document.getElementById('pres_title').innerHTML = window.songbook.title;
+    window.document.title = "yCanta2: Presenting " + window.songbook.title;
 });
 
 function myEscape(text) { return text.replace('<', '&lt;').replace('>', '&gt;'); }
@@ -474,7 +478,7 @@ function prevSong(last=false){
 }
 
 function prevChunk(){
-  if(! inPresentation()){ // presentation mode only
+  if(!inPresentation()){ // presentation mode only
     return;
   }
   if(current_song.chunk_index == 0) {
@@ -705,7 +709,7 @@ function escapeAction() {
     endSearch();
   }
   else {
-    exitPresentation();
+    //exitPresentation();
   }
 }
 
@@ -771,7 +775,7 @@ function makeDraggable() {
       cur_slide.style.transition = '0s';
       pre_slide.style.transform = 'translateX(calc('+dist+'px - 100%))'; // + 'translateY('+ (25 - dist/16) + '%) rotateZ(-' + (22.5 - dist/16) + 'deg)';
       pre_slide.style.transition = '0s';
-      post_slide.style.transform = 'translateX(calc('+dist+'px + 100%))'; // + 'translateY('+ (25 + dist/16) + '%) rotateZ(' + (22.5 + dist/16)+'deg)';
+      post_slide.style.transform = 'translateX(calc('+dist+'px + 100%))'; // +  'translateY('+ (25 + dist/16) + '%) rotateZ(' + (22.5 + dist/16)+'deg)';
       post_slide.style.transition = '0s';
     }
   }, false);
