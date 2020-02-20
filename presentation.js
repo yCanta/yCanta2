@@ -769,9 +769,9 @@ function makeDraggable() {
 
       cur_slide.style.transform = 'translateX('+dist+'px)';
       cur_slide.style.transition = '0s';
-      pre_slide.style.transform = 'translateX(calc('+dist+'px - 100%))';
+      pre_slide.style.transform = 'translateX(calc('+dist+'px - 100%))'; // + 'translateY('+ (25 - dist/16) + '%) rotateZ(-' + (22.5 - dist/16) + 'deg)';
       pre_slide.style.transition = '0s';
-      post_slide.style.transform = 'translateX(calc('+dist+'px + 100%))';
+      post_slide.style.transform = 'translateX(calc('+dist+'px + 100%))'; // + 'translateY('+ (25 + dist/16) + '%) rotateZ(' + (22.5 + dist/16)+'deg)';
       post_slide.style.transition = '0s';
     }
   }, false);
