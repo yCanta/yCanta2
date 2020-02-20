@@ -108,20 +108,23 @@ $(document).ready(function(){
       }
     }
     //PREPROCESS THE SONGBOOK OBJECT
-    let procesed_song = [];
-    for(song of window.songbook.songs) {
-      // -- REMOVE ALL COMMENTS
-      for(var i = song.doc.content.length - 1; i >= 0; i--) {
-        if(song.doc.content[i][0].type === 'comment') {
-          song.doc.content.splice(i, 1);
+    setTimeout(function(){
+      let procesed_song = [];
+      for(song of window.songbook.songs) {
+        // -- REMOVE ALL COMMENTS
+        for(var i = song.doc.content.length - 1; i >= 0; i--) {
+          if(song.doc.content[i][0].type === 'comment') {
+            song.doc.content.splice(i, 1);
+          }
+        }
+        // -- REMOVE ALL EMPTY SONGS
+        if(song.doc.content.length != 0) {
+          procesed_song.push(song);        
         }
       }
-      // -- REMOVE ALL EMPTY SONGS
-      if(song.doc.content.length != 0) {
-        procesed_song.push(song);        
-      }
-    }
-    window.songbook.songs = procesed_song;
+      window.songbook.songs = procesed_song;
+      console.log('hi');
+    },300);
 
     //Put default song
     window.songbook.song_index = window.songbook.songs.length - 1;
