@@ -123,17 +123,16 @@ $(document).ready(function(){
         }
       }
       window.songbook.songs = procesed_song;
-      console.log('hi');
-    },300);
 
-    //Put default song
-    window.songbook.song_index = window.songbook.songs.length - 1;
-    current_song = window.songbook.songs[window.songbook.song_index];
-    current_song.chunk_index = current_song.doc.content.length - 1;
-    
-    $('#cur_slide .content').html('<div style="width: 100%;position: absolute; top: 40%;"><div style="width: 100%;text-align: center"><h1>Presenting</h1><h2><i id="pres_title">Lorem Ipsum</i></h2></div></div></div>');
-    document.getElementById('pres_title').innerHTML = window.songbook.title;
-    window.document.title = "yCanta2: Presenting " + window.songbook.title;
+      //Put default song
+      window.songbook.song_index = window.songbook.songs.length - 1;
+      current_song = window.songbook.songs[window.songbook.song_index];
+      current_song.chunk_index = current_song.doc.content.length - 1;
+      
+      $('#cur_slide .content').html('<div style="width: 100%;position: absolute; top: 40%;"><div style="width: 100%;text-align: center"><h1>Presenting</h1><h2><i id="pres_title">Lorem Ipsum</i></h2></div></div></div>');
+      document.getElementById('pres_title').innerHTML = window.songbook.title;
+      window.document.title = "yCanta2: Presenting " + window.songbook.title;
+    },300);
 });
 
 function myEscape(text) { return text.replace('<', '&lt;').replace('>', '&gt;'); }
