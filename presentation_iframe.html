@@ -21,6 +21,7 @@
         bottom: 0;
         left: 0;
         right: 0;
+        z-index: 1;
       }
       #pre_slide {
         transform: translateX(-100%);
@@ -229,7 +230,63 @@
         margin-left: 2em;
         bottom: 1em;
       }
+      /*===============================*/
+      /* Background image css
+      /*===============================*/
+      #slides::before {
+        content: "";
+        display: block;
+        background-image: url(bg.svg);
+        background-position: bottom;
+        background-size: cover;
+        background-repeat: no-repeat;
+        width: 110vw;
+        height: 110vh;
+        position: fixed;
+        top:0;
+        right:0;
+        left:0;
+        bottom: 0;
+        transform: translateX(calc(.2% - var(--percent)*.04%));
+        transition: 2s;
+        z-index: -2;
+        overflow: hidden;
+      }
+      #slides {
+        content: "";
+        display: block;
+        background-image: url(fixed.svg);
+        background-size: cover;
+        background-position: bottom;
+        background-repeat: no-repeat;
+        width: 100vw;
+        height: 100vh;
+        top:0;
+        right:0;
+        left:0;
+        bottom: 0;
+        z-index: 1;
+        overflow: hidden;
+      }
+      #slides::after {
+        content: "";
+        display: block;
+        background-image: url(fg.svg);
+        background-size: cover;
+        background-position: bottom;
+        background-repeat: no-repeat;
+        width: 100vw;
+        height: 100vh;
+        position: fixed;
+        top:0;
+        right:0;
+        left:0;
+        bottom: 0;
+        transform: translateX(calc(-5% + var(--percent)*.1%));
+        transition: 2s;
+        overflow: hidden;
 
+      }
     </style>
 
     <title></title>

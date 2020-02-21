@@ -378,6 +378,7 @@ function showChunk(name) {
 
     var total = current_song.doc.content.length;
     $('#progress').css('width', ''+(((current_song.chunk_index + 1) / total) * 100)+'%'); // set progress bar
+    $('#slides').css('--percent', (((current_song.chunk_index + 1) / total) * 100));
 
     scaleText();
 
@@ -386,6 +387,7 @@ function showChunk(name) {
         $(this.document).find('#slides').html($("#cur_slide").clone());
         this.scaleText();
         $(this.document).find('#progress').css('width', ''+((pos / total) * 100)+'%'); // set progress bar
+        $(this.document).find('#slides').css('--percent', (((current_song.chunk_index + 1) / total) * 100));
       }
       catch(err){
       }
