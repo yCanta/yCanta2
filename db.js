@@ -1,4 +1,100 @@
-var db = new PouchDB('yCanta');
+//initialize global variable.
+var db, syncHandler;
+
+var connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+var type = connection.effectiveType;
+
+var online = !navigator.onLine;
+updateConnectionStatus();
+
+function updateConnectionStatus() {
+  console.log("Connection type changed from " + type + " to " + connection.effectiveType);
+  type = connection.effectiveType;
+  //console.log(type, navigator.onLine);
+
+  //We just went online!
+  if(navigator.onLine && !online) {
+    document.documentElement.classList.remove('offline');
+    online = true;
+  }
+  //We just went offline!
+  else if(!navigator.onLine && online) {
+    document.documentElement.classList.add('offline');
+    online = false;
+  }
+}
+connection.addEventListener('change', updateConnectionStatus);
+
+
+function dbLogin(newDb=false) {
+  let dbName;
+  if(newDb){
+    dbName = $('#newDbName').val();
+  }
+  else {
+    dbName = $('#db_select :selected').val();    
+  }
+  let username = $('#username').val();
+  let pwd = $('#pwd').val();
+  let pin = $('#pin').val();
+  if(newDb)
+  console.log(dbName, username, pin);
+
+  //We're not online!
+  if(!online){
+    console.log(dbName, username, pin );
+
+    db = new PouchDB(dbName);
+  }
+  //we're online!
+  else {
+    /*
+    var remoteDB = new PouchDB(dbNameAddressCombo);
+    */
+    console.log(dbName, username, pwd );
+    db = new PouchDB(dbName);
+  /*
+    syncHandler = db.sync(remoteDB, {
+      live: true,
+      retry: true
+    }).on('change', function (change) {
+      // yo, something changed!
+    }).on('paused', function (info) {
+      // replication was paused, usually because of a lost connection
+    }).on('active', function (info) {
+      // replication was resumed
+    }).on('error', function (err) {
+      // totally unhandled error (shouldn't happen)
+    });
+  */
+  }
+  window.yCantaName = dbName;
+
+  initializeSongbooksList();
+  setLoginState();
+  //initialized
+  window.songbook = {};
+  //wipe login cause we were successfull!
+  $('#login :input').each(function(){$(this).val('')});
+}
+
+function dbLogout(){
+  setLogoutState();
+
+  db.close().then(function () {
+    console.log('closed db');
+  });
+/*
+
+  syncHandler.on('complete', function (info) {
+    // replication was canceled!
+  });
+
+  syncHandler.cancel(); // <-- this cancels it
+
+*/
+
+}
 
 function initializeSongbooksList(){
   db.allDocs({
@@ -364,6 +460,7 @@ function loadSongbook(songbook_id) {
       window.songbook._id = songbook_id;  
       window.songbook._rev = '';
       window.songbook.title = "All Songs";
+
       db.allDocs({
         include_docs: true,
         startkey: 's-',
@@ -501,7 +598,7 @@ var song = {
   search: "t:Jesu Jesu a:Tom Colvin a:yolo s:!s i:!i k:E c:Children's Songs c:Humility c:Love for Others c:Servanthoodcp:© 1969 Hope Publishing CompanycclisJesu, Jesu, Fill us with you love, Show us how to serve The neighbors we have from You. Jesu, Jesu, Fill us with you love, Show us how to serve The neighbors we have from You. "
 };
 
-db.put(song, function callback(err, result) {
+/*db.put(song, function callback(err, result) {
   if (!err) {
     console.log('Successfully saved a song!');
   }
@@ -612,4 +709,4 @@ db.changes({
   console.log('Error in db.changes('+err);
 });
 
-
+*/

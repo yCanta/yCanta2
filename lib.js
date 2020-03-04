@@ -497,6 +497,20 @@ function bindToSongEdit() {
   });
 }
 
+function setLoginState() {
+  window.loggedin = true;
+  $('html').addClass('loggedin');
+  $('#title a').html('yCanta: ' + window.yCantaName);
+  location.hash = '#';
+}
+
+function setLogoutState() {
+  window.loggedin = false;
+  $('html').removeClass('loggedin');
+  location.hash = '#login';
+  $('#title a').html('yCanta');
+}
+
 function mapSongbookRowToValue(row) {
   return { 'songbook-id':           row.doc._id,
     'songbook-rev':                 row.doc._rev,
@@ -950,7 +964,7 @@ function makeDraggable(dragCaptureEl, dragEl, dragAction, dragSide='right') {
   let height = 0;
 
   dragCaptureEl.addEventListener('touchstart', function(e){
-    document.documentElement.className = 'no-overscroll';
+    document.documentElement.classList.add('no-overscroll');
     var touchobj = e.changedTouches[0]; // reference first touch point (ie: first finger)
     startx = parseInt(touchobj.clientX);
     starty = parseInt(touchobj.clientY);
@@ -996,7 +1010,7 @@ function makeDraggable(dragCaptureEl, dragEl, dragAction, dragSide='right') {
   }, false);
 
   dragCaptureEl.addEventListener('touchend', function(e){
-    document.documentElement.className = '';
+    document.documentElement.classList.remove('no-overscroll');
     dragEl.style.removeProperty('flex');
     dragEl.style.removeProperty('transition');
     var touchobj = e.changedTouches[0]; // reference first touch point for this event

@@ -25,6 +25,62 @@ a {
   text-decoration: none;
   color: black;
 }
+/*Login CSS -- Currently pretty ugly :/*/
+#login .w100-2rem {
+  width: calc(100% - 2rem);
+}
+#login h2 {
+  font-size: xx-large;
+  color: darkgray;
+  left: -0.5rem;
+  position: relative;
+}
+.loggedin_display,
+#login .pin, 
+#login .new,
+.offline #login #pwd,
+#login.new .not_new {
+  display: none;
+}
+.loggedin .loggedin_display {
+  display: initial;
+}
+#login #pwd,
+.offline #login .pin {
+  display: block; 
+}
+#login.new .new {
+  display: initial !important;
+}
+.pin input {
+  width: 5rem;
+  display: inline-block;
+}
+.pin > span {
+  color: darkred;
+}
+#login {
+  display: none;
+  margin: 5rem auto 5rem auto;
+  max-width: 370px; 
+  border: 1px solid gray; 
+  background-color: lightgray;
+}
+.login #login {
+  display: block;
+}
+.login #login + div {
+  display: none;
+}
+#login > * {
+  display: block;
+  margin: 0rem 1rem 1rem 1rem;
+}
+#login button {
+  margin: 1rem;
+}
+
+/*CSS FOR Song Display*/
 stitle, cat, author, scrip_ref, key, copyright {
   cursor: pointer;
 }

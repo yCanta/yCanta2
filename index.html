@@ -13,42 +13,51 @@
 
     <script src="jquery-3.4.0.min.js"></script>
     <script src="pouchdb.min.js"></script>
+    <script src="pouchdb.all-dbs.min.js"></script>
+
     <script src="db.js"></script>
     <script src="lib.js"></script>
-    <script src="jquery.myTransposer.js"></script>
-    <script src="jquery.toTextarea.js"></script>
+    <script async src="jquery.myTransposer.js"></script>
+    <script async src="jquery.toTextarea.js"></script>
     <script src="list.min.js"></script>
     <script src="sortable.js"></script>
-    <script src="jszip.min.js"></script>
-    <script src="song2json.js"></script>
-    <script src="pdfformatter.js"></script>
-    <script src="pdfkit.standalone.js"></script>
-    <script src="blob-stream.js"></script>
+    <script async src="jszip.min.js"></script>
+    <script async src="song2json.js"></script>
+    <script async src="pdfformatter.js"></script>
+    <script async src="pdfkit.standalone.js"></script>
+    <script async src="blob-stream.js"></script>
     <!--script type="text/javascript" src="json-url.js"></script-->
 
     <link rel="stylesheet" type="text/css" href="style.css">
     <link rel="stylesheet" type="text/css" href="jquery.myTransposer.css">
     <link rel="stylesheet" type="text/css" href="2html.css">
-    <title>yCanta2: TodosCantas > All Creatures of Our God and King</title>
+    <title>yCanta2</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
   </head>
   <body class="header">
     <header id="header">
-      <h2><a href="#">yCanta</a></h2>
-      <span style="position: absolute; top:0;right:0;">
-
+      <h2 id="title"><a href="#">yCanta</a></h2>
+      <span class="loggedin_display" style="position: absolute; top:0;right:0; z-index:1; background-color:white; opacity: .8;">
+        <button class="btn" onclick="dbLogout();">Logout</button>
       </span>
       <hr>
-      <div style="width: 400px">
+      <div id="login">
         <h2>Login:</h2>
-        <select>
+        <select id="db_select">
           <option value="new">Create local</option>
-          <option value="yCanta.canaanf.org">yCanta.canaanf.org</option>
-          <option>yCatna.icf.org</option>
         </select>
-        <div contenteditable="true" placeholder="Username"></div>
-        <div contenteditable="true" placeholder="Pwd/Pin"></div>
-        <button class="btn">Login</button>
+        <input placeholder="DB Name" type="name" autocomplete="off" id="newDbName" class="w100-2rem new"></input>
+        <input placeholder="Name" type="name" autocomplete="off" id="name" class="w100-2rem new"></input>
+        <input placeholder="Email" type="email" id="username" class="w100-2rem"></input>
+        <input placeholder="Password" type="password" id="pwd" class="w100-2rem new"></input>
+        <input placeholder="Reenter Pwd" type="password" id="pwd2" class="w100-2rem new"></input>
+        <div class="pin new">
+          <input placeholder="Pin" type="password" id="pin"></input>
+          <input placeholder="Renter Pin" type="password" id="pin2" class="new"></input>
+          <span class="not_new">⚠️ Offline - enter pin</span><br>
+        </div>
+        <button class="btn not_new" onclick="dbLogin()">Login</button>
+        <button class="btn new" onclick="dbLogin(true)">Create Local</button>
       </div>
       <div>
         <a class="btn songbookList-color" href="#songbooks">Songbooks</a>
@@ -61,9 +70,7 @@
         You can view songbooks or songs by selecting one of the above buttons.<br><br>
         
         To import more songs, choose a zip file and upload it below.
-      </div>
-
-      <div>
+      
         <h2>Utilities</h2>
 
         <label class="btn">Upload songs:<input type="file" id="file" name="file" />
@@ -659,7 +666,7 @@
       $('#song .row').append('<button onclick="toggleFullscreen(this)" class="icon-rotate2x tr">&#8596;</button>');
 
       bindToSongEdit();
-      initializeSongbooksList();
+      
       $("#export_form > label").click(function(e){
         if(this.previousElementSibling.checked){
           e.stopPropagation();
@@ -720,6 +727,15 @@
         window.onbeforeunload = function() {
           return window.editing ? "If you leave this page you will lose your unsaved changes." : null;
         }
+
+        $('#db_select').on('change', function() {
+          if($('#db_select :selected').val() == 'new') {
+            $('#login').addClass('new');
+          }
+          else {
+            $('#login').removeClass('new');
+          }
+        });
       });   
       function hashchanged(){
         var hash = location.hash;
@@ -730,20 +746,47 @@
           window.location.hash = window.old_hash;
           return
         }
+        if(!(hash == '#login') && !window.loggedin){
+          location.hash = '#login';
+          console.log('hi');
+          hashchanged();
+          return
+        }
+
+
         $('.edit_buttons').remove();
         //if blank - should have to do nothing
         if(hash == ''){
-         $('body').attr('class','header');
-         $('.active').removeClass('active');
-         updateAllLinks();
-         window.document.title = "yCanta2";
+          $('body').attr('class','header');
+          $('.active').removeClass('active');
+          window.document.title = "yCanta2";
+          updateAllLinks();
         }
+        //Login
+        else if(hash == '#login') {
+          $('body').attr('class', 'login header');
+          PouchDB.allDbs().then(function (all_dbs) {
+            
+            let db_opts = '';
+            for(item of all_dbs){
+              db_opts += '<option value="'+item+'">'+item+'</option>';
+            }
+            db_opts += '<option value="new">Create Local</option>';
+            $('#db_select').html(db_opts);
+            console.log(log_opts);
+
+          }).catch(function (err) {
+            // handle err
+          });
+
+          window.document.title = "yCanta2 - Login";
+        }
+        //Songbooks
         else if(hash == '#songbooks'){
-         $('body').attr('class','songbookList');
-         $('.active').removeClass('active');
-         $('#songbookList').addClass('active');
-         updateAllLinks();
-         window.document.title = "yCanta2";
+          $('body').attr('class','songbookList');
+          $('.active').removeClass('active');
+          $('#songbookList').addClass('active');
+          window.document.title = "yCanta2";
         }
         //if song edit
         else if((hash.search('&s-') != -1) && (hash.search('&edit') != -1)) {
