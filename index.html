@@ -85,7 +85,7 @@
               window.location.reload();
             }).catch(function (err) {
               console.log(err);
-          });">Reset DB</a>
+          });">Delete DB</a>
       </div>
 
     </header>
@@ -765,6 +765,8 @@
         //Login
         else if(hash == '#login') {
           $('body').attr('class', 'login header');
+
+          //Change this to a local storage solution instead...? Or crete another pouchdb called alldbs, that I do updates for - would be smaller than the plugin seems to be.
           PouchDB.allDbs().then(function (all_dbs) {
             
             let db_opts = '';

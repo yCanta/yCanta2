@@ -29,6 +29,7 @@ connection.addEventListener('change', updateConnectionStatus);
 function dbLogin(newDb=false) {
   let dbName;
   if(newDb){
+    //Need to check against existing databases... pop alert saying already created - try another name.
     dbName = $('#newDbName').val();
   }
   else {
