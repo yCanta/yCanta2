@@ -40,34 +40,51 @@ function dbLogin(newDb=false) {
   let pin = $('#pin').val();
   if(newDb)
   console.log(dbName, username, pin);
+  db = new PouchDB(dbName);
 
   //We're not online!
   if(!online){
     console.log(dbName, username, pin );
-
-    db = new PouchDB(dbName);
   }
   //we're online!
   else {
-    /*
-    var remoteDB = new PouchDB(dbNameAddressCombo);
-    */
-    console.log(dbName, username, pwd );
-    db = new PouchDB(dbName);
-  /*
-    syncHandler = db.sync(remoteDB, {
-      live: true,
-      retry: true
-    }).on('change', function (change) {
-      // yo, something changed!
-    }).on('paused', function (info) {
-      // replication was paused, usually because of a lost connection
-    }).on('active', function (info) {
-      // replication was resumed
-    }).on('error', function (err) {
-      // totally unhandled error (shouldn't happen)
+    var remoteDb = new PouchDB('https://bc1e4819-c782-4aad-8525-2e2340011ce7-bluemix.cloudantnosqldb.appdomain.cloud/canaanf/', {skip_setup: true});
+    
+    var ajaxOpts = {
+      ajax: {
+        headers: {
+          Authorization: 'Basic ' + window.btoa(username+':'+pwd)
+        }
+      }
+    };
+
+
+    remoteDb.logIn(username, pwd, ajaxOpts).then(function (batman) {
+      console.log("I'm Batman.", batman);
+
+      return remoteDb.allDocs();
+
+    }).then(function(docs){
+
+      syncHandler = db.sync(remoteDb, {
+        live: true,
+        retry: true
+      }).on('change', function (change) {
+        console.log('Synced some stuff');
+        // yo, something changed!
+      }).on('paused', function (info) {
+        // replication was paused, usually because of a lost connection
+      }).on('active', function (info) {
+        // replication was resumed
+      }).on('error', function (err) {
+        // totally unhandled error (shouldn't happen)
+      });
+
+      console.log(docs);
     });
-  */
+
+    console.log(dbName, username, pwd );
+
   }
   window.yCantaName = dbName;
 

@@ -409,6 +409,21 @@ function updateAllLinks(whatChanged='all') {
   $("[data-songbook-id='"+window.songbook._id+"']").addClass("songbook-highlight");
 }
 
+function checkLogin(){
+  let good = true;
+  let pwd = $('#pwd').val();
+  let username = $('#username').val();
+
+  if(pwd.trim() == '' || username.trim() == ''){
+    good = false;
+    alert('Username or password not entered');
+  }
+
+  return good
+}
+
+
+
 
 $(function () {
   //float menu activation

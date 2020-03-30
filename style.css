@@ -32,7 +32,7 @@ a {
 #login h2 {
   font-size: xx-large;
   color: darkgray;
-  left: -0.5rem;
+  left: -1rem;
   position: relative;
 }
 .loggedin_display,
@@ -62,6 +62,8 @@ a {
 #login {
   display: none;
   margin: 5rem auto 5rem auto;
+  padding: 0 1rem 0 1rem;
+  padding-top: 1.5rem;
   max-width: 370px; 
   border: 1px solid gray; 
   background-color: lightgray;
@@ -347,15 +349,11 @@ body main .sidebar {
   z-index: 4;
 }
 footer {
-  display: none;
-  flex: 0 0 0px;
-  width: 100%;
-  background-color: lightgreen;
-  border-top: ridge 5px black;
-  border-left: double 3px black;
-  border-right: double 3px black;
-  max-height: 3em;
-  overflow-y: scroll;
+  border: 2px solid green;
+  z-index: 200;
+}
+.offline footer {
+  border: 2px solid yellow;
 }
 #debugDiv {
 }
@@ -418,7 +416,7 @@ span.deleteicon input {
   padding: 0 1rem 0 1rem;
 }
 .column, body.edit .sidebar {
-  box-shadow: 0px 0 40px 10px rgba(0, 0, 0, 0.8);
+  box-shadow: 0px 0 20px 2px rgba(0, 0, 0, 0.2);
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -733,7 +731,7 @@ input[type="number"] {
   }
 
   header > h2,
-  header > div {
+  #welcome {
     padding: 0 1rem 0 1rem;
   }
   body {
@@ -818,7 +816,7 @@ only screen and (max-height: 500px) {
     margin: 0;
   }
   header > h2,
-  header > div {
+  #welcome {
     padding: 0 1rem 0 1rem;
   }
   body.song header, 

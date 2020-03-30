@@ -14,6 +14,7 @@
     <script src="jquery-3.4.0.min.js"></script>
     <script src="pouchdb.min.js"></script>
     <script src="pouchdb.all-dbs.min.js"></script>
+    <script src="pouchdb.authentication.min.js"></script>
 
     <script src="db.js"></script>
     <script src="lib.js"></script>
@@ -37,8 +38,8 @@
   <body class="header">
     <header id="header">
       <h2 id="title"><a href="#">yCanta</a></h2>
-      <span class="loggedin_display" style="position: absolute; top:0;right:0; z-index:1; background-color:white; opacity: .8;">
-        <button class="btn" onclick="dbLogout();">Logout</button>
+      <span class="loggedin_display" style="position: absolute; top:0;right:0; z-index:1;">
+        <button style="background-color:white; opacity: .8;" class="btn" onclick="dbLogout();">Logout</button>
       </span>
       <hr>
       <div id="login">
@@ -50,16 +51,16 @@
         <input placeholder="Name" type="name" autocomplete="off" id="name" class="w100-2rem new"></input>
         <input placeholder="Email" type="email" id="username" class="w100-2rem"></input>
         <input placeholder="Password" type="password" id="pwd" class="w100-2rem new"></input>
-        <input placeholder="Reenter Pwd" type="password" id="pwd2" class="w100-2rem new"></input>
+        <input placeholder="Reenter Password" type="password" id="pwd2" class="w100-2rem new"></input>
         <div class="pin new">
           <input placeholder="Pin" type="password" id="pin"></input>
           <input placeholder="Renter Pin" type="password" id="pin2" class="new"></input>
           <span class="not_new">⚠️ Offline - enter pin</span><br>
         </div>
-        <button class="btn not_new" onclick="dbLogin()">Login</button>
-        <button class="btn new" onclick="dbLogin(true)">Create Local</button>
+        <button class="btn not_new" onclick="if(checkLogin()){dbLogin();}">Login</button>
+        <button class="btn new" onclick="checkCreateNew(); dbLogin(true)">Create Local</button>
       </div>
-      <div>
+      <div id="welcome">
         <a class="btn songbookList-color" href="#songbooks">Songbooks</a>
         <a class="btn songList-color" href="#sb-allSongs">All Songs</a>
 
@@ -638,7 +639,7 @@
             </div>
           </div>
           <div class="subcolumn sidebar" id="exportPreview">
-            <div style="width: 240px;">
+            <div style="width: 280px;">
               <div class="sticky">
                 <h3>Preview<button onclick="$(this).closest('#exportPreview').removeClass('sidebar-open');" class="icon-fl-right close-icon">&times;</button></h3><input id="auto_refresh" name="auto_refresh" type="checkbox"><label for="auto_refresh">Automatic refresh?</label>
                   <!-- can't seem to get chrome to display this in iframe, objects or any other thingy without crashing on src change.  I get an "awSnap!" message and closed out tab -->
@@ -657,9 +658,6 @@
       </div>
     </main>
     <footer>
-      <span style="float: right;">rev __________ 1</span>    
-      <div id="debugDiv">
-      </div>
     </footer>
     <iframe id="presentation"></iframe>
     <script>
@@ -716,6 +714,14 @@
         }
       });
       $(function () {
+        PouchDB.on('destroyed', function (dbName) {
+          console.log('joy!');
+        });
+        PouchDB.on('created', function (dbName) {
+          console.log('joys!');
+        });
+
+
         $('input.deletable').wrap('<span class="deleteicon" />').after($('<span/>').click(function() {
           $(this).prev('input').val('').trigger('change').focus()[0].dispatchEvent(new KeyboardEvent("keyup"));
         }));
