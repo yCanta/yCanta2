@@ -1,30 +1,26 @@
 //initialize global variable.
 var db, syncHandler;
 
-var connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-var type = connection.effectiveType;
+var online = false;
 
-var online = !navigator.onLine;
-updateConnectionStatus();
-
-function updateConnectionStatus() {
-  console.log("Connection type changed from " + type + " to " + connection.effectiveType);
-  type = connection.effectiveType;
-  //console.log(type, navigator.onLine);
-
-  //We just went online!
-  if(navigator.onLine && !online) {
-    document.documentElement.classList.remove('offline');
-    online = true;
+function updateOnlineStatus(event) {
+  if(event == undefined) {
+    event = {};
+    event.type = 'windowLoad';
   }
-  //We just went offline!
-  else if(!navigator.onLine && online) {
-    document.documentElement.classList.add('offline');
-    online = false;
-  }
+  var condition = navigator.onLine ? "online" : "offline";
+  document.documentElement.className = condition;
+  online = navigator.onLine;
+  console.log("beforeend", "Event: " + event.type + "; Status: " + condition);
 }
-connection.addEventListener('change', updateConnectionStatus);
-
+window.addEventListener('load', function() {
+  function update(event) {
+    updateOnlineStatus(event);
+  }
+  window.addEventListener('online',  update);
+  window.addEventListener('offline', update);
+});
+updateOnlineStatus();
 
 function dbLogin(newDb=false) {
   let dbName;
@@ -92,6 +88,7 @@ function dbLogin(newDb=false) {
   setLoginState();
   //initialized
   window.songbook = {};
+  window.song = {};
   //wipe login cause we were successfull!
   $('#login :input').each(function(){$(this).val('')});
 }
