@@ -419,7 +419,7 @@ function checkLogin(){
     alert('Username or password not entered');
   }
 
-  return good
+  return good;
 }
 
 

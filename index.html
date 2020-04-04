@@ -83,7 +83,7 @@
         </div>
 
         <a href="#" class="btn" style="background-color: crimson; color: white;" onclick="db.destroy().then(function () {
-              window.location.reload();
+              dbLogout();
             }).catch(function (err) {
               console.log(err);
           });">Delete DB</a>
@@ -715,10 +715,10 @@
       });
       $(function () {
         PouchDB.on('destroyed', function (dbName) {
-          console.log('joy!');
+          console.log('Destroyed: ', dbName);
         });
         PouchDB.on('created', function (dbName) {
-          console.log('joys!');
+          console.log('Created: ', dbName);
         });
 
 
@@ -754,7 +754,7 @@
         }
         if(!(hash == '#login') && !window.loggedin){
           location.hash = '#login';
-          console.log('hi');
+          console.log("Hi, let's login first");
           hashchanged();
           return
         }
