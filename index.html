@@ -780,7 +780,7 @@
               db_opts += '<option value="'+item+'">'+item+'</option>';
             }
             db_opts += '<option value="new">Create Local</option>';
-            $('#db_select').html(db_opts);
+            $('#db_select').html(db_opts).trigger('change');
             console.log(log_opts);
 
           }).catch(function (err) {

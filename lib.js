@@ -409,22 +409,6 @@ function updateAllLinks(whatChanged='all') {
   $("[data-songbook-id='"+window.songbook._id+"']").addClass("songbook-highlight");
 }
 
-function checkLogin(){
-  let good = true;
-  let pwd = $('#pwd').val();
-  let username = $('#username').val();
-
-  if(pwd.trim() == '' || username.trim() == ''){
-    good = false;
-    alert('Username or password not entered');
-  }
-
-  return good;
-}
-
-
-
-
 $(function () {
   //float menu activation
   $('body').on('click', '.float-menu-toggle', function() {
@@ -510,6 +494,23 @@ function bindToSongEdit() {
   $('#song').on('change', 'select', function(){
     $(this).next().attr('type',$(this).find('option:selected').text());
   });
+}
+
+function checkLogin(){
+  let good = true;
+  let pwd = $('#pwd').val();
+  let username = $('#username').val();
+
+  if(pwd.trim() == '' || username.trim() == ''){
+    good = false;
+    alert('Username or password not entered');
+  }
+
+  return good;
+}
+
+function checkCreateNew() {
+  return true;
 }
 
 function setLoginState() {
