@@ -103,27 +103,30 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
         
         var i, j;
         for (i = 0; i < content.length; i++) { 
-          for (j = 0; j < content[i][1].length; j++ ) {
-            let new_line = escapeRegExp(remove_chords(content[i][1][j]).replace(/\s\s+/g,' ').replace(punctuation,'') + '\n');
-            if(song_content.search(new_line) === -1) {
-              //this content is not in the search, add it!
-              song_content += new_line;
+          //we are ignoring comments for now
+          if(content[i][0].type != 'comment') {
+            for (j = 0; j < content[i][1].length; j++ ) {
+              let new_line = escapeRegExp(remove_chords(content[i][1][j]).replace(/\s\s+/g,' ').replace(punctuation,'') + '\n');
+              if(song_content.search(new_line) === -1) {
+                //this content is not in the search, add it!
+                song_content += new_line;
+              }
             }
           }
         }
         return song_content;
       }
-      let ssearch =  't:' + song.title
-                   + ' a:' + formatArray(song.authors, 'a')
-                   + ' s:' + formatArray(song.scripture_ref, 's')
-                   + ' i:' + formatText(song.introduction, 'i')
-                   + ' k:' + formatText(song.key, 'k')
-                   + ' c:' + formatArray(song.categories, 'c')
-                   + ' cp:' + formatText(song.copyright, 'cp')
-                   + ((song.cclis!='') ? ' cclis ' : ' !cclis ') 
-                   + ' ' + formatSongContent(song.content);
+      let ssearch =  't:' + song.title + '\n'
+                   + ' a:' + formatArray(song.authors, 'a') + '\n'
+                   + ' s:' + formatArray(song.scripture_ref, 's') + '\n'
+                   + ' i:' + formatText(song.introduction, 'i') + '\n'
+                   + ' k:' + formatText(song.key, 'k') + '\n'
+                   + ' c:' + formatArray(song.categories, 'c') + '\n'
+                   + ' cp:' + formatText(song.copyright, 'cp') + '\n'
+                   + ((song.cclis!='') ? ' cclis ' : ' !cclis ') + '\n'
+                   + formatSongContent(song.content); + '\n'
 
-      song.search = ssearch.replace(/\s\s+/g, ' ');
+      song.search = ssearch.replace(/ +?/g, ' ');
 
       db.put(song, function callback(err, result) {
         if (!err) {
