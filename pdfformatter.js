@@ -7,18 +7,6 @@ function makePDF(lorem, iframe) {
   format(window.exportObject, iframe, read_config_form());
 }
 
-class defaultdict {
-  constructor(defaultInit) {
-    return new Proxy([], {
-      get: (target, name) => name in target ?
-        target[name] :
-        (target[name] = typeof defaultInit === 'function' ?
-          new defaultInit().valueOf() :
-          defaultInit)
-    });
-  }
-}
-
 function* range(start, end) {
   yield start;
   if (start === end) return;
@@ -54,7 +42,7 @@ class Songbook {
     this.songs = [];
     this.scrip_index = new ScripIndex(); // list of IndexEntry's
     this.index = new Index();            // list of IndexEntry's
-    this.cat_index = new CatIndex(this);     // dict of CatIndexEntry's
+    this.cat_index = new CatIndex();     // list of CatIndexEntry's
     this.height = 0;
     this.height_after = 0;
   }
@@ -62,7 +50,6 @@ class Songbook {
 
 class Index extends Array {
   constructor() {
-    //var star_args = Array.prototype.slice.call(arguments, constructor.length);
     super();
     this.height = 0;
     this.height_after = 0;
@@ -71,17 +58,15 @@ class Index extends Array {
 
 class ScripIndex extends Array {
   constructor() {
-    //var star_args = Array.prototype.slice.call(arguments, constructor.length);
     super();
     this.height = 0;
     this.height_after = 0;
   }
 }
 
-class CatIndex extends defaultdict {
+class CatIndex extends Array {
   constructor() {
-    var star_args = Array.prototype.slice.call(arguments, constructor.length);
-    super(star_args);
+    super();
     this.height = 0;
     this.height_after = 0;
   }
@@ -106,7 +91,14 @@ class IndexEntry {
 }
 
 class CatIndexEntry {
-  
+  //Same as above, could probably be changed to an extend the above.
+  constructor(song, index_text, is_song_title){
+    this.song = song;
+    this.index_text = index_text.trim();
+    this.is_song_title = is_song_title;
+    this.height = 0;
+    this.height_after = 0;
+  } 
 }
 
 class Song {
@@ -327,6 +319,9 @@ function parse(export_object, cfg) {
         }
       }
       if(!exclude){
+        if(songbook.cat_index[cat]==undefined){
+          songbook.cat_index[cat] = new CatIndex();
+        }
         songbook.cat_index[cat].push(new CatIndexEntry(song, song.title, true));
       }
     }
@@ -929,25 +924,39 @@ function paginate(songbook, cfg) {
 
     // add cat_index title to page
     p.push(songbook.cat_index);
-    for(let cat of songbook.cat_index.keys()) { //!!!!IS THIS SORTED ?
-      if((page_height(p) + songbook.cat_index.cat_height + songbook.cat_index[cat][0].height) > USABLE_HEIGHT) {  // can't fit category + one index entry
-        pages.push(p);
-        p = [];
-      }
-      p.push(Category(cat, songbook.cat_index.cat_height));
-
-      // sort cat_index entries then add to page
-      let entries = songbook.cat_index[cat].sort(function(a,b) {return a.index_text.toLowerCase().replace(/^([^a-z0-9]*the +|[^a-z0-9]+)/, '');});
-
-      for(let index_entry of entries) {
-        // if there is no room for this entry, then the page is complete and we start a new one
-        if ((page_height(p) + index_entry.height) > USABLE_HEIGHT) {
+    const cat_entries = Object.entries(songbook.cat_index).sort();
+    for(let cat of cat_entries) { //!!!!IS THIS SORTED ?
+      if(cat[1] instanceof Array) {
+        if((page_height(p) + songbook.cat_index.cat_height + cat[1].height) > USABLE_HEIGHT) {  // can't fit category + one index entry
           pages.push(p);
           p = [];
         }
+        p.push(new Category(cat[0], songbook.cat_index.cat_height));
 
-        // add the cat_index entry
-        p.push(index_entry);
+        // sort cat_index entries then add to page
+        let entries = cat[1].sort(function(a, b) {
+          var nameA = a.index_text.toLowerCase(); // ignore upper and lowercase
+          var nameB = b.index_text.toLowerCase(); // ignore upper and lowercase
+          if (nameA < nameB) {
+            return -1;
+          }
+          if (nameA > nameB) {
+            return 1;
+          }
+          // names must be equal
+          return 0;
+        });
+
+        for(let index_entry of entries) {
+          // if there is no room for this entry, then the page is complete and we start a new one
+          if ((page_height(p) + index_entry.height) > USABLE_HEIGHT) {
+            pages.push(p);
+            p = [];
+          }
+
+          // add the cat_index entry
+          p.push(index_entry);
+        }
       }
     }
   }
@@ -1223,13 +1232,17 @@ function calc_heights(songbook, cfg, doc) {
   }
 
   // cat index
-  for(let c of cat_index) {
-    for(let index_entry of cat_index[c]) {
-      if(index_entry.is_song_title) {
-        index_entry.height = cfg.INDEX_SONG_SIZE + cfg.INDEX_SONG_SPACE;
-      }
-      else{
-        index_entry.height = cfg.INDEX_FIRST_LINE_SIZE + cfg.INDEX_FIRST_LINE_SPACE;
+  for(let c of Object.entries(cat_index)) {
+    if(c[1] instanceof Array) {
+      c[1].height = songbook.cat_index.cat_height;        
+
+      for(let index_entry of cat_index[c[0]]) {
+        if(index_entry.is_song_title) {
+          index_entry.height = cfg.INDEX_SONG_SIZE + cfg.INDEX_SONG_SPACE;
+        }
+        else{
+          index_entry.height = cfg.INDEX_FIRST_LINE_SIZE + cfg.INDEX_FIRST_LINE_SPACE;
+        }
       }
     }
   }
