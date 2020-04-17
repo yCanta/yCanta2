@@ -987,9 +987,18 @@ function paginate(songbook, cfg) {
     p.push(songbook.scrip_index);
 
     // sort index entries then add to page
-    //entries = sorted(songbook.scrip_index, key=lambda m: sort_scrip_index(re.sub(r'(?i)^([^a-z0-9]*the +|[^a-z0-9]+)', '', m.index_text.toLowerCase())));
-    let entries = songbook.scrip_index.sort(function(a,b) { return sort_scrip_index(a.index_text.toLowerCase().replace(/^([^a-z0-9]*the +|[^a-z0-9]+)/, ''));});
-
+    let entries = songbook.scrip_index.sort(function(a,b) {
+      let a_num = parseInt(sort_scrip_index(a.index_text.toLowerCase().replace(/^([^a-z0-9]*the +|[^a-z0-9]+)/, '')));
+      let b_num = parseInt(sort_scrip_index(b.index_text.toLowerCase().replace(/^([^a-z0-9]*the +|[^a-z0-9]+)/, '')));
+      let response = 0;
+      if(a_num > b_num){
+        response = 1;
+      }
+      else if(b_num > a_num){
+        response = -1;
+      }
+      return response;
+    });
 
     for(let index_entry of entries) {
       // if there is no room for this entry, then the page is complete and we start a new one
@@ -1029,8 +1038,19 @@ function paginate(songbook, cfg) {
     p.push(songbook.index);
 
     // sort index entries then add to page
-    //entries = sorted(songbook.index, key=lambda m: re.sub(r'(?i)^([^a-z0-9]*the +|[^a-z0-9]+)', '', m.index_text.toLowerCase()))
-    let entries = songbook.index.sort(function(a,b) { return a.index_text.toLowerCase().replace(/^([^a-z0-9]*the +|[^a-z0-9]+)/, '');});
+    let entries = songbook.index.sort(function(a,b) { 
+      let a_sort = a.index_text.toLowerCase().replace(/^([^a-z0-9]*the +|[^a-z0-9]+)/, '');
+      let b_sort = b.index_text.toLowerCase().replace(/^([^a-z0-9]*the +|[^a-z0-9]+)/, '');
+      if(a_sort > b_sort){
+        return 1;
+      }
+      else if(b_sort > a_sort) {
+        return -1;
+      }
+      else {
+        return 0;
+      }
+    });
 
 
     for(let index_entry of entries) {
