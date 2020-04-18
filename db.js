@@ -53,7 +53,6 @@ function dbLogin(newDb=false, online=false) {
       }
     });
     //store user pin in a local doc
-    console.log({_id: '_local/u-'+username, pin: pin});
     db.put({_id: '_local/u-'+username, pin: pin}, function callback(err, result) {
       if(!err) {
         console.log("added user's pin");
@@ -586,7 +585,6 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
 }
 
 function loadSongbook(songbook_id) {
-  console.log('sijsl2');
   var dateBefore = new Date();
   if(songbook_id != 'sb-allSongs'){
     $('#songList [data-songbook-edit], #songList .delete').show()
