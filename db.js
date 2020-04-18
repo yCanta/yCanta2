@@ -22,17 +22,152 @@ window.addEventListener('load', function() {
 });
 updateOnlineStatus();
 
-function dbLogin(newDb=false) {
+function clearAllDbs() { 
+  window.indexedDB.databases().then((r) => {
+      for (var i = 0; i < r.length; i++) window.indexedDB.deleteDatabase(r[i].name);
+  }).then(() => {
+      location.reload();
+  });
+}
+
+function dbLogin(newDb=false, online=false) {
   let dbName;
+  let username = $('#username').val().trim();
+  let pin = $('#pin').val().trim();
   if(newDb){
-    //Need to check against existing databases... pop alert saying already created - try another name.
-    dbName = $('#newDbName').val();
+    dbName = $('#newDbName').val().trim()+'(local)';
+    console.log('New DB');
+    //initialize database;
+    db = new PouchDB(dbName);
+    
+    //create User doc
+    var user = {
+      _id: 'u-'+username
+    }
+    db.put(user, function callback(err, result) {
+      if(!err) {
+        console.log('added user: ', username);
+      }
+      else {
+        console.log(err);
+      }
+    });
+    //store user pin in a local doc
+    console.log({_id: '_local/u-'+username, pin: pin});
+    db.put({_id: '_local/u-'+username, pin: pin}, function callback(err, result) {
+      if(!err) {
+        console.log("added user's pin");
+      }
+      else {
+        console.log(err);
+      }
+    });
+    //initialize list of categories
+    var categories = {
+      _id: 'categories',
+      categories: ["Adoration", "Aspiration/Desire", "Assurance", "Atonement", "Awe", "Bereavement", "Brokenness", "Calvary", "Christ as Bridegroom", "Christ as King", "Christ as Lamb", "Christ as Redeemer", "Christ as Savior", "Christ as Shepherd", "Christ as Son", "Christ's Blood", "Christ's Return", "Church as Christ's Body", "Church as Christ's Bride", "Church as God's House", "Cleansing", "Comfort", "Commitment", "Compassion", "Condemnation", "Consecration", "Conviction of Sin", "Courage", "Creation", "Cross", "Dedication/Devotion", "Dependence on God", "Encouragement", "Endurance", "Eternal Life", "Evangelism", "Faith", "Faithfulness", "Fear", "Fear of God", "Fellowship", "Forgiveness", "Freedom", "God as Creator", "God as Father", "God as Refuge", "God's Creation", "God's Faithfulness", "God's Glory", "God's Goodness", "God's Guidance", "God's Harvest", "God's Holiness", "God's Love", "God's Mercy", "God's Power", "God's Presence", "God's Strength", "God's Sufficiency", "God's Timelessness", "God's Victory", "God's Wisdom", "God's Word", "Godly Family", "Grace", "Gratefulness", "Healing", "Heaven", "Holiness", "Holy Spirit", "Hope", "Humility", "Hunger/Thirst for God", "Incarnation", "Invitation", "Jesus as Messiah", "Joy", "Kingdom of God", "Knowing Jesus", "Lordship of Christ", "Love for God", "Love for Jesus", "Love for Others", "Majesty", "Meditation", "Mercy", "Missions", "Mortality", "Neediness", "New Birth", "Obedience", "Oneness in Christ", "Overcoming Sin", "Patience", "Peace", "Persecution", "Praise", "Prayer", "Proclamation", "Provision", "Purity", "Purpose", "Quietness", "Redemption", "Refreshing", "Repentance", "Rest", "Resurrection", "Revival", "Righteousness", "Salvation", "Sanctification", "Security", "Seeking God", "Service", "Servanthood", "Sorrow", "Spiritual Warfare", "Submission to God", "Suffering for Christ", "Surrender", "Temptation", "Trials", "Trust", "Victorious Living", "Waiting on God", "Worship", "-----", "Christmas", "Easter", "Good Friday", "Thanksgiving", "-----", "Baptism", "Birth", "Closing Worship", "Communion", "Death", "Engagement", "Opening Worship", "Wedding", "-----", "Children's Songs", "Rounds", "Scripture Reading", "Scripture Songs", "-----", "Needs Work", "Needs Chord Work", "Needs Categorical Work", "Duplicate", "-----", "Norway", "Secular", "Delete", "Spanish words", "Celebration"]
+    }
+    db.put(categories, function callback(err, result) {
+      if(!err) {
+        console.log('added categories');
+      }
+      else {
+        console.log(err);
+      }
+    });
+    takeNextStep(username,dbName);
   }
   else {
-    dbName = $('#db_select :selected').val();    
+    console.log('Logging in');
+    dbName = $('#db_select :selected').val();
+    db = new PouchDB(dbName);
+    //check if pin matches
+    db.get('_local/u-'+username).then(function(userPin){
+      if(userPin.pin == pin) {
+        console.log('Pin is correct!');
+        takeNextStep(username,dbName);
+
+      }
+      //if not then close the db
+      else {
+        console.log('Username or pin was incorrect');
+        alert('Username or pin was incorrect');
+        dbLogout();
+      }
+    }).catch(function(err){
+      console.log(err);
+      alert('Username or pin was incorrect');
+      dbLogout();
+    });
   }
-  let username = $('#username').val();
-  let pwd = $('#pwd').val();
+  function takeNextStep(username, dbName) {
+    //layout the welcome?  maybe this goes in set login state?
+    //Update ui when db changes]s
+    db.changes({
+      since: 'now',
+      live: true,
+      include_docs: true
+    }).on('change', function (change) {
+      // received a change
+      if (change.deleted) {
+        // document was deleted
+        console.log('deleted: ' + change.doc._id);
+      } else {
+        // document was added/modified
+      }
+      //what type?
+      //song?
+      if(change.doc._id.startsWith('s-')){
+        //only load song if it's the one that's up.
+        if(window.song._id === change.doc._id){
+          loadSong(change.doc._id);
+          console.log('loaded: ', change.doc.title);
+        }
+        //update all songs in songbooks
+        if(window.songbook_list != undefined ){
+          window.songbook_list.get('song-id',change.doc._id)
+            .forEach(function(song){song.values(mapSongRowToValue(change))});
+        }
+        if(window.songbook_edit_togglesongs_list != undefined){
+          window.songbook_edit_togglesongs_list.get('song-id',change.doc._id)
+            .forEach(function(song){song.values(mapSongRowToValue(change))});
+        }
+      }
+      //songbook?
+      else if(change.doc._id.startsWith('sb-')){
+        if(window.songbook._id ===  change.doc._id){
+          console.log('loaded: ', change.doc._id);
+          window.songbook = '';
+          loadSongbook(change.doc._id);
+        }
+        //update the songbook entry in songbooks_list
+        if(window.songbooks_list != undefined){
+          window.songbooks_list.get('songbook-id',change.doc._id)
+            .forEach(function(songbook){songbook.values(mapSongbookRowToValue(change))});
+        }
+      }
+      //else... let it go! for now
+      else {
+        console.log('changed:',change.doc._id);
+      }
+    }).on('error', function (err) {
+      // handle errors
+      console.log('Error in db.changes('+err);
+    });
+
+    window.user = username;
+    $('#username_d').text('Welcome, '+username+'!');
+    window.yCantaName = dbName;
+    initializeSongbooksList();
+    setLoginState();
+    //initialized
+    window.songbook = {};
+    window.song = {};
+    //wipe login cause we were successfull!
+    $('#login :input').each(function(){$(this).val('')});
+  }
+
+  /*let pwd = $('#pwd').val();
   let pin = $('#pin').val();
   if(newDb)
   console.log(dbName, username, pin);
@@ -81,16 +216,7 @@ function dbLogin(newDb=false) {
 
     console.log(dbName, username, pwd );
 
-  }
-  window.yCantaName = dbName;
-
-  initializeSongbooksList();
-  setLoginState();
-  //initialized
-  window.songbook = {};
-  window.song = {};
-  //wipe login cause we were successfull!
-  $('#login :input').each(function(){$(this).val('')});
+  }*/
 }
 
 function dbLogout(){
@@ -434,7 +560,7 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
           console.log(songbook._id);
           db.put(songbook, function callback(err, result){
             if (!err) {
-              console.log('saved song really quickly! ', song.title);
+              console.log('saved songbook really quickly! ', songbook.title);
             }
           });
         }
@@ -460,6 +586,7 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
 }
 
 function loadSongbook(songbook_id) {
+  console.log('sijsl2');
   var dateBefore = new Date();
   if(songbook_id != 'sb-allSongs'){
     $('#songList [data-songbook-edit], #songList .delete').show()
@@ -572,8 +699,8 @@ function saveExportDefault() {
   $('#user_export_pref').attr('value',JSON.stringify(opts));
   $('#format').trigger('change');
   let cfg = {
-    _id: 'cfg-'+window.exportObject._id+'USER', //must keep in sync with lib.js
-    title: 'Default:  USER',
+    _id: 'cfg-'+window.exportObject._id+'-u-'+window.user, //must keep in sync with lib.js
+    title: 'Default: '+window.user,
     cfg: opts
   }
   db.get(cfg._id).then(function(_doc) {
@@ -667,61 +794,6 @@ db.get('age').then(function(age){
       console.log(err);
     }
   });
-});
-
-//Update ui when db changes]s
-db.changes({
-  since: 'now',
-  live: true,
-  include_docs: true
-}).on('change', function (change) {
-  // received a change
-  if (change.deleted) {
-    // document was deleted
-    console.log('deleted: ' + change.doc._id);
-  } else {
-    // document was added/modified
-  }
-
-  //what type?
-  //song?
-  if(change.doc._id.startsWith('s-')){
-    //only load song if it's the one that's up.
-    if(window.song._id === change.doc._id){
-      loadSong(change.doc._id);
-      console.log('loaded: ', change.doc.title);
-    }
-    //update all songs in songbooks
-    if(window.songbook_list != undefined ){
-      window.songbook_list.get('song-id',change.doc._id)
-        .forEach(function(song){song.values(mapSongRowToValue(change))});
-    }
-    if(window.songbook_edit_togglesongs_list != undefined){
-      window.songbook_edit_togglesongs_list.get('song-id',change.doc._id)
-        .forEach(function(song){song.values(mapSongRowToValue(change))});
-    }
-  }
-  //songbook?
-  else if(change.doc._id.startsWith('sb-')){
-    if(window.songbook._id ===  change.doc._id){
-      console.log('loaded: ', change.doc._id);
-      window.songbook = '';
-      loadSongbook(change.doc._id);
-    }
-    //update the songbook entry in songbooks_list
-    if(window.songbooks_list != undefined){
-      window.songbooks_list.get('songbook-id',change.doc._id)
-        .forEach(function(songbook){songbook.values(mapSongbookRowToValue(change))});
-    }
-  }
-  //else... let it go! for now
-  else {
-    console.log('changed:',change.doc._id);
-  }
-
-}).on('error', function (err) {
-  // handle errors
-  console.log('Error in db.changes('+err);
 });
 
 */

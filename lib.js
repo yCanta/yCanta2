@@ -498,10 +498,10 @@ function bindToSongEdit() {
 
 function checkLogin(){
   let good = true;
-  let pwd = $('#pwd').val();
+  let pin = $('#pin').val();
   let username = $('#username').val();
 
-  if(pwd.trim() == '' || username.trim() == ''){
+  if(pin.trim() == '' || username.trim() == ''){
     good = false;
     alert('Username or password not entered');
   }
@@ -510,20 +510,56 @@ function checkLogin(){
 }
 
 function checkCreateNew() {
-  return true;
+  let dbName = $('#newDbName').val().trim();
+  if(dbName.includes('(local)')){
+    alert('DB name cannot have "(local)" in the name');
+    return
+  }
+  else {
+    dbName += '(local)';
+  }
+  let pin = $('#pin').val().trim();
+  let pin2 = $('#pin2').val().trim();
+  let username = $('#username').val();
+
+  return PouchDB.allDbs().then(function (all_dbs) {
+    let response = true;
+
+    //checks against existing databases
+    if(all_dbs.indexOf(dbName) > -1){
+      alert('Database name already taken - try another!');
+      response = false;
+    }
+    else if(pin == '' || username == ''){
+      response = false;
+      alert('Username or pin are not entered');
+    }
+    else if(pin != pin2) {
+      response = false;
+      alert('Pin and confirmation pin are not equal');
+    }
+    //Go ahead and log in.
+    if(response) {
+      dbLogin(true);
+    }
+    else {
+      return;
+    }
+  });
 }
 
 function setLoginState() {
   window.loggedin = true;
   $('html').addClass('loggedin');
   $('#title a').html('yCanta: ' + window.yCantaName);
-  location.hash = '#';
+  location.hash = '#'; //change this to accomodate redirects to login...
 }
 
 function setLogoutState() {
   window.loggedin = false;
   $('html').removeClass('loggedin');
   location.hash = '#login';
+  window.user = '';
   $('#title a').html('yCanta');
 }
 
@@ -651,7 +687,7 @@ function editSongbook() {
   $('#songbook_content .search').val('')[0].dispatchEvent(new KeyboardEvent('keyup'));
   updateAllLinks();
 
-  $('#songList #songbook_title').attr('contenteditable', 'true').parent().removeAttr('href');
+  $('#songList #songbook_title').attr('contenteditable', 'true');
   $('#songList #songbook_content input.search').parent().addClass('disabled-hidden')[0].disabled=true;
   $('#songList #songbook_content nav').addClass('disabled-hidden');    
 
@@ -707,6 +743,8 @@ function editSongbook() {
       this.addEventListener('drop', dragDrop, false);
       this.addEventListener('dragover', dragOver, false);
     });
+    
+    $('#songList #songbook_title').parent().removeAttr('href');
 
   }).catch(function(err){
     console.log(err);

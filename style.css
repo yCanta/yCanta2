@@ -25,63 +25,6 @@ a {
   text-decoration: none;
   color: black;
 }
-/*Login CSS -- Currently pretty ugly :/*/
-#login .w100-2rem {
-  width: calc(100% - 2rem);
-}
-#login h2 {
-  font-size: xx-large;
-  color: darkgray;
-  left: -1rem;
-  position: relative;
-}
-.loggedin_display,
-#login .pin, 
-#login .new,
-.offline #login #pwd,
-#login.new .not_new {
-  display: none;
-}
-.loggedin .loggedin_display {
-  display: initial;
-}
-#login #pwd,
-.offline #login .pin {
-  display: block; 
-}
-#login.new .new {
-  display: initial !important;
-}
-.pin input {
-  width: 5rem;
-  display: inline-block;
-}
-.pin > span {
-  color: darkred;
-}
-#login {
-  display: none;
-  margin: 5rem auto 5rem auto;
-  padding: 0 1rem 0 1rem;
-  padding-top: 1.5rem;
-  max-width: 370px; 
-  border: 1px solid gray; 
-  background-color: lightgray;
-}
-.login #login {
-  display: block;
-}
-.login #login + div {
-  display: none;
-}
-#login > * {
-  display: block;
-  margin: 0rem 1rem 1rem 1rem;
-}
-#login button {
-  margin: 1rem;
-}
-
 /*CSS FOR Song Display*/
 stitle, cat, author, scrip_ref, key, copyright {
   cursor: pointer;
@@ -348,12 +291,11 @@ body main .sidebar {
   border: 0;
   z-index: 4;
 }
-footer {
-  border: 2px solid green;
-  z-index: 200;
+html {
+  border-bottom: 5px solid green;
 }
-.offline footer {
-  border: 2px solid yellow;
+.offline {
+  border-bottom: 5px solid yellow;
 }
 #debugDiv {
 }
@@ -388,6 +330,65 @@ span.deleteicon input {
 /*footer:hover{
   flex: 0 0 180px;
 }*/
+
+/*Login CSS */
+#login > input {
+  width: calc(100% - 2rem);
+}
+#login h2 {
+  font-size: xx-large;
+  color: darkgray;
+  left: -1rem;
+  position: relative;
+}
+.loggedin_display,
+.d_none {
+  display: none;
+}
+
+.loggedin .loggedin_display {
+  display: initial;
+}
+
+.pin input {
+  width: 5rem;
+}
+.pin > span {
+  color: darkred;
+}
+#login {
+  display: none;
+  margin: 5rem auto 5rem auto;
+  padding: 0 1rem 0 1rem;
+  padding-top: 1.5rem;
+  max-width: 370px; 
+  border: 1px solid gray; 
+  background-color: lightgray;
+}
+.login #login {
+  display: block;
+}
+.login #login + div {
+  display: none;
+}
+#login > * {
+  margin: 0rem 1rem 1rem 1rem;
+}
+#login button {
+  margin: 1rem;
+}
+/*Create Local*/
+#login.create_local .create_local {
+  display: initial;
+}
+/*Login Local*/
+#login.login_local .login_local {
+  display: initial;
+}
+/*Connect Remote*/
+
+/*Login Remote*/
+
 
 /*Styling!*/
 .selected {
