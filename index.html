@@ -753,16 +753,15 @@
           window.location.hash = window.old_hash;
           return
         }
-        if(!(hash == '#login') && !window.loggedin){
-          location.hash = '#login';
+        if(!(hash.startsWith('#login')) && !window.loggedin){
+          location.hash = '#login?'+hash;
           console.log("Hi, let's login first");
           hashchanged();
           return
         }
 
-
         $('.edit_buttons').remove();
-        //if blank - should have to do nothing
+        //if blank - should have to do nothing  
         if(hash == ''){
           $('body').attr('class','header');
           $('.active').removeClass('active');
@@ -770,7 +769,7 @@
           updateAllLinks();
         }
         //Login
-        else if(hash == '#login') {
+        else if(hash.startsWith('#login')) {
           $('body').attr('class', 'login header');
 
           //Change this to a local storage solution instead...? Or crete another pouchdb called alldbs, that I do updates for - would be smaller than the plugin seems to be.

@@ -552,7 +552,7 @@ function setLoginState() {
   window.loggedin = true;
   $('html').addClass('loggedin');
   $('#title a').html('yCanta: ' + window.yCantaName);
-  location.hash = '#'; //change this to accomodate redirects to login...
+  location.hash = location.hash.split('?').slice(1).join('?');
 }
 
 function setLogoutState() {
