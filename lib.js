@@ -77,6 +77,7 @@ var isEqual = function (value, other) {
   // If nothing failed, return true
   return true;
 };
+
 // Warn if overriding existing method
 if(Array.prototype.equals)
     console.warn("Overriding existing Array.prototype.equals. Possible causes: New API defines the method, there's a framework conflict or you've got double inclusions in your code.");
@@ -552,7 +553,12 @@ function setLoginState() {
   window.loggedin = true;
   $('html').addClass('loggedin');
   $('#title a').html('yCanta: ' + window.yCantaName);
-  location.hash = location.hash.split('?').slice(1).join('?');
+  if(location.hash.indexOf('?')>-1){
+    location.hash = location.hash.split('?').slice(1).join('?');
+  }
+  else {
+    location.hash = '#';
+  }
 }
 
 function setLogoutState() {
@@ -560,6 +566,7 @@ function setLogoutState() {
   $('html').removeClass('loggedin');
   location.hash = '#login';
   window.user = '';
+  localStorage.removeItem('loggedin');
   $('#title a').html('yCanta');
 }
 

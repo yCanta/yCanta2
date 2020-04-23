@@ -30,10 +30,16 @@ function clearAllDbs() {
   });
 }
 
-function dbLogin(newDb=false, online=false) {
-  let dbName;
-  let username = $('#username').val().trim();
-  let pin = $('#pin').val().trim();
+function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
+  if(!dbName){
+    dbName = $('#db_select :selected').val();
+  }
+  if(!username){
+    username = $('#username').val().trim();
+  }
+  if(!pin){
+    pin = $('#pin').val().trim();
+  }
   if(newDb){
     dbName = $('#newDbName').val().trim()+'(local)';
     console.log('New DB');
@@ -78,14 +84,12 @@ function dbLogin(newDb=false, online=false) {
   }
   else {
     console.log('Logging in');
-    dbName = $('#db_select :selected').val();
     db = new PouchDB(dbName);
     //check if pin matches
     db.get('_local/u-'+username).then(function(userPin){
       if(userPin.pin == pin) {
         console.log('Pin is correct!');
         takeNextStep(username,dbName);
-
       }
       //if not then close the db
       else {
@@ -153,7 +157,7 @@ function dbLogin(newDb=false, online=false) {
       // handle errors
       console.log('Error in db.changes('+err);
     });
-
+    localStorage.setItem('loggedin',JSON.stringify([dbName, username, pin]));
     window.user = username;
     $('#username_d').text('Welcome, '+username+'!');
     window.yCantaName = dbName;
@@ -164,7 +168,10 @@ function dbLogin(newDb=false, online=false) {
     window.song = {};
     //wipe login cause we were successfull!
     $('#login :input').each(function(){$(this).val('')});
+    return true;
   }
+
+  return false;
 
   /*let pwd = $('#pwd').val();
   let pin = $('#pin').val();
@@ -219,11 +226,13 @@ function dbLogin(newDb=false, online=false) {
 }
 
 function dbLogout(){
-  setLogoutState();
+  if(!confirmWhenEditing()){
+    setLogoutState();
+    db.close().then(function () {
+      console.log('closed db');
+    });
+  }
 
-  db.close().then(function () {
-    console.log('closed db');
-  });
 /*
 
   syncHandler.on('complete', function (info) {

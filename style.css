@@ -248,6 +248,10 @@ body {
   border: 1px solid gray;
   margin: 1rem .5rem 1rem .5rem;
 }
+.btn-small {
+  padding: 2px 7px 2px 7px;
+  margin: .5rem .25rem .6rem 0rem !important;
+}
 .header header {
   flex: 0 1 100%;
 }

@@ -46,7 +46,7 @@
         <h2>Login:</h2>
         <select id="db_select">
           <option value="new">Create local</option>
-        </select>
+        </select><button class="btn btn-small" onclick="if(confirm('Are you sure you want to delete: '+$('#db_select').val()+'?')){new PouchDB($('#db_select').val()).destroy().then(function () {  console.log('database deleted'); setTimeout(function(){location.reload();},1500); }).catch(function (err) { alert('could not delete database', err)});}">🗑</button>
         <input id="newDbUrl" class="d_none" placeholder="DB Url" type="text"></input>
         <input id="newDbName" class="d_none create_local" placeholder="DB Name" type="text"></input>
         <input id="username" placeholder="Username" type="text"></input>
@@ -770,7 +770,17 @@
         }
         //Login
         else if(hash.startsWith('#login')) {
+          let userPin = JSON.parse(localStorage.getItem('loggedin'));
+          try {
+            dbLogin(false, userPin[0], userPin[1], userPin[2]);
+            console.log("still logged in!");
+          }
+          catch {
+            console.log("Not logged in yet");
+          }
+
           $('body').attr('class', 'login header');
+
 
           //Change this to a local storage solution instead...? Or crete another pouchdb called alldbs, that I do updates for - would be smaller than the plugin seems to be.
           PouchDB.allDbs().then(function (all_dbs) {
