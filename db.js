@@ -159,7 +159,7 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
     });
     localStorage.setItem('loggedin',JSON.stringify([dbName, username, pin]));
     window.user = username;
-    $('#username_d').text('Welcome, '+username+'!');
+    $('#username_d').text('Hi, '+username+'!');
     window.yCantaName = dbName;
     initializeSongbooksList();
     setLoginState();
