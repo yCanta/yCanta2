@@ -46,7 +46,7 @@
         <h2>Login:</h2>
         <select id="db_select">
           <option value="new">Create local</option>
-        </select><button class="btn btn-small" onclick="if(confirm('Are you sure you want to delete: '+$('#db_select').val()+'?')){new PouchDB($('#db_select').val()).destroy().then(function () {  console.log('database deleted'); setTimeout(function(){location.reload();},1500); }).catch(function (err) { alert('could not delete database', err)});}">🗑</button>
+        </select><button class="btn btn-small" onclick="if(confirm('Are you sure you want to delete: '+$('#db_select').val()+'?')){new PouchDB($('#db_select').val()).destroy().then(function () {  console.log('database deleted'); setTimeout(function(){location.reload();},1000); }).catch(function (err) { alert('could not delete database', err)});}">🗑</button>
         <input id="newDbUrl" class="d_none" placeholder="DB Url" type="text"></input>
         <input id="newDbName" class="d_none create_local" placeholder="DB Name" type="text"></input>
         <input id="username" placeholder="Username" type="text"></input>
@@ -70,10 +70,9 @@
 
         You can view songbooks or songs by selecting one of the above buttons.<br><br>
         
-        To import more songs, choose a zip file and upload it below.
-      
         <h2>Utilities</h2>
-
+        <div>
+        To import more songs, choose a zip file and upload it below.</div>
         <label class="btn">Upload songs:<input type="file" id="file" name="file" />
         </label>
         <br>
@@ -82,11 +81,11 @@
         <div id="result">
         </div>
 
-        <a href="#" class="btn" style="background-color: crimson; color: white;" onclick="db.destroy().then(function () {
+        <a href="#" class="btn" style="background-color: crimson; color: white;" onclick="if(confirm('Are you sure you want to delete this database?')){ db.destroy().then(function () {
               dbLogout();
             }).catch(function (err) {
               console.log(err);
-          });">Delete DB</a>
+          });}">Delete DB</a>
       </div>
 
     </header>
