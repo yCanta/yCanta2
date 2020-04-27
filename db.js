@@ -166,6 +166,12 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
           }
           $(this).attr('data-user-fav', fav);
         })
+        if(fav_sbs.indexOf(window.songbook._id) > -1) {
+          $('#songbook_title').attr('data-user-fav', 'true');
+        }
+        else {
+          $('#songbook_title').attr('data-user-fav', 'false'); 
+        }
         window.user = change.doc;
         window.songbooks_list.reIndex();
         window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
@@ -297,18 +303,18 @@ function initializeSongbooksList(){
       var values = [{'songbook-id': 'sb-allSongs',
                      'songbook-rev': 'n/a',
                      'songbook-title': 't:All Songs',
-                     'user-fav': (user_sb_favs.indexOf('sb-allSongs') == -1 ? 'false' : 'true'),
+                     'user-fav': 'false',
                      'link': '#sb-allSongs',
-                     'name': 'All Songs'}];
+                     'name': 'All Songs'},/*];
                      console.log(window.user.fav_songs.length);
       if(window.user.fav_songs.length > 0){
-        values.push({'songbook-id': 'sb-favoriteSongs',
+        values.push(*/{'songbook-id': 'sb-favoriteSongs',
                      'songbook-rev': 'n/a',
                      'songbook-title': 't:Favorite Songs',
-                     'user-fav': (user_sb_favs.indexOf('sb-allSongs') == -1 ? 'false' : 'true'),
+                     'user-fav': 'false',
                      'link': '#sb-favoriteSongs',
-                     'name': 'Favorite Songs'});
-      }
+                     'name': 'Favorite Songs'}];//);
+      //}
       songbooks.map(function(row) {
         if(window.songbooks_list != undefined){
           var songbookIdInList = window.songbooks_list.get('songbook-id',row.doc._id);
@@ -690,7 +696,7 @@ function loadSongbook(songbook_id) {
         $('#songbook_title').removeAttr('contenteditable');
         $('#songbook_content .search').parent().removeAttr('disabled');
         $('.disabled-hidden').removeClass('disabled-hidden');
-        $('#songbook_title').html('<i>'+window.songbook.title+'</i>').removeAttr('data-rev');
+        $('#songbook_title').html('<i>'+window.songbook.title+'</i>').removeAttr('data-rev').attr('data-songbook-id', songbook_id);
         $('#songList [data-songbook-edit], #songList .delete').hide()
         var dateAfter = new Date();
         console.log(dateAfter-dateBefore);
@@ -738,9 +744,15 @@ function loadSongbook(songbook_id) {
         $('#songbook_title').removeAttr('contenteditable');
         $('#songbook_content .search').parent().removeAttr('disabled');
         $('.disabled-hidden').removeClass('disabled-hidden');
-        $('#songbook_title').text(result.title).attr('data-rev',result._rev);
+        $('#songbook_title').html(result.title+'<span onclick="event.stopPropagation(); toggleFavSongbook(\''+result._id+'\')"></span>').attr('data-rev',result._rev).attr('data-songbook-id',result._id);
         var dateAfter = new Date();
         console.log(dateAfter-dateBefore);
+        if(window.user.fav_sbs.indexOf(window.songbook._id) > -1) {
+          $('#songbook_title').attr('data-user-fav', 'true');
+        }
+        else {
+          $('#songbook_title').attr('data-user-fav', 'false'); 
+        }
         resolve('loaded songbook');
       }).catch(function(err){
         console.log(err);
