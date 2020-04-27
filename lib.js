@@ -392,10 +392,10 @@ function parseHash(part) {
 }
 function sortFavSongbooks(a,b){
   if(a._values['user-fav'] == b._values['user-fav']){
-    if(a._values['songbook-title'].toLowerCase() > b._values['songbook-title'].toLowerCase()) {
+    if(a._values['songbook-title'] > b._values['songbook-title']) {
       return -1;
     }
-    if(a._values['songbook-title'].toLowerCase() < b._values['songbook-title'].toLowerCase()) {
+    if(a._values['songbook-title'] < b._values['songbook-title']) {
       return 1;
     }
     return 0
