@@ -293,7 +293,7 @@ function initializeSongbooksList(){
       };
       var values = [{'songbook-id': 'sb-allSongs',
                      'songbook-rev': 'n/a',
-                     'songbook-title': 'All Songs',
+                     'songbook-title': 't:All Songs',
                      'user-fav': (user_sb_favs.indexOf('sb-allSongs') == -1 ? 'false' : 'true'),
                      'link': '#sb-allSongs',
                      'name': 'All Songs'}];
