@@ -45,12 +45,25 @@ stitle, cat, author, scrip_ref, key, copyright {
   background-color: lightgray;
   border: 1px gray dashed;
 }
-#songbookList a[href="#sb-allSongs"] {
+#songbookList a[href="#sb-allSongs"],
+#songbookList a[href="#sb-favoriteSongs"] {
   font-style: italic;
   font-weight: bold;
 }
+#song song stitle,
 #songbookList li {
   position: relative;
+}
+#song song stitle span:after {
+  margin-left: .7rem;
+  text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.15);
+  font-size: 1.7rem;
+  color: lightgray;
+  content: '☆';
+  cursor: pointer;
+}
+.edit song stitle span {
+  display: none;
 }
 #songbookList li span:after {
   text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.15);
@@ -61,6 +74,7 @@ stitle, cat, author, scrip_ref, key, copyright {
   content: '☆';
   cursor: pointer;
 }
+#song song[data-user-fav="true"] stitle span:after,
 #songbookList li[data-user-fav="true"] span:after {
   content: '★';
   color: black;
@@ -937,11 +951,13 @@ only screen and (max-height: 500px) {
   .column:not(:last-child):hover {
     z-index: 6 !important;
   }
+  #song song[data-user-fav="true"] stitle span:hover:after,
   #songbookList li[data-user-fav="true"] span:hover:after,
   #songbookList li:hover span:after {
     content: '☆';
     color: black;
   }
+  #song stitle span:hover:after,
   #songbookList li span:hover:after,
   #songbookList li[data-user-fav="true"] span:after {
     content: '★';

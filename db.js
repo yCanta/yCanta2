@@ -49,7 +49,8 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
     //create User doc
     let user = {
       _id: 'u-'+username,
-      fav_sbs: []
+      fav_sbs: [],
+      fav_songs: []
     }
     window.user = user;
     db.put(user, function callback(err, result) {
@@ -155,7 +156,7 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
           window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
         }
       }
-      else if(change.doc._id.startsWith('u-')){
+      else if(change.doc._id == window.user._id){
         let fav_sbs = change.doc.fav_sbs;
         //jquery remove all favs
         $('#songbooks .list li').each(function(){
@@ -165,8 +166,10 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
           }
           $(this).attr('data-user-fav', fav);
         })
+        window.user = change.doc;
         window.songbooks_list.reIndex();
         window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
+        $('#song song').attr('data-user-fav', (window.user.fav_songs.indexOf($('#song song').attr('data-id'))> -1 ? 'true': 'false'))
       }
       //else... let it go! for now
       else {
@@ -297,6 +300,15 @@ function initializeSongbooksList(){
                      'user-fav': (user_sb_favs.indexOf('sb-allSongs') == -1 ? 'false' : 'true'),
                      'link': '#sb-allSongs',
                      'name': 'All Songs'}];
+                     console.log(window.user.fav_songs.length);
+      if(window.user.fav_songs.length > 0){
+        values.push({'songbook-id': 'sb-favoriteSongs',
+                     'songbook-rev': 'n/a',
+                     'songbook-title': 't:Favorite Songs',
+                     'user-fav': (user_sb_favs.indexOf('sb-allSongs') == -1 ? 'false' : 'true'),
+                     'link': '#sb-favoriteSongs',
+                     'name': 'Favorite Songs'});
+      }
       songbooks.map(function(row) {
         if(window.songbooks_list != undefined){
           var songbookIdInList = window.songbooks_list.get('songbook-id',row.doc._id);
@@ -440,8 +452,8 @@ function loadSong(song_id) {
   return new Promise(function(resolve, reject) {
     function createSongHtml(song) {
       window.song = song;
-      var song_html = '<song data-rev="' + song._rev + '" data-id="' + song._id + '">' + 
-        '<a data-song class="title_link"><stitle class="title_link" data-song>' + song.title + '</stitle></a>' + 
+      var song_html = '<song data-rev="' + song._rev + '" data-id="' + song._id + '" data-user-fav="'+(window.user.fav_songs.indexOf(song._id) > -1 ? 'true' : 'false')+'">' + 
+        '<a data-song class="title_link"><stitle class="title_link" data-song>' + song.title + '<span onclick="event.stopPropagation(); toggleFavSong($(this).closest(\'song\').attr(\'data-id\'))"></span></stitle></a>' + 
         '<authors><author>' + song.authors.join('</author>, <author>') + '</author></authors>' + 
         '<scripture_ref><scrip_ref>' + song.scripture_ref.join('</scrip_ref>, <scrip_ref>') + '</scrip_ref></scripture_ref>' + 
         '<introduction>' + song.introduction + '</introduction>' + 
@@ -620,7 +632,7 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
 
 function loadSongbook(songbook_id) {
   var dateBefore = new Date();
-  if(songbook_id != 'sb-allSongs'){
+  if(songbook_id != 'sb-allSongs' || songbook_id != 'sb-favoriteSongs'){
     $('#songList [data-songbook-edit], #songList .delete').show()
   }
 
@@ -629,17 +641,28 @@ function loadSongbook(songbook_id) {
       //console.log('Songbook is already loaded');
       resolve('songbook already loaded');
     }
-    else if(songbook_id == undefined || songbook_id == 'sb-allSongs') {
-      songbook_id = 'sb-allSongs';
+    else if(songbook_id == undefined || songbook_id == 'sb-allSongs' || songbook_id == 'sb-favoriteSongs') {
+      let options;
+      if(songbook_id == 'sb-favoriteSongs') {
+        window.songbook.title = "Favorite Songs";
+        options = {
+          include_docs: true,
+          keys: window.user.fav_songs, //we need error handling for missing ids
+        }
+      }
+      else {
+        songbook_id = 'sb-allSongs';
+        window.songbook.title = "All Songs";
+        options = {
+          include_docs: true,
+          startkey: 's-',
+          endkey: 's-\ufff0',
+        }  
+      }
       window.songbook._id = songbook_id;  
       window.songbook._rev = '';
-      window.songbook.title = "All Songs";
-
-      db.allDocs({
-        include_docs: true,
-        startkey: 's-',
-        endkey: 's-\ufff0',
-      }).then(function(result){
+       
+      db.allDocs(options).then(function(result){
         var sb_song_ids = result.rows.map(function (row) {
           return row.doc._id
         });
@@ -667,7 +690,7 @@ function loadSongbook(songbook_id) {
         $('#songbook_title').removeAttr('contenteditable');
         $('#songbook_content .search').parent().removeAttr('disabled');
         $('.disabled-hidden').removeClass('disabled-hidden');
-        $('#songbook_title').html('<i>All Songs</i>').removeAttr('data-rev');
+        $('#songbook_title').html('<i>'+window.songbook.title+'</i>').removeAttr('data-rev');
         $('#songList [data-songbook-edit], #songList .delete').hide()
         var dateAfter = new Date();
         console.log(dateAfter-dateBefore);
@@ -766,12 +789,35 @@ function toggleFavSongbook(id){
     }
     db.put(user).then(function(result) {
       console.log('Successfully updated fav songbooks!');
-      window.user = user;
     });
   }).catch(function(err){
     console.log(err);
   });
 }
+function toggleFavSong(id){
+  db.get(window.user._id).then(function(user){
+    let i = -1;
+    try {
+      i = user.fav_songs.indexOf(id);
+    }
+    catch {
+      //fav_sbs doesn't exist
+      user.fav_songs = [];
+    }
+    if(i == -1) {
+      user.fav_songs.push(id);
+    }
+    else {
+      user.fav_songs.splice(i,1);
+    }
+    db.put(user).then(function(result) {
+      console.log('Successfully updated fav songs!');
+    });
+  }).catch(function(err){
+    console.log(err);
+  });
+}
+
 
 var song = {
   _id: 's-aSong.song',

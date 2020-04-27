@@ -391,7 +391,20 @@ function parseHash(part) {
   }
 }
 function sortFavSongbooks(a,b){
-  if(a._values['user-fav'] == b._values['user-fav']){
+  //console.log(a);
+  if(a._values['songbook-id'] == 'sb-allSongs'){
+    return 2;
+  }
+  else if(b._values['songbook-id'] == 'sb-allSongs'){
+    return -2;
+  }
+  else if(a._values['songbook-id'] == 'sb-favoriteSongs'){
+    return 1;
+  }
+  else if(b._values['songbook-id'] == 'sb-favoriteSongs'){
+    return -1;
+  }
+  else if(a._values['user-fav'] == b._values['user-fav']){
     if(a._values['songbook-title'] > b._values['songbook-title']) {
       return -1;
     }
