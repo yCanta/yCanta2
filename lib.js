@@ -390,6 +390,23 @@ function parseHash(part) {
     return parts;
   }
 }
+function sortFavSongbooks(a,b){
+  if(a._values['user-fav'] == b._values['user-fav']){
+    if(a._values['songbook-title'].toLowerCase() > b._values['songbook-title'].toLowerCase()) {
+      return -1;
+    }
+    if(a._values['songbook-title'].toLowerCase() < b._values['songbook-title'].toLowerCase()) {
+      return 1;
+    }
+    return 0
+  }
+  else if(a._values['user-fav'] > b._values['user-fav']) {
+    return 1;
+  }
+  else {
+    return -1;
+  }
+}
 function updateAllLinks(whatChanged='all') {
   $('[data-song-edit]').attr('href','#'+window.songbook._id+'&'+window.song._id+'&edit');
   $('[data-song-edit="new"]').attr('href','#'+window.songbook._id+'&s-new-song&edit');
@@ -1144,7 +1161,7 @@ function bindSearch(element, search_prefix) {
 
 function confirmWhenEditing() {
   if(window.editing){
-    if (confirm("If you leave this page you will lose your unsaved changes!")) {
+    if(confirm("If you leave this page you will lose your unsaved changes!")) {
       window.editing=false; //It's ok to lose changes
       return false;
     } else { //we aren't leaving 

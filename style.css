@@ -48,7 +48,23 @@ stitle, cat, author, scrip_ref, key, copyright {
 #songbookList a[href="#sb-allSongs"] {
   font-style: italic;
   font-weight: bold;
-} 
+}
+#songbookList li {
+  position: relative;
+}
+#songbookList li span:after {
+  text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.15);
+  position: absolute;
+  right: 1rem;
+  font-size: 1.7rem;
+  color: lightgray;
+  content: '☆';
+  cursor: pointer;
+}
+#songbookList li[data-user-fav="true"] span:after {
+  content: '★';
+  color: black;
+}
 #songbook_header {
   position: sticky;
   top: 0;
@@ -724,6 +740,9 @@ input[type="number"] {
 }
 /*For Mobile devices only*/
 @media only screen and (max-width: 639px) {
+  #songbookList li span:after {
+    top: 0;
+  }
   header {
     flex: 0 0 60px;
   }
@@ -918,13 +937,28 @@ only screen and (max-height: 500px) {
   .column:not(:last-child):hover {
     z-index: 6 !important;
   }
+  #songbookList li[data-user-fav="true"] span:hover:after,
+  #songbookList li:hover span:after {
+    content: '☆';
+    color: black;
+  }
+  #songbookList li span:hover:after,
+  #songbookList li[data-user-fav="true"] span:after {
+    content: '★';
+    cursor: pointer;
+    color: black;
+  }
 }
 @media (hover: hover) and (min-width: 640px) and (min-height: 501px) {
   .column:hover .float-menu-item{
     opacity: 1;
   }
 }
+/*larger screens only */
 @media only screen and (min-width: 640px) {
+  #songbookList li span:after {
+    bottom: 0;
+  }
   ul li a{
     border-left: 1px solid #EEE;
     border-radius: 20px;

@@ -114,8 +114,9 @@
               <li id="songbook-item-template" 
                   data-songbook-id=""
                   data-songbook-rev=""
-                  data-songbook-title="">
-                <a href="" tabindex="0" class="link name" ></a>
+                  data-songbook-title=""
+                  data-user-fav="">
+                <a href="" tabindex="0" class="link name" ></a><span onclick="toggleFavSongbook($(this).parent().attr('data-songbook-id'));"></span>
               </li>
             </ul>
           </div>

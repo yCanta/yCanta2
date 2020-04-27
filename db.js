@@ -47,9 +47,11 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
     db = new PouchDB(dbName);
     
     //create User doc
-    var user = {
-      _id: 'u-'+username
+    let user = {
+      _id: 'u-'+username,
+      fav_sbs: []
     }
+    window.user = user;
     db.put(user, function callback(err, result) {
       if(!err) {
         console.log('added user: ', username);
@@ -89,7 +91,10 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
     db.get('_local/u-'+username).then(function(userPin){
       if(userPin.pin == pin) {
         console.log('Pin is correct!');
-        takeNextStep(username,dbName);
+        db.get('u-'+username).then(function(response) {
+          window.user = response;
+          takeNextStep(username,dbName);
+        });
       }
       //if not then close the db
       else {
@@ -147,7 +152,21 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
         if(window.songbooks_list != undefined){
           window.songbooks_list.get('songbook-id',change.doc._id)
             .forEach(function(songbook){songbook.values(mapSongbookRowToValue(change))});
+          window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
         }
+      }
+      else if(change.doc._id.startsWith('u-')){
+        let fav_sbs = change.doc.fav_sbs;
+        //jquery remove all favs
+        $('#songbooks .list li').each(function(){
+          let fav = false;
+          if(fav_sbs.indexOf($(this).attr('data-songbook-id')) > -1) {
+            fav = true;
+          }
+          $(this).attr('data-user-fav', fav);
+        })
+        window.songbooks_list.reIndex();
+        window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
       }
       //else... let it go! for now
       else {
@@ -158,7 +177,6 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
       console.log('Error in db.changes('+err);
     });
     localStorage.setItem('loggedin',JSON.stringify([dbName, username, pin]));
-    window.user = username;
     $('#username_d').text('Hi, '+username+'!');
     window.yCantaName = dbName;
     initializeSongbooksList();
@@ -257,11 +275,13 @@ function initializeSongbooksList(){
     }
     //then add and update the new ones
     function buildSongbooksList(songbooks) {
+      let user_sb_favs = window.user.fav_sbs;
       var options = {    
         valueNames: [
           { data: ['songbook-id'] },
           { data: ['songbook-rev'] },
           { data: ['songbook-title'] },
+          { data: ['user-fav'] },
           //{ data: ['songbook-authors'] },
           //{ data: ['songbook-categories'] },
           //{ data: ['songbooks-songs'] },
@@ -271,11 +291,12 @@ function initializeSongbooksList(){
         ],
         item: 'songbook-item-template'
       };
-      var values = [{'songbook-id': 'sb-allSongs', 
-                     'songbook-rev': 'n/a', 
-                     'songbook_title': 'All Songs',            
+      var values = [{'songbook-id': 'sb-allSongs',
+                     'songbook-rev': 'n/a',
+                     'songbook-title': 'All Songs',
+                     'user-fav': (user_sb_favs.indexOf('sb-allSongs') == -1 ? 'false' : 'true'),
                      'link': '#sb-allSongs',
-                     'name': 'All Songs'}];   
+                     'name': 'All Songs'}];
       songbooks.map(function(row) {
         if(window.songbooks_list != undefined){
           var songbookIdInList = window.songbooks_list.get('songbook-id',row.doc._id);
@@ -283,23 +304,24 @@ function initializeSongbooksList(){
             // we need to update if the revision is different.
             var songbookRevInList = window.songbooks_list.get('songbook-rev', row.doc._rev);
             if(songbookRevInList < 1){
-              songbookIdInList[0].values(mapSongbookRowToValue(row));
+              let sb_vals = mapSongbookRowToValue(row);
+              sb_vals['user-fav'] = (user_sb_favs.indexOf(row.doc._id) == -1 ? 'false' : 'true');
+              songbookIdInList[0].values(sb_vals);
             }
             return
           }
         }
-        values.push(mapSongbookRowToValue(row));
+        let sb_vals = mapSongbookRowToValue(row); 
+        sb_vals['user-fav'] = (user_sb_favs.indexOf(row.doc._id) == -1 ? 'false' : 'true');
+        values.push(sb_vals);
       });
       //Creates list.min.js list for viewing all the songbooks
       window.songbooks_list = new List('songbooks', options, values);
+      window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
       bindSearchToList(window.songbooks_list, '#songbooks');
       return 
     }
-    buildSongbooksList(result.rows.sort(function(a, b){
-          if(a.doc.title < b.doc.title) { return -1; }
-          if(a.doc.title > b.doc.title) { return 1; }
-          return 0;
-        }));
+    buildSongbooksList(result.rows);
   }).catch(function(err){
     console.log(err);
   });
@@ -709,8 +731,8 @@ function saveExportDefault() {
   $('#user_export_pref').attr('value',JSON.stringify(opts));
   $('#format').trigger('change');
   let cfg = {
-    _id: 'cfg-'+window.exportObject._id+'-u-'+window.user, //must keep in sync with lib.js
-    title: 'Default: '+window.user,
+    _id: 'cfg-'+window.exportObject._id+window.user._id, //must keep in sync with lib.js
+    title: 'Default: '+window.user.replace('u-',''),
     cfg: opts
   }
   db.get(cfg._id).then(function(_doc) {
@@ -723,6 +745,31 @@ function saveExportDefault() {
     return db.put(cfg);
   }).then(function(info){
     console.log("id of record: " + info.id);
+  });
+}
+
+function toggleFavSongbook(id){
+  db.get(window.user._id).then(function(user){
+    let i = -1;
+    try {
+      i = user.fav_sbs.indexOf(id);
+    }
+    catch {
+      //fav_sbs doesn't exist
+      user.fav_sbs = [];
+    }
+    if(i == -1) {
+      user.fav_sbs.push(id);
+    }
+    else {
+      user.fav_sbs.splice(i,1);
+    }
+    db.put(user).then(function(result) {
+      console.log('Successfully updated fav songbooks!');
+      window.user = user;
+    });
+  }).catch(function(err){
+    console.log(err);
   });
 }
 
