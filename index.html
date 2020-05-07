@@ -13,17 +13,20 @@
 
     <script src="jquery-3.4.0.min.js"></script>
     <script src="pouchdb.min.js"></script>
+    <script src="pouchdb.all-dbs.min.js"></script>
+    <script src="pouchdb.authentication.min.js"></script>
+
     <script src="db.js"></script>
     <script src="lib.js"></script>
-    <script src="jquery.myTransposer.js"></script>
-    <script src="jquery.toTextarea.js"></script>
+    <script async src="jquery.myTransposer.js"></script>
+    <script async src="jquery.toTextarea.js"></script>
     <script src="list.min.js"></script>
     <script src="sortable.js"></script>
-    <script src="jszip.min.js"></script>
-    <script src="song2json.js"></script>
-    <script src="pdfformatter.js"></script>
-    <script src="pdfkit.standalone.js"></script>
-    <script src="blob-stream.js"></script>
+    <script async src="jszip.min.js"></script>
+    <script async src="song2json.js"></script>
+    <script async src="pdfformatter.js"></script>
+    <script async src="pdfkit.standalone.js"></script>
+    <script async src="blob-stream.js"></script>
     <!--script type="text/javascript" src="json-url.js"></script-->
 
     <link rel="stylesheet" type="text/css" href="style.css">
@@ -38,40 +41,60 @@
   </head>
   <body class="header">
     <header id="header">
-      <h2><a href="#">yCanta</a></h2>
-      <span style="position: absolute; top:0;right:0;">
-
-      </span>
-      <hr>
-      <div class="scrollable">
-        <a class="btn songbookList-color" href="#songbooks">Songbooks</a>
-        <a class="btn songList-color" href="#sb-allSongs">All Songs</a>
-
-
-
-        <h2>Brief Introduction</h2>
-
-        You can view songbooks or songs by selecting one of the above buttons.<br><br>
-        
-        To import more songs, choose a zip file and upload it below.
-      </div>
-
       <div>
-        <h2>Utilities</h2>
+        <h2 id="title"><a href="#">yCanta</a></h2>
+        <span class="loggedin_display" style="position: absolute; top:0;right:0; z-index:1;"><span id="username_d"></span>
+          <button style="background-color:white; opacity: .8;" class="btn" onclick="dbLogout();">Logout</button>
+        </span>
+        <hr>
+      </div>
+      <div style="overflow: auto; height: calc(100% - 75px);">
 
-        <label class="btn">Upload songs:<input type="file" id="file" name="file" />
-        </label>
-        <br>
-        <br>
-
-        <div id="result">
+        <div id="login">
+          <h2>Login:</h2>
+          <select id="db_select">
+            <option value="new">Create local</option>
+          </select><button class="btn btn-small" onclick="if(confirm('Are you sure you want to delete: '+$('#db_select').val()+'?')){new PouchDB($('#db_select').val()).destroy().then(function () {  console.log('database deleted'); setTimeout(function(){location.reload();},1000); }).catch(function (err) { alert('could not delete database', err)});}">🗑</button>
+          <input id="newDbUrl" class="d_none" placeholder="DB Url" type="text"></input>
+          <input id="newDbName" class="d_none create_local" placeholder="DB Name" type="text"></input>
+          <input id="username" placeholder="Username" type="text"></input>
+          <input id="pwd" class="d_none" placeholder="Password" type="password"></input>
+          <div class="pin d_none create_local login_local">
+            <input id="pin" placeholder="Pin" type="password"></input>
+            <input id="pin2" class="d_none create_local" placeholder="Renter Pin" type="password"></input>
+            <span class="d_none">⚠️ Offline - enter pin</span><br>
+          </div>
+          <button class="btn d_none login_local" onclick="if(checkLogin()){dbLogin();}">Login</button>
+          <button class="btn d_none create_local" onclick="checkCreateNew();">Create Local</button>
+          <button class="btn" style="background-color: red;" onclick="if(confirm('are you sure you want to delete all data?')){clearAllDbs();};">Clear all dbs</button>
         </div>
+        <div id="welcome">
+          <a class="btn songbookList-color" href="#songbooks">Songbooks</a>
+          <a class="btn songList-color" href="#sb-allSongs">All Songs</a>
 
-        <a href="#" class="btn" style="background-color: crimson; color: white;" onclick="db.destroy().then(function () {
-              window.location.reload();
-            }).catch(function (err) {
-              console.log(err);
-          });">Reset DB</a>
+
+
+          <h2>Brief Introduction</h2>
+
+          You can view songbooks or songs by selecting one of the above buttons.<br><br>
+          
+          <h2>Utilities</h2>
+          <div>
+          To import more songs, choose a zip file and upload it below.</div>
+          <label class="btn">Upload songs:<input type="file" id="file" name="file" />
+          </label>
+          <br>
+          <br>
+
+          <div id="result">
+          </div>
+
+          <a href="#" class="btn" style="background-color: crimson; color: white;" onclick="if(confirm('Are you sure you want to delete this database?')){ db.destroy().then(function () {
+                dbLogout();
+              }).catch(function (err) {
+                console.log(err);
+            });}">Delete DB</a>
+        </div>
       </div>
 
     </header>
@@ -96,8 +119,9 @@
               <li id="songbook-item-template" 
                   data-songbook-id=""
                   data-songbook-rev=""
-                  data-songbook-title="">
-                <a href="" tabindex="0" class="link name" ></a>
+                  data-songbook-title=""
+                  data-user-fav="">
+                <a href="" tabindex="0" class="link name" ></a><span></span>
               </li>
             </ul>
           </div>
@@ -624,7 +648,7 @@
             </div>
           </div>
           <div class="subcolumn sidebar" id="exportPreview">
-            <div style="width: 240px;">
+            <div style="width: 280px;">
               <div class="sticky">
                 <h3>Preview<button onclick="$(this).closest('#exportPreview').removeClass('sidebar-open');" class="icon-fl-right close-icon">&times;</button></h3><input id="auto_refresh" name="auto_refresh" type="checkbox"><label for="auto_refresh">Automatic refresh?</label>
                   <!-- can't seem to get chrome to display this in iframe, objects or any other thingy without crashing on src change.  I get an "awSnap!" message and closed out tab -->
@@ -642,17 +666,21 @@
         </div>
       </div>
     </main>
+    <dialog id="dialog">
+      <h5 style="margin: 0; color: darkgray;" class="handle">Song</h5>
+      <div class="content"></div>
+      <span class="close" onclick="$('dialog').hide();">X</span>
+    </dialog>
     <footer>
-      <span style="float: right;">rev __________ 1</span>    
-      <div id="debugDiv">
-      </div>
     </footer>
     <iframe id="presentation"></iframe>
     <script>
+      dragDialog();
+
       $('#song .row').append('<button onclick="toggleFullscreen(this)" class="icon-rotate2x tr">&#8596;</button>');
 
       bindToSongEdit();
-      initializeSongbooksList();
+      
       $("#export_form > label").click(function(e){
         if(this.previousElementSibling.checked){
           e.stopPropagation();
@@ -702,6 +730,14 @@
         }
       });
       $(function () {
+        PouchDB.on('destroyed', function (dbName) {
+          console.log('Destroyed: ', dbName);
+        });
+        PouchDB.on('created', function (dbName) {
+          console.log('Created: ', dbName);
+        });
+
+
         $('input.deletable').wrap('<span class="deleteicon" />').after($('<span/>').click(function() {
           $(this).prev('input').val('').trigger('change').focus()[0].dispatchEvent(new KeyboardEvent("keyup"));
         }));
@@ -713,6 +749,16 @@
         window.onbeforeunload = function() {
           return window.editing ? "If you leave this page you will lose your unsaved changes." : null;
         }
+
+        $('#db_select').on('change', function() {
+          $('#login').removeClass();
+          if($('#db_select :selected').val() == 'create_local') {
+            $('#login').addClass('create_local');
+          }
+          else {
+            $('#login').addClass('login_local');
+          }
+        });
       });   
       function hashchanged(){
         var hash = location.hash;
@@ -723,20 +769,57 @@
           window.location.hash = window.old_hash;
           return
         }
-        $('.edit_buttons').remove();
-        //if blank - should have to do nothing
-        if(hash == ''){
-         $('body').attr('class','header');
-         $('.active').removeClass('active');
-         updateAllLinks();
-         window.document.title = "yCanta2";
+        if(!(hash.startsWith('#login')) && !window.loggedin){
+          location.hash = '#login?'+hash;
+          console.log("Hi, let's login first");
+          hashchanged();
+          return
         }
+
+        $('.edit_buttons').remove();
+        //if blank - should have to do nothing  
+        if(hash == ''){
+          $('body').attr('class','header');
+          $('.active').removeClass('active');
+          window.document.title = "yCanta2";
+          updateAllLinks();
+        }
+        //Login
+        else if(hash.startsWith('#login')) {
+          let userPin = JSON.parse(localStorage.getItem('loggedin'));
+          try {
+            dbLogin(false, userPin[0], userPin[1], userPin[2]);
+            console.log("still logged in!");
+          }
+          catch {
+            console.log("Not logged in yet");
+          }
+
+          $('body').attr('class', 'login header');
+
+
+          //Change this to a local storage solution instead...? Or crete another pouchdb called alldbs, that I do updates for - would be smaller than the plugin seems to be.
+          PouchDB.allDbs().then(function (all_dbs) {
+            let db_opts = '';
+            for(item of all_dbs){
+              db_opts += '<option value="'+item+'">'+item+'</option>';
+            }
+            db_opts += '<option value="create_local">Create Local</option>';
+            $('#db_select').html(db_opts).trigger('change');
+            console.log(log_opts);
+
+          }).catch(function (err) {
+            // handle err
+          });
+
+          window.document.title = "yCanta2 - Login";
+        }
+        //Songbooks
         else if(hash == '#songbooks'){
-         $('body').attr('class','songbookList');
-         $('.active').removeClass('active');
-         $('#songbookList').addClass('active');
-         updateAllLinks();
-         window.document.title = "yCanta2";
+          $('body').attr('class','songbookList');
+          $('.active').removeClass('active');
+          $('#songbookList').addClass('active');
+          window.document.title = "yCanta2";
         }
         //if song edit
         else if((hash.search('&s-') != -1) && (hash.search('&edit') != -1)) {

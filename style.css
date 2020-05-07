@@ -25,6 +25,47 @@ a {
   text-decoration: none;
   color: black;
 }
+dialog {
+  transition: none;
+  position: fixed;
+  z-index: 11;
+  background-color: white;
+  border-radius : 400px;
+  width: 200px;
+  min-height: 200px;
+  max-height: 80vh;
+  filter: drop-shadow(3px 1px 4px gray);
+  border: 0;
+  text-align: center;
+}
+.left {
+  text-align: left;
+
+}
+dialog .content {
+  height: calc(100% - 2rem);
+  overflow: auto;
+  margin-bottom: 2rem;
+  font-size: .83rem;
+}
+dialog .handle {
+  cursor: pointer;
+}
+dialog .close {
+  position: absolute;
+  bottom: 0;
+  padding-bottom: .5rem;
+  left: 0;
+  right: 0;
+  cursor: pointer;
+  width: 2rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+dialog small {
+  font-size: .65rem;
+}
+/*CSS FOR Song Display*/
 stitle, cat, author, scrip_ref, key, copyright {
   cursor: pointer;
 }
@@ -44,10 +85,48 @@ stitle, cat, author, scrip_ref, key, copyright {
   background-color: lightgray;
   border: 1px gray dashed;
 }
-#songbookList a[href="#sb-allSongs"] {
+#songbookList a[href="#sb-allSongs"],
+#songbookList a[href="#sb-favoriteSongs"] {
   font-style: italic;
   font-weight: bold;
-} 
+}
+#song song stitle,
+#songbookList li {
+  position: relative;
+}
+#song song stitle span:after,
+#songbook_title span:after {
+  margin-left: .7rem;
+  text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.15);
+  font-size: 1.7rem;
+  color: lightgray;
+  content: '☆';
+  cursor: pointer;
+}
+info:after {
+  content: 'ⓘ';
+  color: darkblue;
+}
+.edit #songbook_title > *,
+.edit song stitle > * {
+  display: none;
+}
+#songbookList li span:after {
+  text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.15);
+  position: absolute;
+  right: 1rem;
+  font-size: 1.7rem;
+  color: lightgray;
+  display: none;
+  cursor: pointer;
+}
+#song song[data-user-fav="true"] stitle span:after,
+#songbookList li[data-user-fav="true"] span:after,
+#songbook_title[data-user-fav="true"] span:after {
+  content: '★';
+  color: black;
+  display: inline-block;
+}
 #songbook_header {
   position: sticky;
   top: 0;
@@ -247,6 +326,10 @@ body {
   border: 1px solid gray;
   margin: 1rem .5rem 1rem .5rem;
 }
+.btn-small {
+  padding: 2px 7px 2px 7px;
+  margin: .5rem .25rem .6rem 0rem !important;
+}
 .header header {
   flex: 0 1 100%;
 }
@@ -290,16 +373,11 @@ body main .sidebar {
   border: 0;
   z-index: 4;
 }
-footer {
-  display: none;
-  flex: 0 0 0px;
-  width: 100%;
-  background-color: lightgreen;
-  border-top: ridge 5px black;
-  border-left: double 3px black;
-  border-right: double 3px black;
-  max-height: 3em;
-  overflow-y: scroll;
+html {
+  border-bottom: 5px solid green;
+}
+.offline {
+  border-bottom: 5px solid yellow;
 }
 #debugDiv {
 }
@@ -335,6 +413,65 @@ span.deleteicon input {
   flex: 0 0 180px;
 }*/
 
+/*Login CSS */
+#login > input {
+  width: calc(100% - 2rem);
+}
+#login h2 {
+  font-size: xx-large;
+  color: darkgray;
+  left: -1rem;
+  position: relative;
+}
+.loggedin_display,
+.d_none {
+  display: none;
+}
+
+.loggedin .loggedin_display {
+  display: initial;
+}
+
+.pin input {
+  width: 5rem;
+}
+.pin > span {
+  color: darkred;
+}
+#login {
+  display: none;
+  margin: 5rem auto 5rem auto;
+  padding: 0 1rem 0 1rem;
+  padding-top: 1.5rem;
+  max-width: 370px; 
+  border: 1px solid gray; 
+  background-color: lightgray;
+}
+.login #login {
+  display: block;
+}
+.login #login + div {
+  display: none;
+}
+#login > * {
+  margin: 0rem 1rem 1rem 1rem;
+}
+#login button {
+  margin: 1rem;
+}
+/*Create Local*/
+#login.create_local .create_local {
+  display: initial;
+}
+/*Login Local*/
+#login.login_local .login_local {
+  display: initial;
+}
+/*Connect Remote*/
+
+/*Login Remote*/
+
+
 /*Styling!*/
 .selected {
   background-color: rgba(0, 0, 0, 0.2);
@@ -362,7 +499,7 @@ span.deleteicon input {
   padding: 0 1rem 0 1rem;
 }
 .column, body.edit .sidebar {
-  box-shadow: 0px 0 40px 10px rgba(0, 0, 0, 0.8);
+  box-shadow: 0px 0 20px 2px rgba(0, 0, 0, 0.2);
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -665,6 +802,9 @@ input[type="number"] {
 }
 /*For Mobile devices only*/
 @media only screen and (max-width: 639px) {
+  #songbookList li span:after {
+    top: 0;
+  }
   header {
     flex: 0 0 60px;
   }
@@ -677,7 +817,7 @@ input[type="number"] {
   }
 
   header > h2,
-  header > div {
+  #welcome {
     padding: 0 1rem 0 1rem;
   }
   body {
@@ -762,7 +902,7 @@ only screen and (max-height: 500px) {
     margin: 0;
   }
   header > h2,
-  header > div {
+  #welcome {
     padding: 0 1rem 0 1rem;
   }
   body.song header, 
@@ -859,13 +999,28 @@ only screen and (max-height: 500px) {
   .column:not(:last-child):hover {
     z-index: 6 !important;
   }
+  #songbook_title[data-user-fav="true"] span:hover:after,
+  #song song[data-user-fav="true"] stitle span:hover:after {
+    content: '☆';
+    color: black;
+  }
+  #songbook_title span:hover:after,
+  #song stitle span:hover:after {
+    content: '★';
+    cursor: pointer;
+    color: black;
+  }
 }
 @media (hover: hover) and (min-width: 640px) and (min-height: 501px) {
   .column:hover .float-menu-item{
     opacity: 1;
   }
 }
+/*larger screens only */
 @media only screen and (min-width: 640px) {
+  #songbookList li span:after {
+    bottom: 0;
+  }
   ul li a{
     border-left: 1px solid #EEE;
     border-radius: 20px;
@@ -896,7 +1051,7 @@ only screen and (max-height: 500px) {
   body.song #songbookList h3 {
     transform:  translateX(-50%) translateY(-50%) rotate(-90deg);
     background-color: lightyellow;
-    z-index: 1000;
+    z-index: 10;
   }
   body.song #songbookList a {
     height: 15rem;

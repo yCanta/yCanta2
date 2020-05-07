@@ -1,4 +1,276 @@
-var db = new PouchDB('yCanta');
+//initialize global variable.
+var db, syncHandler;
+
+var online = false;
+
+function updateOnlineStatus(event) {
+  if(event == undefined) {
+    event = {};
+    event.type = 'windowLoad';
+  }
+  var condition = navigator.onLine ? "online" : "offline";
+  document.documentElement.className = condition;
+  online = navigator.onLine;
+  console.log("beforeend", "Event: " + event.type + "; Status: " + condition);
+}
+window.addEventListener('load', function() {
+  function update(event) {
+    updateOnlineStatus(event);
+  }
+  window.addEventListener('online',  update);
+  window.addEventListener('offline', update);
+});
+updateOnlineStatus();
+
+function clearAllDbs() { 
+  window.indexedDB.databases().then((r) => {
+      for (var i = 0; i < r.length; i++) window.indexedDB.deleteDatabase(r[i].name);
+  }).then(() => {
+      location.reload();
+  });
+}
+
+function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
+  if(!dbName){
+    dbName = $('#db_select :selected').val();
+  }
+  if(!username){
+    username = $('#username').val().trim();
+  }
+  if(!pin){
+    pin = $('#pin').val().trim();
+  }
+  if(newDb){
+    dbName = $('#newDbName').val().trim()+'(local)';
+    console.log('New DB');
+    //initialize database;
+    db = new PouchDB(dbName);
+    
+    //create User doc
+    let user = {
+      _id: 'u-'+username,
+      name: username,
+      fav_sbs: [],
+      fav_songs: []
+    }
+    window.user = user;
+    db.put(user, function callback(err, result) {
+      if(!err) {
+        console.log('added user: ', username);
+      }
+      else {
+        console.log(err);
+      }
+    });
+    //store user pin in a local doc
+    db.put({_id: '_local/u-'+username, pin: pin}, function callback(err, result) {
+      if(!err) {
+        console.log("added user's pin");
+      }
+      else {
+        console.log(err);
+      }
+    });
+    //initialize list of categories
+    var categories = {
+      _id: 'categories',
+      categories: ["Adoration", "Aspiration/Desire", "Assurance", "Atonement", "Awe", "Bereavement", "Brokenness", "Calvary", "Christ as Bridegroom", "Christ as King", "Christ as Lamb", "Christ as Redeemer", "Christ as Savior", "Christ as Shepherd", "Christ as Son", "Christ's Blood", "Christ's Return", "Church as Christ's Body", "Church as Christ's Bride", "Church as God's House", "Cleansing", "Comfort", "Commitment", "Compassion", "Condemnation", "Consecration", "Conviction of Sin", "Courage", "Creation", "Cross", "Dedication/Devotion", "Dependence on God", "Encouragement", "Endurance", "Eternal Life", "Evangelism", "Faith", "Faithfulness", "Fear", "Fear of God", "Fellowship", "Forgiveness", "Freedom", "God as Creator", "God as Father", "God as Refuge", "God's Creation", "God's Faithfulness", "God's Glory", "God's Goodness", "God's Guidance", "God's Harvest", "God's Holiness", "God's Love", "God's Mercy", "God's Power", "God's Presence", "God's Strength", "God's Sufficiency", "God's Timelessness", "God's Victory", "God's Wisdom", "God's Word", "Godly Family", "Grace", "Gratefulness", "Healing", "Heaven", "Holiness", "Holy Spirit", "Hope", "Humility", "Hunger/Thirst for God", "Incarnation", "Invitation", "Jesus as Messiah", "Joy", "Kingdom of God", "Knowing Jesus", "Lordship of Christ", "Love for God", "Love for Jesus", "Love for Others", "Majesty", "Meditation", "Mercy", "Missions", "Mortality", "Neediness", "New Birth", "Obedience", "Oneness in Christ", "Overcoming Sin", "Patience", "Peace", "Persecution", "Praise", "Prayer", "Proclamation", "Provision", "Purity", "Purpose", "Quietness", "Redemption", "Refreshing", "Repentance", "Rest", "Resurrection", "Revival", "Righteousness", "Salvation", "Sanctification", "Security", "Seeking God", "Service", "Servanthood", "Sorrow", "Spiritual Warfare", "Submission to God", "Suffering for Christ", "Surrender", "Temptation", "Trials", "Trust", "Victorious Living", "Waiting on God", "Worship", "-----", "Christmas", "Easter", "Good Friday", "Thanksgiving", "-----", "Baptism", "Birth", "Closing Worship", "Communion", "Death", "Engagement", "Opening Worship", "Wedding", "-----", "Children's Songs", "Rounds", "Scripture Reading", "Scripture Songs", "-----", "Needs Work", "Needs Chord Work", "Needs Categorical Work", "Duplicate", "-----", "Norway", "Secular", "Delete", "Spanish words", "Celebration"]
+    }
+    db.put(categories, function callback(err, result) {
+      if(!err) {
+        console.log('added categories');
+      }
+      else {
+        console.log(err);
+      }
+    });
+    takeNextStep(username,dbName);
+  }
+  else {
+    console.log('Logging in');
+    db = new PouchDB(dbName);
+    //check if pin matches
+    db.get('_local/u-'+username).then(function(userPin){
+      if(userPin.pin == pin) {
+        console.log('Pin is correct!');
+        db.get('u-'+username).then(function(response) {
+          window.user = response;
+          takeNextStep(username,dbName);
+        });
+      }
+      //if not then close the db
+      else {
+        console.log('Username or pin was incorrect');
+        alert('Username or pin was incorrect');
+        dbLogout();
+      }
+    }).catch(function(err){
+      console.log(err);
+      alert('Username or pin was incorrect');
+      dbLogout();
+    });
+  }
+  function takeNextStep(username, dbName) {
+    //layout the welcome?  maybe this goes in set login state?
+    //Update ui when db changes]s
+    db.changes({
+      since: 'now',
+      live: true,
+      include_docs: true
+    }).on('change', function (change) {
+      // received a change
+      if (change.deleted) {
+        // document was deleted
+        console.log('deleted: ' + change.doc._id);
+      } else {
+        // document was added/modified
+      }
+      //what type?
+      //song?
+      if(change.doc._id.startsWith('s-')){
+        //only load song if it's the one that's up.
+        if(window.song._id === change.doc._id){
+          loadSong(change.doc._id);
+          console.log('loaded: ', change.doc.title);
+        }
+        //update all songs in songbooks
+        if(window.songbook_list != undefined ){
+          window.songbook_list.get('song-id',change.doc._id)
+            .forEach(function(song){song.values(mapSongRowToValue(change))});
+        }
+        if(window.songbook_edit_togglesongs_list != undefined){
+          window.songbook_edit_togglesongs_list.get('song-id',change.doc._id)
+            .forEach(function(song){song.values(mapSongRowToValue(change))});
+        }
+      }
+      //songbook?
+      else if(change.doc._id.startsWith('sb-')){
+        if(window.songbook._id ===  change.doc._id){
+          console.log('loaded: ', change.doc._id);
+          window.songbook = '';
+          loadSongbook(change.doc._id);
+        }
+        //update the songbook entry in songbooks_list
+        if(window.songbooks_list != undefined){
+          window.songbooks_list.get('songbook-id',change.doc._id)
+            .forEach(function(songbook){songbook.values(mapSongbookRowToValue(change))});
+          window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
+        }
+      }
+      else if(change.doc._id == window.user._id){
+        let fav_sbs = change.doc.fav_sbs;
+        //jquery remove all favs
+        $('#songbooks .list li').each(function(){
+          let fav = false;
+          if(fav_sbs.indexOf($(this).attr('data-songbook-id')) > -1) {
+            fav = true;
+          }
+          $(this).attr('data-user-fav', fav);
+        })
+        if(fav_sbs.indexOf(window.songbook._id) > -1) {
+          $('#songbook_title').attr('data-user-fav', 'true');
+        }
+        else {
+          $('#songbook_title').attr('data-user-fav', 'false'); 
+        }
+        window.user = change.doc;
+        window.songbooks_list.reIndex();
+        window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
+        $('#song song').attr('data-user-fav', (window.user.fav_songs.indexOf($('#song song').attr('data-id'))> -1 ? 'true': 'false'))
+      }
+      //else... let it go! for now
+      else {
+        console.log('changed:',change.doc._id);
+      }
+    }).on('error', function (err) {
+      // handle errors
+      console.log('Error in db.changes('+err);
+    });
+    localStorage.setItem('loggedin',JSON.stringify([dbName, username, pin]));
+    window.yCantaName = dbName;
+    initializeSongbooksList();
+    setLoginState();
+    //initialized
+    window.songbook = {};
+    window.song = {};
+    //wipe login cause we were successfull!
+    $('#login :input').each(function(){$(this).val('')});
+    return true;
+  }
+
+  return false;
+
+  /*let pwd = $('#pwd').val();
+  let pin = $('#pin').val();
+  if(newDb)
+  console.log(dbName, username, pin);
+  db = new PouchDB(dbName);
+
+  //We're not online!
+  if(!online){
+    console.log(dbName, username, pin );
+  }
+  //we're online!
+  else {
+    var remoteDb = new PouchDB('https://bc1e4819-c782-4aad-8525-2e2340011ce7-bluemix.cloudantnosqldb.appdomain.cloud/canaanf/', {skip_setup: true});
+    
+    var ajaxOpts = {
+      ajax: {
+        headers: {
+          Authorization: 'Basic ' + window.btoa(username+':'+pwd)
+        }
+      }
+    };
+
+
+    remoteDb.logIn(username, pwd, ajaxOpts).then(function (batman) {
+      console.log("I'm Batman.", batman);
+
+      return remoteDb.allDocs();
+
+    }).then(function(docs){
+
+      syncHandler = db.sync(remoteDb, {
+        live: true,
+        retry: true
+      }).on('change', function (change) {
+        console.log('Synced some stuff');
+        // yo, something changed!
+      }).on('paused', function (info) {
+        // replication was paused, usually because of a lost connection
+      }).on('active', function (info) {
+        // replication was resumed
+      }).on('error', function (err) {
+        // totally unhandled error (shouldn't happen)
+      });
+
+      console.log(docs);
+    });
+
+    console.log(dbName, username, pwd );
+
+  }*/
+}
+
+function dbLogout(){
+  if(!confirmWhenEditing()){
+    setLogoutState();
+    db.close().then(function () {
+      console.log('closed db');
+    });
+  }
+
+/*
+
+  syncHandler.on('complete', function (info) {
+    // replication was canceled!
+  });
+
+  syncHandler.cancel(); // <-- this cancels it
+
+*/
+
+}
 
 function initializeSongbooksList(){
   db.allDocs({
@@ -12,11 +284,13 @@ function initializeSongbooksList(){
     }
     //then add and update the new ones
     function buildSongbooksList(songbooks) {
+      let user_sb_favs = window.user.fav_sbs;
       var options = {    
         valueNames: [
           { data: ['songbook-id'] },
           { data: ['songbook-rev'] },
           { data: ['songbook-title'] },
+          { data: ['user-fav'] },
           //{ data: ['songbook-authors'] },
           //{ data: ['songbook-categories'] },
           //{ data: ['songbooks-songs'] },
@@ -26,11 +300,21 @@ function initializeSongbooksList(){
         ],
         item: 'songbook-item-template'
       };
-      var values = [{'songbook-id': 'sb-allSongs', 
-                     'songbook-rev': 'n/a', 
-                     'songbook_title': 'All Songs',            
+      var values = [{'songbook-id': 'sb-allSongs',
+                     'songbook-rev': 'n/a',
+                     'songbook-title': 't:All Songs',
+                     'user-fav': 'false',
                      'link': '#sb-allSongs',
-                     'name': 'All Songs'}];   
+                     'name': 'All Songs'},/*];
+                     console.log(window.user.fav_songs.length);
+      if(window.user.fav_songs.length > 0){
+        values.push(*/{'songbook-id': 'sb-favoriteSongs',
+                     'songbook-rev': 'n/a',
+                     'songbook-title': 't:Favorite Songs',
+                     'user-fav': 'false',
+                     'link': '#sb-favoriteSongs',
+                     'name': 'Favorite Songs'}];//);
+      //}
       songbooks.map(function(row) {
         if(window.songbooks_list != undefined){
           var songbookIdInList = window.songbooks_list.get('songbook-id',row.doc._id);
@@ -38,23 +322,24 @@ function initializeSongbooksList(){
             // we need to update if the revision is different.
             var songbookRevInList = window.songbooks_list.get('songbook-rev', row.doc._rev);
             if(songbookRevInList < 1){
-              songbookIdInList[0].values(mapSongbookRowToValue(row));
+              let sb_vals = mapSongbookRowToValue(row);
+              sb_vals['user-fav'] = (user_sb_favs.indexOf(row.doc._id) == -1 ? 'false' : 'true');
+              songbookIdInList[0].values(sb_vals);
             }
             return
           }
         }
-        values.push(mapSongbookRowToValue(row));
+        let sb_vals = mapSongbookRowToValue(row); 
+        sb_vals['user-fav'] = (user_sb_favs.indexOf(row.doc._id) == -1 ? 'false' : 'true');
+        values.push(sb_vals);
       });
       //Creates list.min.js list for viewing all the songbooks
       window.songbooks_list = new List('songbooks', options, values);
+      window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
       bindSearchToList(window.songbooks_list, '#songbooks');
       return 
     }
-    buildSongbooksList(result.rows.sort(function(a, b){
-          if(a.doc.title < b.doc.title) { return -1; }
-          if(a.doc.title > b.doc.title) { return 1; }
-          return 0;
-        }));
+    buildSongbooksList(result.rows);
   }).catch(function(err){
     console.log(err);
   });
@@ -154,12 +439,15 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
     //we've got a new song folks!
     if(song_id == 's-new-song') {
       new_song = true;
-      song_id = 's-' + new Date().getTime();  //  + song_html.find('stitle').text().replace(' ','');
-      var song = {_id: song_id};
+      let time = new Date().getTime();
+      song_id = 's-' + time;
+      var song = {_id: song_id, added: time, addedBy: window.user.name, edited: time, editedBy: window.user.name};
       loadSongContent(song);
     }
     else {  //existing song hopefully - need to make robust
       db.get(song_id).then(function(song){
+        song.edited = new Date().getTime();
+        song.editedBy = window.user.name;
         loadSongContent(song);
       }).catch(function (err) {
         console.log(err);
@@ -173,8 +461,8 @@ function loadSong(song_id) {
   return new Promise(function(resolve, reject) {
     function createSongHtml(song) {
       window.song = song;
-      var song_html = '<song data-rev="' + song._rev + '" data-id="' + song._id + '">' + 
-        '<a data-song class="title_link"><stitle class="title_link" data-song>' + song.title + '</stitle></a>' + 
+      var song_html = '<song data-rev="' + song._rev + '" data-id="' + song._id + '" data-user-fav="'+(window.user.fav_songs.indexOf(song._id) > -1 ? 'true' : 'false')+'">' + 
+        '<a data-song class="title_link"><stitle class="title_link" data-song>' + song.title + '<span onclick="event.stopPropagation(); toggleFavSong($(this).closest(\'song\').attr(\'data-id\'))"></span><info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo();"></info></stitle></a>' + 
         '<authors><author>' + song.authors.join('</author>, <author>') + '</author></authors>' + 
         '<scripture_ref><scrip_ref>' + song.scripture_ref.join('</scrip_ref>, <scrip_ref>') + '</scrip_ref></scripture_ref>' + 
         '<introduction>' + song.introduction + '</introduction>' + 
@@ -200,6 +488,7 @@ function loadSong(song_id) {
       bindSearch('key', 'k:');
       bindSearch('copyright', 'c:');      
       $('#song key').transpose();
+      if($('dialog')[0].style.display=="block") {loadInfo()}
     }
     if(song_id === 's-new-song'){
       var song = {
@@ -326,7 +615,7 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
           console.log(songbook._id);
           db.put(songbook, function callback(err, result){
             if (!err) {
-              console.log('saved song really quickly! ', song.title);
+              console.log('saved songbook really quickly! ', songbook.title);
             }
           });
         }
@@ -336,12 +625,15 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
     //we've got a new songbook folks!
     if(songbook_id == 'sb-new-songbook') {
       new_songbook = true;
-      songbook_id = 'sb-' + new Date().getTime();  //  + song_html.find('stitle').text().replace(' ','');
-      var songbook = {_id: songbook_id};
+      let time = new Date().getTime();
+      songbook_id = 'sb-' + time;
+      var songbook = {_id: songbook_id, added: time, addedBy: window.user.name, edited: time, editedBy: window.user.name};
       loadSongbookContent(songbook);
     }
     else {  //existing song hopefully - need to make robust
       db.get(songbook_id).then(function(songbook){
+        songbook.edited = new Date().getTime();
+        songbook.editedBy = window.user.name;
         loadSongbookContent(songbook);
       }).catch(function (err) {
         console.log(err);
@@ -353,7 +645,7 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
 
 function loadSongbook(songbook_id) {
   var dateBefore = new Date();
-  if(songbook_id != 'sb-allSongs'){
+  if(songbook_id != 'sb-allSongs' || songbook_id != 'sb-favoriteSongs'){
     $('#songList [data-songbook-edit], #songList .delete').show()
   }
 
@@ -362,16 +654,28 @@ function loadSongbook(songbook_id) {
       //console.log('Songbook is already loaded');
       resolve('songbook already loaded');
     }
-    else if(songbook_id == undefined || songbook_id == 'sb-allSongs') {
-      songbook_id = 'sb-allSongs';
+    else if(songbook_id == undefined || songbook_id == 'sb-allSongs' || songbook_id == 'sb-favoriteSongs') {
+      let options;
+      if(songbook_id == 'sb-favoriteSongs') {
+        window.songbook.title = "Favorite Songs";
+        options = {
+          include_docs: true,
+          keys: window.user.fav_songs, //we need error handling for missing ids
+        }
+      }
+      else {
+        songbook_id = 'sb-allSongs';
+        window.songbook.title = "All Songs";
+        options = {
+          include_docs: true,
+          startkey: 's-',
+          endkey: 's-\ufff0',
+        }  
+      }
       window.songbook._id = songbook_id;  
       window.songbook._rev = '';
-      window.songbook.title = "All Songs";
-      db.allDocs({
-        include_docs: true,
-        startkey: 's-',
-        endkey: 's-\ufff0',
-      }).then(function(result){
+       
+      db.allDocs(options).then(function(result){
         var sb_song_ids = result.rows.map(function (row) {
           return row.doc._id
         });
@@ -399,7 +703,7 @@ function loadSongbook(songbook_id) {
         $('#songbook_title').removeAttr('contenteditable');
         $('#songbook_content .search').parent().removeAttr('disabled');
         $('.disabled-hidden').removeClass('disabled-hidden');
-        $('#songbook_title').html('<i>All Songs</i>').removeAttr('data-rev');
+        $('#songbook_title').html('<i>'+window.songbook.title+'</i>').removeAttr('data-rev').attr('data-songbook-id', songbook_id);
         $('#songList [data-songbook-edit], #songList .delete').hide()
         var dateAfter = new Date();
         console.log(dateAfter-dateBefore);
@@ -447,9 +751,19 @@ function loadSongbook(songbook_id) {
         $('#songbook_title').removeAttr('contenteditable');
         $('#songbook_content .search').parent().removeAttr('disabled');
         $('.disabled-hidden').removeClass('disabled-hidden');
-        $('#songbook_title').text(result.title).attr('data-rev',result._rev);
+        $('#songbook_title').html(result.title+'<span onclick="event.stopPropagation(); toggleFavSongbook(\''+result._id+'\')"></span>'+
+          '<info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo(false);"></info>').attr('data-rev',result._rev).attr('data-songbook-id',result._id);
+        if($('dialog')[0].style.display=="block" && !parseHash('s-')){  //prevents info view flicker when you click on songbooks in song info view.
+          loadInfo(false);
+        }
         var dateAfter = new Date();
         console.log(dateAfter-dateBefore);
+        if(window.user.fav_sbs.indexOf(window.songbook._id) > -1) {
+          $('#songbook_title').attr('data-user-fav', 'true');
+        }
+        else {
+          $('#songbook_title').attr('data-user-fav', 'false'); 
+        }
         resolve('loaded songbook');
       }).catch(function(err){
         console.log(err);
@@ -463,8 +777,8 @@ function saveExportDefault() {
   $('#user_export_pref').attr('value',JSON.stringify(opts));
   $('#format').trigger('change');
   let cfg = {
-    _id: 'cfg-'+window.exportObject._id+'USER', //must keep in sync with lib.js
-    title: 'Default:  USER',
+    _id: 'cfg-'+window.exportObject._id+window.user._id, //must keep in sync with lib.js
+    title: 'Default: '+window.user.replace('u-',''),
     cfg: opts
   }
   db.get(cfg._id).then(function(_doc) {
@@ -479,6 +793,54 @@ function saveExportDefault() {
     console.log("id of record: " + info.id);
   });
 }
+
+function toggleFavSongbook(id){
+  db.get(window.user._id).then(function(user){
+    let i = -1;
+    try {
+      i = user.fav_sbs.indexOf(id);
+    }
+    catch {
+      //fav_sbs doesn't exist
+      user.fav_sbs = [];
+    }
+    if(i == -1) {
+      user.fav_sbs.push(id);
+    }
+    else {
+      user.fav_sbs.splice(i,1);
+    }
+    db.put(user).then(function(result) {
+      console.log('Successfully updated fav songbooks!');
+    });
+  }).catch(function(err){
+    console.log(err);
+  });
+}
+function toggleFavSong(id){
+  db.get(window.user._id).then(function(user){
+    let i = -1;
+    try {
+      i = user.fav_songs.indexOf(id);
+    }
+    catch {
+      //fav_sbs doesn't exist
+      user.fav_songs = [];
+    }
+    if(i == -1) {
+      user.fav_songs.push(id);
+    }
+    else {
+      user.fav_songs.splice(i,1);
+    }
+    db.put(user).then(function(result) {
+      console.log('Successfully updated fav songs!');
+    });
+  }).catch(function(err){
+    console.log(err);
+  });
+}
+
 
 var song = {
   _id: 's-aSong.song',
@@ -504,7 +866,7 @@ var song = {
   search: "t:Jesu Jesu a:Tom Colvin a:yolo s:!s i:!i k:E c:Children's Songs c:Humility c:Love for Others c:Servanthoodcp:© 1969 Hope Publishing CompanycclisJesu, Jesu, Fill us with you love, Show us how to serve The neighbors we have from You. Jesu, Jesu, Fill us with you love, Show us how to serve The neighbors we have from You. "
 };
 
-db.put(song, function callback(err, result) {
+/*db.put(song, function callback(err, result) {
   if (!err) {
     console.log('Successfully saved a song!');
   }
@@ -560,59 +922,4 @@ db.get('age').then(function(age){
   });
 });
 
-//Update ui when db changes]s
-db.changes({
-  since: 'now',
-  live: true,
-  include_docs: true
-}).on('change', function (change) {
-  // received a change
-  if (change.deleted) {
-    // document was deleted
-    console.log('deleted: ' + change.doc._id);
-  } else {
-    // document was added/modified
-  }
-
-  //what type?
-  //song?
-  if(change.doc._id.startsWith('s-')){
-    //only load song if it's the one that's up.
-    if(window.song._id === change.doc._id){
-      loadSong(change.doc._id);
-      console.log('loaded: ', change.doc.title);
-    }
-    //update all songs in songbooks
-    if(window.songbook_list != undefined ){
-      window.songbook_list.get('song-id',change.doc._id)
-        .forEach(function(song){song.values(mapSongRowToValue(change))});
-    }
-    if(window.songbook_edit_togglesongs_list != undefined){
-      window.songbook_edit_togglesongs_list.get('song-id',change.doc._id)
-        .forEach(function(song){song.values(mapSongRowToValue(change))});
-    }
-  }
-  //songbook?
-  else if(change.doc._id.startsWith('sb-')){
-    if(window.songbook._id ===  change.doc._id){
-      console.log('loaded: ', change.doc._id);
-      window.songbook = '';
-      loadSongbook(change.doc._id);
-    }
-    //update the songbook entry in songbooks_list
-    if(window.songbooks_list != undefined){
-      window.songbooks_list.get('songbook-id',change.doc._id)
-        .forEach(function(songbook){songbook.values(mapSongbookRowToValue(change))});
-    }
-  }
-  //else... let it go! for now
-  else {
-    console.log('changed:',change.doc._id);
-  }
-
-}).on('error', function (err) {
-  // handle errors
-  console.log('Error in db.changes('+err);
-});
-
-
+*/

@@ -77,6 +77,7 @@ var isEqual = function (value, other) {
   // If nothing failed, return true
   return true;
 };
+
 // Warn if overriding existing method
 if(Array.prototype.equals)
     console.warn("Overriding existing Array.prototype.equals. Possible causes: New API defines the method, there's a framework conflict or you've got double inclusions in your code.");
@@ -389,6 +390,36 @@ function parseHash(part) {
     return parts;
   }
 }
+function sortFavSongbooks(a,b){
+  //console.log(a);
+  if(a._values['songbook-id'] == 'sb-allSongs'){
+    return 2;
+  }
+  else if(b._values['songbook-id'] == 'sb-allSongs'){
+    return -2;
+  }
+  else if(a._values['songbook-id'] == 'sb-favoriteSongs'){
+    return 1;
+  }
+  else if(b._values['songbook-id'] == 'sb-favoriteSongs'){
+    return -1;
+  }
+  else if(a._values['user-fav'] == b._values['user-fav']){
+    if(a._values['songbook-title'] > b._values['songbook-title']) {
+      return -1;
+    }
+    if(a._values['songbook-title'] < b._values['songbook-title']) {
+      return 1;
+    }
+    return 0
+  }
+  else if(a._values['user-fav'] > b._values['user-fav']) {
+    return 1;
+  }
+  else {
+    return -1;
+  }
+}
 function updateAllLinks(whatChanged='all') {
   $('[data-song-edit]').attr('href','#'+window.songbook._id+'&'+window.song._id+'&edit');
   $('[data-song-edit="new"]').attr('href','#'+window.songbook._id+'&s-new-song&edit');
@@ -402,13 +433,13 @@ function updateAllLinks(whatChanged='all') {
   $('[data-home]').attr('href','#');
 
   //add highlighting
-  //doesn't happen after it's done rendering the list.js on initial page load.
+  //doesn't happen after it's done rendering the list.js on initial page load
+  //Also not working in info click views.
   $('.song-highlight').removeClass('song-highlight');
   $("[data-song-id='"+window.song._id+"']").addClass("song-highlight");
   $('.songbook-highlight').removeClass('songbook-highlight');
   $("[data-songbook-id='"+window.songbook._id+"']").addClass("songbook-highlight");
 }
-
 
 $(function () {
   //float menu activation
@@ -495,6 +526,81 @@ function bindToSongEdit() {
   $('#song').on('change', 'select', function(){
     $(this).next().attr('type',$(this).find('option:selected').text());
   });
+}
+
+function checkLogin(){
+  let good = true;
+  let pin = $('#pin').val();
+  let username = $('#username').val();
+
+  if(pin.trim() == '' || username.trim() == ''){
+    good = false;
+    alert('Username or password not entered');
+  }
+
+  return good;
+}
+
+function checkCreateNew() {
+  let dbName = $('#newDbName').val().trim();
+  if(dbName.includes('(local)')){
+    alert('DB name cannot have "(local)" in the name');
+    return
+  }
+  else {
+    dbName += '(local)';
+  }
+  let pin = $('#pin').val().trim();
+  let pin2 = $('#pin2').val().trim();
+  let username = $('#username').val();
+
+  return PouchDB.allDbs().then(function (all_dbs) {
+    let response = true;
+
+    //checks against existing databases
+    if(all_dbs.indexOf(dbName) > -1){
+      alert('Database name already taken - try another!');
+      response = false;
+    }
+    else if(pin == '' || username == ''){
+      response = false;
+      alert('Username or pin are not entered');
+    }
+    else if(pin != pin2) {
+      response = false;
+      alert('Pin and confirmation pin are not equal');
+    }
+    //Go ahead and log in.
+    if(response) {
+      dbLogin(true);
+    }
+    else {
+      return;
+    }
+  });
+}
+
+function setLoginState() {
+  window.loggedin = true;
+  $('#username_d').text('Hi, '+window.user.name+'!');
+  $('html').addClass('loggedin');
+  $('#title a').html('yCanta: ' + window.yCantaName);
+  if(location.hash.indexOf('?')>-1){
+    location.hash = location.hash.split('?').slice(1).join('?');
+  }
+  else {
+    location.hash = '#';
+  }
+}
+
+function setLogoutState() {
+  window.loggedin = false;
+  $('html').removeClass('loggedin');
+  location.hash = '#login';
+  window.user = '';
+  localStorage.removeItem('loggedin');
+  $('#title a').html('yCanta');
+  $('#dialog').hide();
 }
 
 function mapSongbookRowToValue(row) {
@@ -621,7 +727,7 @@ function editSongbook() {
   $('#songbook_content .search').val('')[0].dispatchEvent(new KeyboardEvent('keyup'));
   updateAllLinks();
 
-  $('#songList #songbook_title').attr('contenteditable', 'true').parent().removeAttr('href');
+  $('#songList #songbook_title').attr('contenteditable', 'true');
   $('#songList #songbook_content input.search').parent().addClass('disabled-hidden')[0].disabled=true;
   $('#songList #songbook_content nav').addClass('disabled-hidden');    
 
@@ -677,6 +783,8 @@ function editSongbook() {
       this.addEventListener('drop', dragDrop, false);
       this.addEventListener('dragover', dragOver, false);
     });
+    
+    $('#songList #songbook_title').parent().removeAttr('href');
 
   }).catch(function(err){
     console.log(err);
@@ -950,7 +1058,7 @@ function makeDraggable(dragCaptureEl, dragEl, dragAction, dragSide='right') {
   let height = 0;
 
   dragCaptureEl.addEventListener('touchstart', function(e){
-    document.documentElement.className = 'no-overscroll';
+    document.documentElement.classList.add('no-overscroll');
     var touchobj = e.changedTouches[0]; // reference first touch point (ie: first finger)
     startx = parseInt(touchobj.clientX);
     starty = parseInt(touchobj.clientY);
@@ -996,7 +1104,7 @@ function makeDraggable(dragCaptureEl, dragEl, dragAction, dragSide='right') {
   }, false);
 
   dragCaptureEl.addEventListener('touchend', function(e){
-    document.documentElement.className = '';
+    document.documentElement.classList.remove('no-overscroll');
     dragEl.style.removeProperty('flex');
     dragEl.style.removeProperty('transition');
     var touchobj = e.changedTouches[0]; // reference first touch point for this event
@@ -1069,7 +1177,7 @@ function bindSearch(element, search_prefix) {
 
 function confirmWhenEditing() {
   if(window.editing){
-    if (confirm("If you leave this page you will lose your unsaved changes!")) {
+    if(confirm("If you leave this page you will lose your unsaved changes!")) {
       window.editing=false; //It's ok to lose changes
       return false;
     } else { //we aren't leaving 
@@ -1089,5 +1197,40 @@ function count(word) {
   if(syl) {
     //console.log(syl);
     return syl.length;
+  }
+}
+
+function loadInfo(song=true) {
+  if(song){
+    $('dialog h5').text('Song');
+    let song_id = window.song._id;
+    let content = '<b>'+window.song.title+'</b><br />'+
+      '<small>Added: '+window.song.addedBy+', '+new Date(window.song.added).toLocaleString()+'</small><br />'+
+      '<small>Edited: '+window.song.editedBy+', '+new Date(window.song.edited).toLocaleString()+'</small><br />'+
+      '<small>'+(window.song._rev.split('-')[0] - 1)+' previous edits</small>';
+    db.allDocs({
+      include_docs: true,
+      startkey: 'sb-',
+      endkey: 'sb-\ufff0',
+    }).then(function(result){
+      let sbs = result.rows.filter(sb => sb.doc.songrefs.map(ref => ref.id).indexOf(song_id) > 0);
+      if(sbs.length > 0){
+       content += '<div class="left"><br /><b>Used in:</b><br />' + sbs.map(sb => '<a href="#'+sb.doc._id+'&'+window.song._id+'">'+sb.doc.title+'</a>').join('<br />') + '</div>';
+      }
+      else {
+        content += '<div class="left"><br /><b>Not used in any songbook</b></div>';
+      }
+      $('dialog').slideDown('fast');
+      $('dialog .content').html(content);
+    });
+  }
+  else{
+    $('dialog h5').text('Songbook');
+    let content = '<b>'+window.songbook.title+'</b><br />'+
+      '<small>Added: '+window.songbook.addedBy+', '+new Date(window.songbook.added).toLocaleString()+'</small><br />'+
+      '<small>Edited: '+window.songbook.editedBy+', '+new Date(window.songbook.edited).toLocaleString()+'</small><br />'+
+      '<small>'+(window.songbook._rev.split('-')[0] - 1)+' previous edits</small>';
+    $('dialog').slideDown('fast');
+    $('dialog .content').html(content);
   }
 }
