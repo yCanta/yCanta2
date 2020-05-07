@@ -79,7 +79,6 @@
                   document.getElementById('progress').style.width = count/file_count*100 +'%';
                   document.getElementById('progress_text').innerHTML = zipEntry.name;
                 }));
-                console.log(songbook_promise_list);
               }
               else {
                 red_count++;

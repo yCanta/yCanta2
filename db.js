@@ -49,6 +49,7 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
     //create User doc
     let user = {
       _id: 'u-'+username,
+      name: username,
       fav_sbs: [],
       fav_songs: []
     }
@@ -186,7 +187,6 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
       console.log('Error in db.changes('+err);
     });
     localStorage.setItem('loggedin',JSON.stringify([dbName, username, pin]));
-    $('#username_d').text('Hi, '+username+'!');
     window.yCantaName = dbName;
     initializeSongbooksList();
     setLoginState();
@@ -439,12 +439,15 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
     //we've got a new song folks!
     if(song_id == 's-new-song') {
       new_song = true;
-      song_id = 's-' + new Date().getTime();  //  + song_html.find('stitle').text().replace(' ','');
-      var song = {_id: song_id};
+      let time = new Date().getTime();
+      song_id = 's-' + time;
+      var song = {_id: song_id, added: time, addedBy: window.user.name, edited: time, editedBy: window.user.name};
       loadSongContent(song);
     }
     else {  //existing song hopefully - need to make robust
       db.get(song_id).then(function(song){
+        song.edited = new Date().getTime();
+        song.editedBy = window.user.name;
         loadSongContent(song);
       }).catch(function (err) {
         console.log(err);
@@ -459,7 +462,7 @@ function loadSong(song_id) {
     function createSongHtml(song) {
       window.song = song;
       var song_html = '<song data-rev="' + song._rev + '" data-id="' + song._id + '" data-user-fav="'+(window.user.fav_songs.indexOf(song._id) > -1 ? 'true' : 'false')+'">' + 
-        '<a data-song class="title_link"><stitle class="title_link" data-song>' + song.title + '<span onclick="event.stopPropagation(); toggleFavSong($(this).closest(\'song\').attr(\'data-id\'))"></span></stitle></a>' + 
+        '<a data-song class="title_link"><stitle class="title_link" data-song>' + song.title + '<span onclick="event.stopPropagation(); toggleFavSong($(this).closest(\'song\').attr(\'data-id\'))"></span><info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo();"></info></stitle></a>' + 
         '<authors><author>' + song.authors.join('</author>, <author>') + '</author></authors>' + 
         '<scripture_ref><scrip_ref>' + song.scripture_ref.join('</scrip_ref>, <scrip_ref>') + '</scrip_ref></scripture_ref>' + 
         '<introduction>' + song.introduction + '</introduction>' + 
@@ -485,6 +488,7 @@ function loadSong(song_id) {
       bindSearch('key', 'k:');
       bindSearch('copyright', 'c:');      
       $('#song key').transpose();
+      if($('dialog')[0].style.display=="block") {loadInfo()}
     }
     if(song_id === 's-new-song'){
       var song = {
@@ -621,12 +625,15 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
     //we've got a new songbook folks!
     if(songbook_id == 'sb-new-songbook') {
       new_songbook = true;
-      songbook_id = 'sb-' + new Date().getTime();  //  + song_html.find('stitle').text().replace(' ','');
-      var songbook = {_id: songbook_id};
+      let time = new Date().getTime();
+      songbook_id = 'sb-' + time;
+      var songbook = {_id: songbook_id, added: time, addedBy: window.user.name, edited: time, editedBy: window.user.name};
       loadSongbookContent(songbook);
     }
     else {  //existing song hopefully - need to make robust
       db.get(songbook_id).then(function(songbook){
+        songbook.edited = new Date().getTime();
+        songbook.editedBy = window.user.name;
         loadSongbookContent(songbook);
       }).catch(function (err) {
         console.log(err);
@@ -744,7 +751,11 @@ function loadSongbook(songbook_id) {
         $('#songbook_title').removeAttr('contenteditable');
         $('#songbook_content .search').parent().removeAttr('disabled');
         $('.disabled-hidden').removeClass('disabled-hidden');
-        $('#songbook_title').html(result.title+'<span onclick="event.stopPropagation(); toggleFavSongbook(\''+result._id+'\')"></span>').attr('data-rev',result._rev).attr('data-songbook-id',result._id);
+        $('#songbook_title').html(result.title+'<span onclick="event.stopPropagation(); toggleFavSongbook(\''+result._id+'\')"></span>'+
+          '<info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo(false);"></info>').attr('data-rev',result._rev).attr('data-songbook-id',result._id);
+        if($('dialog')[0].style.display=="block" && !parseHash('s-')){  //prevents info view flicker when you click on songbooks in song info view.
+          loadInfo(false);
+        }
         var dateAfter = new Date();
         console.log(dateAfter-dateBefore);
         if(window.user.fav_sbs.indexOf(window.songbook._id) > -1) {

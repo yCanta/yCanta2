@@ -35,8 +35,8 @@
     <title>yCanta2</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <script>var clicky_site_ids = clicky_site_ids || []; clicky_site_ids.push(101248473);</script>
-    <script async src="//static.getclicky.com/js"></script>
+    <!--script>var clicky_site_ids = clicky_site_ids || []; clicky_site_ids.push(101248473);</script>
+    <script async src="//static.getclicky.com/js"></script-->
 
   </head>
   <body class="header">
@@ -666,10 +666,17 @@
         </div>
       </div>
     </main>
+    <dialog id="dialog">
+      <h5 style="margin: 0; color: darkgray;" class="handle">Song</h5>
+      <div class="content"></div>
+      <span class="close" onclick="$('dialog').hide();">X</span>
+    </dialog>
     <footer>
     </footer>
     <iframe id="presentation"></iframe>
     <script>
+      dragDialog();
+
       $('#song .row').append('<button onclick="toggleFullscreen(this)" class="icon-rotate2x tr">&#8596;</button>');
 
       bindToSongEdit();

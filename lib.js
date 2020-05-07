@@ -433,7 +433,8 @@ function updateAllLinks(whatChanged='all') {
   $('[data-home]').attr('href','#');
 
   //add highlighting
-  //doesn't happen after it's done rendering the list.js on initial page load.
+  //doesn't happen after it's done rendering the list.js on initial page load
+  //Also not working in info click views.
   $('.song-highlight').removeClass('song-highlight');
   $("[data-song-id='"+window.song._id+"']").addClass("song-highlight");
   $('.songbook-highlight').removeClass('songbook-highlight');
@@ -581,6 +582,7 @@ function checkCreateNew() {
 
 function setLoginState() {
   window.loggedin = true;
+  $('#username_d').text('Hi, '+window.user.name+'!');
   $('html').addClass('loggedin');
   $('#title a').html('yCanta: ' + window.yCantaName);
   if(location.hash.indexOf('?')>-1){
@@ -1194,5 +1196,40 @@ function count(word) {
   if(syl) {
     //console.log(syl);
     return syl.length;
+  }
+}
+
+function loadInfo(song=true) {
+  if(song){
+    $('dialog h5').text('Song');
+    let song_id = window.song._id;
+    let content = '<b>'+window.song.title+'</b><br />'+
+      '<small>Added: '+window.song.addedBy+', '+new Date(window.song.added).toLocaleString()+'</small><br />'+
+      '<small>Edited: '+window.song.editedBy+', '+new Date(window.song.edited).toLocaleString()+'</small><br />'+
+      '<small>'+(window.song._rev.split('-')[0] - 1)+' previous edits</small>';
+    db.allDocs({
+      include_docs: true,
+      startkey: 'sb-',
+      endkey: 'sb-\ufff0',
+    }).then(function(result){
+      let sbs = result.rows.filter(sb => sb.doc.songrefs.map(ref => ref.id).indexOf(song_id) > 0);
+      if(sbs.length > 0){
+       content += '<div class="left"><br /><b>Used in:</b><br />' + sbs.map(sb => '<a href="#'+sb.doc._id+'&'+window.song._id+'">'+sb.doc.title+'</a>').join('<br />') + '</div>';
+      }
+      else {
+        content += '<div class="left"><br /><b>Not used in any songbook</b></div>';
+      }
+      $('dialog').slideDown('fast');
+      $('dialog .content').html(content);
+    });
+  }
+  else{
+    $('dialog h5').text('Songbook');
+    let content = '<b>'+window.songbook.title+'</b><br />'+
+      '<small>Added: '+window.songbook.addedBy+', '+new Date(window.songbook.added).toLocaleString()+'</small><br />'+
+      '<small>Edited: '+window.songbook.editedBy+', '+new Date(window.songbook.edited).toLocaleString()+'</small><br />'+
+      '<small>'+(window.songbook._rev.split('-')[0] - 1)+' previous edits</small>';
+    $('dialog').slideDown('fast');
+    $('dialog .content').html(content);
   }
 }

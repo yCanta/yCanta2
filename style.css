@@ -25,6 +25,46 @@ a {
   text-decoration: none;
   color: black;
 }
+dialog {
+  transition: none;
+  position: fixed;
+  z-index: 11;
+  background-color: white;
+  border-radius : 400px;
+  width: 200px;
+  min-height: 200px;
+  max-height: 80vh;
+  filter: drop-shadow(3px 1px 4px gray);
+  border: 0;
+  text-align: center;
+}
+.left {
+  text-align: left;
+
+}
+dialog .content {
+  height: calc(100% - 2rem);
+  overflow: auto;
+  margin-bottom: 2rem;
+  font-size: .83rem;
+}
+dialog .handle {
+  cursor: pointer;
+}
+dialog .close {
+  position: absolute;
+  bottom: 0;
+  padding-bottom: .5rem;
+  left: 0;
+  right: 0;
+  cursor: pointer;
+  width: 2rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+dialog small {
+  font-size: .65rem;
+}
 /*CSS FOR Song Display*/
 stitle, cat, author, scrip_ref, key, copyright {
   cursor: pointer;
@@ -63,7 +103,12 @@ stitle, cat, author, scrip_ref, key, copyright {
   content: '☆';
   cursor: pointer;
 }
-.edit song stitle span {
+info:after {
+  content: 'ⓘ';
+  color: darkblue;
+}
+.edit #songbook_title > *,
+.edit song stitle > * {
   display: none;
 }
 #songbookList li span:after {
@@ -1006,7 +1051,7 @@ only screen and (max-height: 500px) {
   body.song #songbookList h3 {
     transform:  translateX(-50%) translateY(-50%) rotate(-90deg);
     background-color: lightyellow;
-    z-index: 1000;
+    z-index: 10;
   }
   body.song #songbookList a {
     height: 15rem;
