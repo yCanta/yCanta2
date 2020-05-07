@@ -600,6 +600,7 @@ function setLogoutState() {
   window.user = '';
   localStorage.removeItem('loggedin');
   $('#title a').html('yCanta');
+  $('#dialog').hide();
 }
 
 function mapSongbookRowToValue(row) {
