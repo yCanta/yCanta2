@@ -106,65 +106,182 @@ function isBefore( el1, el2 ) {
 }
 
 function dragDialog() {
-  var dragItem = document.querySelector("#dialog .handle");
-  var container = document.querySelector("html");
+  function AnimationLoop(){
+    var animations = [],
+        animating = true,
+        frame;
 
-  var active = false;
-  var currentX;
-  var currentY;
-  var initialX;
-  var initialY;
-  var xOffset = 0;
-  var yOffset = 0;
+    function animate(){
+      if ( frame ) { return; }
+      if ( animating ) { frame = requestAnimationFrame(animate); }
+      var i = animations.length;
+      while ( i-- ) {
+        if ( !animations[i] || animations[i]() === false ) { animations.splice(i, 1); }
+      }
+      frame = null;
+    };
 
-  container.addEventListener("touchstart", dragStart, false);
-  container.addEventListener("touchend", dragEnd, false);
-  container.addEventListener("touchmove", drag, false);
+    function add(){ 
+      animations.push.apply(animations,arguments); 
+    };
 
-  container.addEventListener("mousedown", dragStart, false);
-  container.addEventListener("mouseup", dragEnd, false);
-  container.addEventListener("mousemove", drag, false);
+    add.apply(null,arguments);
+    //animate();  //I've turned off the always on animation loop
 
-  function dragStart(e) {
-    if (e.type === "touchstart") {
-      initialX = e.touches[0].clientX - xOffset;
-      initialY = e.touches[0].clientY - yOffset;
-    } else {
-      initialX = e.clientX - xOffset;
-      initialY = e.clientY - yOffset;
-    }
-
-    if (e.target === dragItem) {
-      active = true;
-    }
+    return {
+      animations: animations,
+      add: add, 
+      stop: function(){ animating = false; animations = []; },  //RESETING animations like here is a bad idea if you have more than one going.
+      start: function(){ animating = true; animate(); }
+    };
   }
 
-  function dragEnd(e) {
-    initialX = currentX;
-    initialY = currentY;
-    active = false;
-  }
+  var loop = AnimationLoop();
 
-  function drag(e) {
-    if (active) {
+  var drag = {
     
-      e.preventDefault();
+    x: 0,
+    y: 0,
     
-      if (e.type === "touchmove") {
-        currentX = e.touches[0].clientX - initialX;
-        currentY = e.touches[0].clientY - initialY;
-      } else {
-        currentX = e.clientX - initialX;
-        currentY = e.clientY - initialY;
+    decVelX: 0,
+    decVelY: 0,
+    friction: 0.95,
+    
+    el: null,
+    
+    dragging: false,
+    
+    bounds: {
+      x: document.body.clientWidth,
+      y: document.body.clientHeight
+    },
+    
+    positions: [],
+    getPosition(e){
+      e = e || ''
+      if ( e && this.positions.length > 1 ){//!(e.target.nodeName == 'A')) { 
+        e.preventDefault(); 
       }
 
-      xOffset = currentX;
-      yOffset = currentY;
-      setTranslate(currentX, currentY, dragItem);
-    }
-  }
+      let event, pos;
+      try {
+        event = ( e ? e.touches ? e.touches[0] : e : {} );
+        pos = { x: event.pageX, y: event.pageY, time: Date.now() };
+      }
+      catch {  //touchend is weird, so we go back to last move event.
+        e = this.preEvent;
+        event = ( e ? e.touches ? e.touches[0] : e : {} );
+        pos = { x: event.pageX, y: event.pageY, time: Date.now() };
+      }
+        
+      this.positions.push(pos);
+      
+      return pos;
+    },
+    
+    move(e) {
+      if ( this.dragging ) { 
+        var pos = this.getPosition(e);
+        this.x = pos.x - this.offsetX;
+        this.y = pos.y - this.offsetY;
+        this.preEvent = e;
+      }
+    },
+    
+    start(e) {
+      this.positions = [];
+      this.preEvent = '';
+      this.dragging = true;
+      this.decelerating = false;
 
-  function setTranslate(xPos, yPos, el) {
-    el.parentNode.style.transform = "translate3d(" + xPos + "px, " + yPos + "px, 0)";
-  }
+      this.bounds.x = document.body.clientWidth;
+      this.bounds.y = document.body.clientHeight;
+      
+      var pos = this.getPosition(e);
+      this.startX = pos.x;
+      this.startY = pos.y;
+      
+      var rect = this.el.getBoundingClientRect();
+      this.offsetX = this.startX - rect.left;
+      this.offsetY = this.startY - rect.top;
+      
+      this.x = pos.x - this.offsetX;
+      this.y = pos.y - this.offsetY;
+      
+      this.moveTime = this.startTime = Date.now();
+      
+      loop.start();   //start the animation loop only when we need it.
+      loop.add(this.update.bind(this));
+    },
+    
+    end(e){
+      if ( this.dragging ) {
+        this.dragging = false;
+        var pos = this.getPosition(e);
+
+        var now = Date.now();
+        var lastPos = this.positions.pop();
+        var i = this.positions.length;
+
+        if(i > 1) {
+          while ( i-- ) {
+            if ( now - this.positions[i].time > 150 ) { break; }
+            lastPos = this.positions[i];
+          }
+          
+          var xOffset = pos.x - lastPos.x;
+          var yOffset = pos.y - lastPos.y;
+          var timeOffset = ( Date.now() - lastPos.time ) / 12;
+
+          this.decelX = ( xOffset / timeOffset ) || 0;
+          this.decelY = ( yOffset / timeOffset ) || 0;
+          this.decelerating = true;  
+        }
+      }
+    },
+    
+    update(){
+      if ( this.el ) {
+        if ( this.decelerating ) {
+          this.decelX *= this.friction;
+          this.decelY *= this.friction;
+          
+          this.x += this.decelX;
+          this.y += this.decelY;
+          
+          if ( Math.abs(this.decelX) < 0.01 ) { this.decelX = 0; }
+          if ( Math.abs(this.decelY) < 0.01 ) { this.decelY = 0; }
+          if ( this.decelX === 0 && this.decelY === 0 ) { 
+            this.decelerating = false; 
+            loop.stop();    //We stop the loop when we're finished with any animation - ok if you only have 1 going on at a time.
+            return false;
+          }
+        }
+        this.x = Math.max(100 - this.el.offsetWidth, Math.min( this.bounds.x - 90, this.x));
+        this.y = Math.max(100 - this.el.offsetHeight, Math.min( this.bounds.y - 100, this.y));
+        
+        this.onUpdate(this.x, this.y);
+      }
+    },
+    
+    onUpdate(x, y){
+      this.el.style.transform = 'translate3d(min(' + x + 'px, calc(100vw - 100px)), min(' + y + 'px, calc(100vh - 100px)), 0)';
+    },
+    
+    register(el) {
+      this.el = el || this.el;
+      
+      if ( this.el ) {
+        //this.start();           //I don't want this running to start.
+        this.el.addEventListener('mousedown',this.start.bind(this));
+        this.el.addEventListener('touchstart',this.start.bind(this));
+        document.addEventListener('mousemove',this.move.bind(this));
+        document.addEventListener('touchmove',this.move.bind(this));
+        document.addEventListener('mouseup',this.end.bind(this)); 
+        document.addEventListener('touchend',this.end.bind(this)); 
+        this.end();
+      }
+    }
+  };
+  drag.register(document.getElementById('dialog'));
 }

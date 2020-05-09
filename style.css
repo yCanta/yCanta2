@@ -28,7 +28,7 @@ a {
 dialog {
   transition: none;
   position: fixed;
-  z-index: 11;
+  z-index: 12;
   background-color: white;
   border-radius : 400px;
   width: 200px;
@@ -37,6 +37,8 @@ dialog {
   filter: drop-shadow(3px 1px 4px gray);
   border: 0;
   text-align: center;
+  margin: 0;
+  padding: 1rem;
 }
 .left {
   text-align: left;
@@ -534,7 +536,7 @@ body.songList #songbookList {
 
 .fullscreen {
   background-color: inherit;
-  z-index: 99 !important;
+  z-index: 11 !important;
   position: absolute !important;
   top: 0;
   bottom: 0;

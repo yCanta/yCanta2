@@ -1220,8 +1220,8 @@ function loadInfo(song=true) {
       else {
         content += '<div class="left"><br /><b>Not used in any songbook</b></div>';
       }
+      document.querySelector('dialog .content').innerHTML = content;
       $('dialog').slideDown('fast');
-      $('dialog .content').html(content);
     });
   }
   else{
@@ -1230,7 +1230,7 @@ function loadInfo(song=true) {
       '<small>Added: '+window.songbook.addedBy+', '+new Date(window.songbook.added).toLocaleString()+'</small><br />'+
       '<small>Edited: '+window.songbook.editedBy+', '+new Date(window.songbook.edited).toLocaleString()+'</small><br />'+
       '<small>'+(window.songbook._rev.split('-')[0] - 1)+' previous edits</small>';
+    document.querySelector('dialog .content').innerHTML = content;
     $('dialog').slideDown('fast');
-    $('dialog .content').html(content);
   }
 }
