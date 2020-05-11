@@ -189,6 +189,8 @@ function dragDialog() {
     },
     
     start(e) {
+      //document.documentElement.classList.add('no-overscroll');
+
       this.positions = [];
       this.preEvent = '';
       this.dragging = true;
@@ -215,6 +217,8 @@ function dragDialog() {
     },
     
     end(e){
+      //document.documentElement.classList.remove('no-overscroll');
+
       if ( this.dragging ) {
         this.dragging = false;
         var pos = this.getPosition(e);

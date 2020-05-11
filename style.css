@@ -25,7 +25,7 @@ a {
   text-decoration: none;
   color: black;
 }
-dialog {
+#dialog {
   transition: none;
   position: fixed;
   z-index: 12;
@@ -44,16 +44,16 @@ dialog {
   text-align: left;
 
 }
-dialog .content {
+#dialog .content {
   height: calc(100% - 2rem);
   overflow: auto;
   margin-bottom: 2rem;
   font-size: .83rem;
 }
-dialog .handle {
+#dialog .handle {
   cursor: pointer;
 }
-dialog .close {
+#dialog .close {
   position: absolute;
   bottom: 0;
   padding-bottom: .5rem;
@@ -64,7 +64,7 @@ dialog .close {
   margin-left: auto;
   margin-right: auto;
 }
-dialog small {
+#dialog small {
   font-size: .65rem;
 }
 /*CSS FOR Song Display*/
@@ -302,9 +302,10 @@ ul li {
   border: 1px solid black;
   border-radius: 5em;
 }
-body {
+main, header {
   margin: 0 .5em 0 .5em;
-
+}
+body {
 /*flexy stuff*/
   display: flex;
   flex-direction: column;
@@ -376,6 +377,7 @@ body main .sidebar {
   z-index: 4;
 }
 html {
+  overscroll-behavior: contain;
   border-bottom: 5px solid green;
 }
 .offline {
@@ -818,11 +820,11 @@ input[type="number"] {
     overflow: auto;
   }
 
-  header > h2,
+  header #title,
   #welcome {
     padding: 0 1rem 0 1rem;
   }
-  body {
+  main, header {
     margin: 0;
   }
   body main {

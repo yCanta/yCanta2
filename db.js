@@ -488,7 +488,7 @@ function loadSong(song_id) {
       bindSearch('key', 'k:');
       bindSearch('copyright', 'c:');      
       $('#song key').transpose();
-      if($('dialog')[0].style.display=="block") {loadInfo()}
+      if($('#dialog')[0].style.display=="block") {loadInfo()}
     }
     if(song_id === 's-new-song'){
       var song = {
@@ -753,7 +753,7 @@ function loadSongbook(songbook_id) {
         $('.disabled-hidden').removeClass('disabled-hidden');
         $('#songbook_title').html(result.title+'<span onclick="event.stopPropagation(); toggleFavSongbook(\''+result._id+'\')"></span>'+
           '<info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo(false);"></info>').attr('data-rev',result._rev).attr('data-songbook-id',result._id);
-        if($('dialog')[0].style.display=="block" && !parseHash('s-')){  //prevents info view flicker when you click on songbooks in song info view.
+        if($('#dialog')[0].style.display=="block" && !parseHash('s-')){  //prevents info view flicker when you click on songbooks in song info view.
           loadInfo(false);
         }
         var dateAfter = new Date();

@@ -1058,7 +1058,7 @@ function makeDraggable(dragCaptureEl, dragEl, dragAction, dragSide='right') {
   let height = 0;
 
   dragCaptureEl.addEventListener('touchstart', function(e){
-    document.documentElement.classList.add('no-overscroll');
+    //document.documentElement.classList.add('no-overscroll');
     var touchobj = e.changedTouches[0]; // reference first touch point (ie: first finger)
     startx = parseInt(touchobj.clientX);
     starty = parseInt(touchobj.clientY);
@@ -1104,7 +1104,7 @@ function makeDraggable(dragCaptureEl, dragEl, dragAction, dragSide='right') {
   }, false);
 
   dragCaptureEl.addEventListener('touchend', function(e){
-    document.documentElement.classList.remove('no-overscroll');
+    //document.documentElement.classList.remove('no-overscroll');
     dragEl.style.removeProperty('flex');
     dragEl.style.removeProperty('transition');
     var touchobj = e.changedTouches[0]; // reference first touch point for this event
@@ -1202,7 +1202,7 @@ function count(word) {
 
 function loadInfo(song=true) {
   if(song){
-    $('dialog h5').text('Song');
+    $('#dialog h5').text('Song');
     let song_id = window.song._id;
     let content = '<b>'+window.song.title+'</b><br />'+
       '<small>Added: '+window.song.addedBy+', '+new Date(window.song.added).toLocaleString()+'</small><br />'+
@@ -1220,17 +1220,17 @@ function loadInfo(song=true) {
       else {
         content += '<div class="left"><br /><b>Not used in any songbook</b></div>';
       }
-      document.querySelector('dialog .content').innerHTML = content;
-      $('dialog').slideDown('fast');
+      document.querySelector('#dialog .content').innerHTML = content;
+      $('#dialog').slideDown('fast');
     });
   }
   else{
-    $('dialog h5').text('Songbook');
+    $('#dialog h5').text('Songbook');
     let content = '<b>'+window.songbook.title+'</b><br />'+
       '<small>Added: '+window.songbook.addedBy+', '+new Date(window.songbook.added).toLocaleString()+'</small><br />'+
       '<small>Edited: '+window.songbook.editedBy+', '+new Date(window.songbook.edited).toLocaleString()+'</small><br />'+
       '<small>'+(window.songbook._rev.split('-')[0] - 1)+' previous edits</small>';
-    document.querySelector('dialog .content').innerHTML = content;
-    $('dialog').slideDown('fast');
+    document.querySelector('#dialog .content').innerHTML = content;
+    $('#dialog').slideDown('fast');
   }
 }
