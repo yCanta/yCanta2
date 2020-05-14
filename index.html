@@ -680,7 +680,6 @@
       $('#song .row').append('<button onclick="toggleFullscreen(this)" class="icon-rotate2x tr">&#8596;</button>');
 
       bindToSongEdit();
-      window.addEventListener("touchmove", function(event) {event.preventDefault();}, {passive: false} );
       
       $("#export_form > label").click(function(e){
         if(this.previousElementSibling.checked){
