@@ -1213,7 +1213,7 @@ function loadInfo(song=true) {
       startkey: 'sb-',
       endkey: 'sb-\ufff0',
     }).then(function(result){
-      let sbs = result.rows.filter(sb => sb.doc.songrefs.map(ref => ref.id).indexOf(song_id) > 0);
+      let sbs = result.rows.filter(sb => sb.doc.songrefs.map(ref => ref.id).indexOf(song_id) > -1);
       if(sbs.length > 0){
        content += '<div class="left"><br /><b>Used in:</b><br />' + sbs.map(sb => '<a href="#'+sb.doc._id+'&'+window.song._id+'">'+sb.doc.title+'</a>').join('<br />') + '</div>';
       }
