@@ -180,6 +180,7 @@ function dragDialog() {
     },
     
     move(e) {
+      e.stopPropagation();
       if ( this.dragging ) { 
         var pos = this.getPosition(e);
         this.x = pos.x - this.offsetX;
