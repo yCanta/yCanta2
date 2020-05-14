@@ -180,8 +180,6 @@ function dragDialog() {
     },
     
     move(e) {
-      e.stopPropagation();
-      e.preventDefault();
       if ( this.dragging ) { 
         var pos = this.getPosition(e);
         this.x = pos.x - this.offsetX;
@@ -281,7 +279,7 @@ function dragDialog() {
       if ( this.el ) {
         //this.start();           //I don't want this running to start.
         this.el.addEventListener('mousedown',this.start.bind(this));
-        this.el.addEventListener('touchstart',this.start.bind(this));
+        this.el.addEventListener('touchstart',this.start.bind(this),{passive: false});
         document.addEventListener('mousemove',this.move.bind(this));
         document.addEventListener('touchmove',this.move.bind(this));
         document.addEventListener('mouseup',this.end.bind(this)); 
