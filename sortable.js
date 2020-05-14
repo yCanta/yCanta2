@@ -189,6 +189,7 @@ function dragDialog() {
     },
     
     start(e) {
+      e.stopPropagation();
       //document.documentElement.classList.add('no-overscroll');
 
       this.positions = [];
