@@ -189,7 +189,6 @@ function dragDialog() {
     },
     
     start(e) {
-      e.stopPropagation();
       //document.documentElement.classList.add('no-overscroll');
 
       this.positions = [];
@@ -279,7 +278,7 @@ function dragDialog() {
       if ( this.el ) {
         //this.start();           //I don't want this running to start.
         this.el.addEventListener('mousedown',this.start.bind(this));
-        this.el.addEventListener('touchstart',this.start.bind(this),{passive: false});
+        this.el.addEventListener('touchstart',this.start.bind(this));
         document.addEventListener('mousemove',this.move.bind(this));
         document.addEventListener('touchmove',this.move.bind(this));
         document.addEventListener('mouseup',this.end.bind(this)); 
