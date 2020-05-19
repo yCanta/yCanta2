@@ -797,8 +797,6 @@
 
           $('body').attr('class', 'login header');
 
-
-          //Change this to a local storage solution instead...? Or crete another pouchdb called alldbs, that I do updates for - would be smaller than the plugin seems to be.
           PouchDB.allDbs().then(function (all_dbs) {
             let db_opts = '';
             for(item of all_dbs){
@@ -823,13 +821,13 @@
         }
         //if song edit
         else if((hash.search('&s-') != -1) && (hash.search('&edit') != -1)) {
+          $('body').attr('class', 'song edit');
+          $('.active').removeClass('active');
+          $('#song').addClass('active');
           //check if songbook is loaded
           Promise.all([loadSongbook(parseHash('sb-')), loadSong(parseHash('s-'))])
             .then(function(values){
               //Initiate song edit
-              $('body').attr('class', 'song edit');
-              $('.active').removeClass('active');
-              $('#song').addClass('active');
               editSong();
               updateAllLinks();
               window.document.title = "yCanta2: Editing " + window.song.title;
@@ -838,6 +836,9 @@
         //if song export
         else if((hash.search('&s-') != -1) && (hash.search('&export') != -1)) {
           //Initiate song export
+          $('body').attr('class', 'song export');
+          $('.active').removeClass('active');
+          $('#export').addClass('active');
           Promise.all([loadSongbook(parseHash('sb-')), loadSong(parseHash('s-'))])
             .then(function(){
               window.exportObject = window.song;
@@ -859,11 +860,6 @@
               return 
             }).then(function(values){
               prepExport();
-
-              //Initiate song export
-              $('body').attr('class', 'song export');
-              $('.active').removeClass('active');
-              $('#export').addClass('active');
               updateAllLinks();
               window.document.title = "yCanta2: Exporting " + window.song.title;
           });
@@ -874,11 +870,11 @@
             window.location.hash = '#' + window.songbook._id;
             return
           }
+          $('body').attr('class','song');
+          $('.active').removeClass('active');
+          $('#song').addClass('active');
           Promise.all([loadSongbook(parseHash('sb-')), loadSong(parseHash('s-'))])
             .then(function(values) {
-              $('body').attr('class','song');
-              $('.active').removeClass('active');
-              $('#song').addClass('active');
               updateAllLinks();
               window.document.title = "yCanta2: "+window.songbook.title + " > " + window.song.title;
           });          
@@ -886,11 +882,11 @@
         //if songbook edit
         else if((hash.search('#sb-') != -1) && (hash.search('&edit') != -1)) {
           //Initiate songbook edit
+          $('body').attr('class', 'songList edit');
+          $('.active').removeClass('active');
+          $('#songList').addClass('active');
           Promise.resolve(loadSongbook(parseHash('sb-')))
             .then(function() {
-              $('body').attr('class', 'songList edit');
-              $('.active').removeClass('active');
-              $('#songList').addClass('active');
               editSongbook();
               updateAllLinks();
               window.document.title = "yCanta2: Editing " + window.songbook.title;
@@ -899,6 +895,9 @@
         //if songbook export
         else if((hash.search('#sb-') != -1) && (hash.search('&export') != -1)) {
           //Initiate songbook export
+          $('body').attr('class', 'songList export');
+          $('.active').removeClass('active');
+          $('#export').addClass('active');
           Promise.resolve(loadSongbook(parseHash('sb-')))
             .then(function(){
               //get the songbook object and all songs and save them to window.exportObject
@@ -936,11 +935,6 @@
                 });
               });
             }).then(function(values){
-              //makePDF(window.exportObject, document.querySelector('embed'));
-
-              $('body').attr('class', 'songList export');
-              $('.active').removeClass('active');
-              $('#export').addClass('active');
               updateAllLinks();
               window.document.title = "yCanta2: Exporting " + window.songbook.title;
           });
@@ -1006,11 +1000,11 @@
         }
         //if songbook
         else if(hash.search('#sb-') != -1) {
+          $('body').attr('class', 'songList');
+          $('.active').removeClass('active');
+          $('#songList').addClass('active');
           Promise.resolve(loadSongbook(parseHash('sb-')))
             .then(function() {
-              $('body').attr('class', 'songList');
-              $('.active').removeClass('active');
-              $('#songList').addClass('active');
               updateAllLinks();
               window.document.title = "yCanta2: " + window.songbook.title;
           });
