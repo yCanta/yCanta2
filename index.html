@@ -855,13 +855,10 @@
                 window.location = '#'+window.songbook._id+'&'+window.song._id;
               }
               window.exportObject.content = chunks;
-              console.log(exportObject);
 
               return 
             }).then(function(values){
               prepExport();
-              //console.log(window.exportObject);
-              //makePDF(window.exportObject, document.querySelector('embed'));
 
               //Initiate song export
               $('body').attr('class', 'song export');

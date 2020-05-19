@@ -645,8 +645,8 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
 
 function loadSongbook(songbook_id) {
   var dateBefore = new Date();
-  if(songbook_id != 'sb-allSongs' || songbook_id != 'sb-favoriteSongs'){
-    $('#songList [data-songbook-edit], #songList .delete').show()
+  if((songbook_id != 'sb-allSongs') && (songbook_id != 'sb-favoriteSongs')){
+    $('#songList .float-menu').removeClass('special');
   }
 
   return new Promise(function(resolve, reject) {
@@ -704,7 +704,7 @@ function loadSongbook(songbook_id) {
         $('#songbook_content .search').parent().removeAttr('disabled');
         $('.disabled-hidden').removeClass('disabled-hidden');
         $('#songbook_title').html('<i>'+window.songbook.title+'</i>').removeAttr('data-rev').attr('data-songbook-id', songbook_id);
-        $('#songList [data-songbook-edit], #songList .delete').hide()
+        $('#songList .float-menu').addClass('special');
         var dateAfter = new Date();
         console.log(dateAfter-dateBefore);
         resolve('loaded songbook');
@@ -778,7 +778,7 @@ function saveExportDefault() {
   $('#format').trigger('change');
   let cfg = {
     _id: 'cfg-'+window.exportObject._id+window.user._id, //must keep in sync with lib.js
-    title: 'Default: '+window.user.replace('u-',''),
+    title: 'Default: '+window.user.name,
     cfg: opts
   }
   db.get(cfg._id).then(function(_doc) {

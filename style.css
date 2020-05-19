@@ -1,3 +1,17 @@
+:root {
+  --songbookList-color: lightyellow;
+  --songList-color: lightsalmon;
+  --song-color: lightblue;
+  --export-color: bisque;
+  --edit-color: lightgray;
+  /*
+  --songbookList-color: white;
+  --songList-color: white;
+  --song-color: white;
+  --export-color: white;
+  --edit-color: white;
+  */
+}
 *:focus {
   outline: 1px;
   outline-color: transparent;
@@ -10,12 +24,67 @@
 "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans",
 "Droid Sans", "Helvetica Neue", sans-serif;
 }
+/*normalize*/
+button,
+input,
+optgroup,
+select,
+textarea {
+  font-family: inherit;
+  font-size: 100%;
+  line-height: 1.2; /* 1 */
+  margin: 0; /* 2 */
+}
+button,
+input {
+  overflow: visible;
+}
+button,
+select {
+  text-transform: none;
+}
+button,
+[type="button"],
+[type="reset"],
+[type="submit"] {
+  -webkit-appearance: button;
+  -moz-appearance: button;
+  cursor: pointer;
+  outline: none;
+}
+button::-moz-focus-inner {
+   border: 0;
+}
+button {
+  padding: 0;
+  white-space: normal;
+  display: inline;
+  background: none;
+  outline: none;
+  border: none;
+  text-align: left;
+}
+
+body, body *,
 .no-overscroll, .no-overscroll *{
   overscroll-behavior: contain;
+}
+html::after {
+  border-bottom: 5px solid green;
+z-index: 200;
+width: 100vw;
+content: '';
+display: block;
+position: fixed;
+bottom: 0;
 }
 html, body, main{
   height: 100%; 
   margin: 0;
+}
+
+main, header {
+  margin: 0 .5em 0 .5em;
 }
 li > a {
   display: inline-block;
@@ -25,6 +94,10 @@ a {
   text-decoration: none;
   color: black;
 }
+.left {
+  text-align: left;
+}
+/*DIALOG STYLING */
 #dialog {
   transition: none;
   position: fixed;
@@ -39,10 +112,6 @@ a {
   text-align: center;
   margin: 0;
   padding: 1rem;
-}
-.left {
-  text-align: left;
-
 }
 #dialog .content {
   max-height: calc(80vh - 4rem);
@@ -70,6 +139,29 @@ a {
 #dialog small {
   font-size: .65rem;
 }
+
+/*Standard Styling for columns */
+#songbookList {
+  background-color: var(--songbookList-color);
+  z-index: 1;
+}
+#songList {
+  background-color: var(--songList-color);
+  z-index: 2;
+}
+#song {
+  background-color: var(--song-color);
+  z-index: 3;
+}
+#export {
+  background-color: var(--export-color);
+  z-index: 4;
+}
+
+.sidebar {
+  background-color: var(--edit-color);
+}
+
 /*CSS FOR Song Display*/
 stitle, cat, author, scrip_ref, key, copyright {
   cursor: pointer;
@@ -87,8 +179,12 @@ stitle, cat, author, scrip_ref, key, copyright {
 .song.edit song select {
   margin-bottom: 1rem;
   margin-top: 1rem;
-  background-color: lightgray;
+  background-color: var(--edit-color);
   border: 1px gray dashed;
+}
+.edit #songbook_title > *,
+.edit song stitle > * {
+  display: none;
 }
 #songbookList a[href="#sb-allSongs"],
 #songbookList a[href="#sb-favoriteSongs"] {
@@ -104,17 +200,13 @@ stitle, cat, author, scrip_ref, key, copyright {
   margin-left: .7rem;
   text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.15);
   font-size: 1.7rem;
-  color: lightgray;
+  color: var(--edit-color);
   content: '☆';
   cursor: pointer;
 }
 info:after {
   content: 'ⓘ';
   color: darkblue;
-}
-.edit #songbook_title > *,
-.edit song stitle > * {
-  display: none;
 }
 #songbookList li span:after {
   text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.15);
@@ -135,43 +227,44 @@ info:after {
 #songbook_header {
   position: sticky;
   top: 0;
-  background-color: lightsalmon;
-  z-index: 10;
+  background-color: var(--songList-color);
+  z-index: 1;
   padding-top: 0.1px;
 }
 .export_header { 
   position: sticky;
-  z-index: 10;
+  z-index: 1;
   top: 0;
   padding-top: 0.1px;
-  background-color: bisque;
+  background-color: var(--export-color);
 }
 #songbooks_header {
   position: sticky;
   top: 0;
-  background-color: lightyellow;
-  z-index: 10;
+  background-color: var(--songbookList-color);
+  z-index: 1;
   padding-top: 0.1px;
 }
 .active #songbook_header,
 .active #songbooks_header {
-  padding-top: 0px;
+  padding-top: 0;
 }
 .song-highlight a {
-  background-color: lightblue;
+  background-color: var(--song-color);
   border-color: darkcyan;
 }
 .songbook-highlight a {
-  background-color: lightsalmon;
+  background-color: var(--songList-color);
   border-color: darksalmon;
 }
 .songList.edit #songbook_content ul {
-  background-color: lightgray;
+  background-color: var(--edit-color);
   border: 1px gray dashed;
 }
 .songList.edit #songbook_content ul li{
   border: 1px #EEE dashed;
 }
+/*Overt,overb, moving are for sortable*/
 .overt { 
   border-top: 1px dashed #000 !important;
   border-top-right-radius: 0;
@@ -216,17 +309,18 @@ info:after {
 .edit #songbook_content li button {
   position: absolute;
   right: .5em;
+  bottom: .7rem;
 }
 [contenteditable='true'], .contenteditable-disabled {
   border: 1px gray dashed;
-  background-color: lightgray;
+  background-color: var(--edit-color);
   outline: none;
 }
 [contenteditable='true']:focus, .contenteditable-disabled:focus {
   border: 1px dashed darkblue;
 }
 .contenteditable-disabled {color: #555; cursor: pointer}
-.contenteditable-disabled:focus {color: #333; cursor: pointer; color: black;}
+.contenteditable-disabled:focus {cursor: pointer; color: black;}
 [contenteditable=true]:empty:not(:focus):before{
   color:grey;
   font-style:italic;
@@ -235,7 +329,7 @@ info:after {
   position: sticky;
   top: 0;
   padding-top: 0.1px;
-  background-color: lightgray;
+  background-color: var(--edit-color);
   z-index: 10;
 }
 .pre {
@@ -305,26 +399,14 @@ ul li {
   border: 1px solid black;
   border-radius: 5em;
 }
-main, header {
-  margin: 0 .5em 0 .5em;
-}
-body {
-/*flexy stuff*/
-  display: flex;
-  flex-direction: column;
-  flex-wrap: nowrap;
-  justify-content: flex-start;
-  align-items: stretch;
-  align-content: stretch;
-}
 .songbookList-color {
-  background-color: lightyellow;
+  background-color: var(--songbookList-color);
 }
 .songList-color {
-  background-color: lightsalmon;
+  background-color: var(--songList-color);
 }
 .btn {
-  box-shadow: 0px 2px 2px 2px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 2px 2px rgba(0, 0, 0, 0.1);
   font-weight: bold;
   border-radius: 2rem;
   padding: 5px 15px 5px 15px;
@@ -334,61 +416,10 @@ body {
 }
 .btn-small {
   padding: 2px 7px 2px 7px;
-  margin: .5rem .25rem .6rem 0rem !important;
+  margin: .5rem .25rem .6rem 0 !important;
 }
-.header header {
-  flex: 0 1 100%;
-}
-.header main {
-  flex: 0 0 0px;
-}
-header {
-  flex: 0 0 3.3rem;
-  overflow: hidden;
-}
-main {
-  flex: 0 1 100%;
-  display: flex;
-  background-color: lightgray;
-  overflow-y: hidden;
-}
-body {
-  overflow: hidden;
-}
-body main #songbookList {
-  background-color: lightyellow;
-  flex: 0 1 300px;
-  z-index: 1;
-}
-body main #songList {
-  background-color: lightsalmon;
-  flex: 0 0 0px;
-  z-index: 2;
-}
-body main #song {
-  background-color: lightblue;
-  flex: 0 0 0px;
-  z-index: 3;
-}
-body main #export {
-  flex: 0 0 0px;
-  z-index: 4;
-}
-body main .sidebar {
-  flex: 0 0 0px;
-  border: 0;
-  z-index: 4;
-}
-html, html * {
-  overscroll-behavior: contain;
-}
-html {
-  border-bottom: 5px solid green;
-}
-.offline {
+.offline::after {
   border-bottom: 5px solid yellow;
-}
-#debugDiv {
 }
 span.deleteicon {
     position: relative;
@@ -396,7 +427,7 @@ span.deleteicon {
 span.deleteicon span {
     position: absolute;
     display: block;
-    top: 0px;
+    top: 0;
     right: 10px;
     width: 16px;
     height: 16px;
@@ -418,9 +449,6 @@ input.deletable:placeholder-shown + span:after {
 span.deleteicon input {
   padding-right: 24px;
 }
-/*footer:hover{
-  flex: 0 0 180px;
-}*/
 
 /*Login CSS */
 #login > input {
@@ -463,7 +491,7 @@ span.deleteicon input {
   display: none;
 }
 #login > * {
-  margin: 0rem 1rem 1rem 1rem;
+  margin: 0 1rem 1rem 1rem;
 }
 #login button {
   margin: 1rem;
@@ -487,19 +515,13 @@ span.deleteicon input {
 }
 .row {
   overflow: hidden;
-  flex: 0 1 auto;
-  display: flex;
   height: 100%;
 }
 .column {
-  display: flex;
-  flex-direction: column;
-  flex-wrap: nowrap;
   max-height: 100%;
 }
 .subcolumn {
   height: 100%;
-  flex: 1 1 400px;
   z-index: 5;
   overflow-y: auto;
   overflow-x: hidden;
@@ -508,12 +530,14 @@ span.deleteicon input {
   padding: 0 1rem 0 1rem;
 }
 .column, body.edit .sidebar {
-  box-shadow: 0px 0 20px 2px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0 20px 2px rgba(0, 0, 0, 0.2);
   overflow-y: auto;
   overflow-x: hidden;
 }
-body.edit .sidebar {
+.sidebar {
   border-left: 1.5px solid gray;
+  border-top: 1.5px solid black;
+  z-index: 7;
 }
 html body .subcolumn.sidebar {
   box-shadow: none;
@@ -522,82 +546,18 @@ html body .subcolumn.sidebar {
   width: 100%;
 }
 
-/*Focus modes - Drop Shadows and FLexyness
-/Focus songbookList*/
-body.songbookList #songbookList {
-  z-index: 5;
-  flex: 0 0 300px;
-}
-body.songbookList #song {
-  z-index: 1;
-}
-
-/*Focus songList*/
-body.songList #songList {
-  z-index: 5;
-  flex: 0 0 400px;
-}
-body.songList #songbookList {
-  flex: 0 1 300px;
-}
-
+/*Fullscreen*/
+main.fullscreen,
 .fullscreen {
   background-color: inherit;
   z-index: 11 !important;
-  position: absolute !important;
-  top: 0;
-  bottom: 0;
-  right: 0;
-  left: 0;
-}
-
-/*Focus song*/
-body.song #song{
-  flex: 0 0 400px;
-}
-body.song #songList {
-  flex: 0 1 400px;
-}
-body.song #songbookList {
-  flex: 0 0 2.5rem;
-}
-body.song #songbookList .subcolumn {
-  overflow: hidden;
-}
-body.edit.song #songList #songListEdit {
-  flex: 0 0 0 !important;
-}
-
-/*Focus edit*/
-body.edit .sidebar {
-  background-color: lightgray;
-  z-index: 7;
-  flex: 0 0 20px;
-}
-body.edit .sidebar-open {
-  flex: 0 0 280px;
-}
-/*Focus export*/
-body.export.song #song, 
-body.export.songList #songList {
-  flex-shrink: 1;
-}
-body.export.song #songList,
-body.export.songList #songbookList {
-  flex-shrink: 2;
-}
-body.export #export .sidebar {
-  background-color: lightgray;
-  z-index:7;
-  flex: 0 0 20px;
-}
-body.export #export .sidebar-open {
-  flex: 0 0 280px;
-}
-body.export #export {
-  background-color: bisque;
-  z-index: 7;
-  flex: 0 1 400px;
+  position: fixed !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  right: 0 !important;
+  left: 0 !important;
+  transform: translate3d(0,0,0) !important;
+  height: 100vh !important;
 }
 
 /*Focus Present */
@@ -605,7 +565,7 @@ body.export #export {
   display: block;
   position: fixed;
   transform: translateY(100%);
-  border: 0px;
+  border: 0;
   width: 100vw;
   height: 100vh;
   left: 0;
@@ -619,47 +579,9 @@ body.present.songList #presentation {
   transform: translateY(0);
 }
 
-/*normalize*/
-button,
-input,
-optgroup,
-select,
-textarea {
-  font-family: inherit; /* 1 */
-  font-size: 100%; /* 1 */
-  line-height: 1.15; /* 1 */
-  margin: 0; /* 2 */
-  /* Normalize `line-height`. Cannot be changed from `normal` in Firefox 4+. */
-  line-height: normal;
-}
-button,
-input { /* 1 */
-  overflow: visible;
-}
-button,
-select { /* 1 */
-  text-transform: none;
-}
-button,
-[type="button"],
-[type="reset"],
-[type="submit"] {
-  -webkit-appearance: button;
-  cursor: pointer;
-  outline: none;
-}
-button::-moz-focus-inner {
-   border: 0;
-}
-button {
-  margin: 0;
-  padding: 0;
-  white-space: normal;
-  display: inline;
-  background: none;
-  outline: none;
-  border: none;
-  text-align: left;
+.float-menu.special [data-songbook-edit],
+.float-menu.special .delete {
+  display: none !important;
 }
 .float-menu .float-menu-item.float-menu-editing {
   opacity: 0;
@@ -691,12 +613,13 @@ button {
   top: -.8em;
   right: -1em;
   border-radius: 2rem;
-  background-color: lightblue;
+  background-color: var(--song-color);
   padding-left: .4em;
   padding-right: .4em;
   float: right;
 }
 
+/*Export accordion*/
 input[type='radio'].toggle {
   display: none;
 }
@@ -718,12 +641,12 @@ input[type='radio'].toggle {
   text-transform: uppercase;
 
   padding: 0.5rem;
-  background: lightblue;
+  background: var(--song-color);
   cursor: pointer;
   border-radius: 8px;
 }
 .lbl-toggle::before {
-  transform: rotate(0) translateX(0);
+  transform: rotate(0) translateX(0) translateY(-2px);
   transition: all .2s;
   content: ' ';
   display: inline-block;
@@ -734,7 +657,6 @@ input[type='radio'].toggle {
 
   vertical-align: middle;
   margin-right: .7rem;
-  transform: translateY(-2px);
 }
 .collapsible-content .content-inner {
   background: lightgray;
@@ -744,7 +666,7 @@ input[type='radio'].toggle {
   padding: .5rem 1rem;
 }
 .collapsible-content {
-  max-height: 0px;
+  max-height: 0;
   overflow: hidden;
   margin-bottom: 1rem;
 }
@@ -811,12 +733,6 @@ input[type="number"] {
 }
 /*For Mobile devices only*/
 @media only screen and (max-width: 639px) {
-  #songbookList li span:after {
-    top: 0;
-  }
-  header {
-    flex: 0 0 60px;
-  }
   body .sidebar,
   body.edit .sidebar {
     overflow: hidden;
@@ -825,67 +741,13 @@ input[type="number"] {
     overflow: auto;
   }
 
-  header #title,
-  #welcome {
-    padding: 0 1rem 0 1rem;
-  }
-  main, header {
-    margin: 0;
-  }
-  body main {
-    flex-direction: column;
-  }
-  body.songbookList #songbookList, 
-  body.songList #songList, 
-  body.song #song,
-  body.export #export {
-    flex-grow: 4;
-    flex-shrink: 0.2;
-  }
-
-  /*Focus songbook*/
-  body.songList header {
-    flex: 0 0 0;
-  }
-  body.songList #songbookList {
-    flex: 0 0 3.7rem;
-    overflow: hidden;
-  }
-  body.songList #songbookList .subcolumn {
-    overflow: hidden;
-  }
-
-  /*Focus song*/
-  body.song header,
-  body.song #songbookList {
-    flex: 0 0 0;
-    overflow: hidden;
-  }
-  body.song #songList .subcolumn,
-  body.song #songbookList .subcolumn {
-    overflow: hidden;
-  }
-  body.song #songList {
-    flex: 0 0 3.7rem;
-    overflow: hidden;
-  }
-  /*Focus export*/
-  body.song.export #songList,
-  body.songList.export #songbookList{
-    flex: 0 0 0;
-  }
-  body.song.export #song,
-  body.songList.export #songList{
-    flex: 0 0 3.7rem;
-    overflow: hidden;
-  }
   body.song.export #song .subcolumn,
   body.songList.export #songList .subcolumn {
     overflow: hidden;
   }
   ul li a{
     padding: 5px 10px 5px 10px;
-    margin: 5px 0 5px 0px;
+    margin: 5px 0 5px 0;
     border-top: 1px solid #EEE;
     border-bottom: 1px solid #EEE;
     border-radius: 20px;
@@ -899,6 +761,93 @@ input[type="number"] {
   #songbook_content {
     width: 95vw;
   }
+
+  header,
+  main,
+  .column {
+    position: fixed;
+    right: 0;
+    left: 0;
+    top: 0;
+  }
+  main,
+  .column {
+    transform: translate3d(0, 100vh, 0);
+    height: calc(100vh - 4rem);
+  }
+  
+  /*SongbookList */
+  .songbookList main {
+    transform: translate3d(0, 4rem, 0);
+    height: calc(100vh - 4rem);
+  }
+  .songbookList #songbookList {
+    transform: translate3d(0, 0, 0);
+  }
+
+  /*SongList */
+  .songList main,
+  .songList #songbookList {
+    transform: translate3d(0, 0, 0);
+  }
+  .songList #songList {
+    transform: translate3d(0, 4rem, 0);
+  }
+  /*Song */
+  .song main,
+  .song #songbookList,
+  .song #songList {
+    transform: translate3d(0, 0, 0);
+  }
+  .song #song {
+    transform: translate3d(0, 4rem, 0);
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: 280px;
+    transform: translate3d(280px, 0, 0);
+  }
+
+  /*Focus edit*/
+  .edit.songList #songList .sidebar,
+  .edit.song #song .sidebar {
+    transform: translate3d(250px, 0, 0);
+  }
+  .edit.songList #songList .sidebar-open,
+  .edit.song #song .sidebar-open {
+    transform: translate3d(0, 0, 0);
+  }
+
+  /*Export */
+  .export main,
+  .export #songbookList,
+  .export #songList,
+  .song.export #song {
+    transform: translate3d(0, 0, 0);
+  }
+  .export #export {
+    transform: translate3d(0, 4rem, 0);
+  }
+  .export #export .sidebar {
+    transform: translate3d(250px, 0, 0);
+  }
+  .export #export .sidebar-open {
+    transform: translate3d(0, 0, 0);
+  }
+}
+@media only screen and (max-height: 500px) and (min-width: 640px) {
+  .songList #header,
+  .song #header,
+  .export #header {
+    flex: 0 0 0;
+  }
+  .column {
+    position: relative;
+  }
 }
 @media only screen and (max-height: 500px) {
   body.songbookList header h2 {
@@ -907,24 +856,21 @@ input[type="number"] {
 }
 @media only screen and (max-width: 639px),
 only screen and (max-height: 500px) {
-  body {
+  main, header {
     margin: 0;
   }
-  header > h2,
+  header #title,
   #welcome {
     padding: 0 1rem 0 1rem;
-  }
-  body.song header, 
-  body.songList header {
-    flex: 0 0 0;
   }
   body.songbookList header {
     border-bottom: gray 1px solid;
   }
-  /*float for mobile*/
-  .column {
-    position: relative;
+  .edit song {
+    margin-bottom: 10rem;
   }
+
+  /*float for mobile*/
   .float-menu {
     position: absolute;
     right: 1.5em;
@@ -978,8 +924,171 @@ only screen and (max-height: 500px) {
     left: 1em;
     right: auto;
   }
-  .edit song {
-    margin-bottom: 10rem;
+}
+/*larger screens only */
+@media only screen and (min-width: 640px){
+  body {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: stretch;
+  }
+  .header header {
+    flex: 0 1 100%;
+  }
+  .header main {
+    flex: 0 0 0;
+  }
+  header {
+    flex: 0 0 3.3rem;
+    overflow: hidden;
+  }
+  main {
+    flex: 0 1 100%;
+    display: flex;
+    background-color: lightgray;
+    overflow-y: hidden;
+  }
+  body {
+    overflow: hidden;
+  }
+  body main #songbookList {
+    flex: 0 1 300px;
+  }
+  body main #songList {
+    flex: 0 0 0;
+  }
+  body main #song {
+    flex: 0 0 0;
+  }
+  body main #export {
+    flex: 0 0 0;
+  }
+  body main .sidebar {
+    flex: 0 0 0;
+  }
+
+  /* */
+  .row {
+    flex: 0 1 auto;
+    display: flex;
+  }
+  .column {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+  }
+  .subcolumn {
+    flex: 1 1 400px;
+  }
+
+  /*Focus songbookList*/
+  body.songbookList #songbookList {
+    z-index: 5;
+    flex: 0 0 300px;
+  }
+  body.songbookList #song {
+    z-index: 1;
+  }
+
+  /*Focus songList*/
+  body.songList #songList {
+    z-index: 5;
+    flex: 0 0 400px;
+  }
+  body.songList #songbookList {
+    flex: 0 1 300px;
+  }
+
+  /*Focus song*/
+  body.song #song{
+    flex: 0 0 400px;
+  }
+  body.song #songList {
+    flex: 0 1 400px;
+  }
+  body.song #songbookList {
+    flex: 0 0 2.5rem;
+  }
+  body.song #songbookList .subcolumn {
+    overflow: hidden;
+  }
+  body.edit.song #songList #songListEdit {
+    flex: 0 0 0 !important;
+  }
+
+  /*Focus edit*/
+  body.edit .sidebar {
+    flex: 0 0 280px;
+  }
+  body.edit .sidebar-open {
+    flex: 0 0 280px;
+  }
+  /*Focus export*/
+  body.export.song #song, 
+  body.export.songList #songList {
+    flex-shrink: 1;
+  }
+  body.export.song #songList,
+  body.export.songList #songbookList {
+    flex-shrink: 2;
+  }
+  body.export #export .sidebar {
+    flex: 0 0 360px;
+  }
+  body.export #export .sidebar-open {
+    flex: 0 0 360px;
+  }
+  body.export #export {
+    flex: 0 0.05 800px;
+  }
+/*--From below */
+  #songbookList li span:after {
+    bottom: 0;
+  }
+  ul li a{
+    border-left: 1px solid #EEE;
+    border-radius: 20px;
+    padding: 2px 8px 2px 8px;
+    margin: 2px 0 2px 0;
+  }
+  #column-filler {
+    flex: 1 1 auto;
+  }
+  .column:first-child .row {  
+    border-left: 1px solid gray;  
+  }
+  .close-icon {
+    display: none;
+  }
+  body.edit.song #song, 
+  body.edit.songList #songList {
+    flex: 0 .2 740px;
+  }
+  body.song #songbookList #songbooks_header a {
+    height: 100vh;
+    display: block;
+  }
+  body.song #songbookList h3 {
+    transform:  translateX(-50%) translateY(-50%) rotate(-90deg);
+    background-color: var(--songbookList-color);
+    z-index: 10;
+  }
+  body.song #songbookList a {
+    height: 15rem;
+  }
+  #songbooks {
+    width: 300px;
+  }
+  #export .content {
+    min-width: 375px;
+    max-width: 425px;
+  }
+  #song .content,
+  #songbook_content {
+    width: 400px;
   }
 }
 @media only screen and (min-width: 640px) and (min-height: 501px){
@@ -1025,64 +1134,7 @@ only screen and (max-height: 500px) {
     opacity: 1;
   }
 }
-/*larger screens only */
-@media only screen and (min-width: 640px) {
-  #songbookList li span:after {
-    bottom: 0;
-  }
-  ul li a{
-    border-left: 1px solid #EEE;
-    border-radius: 20px;
-    padding: 2px 8px 2px 8px;
-    margin: 2px 0 2px 0px;
-  }
-  #column-filler {
-    flex: 1 1 auto;
-  }
-  .column:first-child .row {	
-    border-left: 1px solid gray;	
-  }
-  .close-icon {
-    display: none;
-  }
-  body.edit .sidebar,
-  body.export #export .sidebar {
-    flex: 0 0 280px;
-  }
-  body.edit.song #song, 
-  body.edit.songList #songList {
-    flex: 0 .2 740px;
-  }
-  body.song #songbookList #songbooks_header a {
-    height: 100vh;
-    display: block;
-  }
-  body.song #songbookList h3 {
-    transform:  translateX(-50%) translateY(-50%) rotate(-90deg);
-    background-color: lightyellow;
-    z-index: 10;
-  }
-  body.song #songbookList a {
-    height: 15rem;
-  }
-  #songbooks {
-    width: 300px;
-  }
-  #export .content {
-    min-width: 375px;
-    max-width: 425px;
-  }
-  #song .content,
-  #songbook_content {
-    width: 400px;
-  }
-  body.export #export {
-    flex: 0 0.05 800px;
-  }
-  body.export #export .sidebar {
-    flex: 0 0 360px;
-  }
-}
+/*Export CSS Icons */
 #page_icon {
   display: inline-flex;
   width: .9rem;
@@ -1186,6 +1238,7 @@ only screen and (max-height: 500px) {
    position: relative;
    top: -2.5px;
 }
+/* Category Filter */
 .cat_filter_btn {
   padding: 5px 11px 5px 11px;
   display: inline-block;
@@ -1200,7 +1253,7 @@ only screen and (max-height: 500px) {
   position: relative;
 }
 #category_filter_container > * {
-  background-color: lightblue;
+  background-color: var(--song-color);
   border-radius: 1rem;
 }
 #category_filter {
@@ -1222,5 +1275,5 @@ only screen and (max-height: 500px) {
   margin-bottom: 2.5em
 }
 .bluehighlight {
-  background-color: lightblue !important;
+  background-color: var(--song-color) !important;
 }

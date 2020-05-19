@@ -496,6 +496,7 @@ function toggleFullscreen(el){
   $('.fullscreen').removeClass('fullscreen');
   if(!full) {
     fullscreen.addClass('fullscreen');
+    $('main').addClass('fullscreen');
   }
 }
 
@@ -1047,27 +1048,36 @@ function export_form_summary_update() {
     makePDF(window.exportObject, document.querySelector('iframe'))
   }
 }
+function getTranslate3d (el) {
+  var values = window.getComputedStyle(el).transform.split(/\w+\(|\);?/);
+  if (!values[1] || !values[1].length) {
+      return [];
+  }
+  return values[1].split(/,\s?/g);
+}
 
 //Making things work with touch coolness
-function makeDraggable(dragCaptureEl, dragEl, dragAction, dragSide='right') {
+function makeDraggable(dragEl, dragAction, dragSide='right') {
   let startx = 0;
   let starty = 0;
   let dist = 0;
   let disty = 0;
   let width = 0;
   let height = 0;
+  let active;
 
-  dragCaptureEl.addEventListener('touchstart', function(e){
+  dragEl.addEventListener('touchstart', function(e){
     //document.documentElement.classList.add('no-overscroll');
     var touchobj = e.changedTouches[0]; // reference first touch point (ie: first finger)
     startx = parseInt(touchobj.clientX);
     starty = parseInt(touchobj.clientY);
-    width = dragEl.offsetWidth; // get x position of touch point relative to left edge of browser
-    height = dragEl.offsetHeight; // get x position of touch point relative to left edge of browser
+    width = getTranslate3d(dragEl)[4]; // get original translateX value
+    height = getTranslate3d(dragEl)[5]
+    active = document.getElementsByClassName('active')[0];
 
     // only do stuff if in right place
-    if (dragSide == 'right'){
-      if ((window.editing || e.target.closest('#export')) && startx > dragCaptureEl.offsetLeft + dragCaptureEl.offsetWidth - width - 32 && startx < dragCaptureEl.offsetLeft + dragCaptureEl.offsetWidth - width + 32) { 
+    if (dragSide == 'right' && screen.width < 640){
+      if (window.editing || e.target.closest('#export')) { 
         dragEl.style.transition = 'all 0s';
         //e.preventDefault();
       }
@@ -1075,49 +1085,65 @@ function makeDraggable(dragCaptureEl, dragEl, dragAction, dragSide='right') {
         startx = false;
       }
     }
-    else if (dragSide == 'top'){
-      if((starty > height) && (starty < height + 100)) { 
+    else if (dragSide == 'top' && screen.width < 640){
+      if((starty < 120)) { 
+        if(active == dragEl){
+          active = 0;
+        }
+        else {
+          active.style.transition = 'all 0s';
+        }
         dragEl.style.transition = 'all 0s';
         //e.preventDefault();
       }
       else {
         startx = false;
       }
+    }
+    else {
+      startx = false;
     }
   }, {passive: true});
 
-  dragCaptureEl.addEventListener('touchmove', function(e){
+  dragEl.addEventListener('touchmove', function(e){
     if(startx){
       var touchobj = e.changedTouches[0]; // reference first touch point for this event
-      var dist = parseInt(touchobj.clientX) - startx;
-      var disty = parseInt(touchobj.clientY) - starty;
+      var dist = Math.max(parseInt(width) + parseInt((touchobj.clientX) - startx), 0);
+      var disty = Math.max(parseInt(height) + parseInt((touchobj.clientY) - starty), 0);
 
       if (dragSide == 'right'){
-        dragEl.style.flex = '0 0 '+ parseInt((width-dist)) + 'px';
+        dragEl.style.transform = 'translate3d('+ parseInt((dist)) + 'px, 0, 0)';
         e.preventDefault();
       }
       else if (dragSide == 'top'){
-        dragEl.style.flex = '0 0 '+ parseInt((height+disty)) + 'px';
+        dragEl.style.transform = 'translate3d(0,'+ parseInt((disty)) + 'px, 0)';
+        if(active){
+          active.style.transform = 'translate3d(0,'+ parseInt((disty+60)) + 'px, 0)';
+        }
         e.preventDefault();   
       }
     }
   }, false);
 
-  dragCaptureEl.addEventListener('touchend', function(e){
-    //document.documentElement.classList.remove('no-overscroll');
-    dragEl.style.removeProperty('flex');
-    dragEl.style.removeProperty('transition');
-    var touchobj = e.changedTouches[0]; // reference first touch point for this event
-    var dist = Math.abs(parseInt(touchobj.clientX) - startx);
-    var disty = Math.abs(parseInt(touchobj.clientY) - starty);
-    
-    if (startx && dragSide == 'right' && dist > 100 ){ //make sure that distance isn't just accidental
-      dragAction(dragEl, 'sidebar-open');
-      e.preventDefault(); 
+  dragEl.addEventListener('touchend', function(e){
+    if(active) {
+      active.style.removeProperty('transform');
+      active.style.removeProperty('transition');
     }
-    else if (startx && dragSide == 'top' && disty > 200 ){
-      dragAction();
-      e.preventDefault();
+    dragEl.style.removeProperty('transform');
+    dragEl.style.removeProperty('transition');
+    if(startx){
+      var touchobj = e.changedTouches[0]; // reference first touch point for this event
+      var dist = Math.abs(parseInt(touchobj.clientX) - startx);
+      var disty = Math.abs(parseInt(touchobj.clientY) - starty);
+      if (startx && dragSide == 'right' && dist > 50 ){ //make sure that distance isn't just accidental
+        dragAction(dragEl, 'sidebar-open');
+        e.preventDefault(); 
+      }
+      else if (startx && dragSide == 'top' && disty > 200 ){
+        dragAction();
+        e.preventDefault();
+      }
     }
   }, false); 
 }
@@ -1129,39 +1155,18 @@ function dragToggleClass(el, toggleClass) {
   $(el).toggleClass(toggleClass);
 }
 window.addEventListener('load', function(){
-  makeDraggable(document.getElementById('song'),
-                document.getElementById('song-edit'),
-                dragToggleClass);
-}, false);
-window.addEventListener('load', function(){
+  makeDraggable(document.getElementById('song-edit'), dragToggleClass);
+  makeDraggable(document.getElementById('songListEdit'), dragToggleClass);
+  makeDraggable(document.getElementById('exportPreview'), dragToggleClass);
+
+  makeDraggable(document.getElementById('songbookList'), 
+    function(){if(!confirmWhenEditing()) {window.location.hash = '';}}, 'top');
   makeDraggable(document.getElementById('songList'),
-                document.getElementById('songListEdit'),
-                dragToggleClass);
-}, false);
-window.addEventListener('load', function(){
-  makeDraggable(document.getElementById('export'),
-                document.getElementById('exportPreview'),
-                dragToggleClass);
-}, false);
-window.addEventListener('load', function(){
-  makeDraggable(document.getElementById('songbookList'),
-                document.getElementById('header'),
-                function(){if(!confirmWhenEditing()) {window.location.hash = '';}}, 'top');
-}, false);
-window.addEventListener('load', function(){
-  makeDraggable(document.getElementById('songList'),
-                document.getElementById('songbookList'),
-                function(){if(!confirmWhenEditing()) {window.location.hash = '#songbooks';}}, 'top');
-}, false);
-window.addEventListener('load', function(){
+    function(){if(!confirmWhenEditing()) {window.location.hash = '#songbooks';}}, 'top');
   makeDraggable(document.getElementById('song'),
-                document.getElementById('songList'),
-                function(){if(!confirmWhenEditing()) {window.location.hash = '#'+window.songbook._id;}}, 'top');
-}, false);
-window.addEventListener('load', function(){
+    function(){if(!confirmWhenEditing()) {window.location.hash = '#'+window.songbook._id;}}, 'top');
   makeDraggable(document.getElementById('export'),
-                document.getElementById('song'),
-                function(){if(!confirmWhenEditing()) {window.location.hash = window.location.hash.replace('&export','');}}, 'top');
+    function(){if(!confirmWhenEditing()) {window.location.hash = window.location.hash.replace('&export','');}}, 'top');
 }, false);
 
 
