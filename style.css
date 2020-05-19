@@ -536,7 +536,6 @@ span.deleteicon input {
 }
 .sidebar {
   border-left: 1.5px solid gray;
-  border-top: 1.5px solid black;
   z-index: 7;
 }
 html body .subcolumn.sidebar {
@@ -805,6 +804,7 @@ input[type="number"] {
 
   .sidebar {
     position: fixed;
+    border-top: 1.5px solid black;
     top: 0;
     bottom: 0;
     right: 0;
