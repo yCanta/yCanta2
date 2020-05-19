@@ -1113,7 +1113,6 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
 
       if (dragSide == 'right'){
         dragEl.style.transform = 'translate3d('+ parseInt((dist)) + 'px, 0, 0)';
-        e.preventDefault();
       }
       else if (dragSide == 'top'){
         dragEl.style.transform = 'translate3d(0,'+ parseInt((disty)) + 'px, 0)';
@@ -1126,12 +1125,6 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
   }, false);
 
   dragEl.addEventListener('touchend', function(e){
-    if(active) {
-      active.style.removeProperty('transform');
-      active.style.removeProperty('transition');
-    }
-    dragEl.style.removeProperty('transform');
-    dragEl.style.removeProperty('transition');
     if(startx){
       var touchobj = e.changedTouches[0]; // reference first touch point for this event
       var dist = Math.abs(parseInt(touchobj.clientX) - startx);
@@ -1145,6 +1138,12 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
         e.preventDefault();
       }
     }
+    if(active) {
+      active.style.removeProperty('transform');
+      active.style.removeProperty('transition');
+    }
+    dragEl.style.removeProperty('transform');
+    dragEl.style.removeProperty('transition');
   }, false); 
 }
 
