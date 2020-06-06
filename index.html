@@ -22,11 +22,11 @@
     <script async src="jquery.toTextarea.js"></script>
     <script src="list.min.js"></script>
     <script src="sortable.js"></script>
-    <script async src="jszip.min.js"></script>
+    <script defer src="jszip.min.js"></script>
     <script async src="song2json.js"></script>
-    <script async src="pdfformatter.js"></script>
-    <script async src="pdfkit.standalone.js"></script>
-    <script async src="blob-stream.js"></script>
+    <script defer src="pdfformatter.js"></script>
+    <script defer src="pdfkit.standalone.js"></script>
+    <script defer src="blob-stream.js"></script>
     <!--script type="text/javascript" src="json-url.js"></script-->
 
     <link rel="stylesheet" type="text/css" href="style.css">
@@ -110,7 +110,7 @@
           <div class="subcolumn">
             <div id="songbooks">
               <div id="songbooks_header">
-                <a class="title_link" href="#songbooks"><h3>Songbooks</h3></a>
+                <h3><a class="title_link" href="#songbooks">Songbooks</a></h3>
                 <input aria-label="Search" class="search deletable" type="text" data-target="#songbooks" data-trigger="change" placeholder="Search">
               </div>
               <ul class="list"></ul>
@@ -140,7 +140,7 @@
           <div class="subcolumn">
             <div id="songbook_content">
               <div id="songbook_header">
-                <a data-songbook class="title_link" href="#"><h3 id="songbook_title">All Songs</h3></a>
+                <h3><a data-songbook class="title_link" href="#" id="songbook_title">All Songs</a></h3>
                 <input aria-label="Search" class="search deletable" type="text" data-target="#songbook_content" data-trigger="change" placeholder="Search">
                 <nav id="category_filter_container">
                   <button class="cat_filter_btn" onclick="$('#category_filter_container').toggleClass('open'); $('#songbook_header').toggleClass('mb23');">⑂</button>
@@ -652,7 +652,7 @@
               <div class="sticky">
                 <h3>Preview<button onclick="$(this).closest('#exportPreview').removeClass('sidebar-open');" class="icon-fl-right close-icon">&times;</button></h3><input id="auto_refresh" name="auto_refresh" type="checkbox"><label for="auto_refresh">Automatic refresh?</label>
                   <!-- can't seem to get chrome to display this in iframe, objects or any other thingy without crashing on src change.  I get an "awSnap!" message and closed out tab -->
-                <iframe title="Generated PDF" width="320" height="450" src=""></iframe>
+                <iframe title="Generated PDF" width="320" height="450" src="" title="Presentation Slideshow"></iframe>
                 <br>
                 <br>
                 <button class="btn" style="background-color: lightsalmon;">Download</button>

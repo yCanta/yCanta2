@@ -182,9 +182,13 @@ stitle, cat, author, scrip_ref, key, copyright {
   background-color: var(--edit-color);
   border: 1px gray dashed;
 }
-.edit #songbook_title > *,
-.edit song stitle > * {
+.edit .active #songbook_header h3 *:not(a),
+.edit .active stitle *:not(a) {
   display: none;
+}
+.edit .active #songbook_header a,
+.edit .active song stitle a {
+  display: block;
 }
 #songbookList a[href="#sb-allSongs"],
 #songbookList a[href="#sb-favoriteSongs"] {
@@ -196,7 +200,7 @@ stitle, cat, author, scrip_ref, key, copyright {
   position: relative;
 }
 #song song stitle span:after,
-#songbook_title span:after {
+#songbook_title + span:after {
   margin-left: .7rem;
   text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.15);
   font-size: 1.7rem;
@@ -207,6 +211,7 @@ stitle, cat, author, scrip_ref, key, copyright {
 info:after {
   content: 'ⓘ';
   color: darkblue;
+  cursor: pointer;
 }
 #songbookList li span:after {
   text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.15);
@@ -219,7 +224,7 @@ info:after {
 }
 #song song[data-user-fav="true"] stitle span:after,
 #songbookList li[data-user-fav="true"] span:after,
-#songbook_title[data-user-fav="true"] span:after {
+#songbook_title[data-user-fav="true"] + span:after {
   content: '★';
   color: black;
   display: inline-block;
@@ -244,10 +249,6 @@ info:after {
   background-color: var(--songbookList-color);
   z-index: 1;
   padding-top: 0.1px;
-}
-.active #songbook_header,
-.active #songbooks_header {
-  padding-top: 0;
 }
 .song-highlight a {
   background-color: var(--song-color);
@@ -1067,14 +1068,15 @@ only screen and (max-height: 500px) {
   body.edit.songList #songList {
     flex: 0 .2 740px;
   }
-  body.song #songbookList #songbooks_header a {
+  body.song #songbookList #songbooks_header h3 {
     height: 100vh;
     display: block;
   }
-  body.song #songbookList h3 {
-    transform:  translateX(-50%) translateY(-50%) rotate(-90deg);
+  body.song #songbookList .title_link {
+    transform:  translate3d(-10%, -50%, 0) rotate(-90deg);
     background-color: var(--songbookList-color);
     z-index: 10;
+    display: block;
   }
   body.song #songbookList a {
     height: 15rem;
@@ -1117,12 +1119,12 @@ only screen and (max-height: 500px) {
   .column:not(:last-child):hover {
     z-index: 6 !important;
   }
-  #songbook_title[data-user-fav="true"] span:hover:after,
+  #songbook_title[data-user-fav="true"] + span:hover:after,
   #song song[data-user-fav="true"] stitle span:hover:after {
     content: '☆';
     color: black;
   }
-  #songbook_title span:hover:after,
+  #songbook_title + span:hover:after,
   #song stitle span:hover:after {
     content: '★';
     cursor: pointer;

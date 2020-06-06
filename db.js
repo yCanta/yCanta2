@@ -462,7 +462,7 @@ function loadSong(song_id) {
     function createSongHtml(song) {
       window.song = song;
       var song_html = '<song data-rev="' + song._rev + '" data-id="' + song._id + '" data-user-fav="'+(window.user.fav_songs.indexOf(song._id) > -1 ? 'true' : 'false')+'">' + 
-        '<a data-song class="title_link"><stitle class="title_link" data-song>' + song.title + '<span onclick="event.stopPropagation(); toggleFavSong($(this).closest(\'song\').attr(\'data-id\'))"></span><info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo();"></info></stitle></a>' + 
+        '<stitle><a data-song class="title_link">' + song.title + '</a><span onclick="event.stopPropagation(); toggleFavSong($(this).closest(\'song\').attr(\'data-id\'))"></span><info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo();"></info></stitle>' +  
         '<authors><author>' + song.authors.join('</author>, <author>') + '</author></authors>' + 
         '<scripture_ref><scrip_ref>' + song.scripture_ref.join('</scrip_ref>, <scrip_ref>') + '</scrip_ref></scripture_ref>' + 
         '<introduction>' + song.introduction + '</introduction>' + 
@@ -751,8 +751,9 @@ function loadSongbook(songbook_id) {
         $('#songbook_title').removeAttr('contenteditable');
         $('#songbook_content .search').parent().removeAttr('disabled');
         $('.disabled-hidden').removeClass('disabled-hidden');
-        $('#songbook_title').html(result.title+'<span onclick="event.stopPropagation(); toggleFavSongbook(\''+result._id+'\')"></span>'+
-          '<info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo(false);"></info>').attr('data-rev',result._rev).attr('data-songbook-id',result._id);
+        $('#songbook_title').html(result.title).attr('data-rev',result._rev).attr('data-songbook-id',result._id).nextAll().remove();
+        $('#songbook_title').parent().append('<span onclick="event.stopPropagation(); toggleFavSongbook(\''+result._id+'\')"></span>'+
+          '<info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo(false);"></info>');
         if($('#dialog')[0].style.display=="block" && !parseHash('s-')){  //prevents info view flicker when you click on songbooks in song info view.
           loadInfo(false);
         }
