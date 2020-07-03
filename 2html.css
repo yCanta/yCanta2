@@ -12,6 +12,7 @@ stitle {
   font-size: 1.17em;/*h3 STYLING*/
   font-weight: bold;
   position: sticky;
+  padding-top: 1em;
   top: 0;
   z-index: 1;
 }
@@ -40,8 +41,6 @@ c {
 /*counter stuff  */
 song {
  display: block;
- margin-block-start: 1em;/*h3 STYLING*/
- margin-block-end: 1em;/*h3 STYLING*/
  white-space: pre-wrap;
  counter-reset: verse_n; 
  margin-bottom: 3rem;

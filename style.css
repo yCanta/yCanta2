@@ -195,7 +195,6 @@ stitle, cat, author, scrip_ref, key, copyright {
   font-style: italic;
   font-weight: bold;
 }
-#song song stitle,
 #songbookList li {
   position: relative;
 }
@@ -249,6 +248,9 @@ info:after {
   background-color: var(--songbookList-color);
   z-index: 1;
   padding-top: 0.1px;
+}
+stitle {
+  background-color: var(--song-color);
 }
 .song-highlight a {
   background-color: var(--song-color);
