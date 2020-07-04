@@ -46,18 +46,41 @@ async function importSongV1(f){
       "class": "small",
       text:" (" + file_count + " files loaded in " + (dateAfter - dateBefore) + "ms)"
     }));
-    $title.append($("<div id='progress_bar' style='width:min(100%, 400px); border: 1px solid black'><div style='border-right: 1px solid gray; background-color: white; width:0%;' id='progress'><div style='margin-left:auto; height: 1rem; background-color: yellow; width:0%; border-left: 1px solid gray;' id='red_progress'></div></div></div>"))
-    $title.append($("<div id='progress_text' style='width:min(100%, 400px); font-size:small; white-space:nowrap; overflow: hidden;'></div>"))
+    let progress =  "<div id='progress_bar' style='width:min(100%, 400px); height: 1rem; border: 1px solid black; background: linear-gradient(to right, white 0);'>"+
+                    "</div>";
+    $title.append($(progress));
+    $title.append($("<div id='progress_text' style='width:min(100%, 400px); font-size:small; white-space:nowrap; overflow: hidden;'></div>"));
     //Import files
-    count = 0;
-    red_count = 0;
+    n_songs = 0;
+    n_songs2 = 0;
+    n_songbooks = 0;
+    n_songbooks2 = 0;
+    n_other = 0;
+
     song_map = {};
     promise_list = [];
+    let progressBar = document.getElementById('progress_bar');
+    let progressText = document.getElementById('progress_text');
+
+    function updateProgress(){
+      progressBar.style.background = 'linear-gradient(to right, '+
+        'var(--song-color) '     +n_songs/file_count*100+'%,'+
+        'lightgray '             +n_songs/file_count*100+'%,'+
+        'lightgray '             +(n_songs+n_songs2)/file_count*100+'%,'+
+        'var(--songList-color) ' +(n_songs+n_songs2)/file_count*100+'%,'+
+        'var(--songList-color) ' +(n_songs+n_songs2+n_songbooks)/file_count*100+'%,'+
+        'lightgray '             +(n_songs+n_songs2+n_songbooks)/file_count*100+'%,'+
+        'lightgray '             +(n_songs+n_songs2+n_songbooks+n_songbooks2)/file_count*100+'%,'+
+        'yellow '                +(n_songs+n_songs2+n_songbooks+n_songbooks2)/file_count*100+'%,'+
+        'yellow '                +(n_songs+n_songs2+n_songbooks+n_songbooks2+n_other)/file_count*100+'%,'+
+        'white 0)';
+    }
+    let num_songs = zip.folder('songs/').length;
 
     zip.folder('songs/').forEach(function (relativePath, zipEntry) {
       //For each zip entry save it using it's original song name
       //What do we do if it's already in the app?
-        //ignore it, but letm me know.
+        //ignore it, but let me know - not yet done.
       zipEntry.async("string").then(function (song) {
         if(zipEntry.name.match(".*\.(song|son|hym|so1|rnd|poe)$")){
           song = song.replace(/author\>/gi, 'authors\>'); //we pluralized author in new version
@@ -65,24 +88,22 @@ async function importSongV1(f){
           
           promise_list.push(Promise.resolve(saveSong('i'+CRC32.str(zipEntry.name.replace('songs/',''),0), $(song), false))
           .then(function(results){ //results is the song._id
-            count ++;
+            n_songs ++;
             song_map[relativePath] = results;
-            document.getElementById('progress').style.width = count/file_count*100 +'%';
-            document.getElementById('progress_text').innerHTML = zipEntry.name;
+
+            updateProgress();
+            progressText.innerHTML = zipEntry.name;
           }));
         }
         else {
           console.log(zipEntry.name + ' is not a song!');
-          red_count++;
-          count++;
-          document.getElementById('red_progress').style.width = red_count/file_count*100 +'%';
-          document.getElementById('progress').style.width = count/file_count*100 +'%';
-          document.getElementById('progress_text').innerHTML = zipEntry.name;
+          n_other++;
+          updateProgress();
+          progressText.innerHTML = zipEntry.name;
         }
         return 
       });
     });
-    
     var songbook_promise_list = [];
     //timeout is to give enough time to queue all the promises
     setTimeout(function(){Promise.all(promise_list).then(function(result){
@@ -97,18 +118,16 @@ async function importSongV1(f){
 
             songbook_promise_list.push(Promise.resolve(saveSongbook('i'+CRC32.str(zipEntry.name.replace('songbooks/',''),0), $(songbook), false))
             .then(function(results){ //results is the song._id
-              count ++;
-              document.getElementById('progress').style.width = count/file_count*100 +'%';
-              document.getElementById('progress_text').innerHTML = zipEntry.name;
+              n_songbooks++;
+              updateProgress();
+              progressText.innerHTML = zipEntry.name;
             }));
           }
           else {
-            red_count++;
-            count++;
-            document.getElementById('red_progress').style.width = red_count/file_count*100 +'%';
-            document.getElementById('progress').style.width = count/file_count*100 +'%';
-            document.getElementById('progress_text').innerHTML = zipEntry.name;
-            //console.log(zipEntry.name + ' is not a songbook!');
+            n_other++;
+            updateProgress();
+            progressText.innerHTML = zipEntry.name;
+            console.log(zipEntry.name + ' is not a songbook!');
           }
           return 
         });
