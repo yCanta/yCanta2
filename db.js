@@ -423,6 +423,7 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
         }
         resolve(song._id);
       }).catch(function (err) {
+        //I think we can get rid of this import hack now that we're not changing song_id
         if(new_song){
           song._id += Math.random().toString(36).substring(7).substring(0,2);  
           console.log(song._id);
@@ -441,6 +442,13 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
       new_song = true;
       let time = new Date().getTime();
       song_id = 's-' + time;
+      var song = {_id: song_id, added: time, addedBy: window.user.name, edited: time, editedBy: window.user.name};
+      loadSongContent(song);
+    }
+    //we've got a non standard songurl, let's clean it up.
+    else if(!song_id.startsWith('s-')){
+      let time = new Date().getTime();
+      song_id = 's-' + song_id;
       var song = {_id: song_id, added: time, addedBy: window.user.name, edited: time, editedBy: window.user.name};
       loadSongContent(song);
     }
@@ -630,7 +638,14 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
       var songbook = {_id: songbook_id, added: time, addedBy: window.user.name, edited: time, editedBy: window.user.name};
       loadSongbookContent(songbook);
     }
-    else {  //existing song hopefully - need to make robust
+    //we've got a non-standard songbook_id
+    else if(!songbook_id.startsWith('sb-')){
+      let time = new Date().getTime();
+      songbook_id = 'sb-' + songbook_id;
+      var songbook = {_id: songbook_id, added: time, addedBy: window.user.name, edited: time, editedBy: window.user.name};
+      loadSongbookContent(songbook); 
+    }
+    else {  //existing songbook hopefully - need to make robust 
       db.get(songbook_id).then(function(songbook){
         songbook.edited = new Date().getTime();
         songbook.editedBy = window.user.name;

@@ -63,7 +63,7 @@ async function importSongV1(f){
           song = song.replace(/author\>/gi, 'authors\>'); //we pluralized author in new version
           song = song.replace(/\|/gi, ',');  //Replace all the pipes with ,'s
           
-          promise_list.push(Promise.resolve(saveSong('s-new-song', $(song), false))
+          promise_list.push(Promise.resolve(saveSong('i'+CRC32.str(zipEntry.name.replace('songs/',''),0), $(song), false))
           .then(function(results){ //results is the song._id
             count ++;
             song_map[relativePath] = results;
@@ -95,7 +95,7 @@ async function importSongV1(f){
               songbook = songbook.replace('songs/'+key, value);
             }
 
-            songbook_promise_list.push(Promise.resolve(saveSongbook('sb-new-songbook', $(songbook), false))
+            songbook_promise_list.push(Promise.resolve(saveSongbook('i'+CRC32.str(zipEntry.name.replace('songbooks/',''),0), $(songbook), false))
             .then(function(results){ //results is the song._id
               count ++;
               document.getElementById('progress').style.width = count/file_count*100 +'%';
