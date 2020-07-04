@@ -22,8 +22,13 @@
     for (var i = 0; i < files.length; i++) {
       handleFile(files[i]);
     }
+  }).on("click", function () {  //let's you select the same file twice.
+    var $result = $("#result");
+    this.value = null;
+    $result.html("");
+    $result[0].style='';
   });
-});
+})
 
 async function importSongV1(f){
   var $result = $("#result");
@@ -81,73 +86,71 @@ async function importSongV1(f){
       //For each zip entry save it using it's original song name
       //What do we do if it's already in the app?
         //ignore it, but let me know - not yet done.
-      zipEntry.async("string").then(function (song) {
-        if(zipEntry.name.match(".*\.(song|son|hym|so1|rnd|poe)$")){
-          song = song.replace(/author\>/gi, 'authors\>'); //we pluralized author in new version
-          song = song.replace(/\|/gi, ',');  //Replace all the pipes with ,'s
-          
-          promise_list.push(Promise.resolve(saveSong('i'+CRC32.str(zipEntry.name.replace('songs/',''),0), $(song), false))
-          .then(function(results){ //results is the song._id
-            n_songs ++;
-            song_map[relativePath] = results;
-
-            updateProgress();
-            progressText.innerHTML = zipEntry.name;
-          }));
-        }
-        else {
-          console.log(zipEntry.name + ' is not a song!');
-          n_other++;
-          updateProgress();
-          progressText.innerHTML = zipEntry.name;
-        }
-        return 
-      });
+      promise_list.push(
+        new Promise(function(resolve, reject) {
+          zipEntry.async("string").then(function (song) {
+            if(zipEntry.name.match(".*\.(song|son|hym|so1|rnd|poe)$")){
+              song = song.replace(/author\>/gi, 'authors\>'); //we pluralized author in new version
+              song = song.replace(/\|/gi, ',');  //Replace all the pipes with ,'s
+              
+              Promise.resolve(saveSong('i'+CRC32.str(zipEntry.name.replace('songs/',''),0), $(song), false))
+              .then(function(results){ //results is the song._id
+                n_songs ++;
+                song_map[relativePath] = results;
+                updateProgress();
+                progressText.innerHTML = zipEntry.name;
+                resolve('done');
+              });
+            }
+            else {
+              console.log(zipEntry.name + ' is not a song!');
+              n_other++;
+              updateProgress();
+              progressText.innerHTML = zipEntry.name;
+              resolve('done');
+            }
+          })
+        })
+      );
     });
+
     var songbook_promise_list = [];
-    //timeout is to give enough time to queue all the promises
-    setTimeout(function(){Promise.all(promise_list).then(function(result){
+    Promise.all(promise_list).then(function(result){
       console.log(Object.keys(song_map).length + ' songs loaded');
       //Import songbooks
       zip.folder('songbooks/').forEach(function (relativePath, zipEntry) {
-        zipEntry.async("string").then(function (songbook) {
-          if(zipEntry.name.match(".*\.(xml)$")){
-            for (const [key, value] of Object.entries(song_map)) {
-              songbook = songbook.replace('songs/'+key, value);
-            }
+        songbook_promise_list.push(
+          new Promise(function(resolve, reject) {
+            zipEntry.async("string").then(function (songbook) {
+              if(zipEntry.name.match(".*\.(xml)$")){
+                for (const [key, value] of Object.entries(song_map)) {
+                  songbook = songbook.replace('songs/'+key, value);
+                }
 
-            songbook_promise_list.push(Promise.resolve(saveSongbook('i'+CRC32.str(zipEntry.name.replace('songbooks/',''),0), $(songbook), false))
-            .then(function(results){ //results is the song._id
-              n_songbooks++;
-              updateProgress();
-              progressText.innerHTML = zipEntry.name;
-            }));
-          }
-          else {
-            n_other++;
-            updateProgress();
-            progressText.innerHTML = zipEntry.name;
-            console.log(zipEntry.name + ' is not a songbook!');
-          }
-          return 
-        });
+                Promise.resolve(saveSongbook('i'+CRC32.str(zipEntry.name.replace('songbooks/',''),0), $(songbook), false))
+                .then(function(results){ //results is the song._id
+                  n_songbooks++;
+                  updateProgress();
+                  progressText.innerHTML = zipEntry.name;
+                  resolve('done');
+                });
+              }
+              else {
+                n_other++;
+                updateProgress();
+                progressText.innerHTML = zipEntry.name;
+                console.log(zipEntry.name + ' is not a songbook!');
+                resolve('done')
+              }
+            })
+          })
+        );
       });
       //let's us change things when we're done.
-      setTimeout(function(){Promise.all(songbook_promise_list).then(function(result){
-        return document.getElementById('progress_text').innerHTML = 'All docs imported!';
-        }).then(function(result){
-          setTimeout(function(){
-            document.location.hash = "#songbooks";                
-          }, 1500);
-        });
-      }, 2000);
-    })},  3000);
-    //we are assuming total process time is less than 45sec
-    setTimeout(function(){
-      $result.html("");
-      $result[0].style='';
-    }, 45000)
-
+      Promise.all(songbook_promise_list).then(function(result){
+        document.getElementById('progress_text').innerHTML = 'All docs imported!';
+      });
+    });
   }, function (e) {
     $result.append($("<div>", {
       "class" : "alert alert-danger",
