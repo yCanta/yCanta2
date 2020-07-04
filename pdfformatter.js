@@ -1582,6 +1582,7 @@ function format(songbook, iframe, cfg) {
   doc.end();
   stream.on('finish', function() {
     iframe.src = stream.toBlobURL('application/pdf');
+    document.getElementById('downloadPDF').href = stream.toBlobURL('application/pdf');
   });
   console.log(new Date() - old_time);
 

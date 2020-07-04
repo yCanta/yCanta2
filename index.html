@@ -230,16 +230,23 @@
             <div class="content">
               <h3 class="export_header">Export</h3>
               <table>
-                <td>
-                  <button style="background-color: lightgray" class="btn" onclick="makePDF(window.exportObject, document.querySelector('iframe'))">Generate</button>
-                </td>
-                <td style="width: 100%">
-                  <div id='pdf_progress_bar' style='border: 1px solid black; position: relative;'>
-                    <div style='border-right: 1px solid gray; background-color: white; width:0%; height:1.2em;text-align: center;' id='pdf_progress'>
+                <tr>
+                  <td>
+                    <button style="background-color: lightgray" class="btn" onclick="download(JSON.stringify(window.exportObject),window.exportObject.title+'.json','application/json')">SaveV2</button>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <button style="background-color: lightgray" class="btn" onclick="makePDF(window.exportObject, document.querySelector('iframe'))">GeneratePDF</button>
+                  </td>
+                  <td style="width: 100%">
+                    <div id='pdf_progress_bar' style='border: 1px solid black; position: relative;'>
+                      <div style='border-right: 1px solid gray; background-color: white; width:0%; height:1.2em;text-align: center;' id='pdf_progress'>
+                      </div>
+                      <span id='pdf_progress_text' style='font-size:small; white-space:nowrap; position: absolute; top:0; right: 0; left: 0; bottom: 0; text-align: center;'></span>
                     </div>
-                    <span id='pdf_progress_text' style='font-size:small; white-space:nowrap; position: absolute; top:0; right: 0; left: 0; bottom: 0; text-align: center;'></span>
-                  </div>
-                </td>
+                  </td>
+                </tr>
               </table>
               <br>
               <label for="format">Format</label>
@@ -655,7 +662,7 @@
                 <iframe title="Generated PDF" width="320" height="450" src="" title="Presentation Slideshow"></iframe>
                 <br>
                 <br>
-                <button class="btn" style="background-color: lightsalmon;">Download</button>
+                <a id="downloadPDF" class="btn" style="background-color: lightsalmon;" download>Download</a>
               </div>
             </div>
           </div>
