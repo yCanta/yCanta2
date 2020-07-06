@@ -3,8 +3,6 @@
   $("#file").on("change", function(evt) {
     // Closure to capture the file information.
     async function handleFile(f) {
-
-      console.log(f, f.type);
       let result = '';
 
       if(f.type.search('zip')> -1) {
@@ -16,9 +14,10 @@
       else {
         console.log('not a recognized file');
       }
+      return result;
     }
 
-    var files = evt.target.files;
+    var files = evt.target.files;  // we can have multiple files selected.
     for (var i = 0; i < files.length; i++) {
       handleFile(files[i]);
     }
@@ -49,7 +48,7 @@ async function importSongV1(f){
 
     $title.append($("<span>", {
       "class": "small",
-      text:" (" + file_count + " files loaded in " + (dateAfter - dateBefore) + "ms)"
+      text:" (" + file_count + " files imported in " + (dateAfter - dateBefore) + "ms)"
     }));
     let progress =  "<div id='progress_bar' style='width:min(100%, 400px); height: 1rem; border: 1px solid black; background: linear-gradient(to right, white 0);'>"+
                     "</div>";
@@ -160,6 +159,89 @@ async function importSongV1(f){
   return 'toga';
 }
 async function importSongV2(f){
-  console.log(f.name, 'V2');
+  reader = new FileReader();
+  reader.readAsText(f);
+  
+  reader.onloadend = function(){
+    let fileObject = JSON.parse(reader.result);
+    //if song do song import
+    if(fileObject._id.startsWith('s-')){
+      console.log('Loaded song: '+fileObject.title);
+      importSong(fileObject);
+    }
+    //else if songbook do process 
+    else if(fileObject._id.startsWith('sb-')){
+      console.log('Loaded songbook: '+fileObject.title);
+      importSongbook(fileObject);
+    }
+    else {
+      console.log("I don't know this file structure...");
+    }
+  }
+
+  async function importSong(fileObject){
+    let song = fileObject;
+    delete song._rev
+    //import song
+    uploadIfNewer(song);
+  }
+
+  async function importSongbook(fileObject){
+    let songs = fileObject.songs.map(song => song.doc);
+    //first import the songs   
+    songs.forEach(function(song){
+      delete song._rev
+      uploadIfNewer(song);
+    });
+    
+    //then import the songbook
+    let songbook = fileObject;
+    delete songbook.songs;
+    delete songbook._rev;
+    if(songbook._id == 'sb-allSongs'||songbook._id == 'sb-favoriteSongs'){
+      songbook._id = 'sb-'+new Date().getTime().toString();
+      songbook.title = 'Import '+songbook.title;
+    }
+    uploadIfNewer(songbook);
+  }
+
+  function uploadIfNewer(doc){
+    let doc_type = 'doc';
+    if(doc._id.startsWith('sb-')){
+      doc_type = 'songbook';
+    }
+    else if(doc._id.startsWith('s-')) {
+      doc_type = 'song';
+    }
+
+    db.put(doc, function callback(err, result) {
+      if (!err) {
+        console.log('imported: ', doc.title);
+      } 
+    }).catch(function (err) {
+      console.log('hmmm '+doc_type+' already exists');
+      //let's check to see if ours is newer
+      db.get(doc._id).then(function(exist_doc){
+        if(doc.edited>exist_doc.edited){
+          doc._rev = exist_doc._rev;
+
+          console.log('this '+doc_type+' is newer!');
+          db.put(doc, function callback(err, result) {
+            if (!err) {
+              console.log('imported: ', doc.title);
+            } 
+            else {
+              console.log(err);
+            }
+          });
+        }
+        else {
+          console.log('the existing '+ doc_type + ' is better than yours');
+        }
+      }).catch(function (err) {
+        console.log(err);
+      });  
+    });
+  }
   return 'yoda';
 }
