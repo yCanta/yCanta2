@@ -28,7 +28,21 @@
     $result[0].style='';
   });
 })
-
+function updateProgress(){
+  let i = window.import;
+  i.progressBar.style.background = 'linear-gradient(to right, '+
+    'var(--song-color) '     +i.n_songs/i.file_count*100+'%,'+
+    'lightgray '             +i.n_songs/i.file_count*100+'%,'+
+    'lightgray '             +(i.n_songs+i.n_songs2)/i.file_count*100+'%,'+
+    'var(--songList-color) ' +(i.n_songs+i.n_songs2)/i.file_count*100+'%,'+
+    'var(--songList-color) ' +(i.n_songs+i.n_songs2+i.n_songbooks)/i.file_count*100+'%,'+
+    'lightgray '             +(i.n_songs+i.n_songs2+i.n_songbooks)/i.file_count*100+'%,'+
+    'lightgray '             +(i.n_songs+i.n_songs2+i.n_songbooks+i.n_songbooks2)/i.file_count*100+'%,'+
+    'yellow '                +(i.n_songs+i.n_songs2+i.n_songbooks+i.n_songbooks2)/i.file_count*100+'%,'+
+    'yellow '                +(i.n_songs+i.n_songs2+i.n_songbooks+i.n_songbooks2+i.n_other)/i.file_count*100+'%,'+
+    'white 0)';
+  window.import = i;
+}
 async function importSongV1(f){
   var $result = $("#result");
   // remove content
@@ -43,42 +57,29 @@ async function importSongV1(f){
   JSZip.loadAsync(f)
   .then(function(zip) {
     var dateAfter = new Date();
-
-    var file_count = Object.keys(zip.files).length;
+    window.import= {};
+    window.import.file_count = Object.keys(zip.files).length;
 
     $title.append($("<span>", {
       "class": "small",
-      text:" (" + file_count + " files imported in " + (dateAfter - dateBefore) + "ms)"
+      text:" (" + window.import.file_count + " files imported in " + (dateAfter - dateBefore) + "ms)"
     }));
     let progress =  "<div id='progress_bar' style='width:min(100%, 400px); height: 1rem; border: 1px solid black; background: linear-gradient(to right, white 0);'>"+
                     "</div>";
     $title.append($(progress));
     $title.append($("<div id='progress_text' style='width:min(100%, 400px); font-size:small; white-space:nowrap; overflow: hidden;'></div>"));
     //Import files
-    n_songs = 0;
-    n_songs2 = 0;
-    n_songbooks = 0;
-    n_songbooks2 = 0;
-    n_other = 0;
+    window.import.n_songs = 0;
+    window.import.n_songs2 = 0;
+    window.import.n_songbooks = 0;
+    window.import.n_songbooks2 = 0;
+    window.import.n_other = 0;
 
     song_map = {};
     promise_list = [];
-    let progressBar = document.getElementById('progress_bar');
-    let progressText = document.getElementById('progress_text');
+    window.import.progressBar = document.getElementById('progress_bar');
+    window.import.progressText = document.getElementById('progress_text');
 
-    function updateProgress(){
-      progressBar.style.background = 'linear-gradient(to right, '+
-        'var(--song-color) '     +n_songs/file_count*100+'%,'+
-        'lightgray '             +n_songs/file_count*100+'%,'+
-        'lightgray '             +(n_songs+n_songs2)/file_count*100+'%,'+
-        'var(--songList-color) ' +(n_songs+n_songs2)/file_count*100+'%,'+
-        'var(--songList-color) ' +(n_songs+n_songs2+n_songbooks)/file_count*100+'%,'+
-        'lightgray '             +(n_songs+n_songs2+n_songbooks)/file_count*100+'%,'+
-        'lightgray '             +(n_songs+n_songs2+n_songbooks+n_songbooks2)/file_count*100+'%,'+
-        'yellow '                +(n_songs+n_songs2+n_songbooks+n_songbooks2)/file_count*100+'%,'+
-        'yellow '                +(n_songs+n_songs2+n_songbooks+n_songbooks2+n_other)/file_count*100+'%,'+
-        'white 0)';
-    }
     let num_songs = zip.folder('songs/').length;
 
     zip.folder('songs/').forEach(function (relativePath, zipEntry) {
@@ -94,18 +95,18 @@ async function importSongV1(f){
               
               Promise.resolve(saveSong('i'+CRC32.str(zipEntry.name.replace('songs/',''),0), $(song), false))
               .then(function(results){ //results is the song._id
-                n_songs ++;
+                window.import.n_songs ++;
                 song_map[relativePath] = results;
                 updateProgress();
-                progressText.innerHTML = zipEntry.name;
+                window.import.progressText.innerHTML = zipEntry.name;
                 resolve('done');
               });
             }
             else {
               console.log(zipEntry.name + ' is not a song!');
-              n_other++;
+              window.import.n_other++;
               updateProgress();
-              progressText.innerHTML = zipEntry.name;
+              window.import.progressText.innerHTML = zipEntry.name;
               resolve('done');
             }
           })
@@ -128,16 +129,16 @@ async function importSongV1(f){
 
                 Promise.resolve(saveSongbook('i'+CRC32.str(zipEntry.name.replace('songbooks/',''),0), $(songbook), false))
                 .then(function(results){ //results is the song._id
-                  n_songbooks++;
+                  window.import.n_songbooks++;
                   updateProgress();
-                  progressText.innerHTML = zipEntry.name;
+                  window.import.progressText.innerHTML = zipEntry.name;
                   resolve('done');
                 });
               }
               else {
-                n_other++;
+                window.import.n_other++;
                 updateProgress();
-                progressText.innerHTML = zipEntry.name;
+                window.import.progressText.innerHTML = zipEntry.name;
                 console.log(zipEntry.name + ' is not a songbook!');
                 resolve('done')
               }
@@ -159,6 +160,29 @@ async function importSongV1(f){
   return 'toga';
 }
 async function importSongV2(f){
+  var $result = $("#result");
+  // remove content
+  $result.html("");
+  var $title = $("<h4>", {
+    text : f.name
+  });
+  $result.append($title);
+
+  let progress =  "<div id='progress_bar' style='width:min(100%, 400px); height: 1rem; border: 1px solid black; background: linear-gradient(to right, white 0);'>"+
+                  "</div>";
+  $title.append($(progress));
+  $title.append($("<div id='progress_text' style='width:min(100%, 400px); font-size:small; white-space:nowrap; overflow: hidden;'></div>"));
+  //Import files    
+  window.import = {};
+  window.import.n_songs = 0;
+  window.import.n_songs2 = 0;
+  window.import.n_songbooks = 0;
+  window.import.n_songbooks2 = 0;
+  window.import.n_other = 0;
+
+  window.import.progressBar = document.getElementById('progress_bar');
+  window.import.progressText = document.getElementById('progress_text');
+
   reader = new FileReader();
   reader.readAsText(f);
   
@@ -181,19 +205,25 @@ async function importSongV2(f){
 
   async function importSong(fileObject){
     let song = fileObject;
+    window.import.file_count = 1;
+
     delete song._rev
     //import song
-    uploadIfNewer(song);
+    Promise.resolve(uploadIfNewer(song)).then(function(result){
+      console.log('done!', result);
+    });
   }
 
   async function importSongbook(fileObject){
     let songs = fileObject.songs.map(song => song.doc);
+    window.import.file_count = songs.length + 1;
     //first import the songs   
+    let promiseList = [];
     songs.forEach(function(song){
       delete song._rev
-      uploadIfNewer(song);
+      promiseList.push(uploadIfNewer(song));
     });
-    
+
     //then import the songbook
     let songbook = fileObject;
     delete songbook.songs;
@@ -202,46 +232,65 @@ async function importSongV2(f){
       songbook._id = 'sb-'+new Date().getTime().toString();
       songbook.title = 'Import '+songbook.title;
     }
-    uploadIfNewer(songbook);
+    promiseList.push(uploadIfNewer(songbook));
+    Promise.all(promiseList).then(function(results){
+    console.log('done!', results.length);
+    });
   }
 
   function uploadIfNewer(doc){
-    let doc_type = 'doc';
-    if(doc._id.startsWith('sb-')){
-      doc_type = 'songbook';
-    }
-    else if(doc._id.startsWith('s-')) {
-      doc_type = 'song';
-    }
+    return new Promise(function(resolve, reject) {
+      let doc_type = 'doc';
+      if(doc._id.startsWith('sb-')){
+        doc_type = 'songbook';
+      }
+      else if(doc._id.startsWith('s-')) {
+        doc_type = 'song';
+      }
 
-    db.put(doc, function callback(err, result) {
-      if (!err) {
-        console.log('imported: ', doc.title);
-      } 
-    }).catch(function (err) {
-      console.log('hmmm '+doc_type+' already exists');
-      //let's check to see if ours is newer
-      db.get(doc._id).then(function(exist_doc){
-        if(doc.edited>exist_doc.edited){
-          doc._rev = exist_doc._rev;
-
-          console.log('this '+doc_type+' is newer!');
-          db.put(doc, function callback(err, result) {
-            if (!err) {
-              console.log('imported: ', doc.title);
-            } 
-            else {
-              console.log(err);
-            }
-          });
-        }
-        else {
-          console.log('the existing '+ doc_type + ' is better than yours');
-        }
+      db.put(doc, function callback(err, result) {
+        if (!err) {
+          console.log('imported: ', doc.title);
+          resolve('n_'+doc_type+'s');
+          window.import['n_'+doc_type+'s']++;
+          updateProgress();
+        } 
       }).catch(function (err) {
-        console.log(err);
-      });  
+        console.log('hmmm '+doc_type+' already exists');
+        //let's check to see if ours is newer
+        db.get(doc._id).then(function(exist_doc){
+          if(doc.edited>exist_doc.edited){
+            doc._rev = exist_doc._rev;
+
+            console.log('this '+doc_type+' is newer!');
+            db.put(doc, function callback(err, result) {
+              if (!err) {
+                console.log('imported: ', doc.title);
+                resolve('n_'+doc_type+'s');
+                window.import['n_'+doc_type+'s']++;
+                updateProgress();
+              } 
+              else {
+                console.log(err);
+                resolve('n_other');
+                window.import['n_other']++;
+                updateProgress();
+              }
+            });
+          }
+          else {
+            resolve('n_'+doc_type+'s2');
+            window.import['n_'+doc_type+'s2']++;
+            updateProgress();
+            console.log('the existing '+ doc_type + ' is better than yours');
+          }
+        }).catch(function (err) {
+          console.log(err);
+          resolve('n_other');
+          window.import['n_other']++;
+          updateProgress();
+        });  
+      });
     });
   }
-  return 'yoda';
 }
