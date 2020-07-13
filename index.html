@@ -35,8 +35,8 @@
     <title>yCanta2</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <script>var clicky_site_ids = clicky_site_ids || []; clicky_site_ids.push(101248473);</script>
-    <script async src="//static.getclicky.com/js"></script>
+    <!--script>var clicky_site_ids = clicky_site_ids || []; clicky_site_ids.push(101248473);</script>
+    <script async src="//static.getclicky.com/js"></script-->
 
   </head>
   <body class="header">
@@ -961,36 +961,34 @@
                   include_docs: true,
                   keys: sb_song_ids, //we need error handling for missing ids
                 }).then(function (result) {
-                  if(hash.indexOf('new') > -1){
-                    window.presentationFrame = window.open('presentation.html','_blank', height="200", width="200");
-                    window.presentationFrame.onload = function() {
+                  //Save json object to data id'd element
+                  let myString = JSON.stringify({songs: result.rows, title: window.songbook.title});
+                  let presHtml = '';
 
-                      //pass the presentation window the json object
-                      window.presentationFrame.songbook = {songs: result.rows, title: window.songbook.title};
-                      window.location = '#'+window.songbook._id;
-
-                      //Save json object to data id'd element
-                      let myString = JSON.stringify(window.presentationFrame.songbook);
-                      window.presentationFrame.document.getElementById('data').setAttribute('data', myString);
-
-                      //load the jquery and presentation.js file into script tags
-                      $.getScript("jquery-3.4.0.min.js", function(data) {
-                        window.presentationFrame.document.getElementById('jQuery_embed').innerHTML = data;
-                      });
+                  //load the presentation.html, jquery and presentation.js file into their spots.
+                  $.getScript("presentation.html", function(data) {
+                    presHtml = data;
+                    $.getScript("jquery-3.4.0.min.js", function(data) {
+                      presHtml = presHtml.replace('jQuery_embed', data);
                       $.getScript("presentation.js", function(data) {
-                        window.presentationFrame.document.getElementById('presentation_embed').innerHTML = data;
+                        presHtml = presHtml.replace('presentation_embed', data);
+                        if(hash.indexOf('new') > -1){
+                          window.location = '#'+window.songbook._id;
+                          window.presentationFrame = window.open('','_blank', height="200", width="200");
+                        }
+                        else {
+                          let ifrm = document.getElementById('presentation');
+                          ifrm.contentWindow.focus();
+                          window.presentationFrame = ifrm.contentWindow || ifrm.contentDocument.document || ifrm.contentDocument;
+                        }
+                        window.presentationFrame.document.write(presHtml);
+                        window.presentationFrame.document.close();
+                        window.presentationFrame.document.getElementById('data').setAttribute('data', myString);
+                        window.presentationFrame.location = "#";
+                        resolve('Its done');
                       });
-                    };
-                  }else {
-                    window.presentationFrame = document.getElementById('presentation');
-                    window.presentationFrame.contentWindow.focus();
-                    window.presentationFrame.onload = function() {
-                      //pass the presentation iframe the json object
-                      window.presentationFrame.contentWindow.songbook = {songs: result.rows, title: window.songbook.title};
-                    };
-                    window.presentationFrame.src = 'presentation_iframe.html';  
-                  }
-                  resolve('Its done')
+                    });
+                  });
                 }).catch(function (err) {
                   console.log(err);
                 });
