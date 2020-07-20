@@ -71,12 +71,12 @@ body, body *,
 }
 html::after {
   border-bottom: 5px solid green;
-z-index: 200;
-width: 100vw;
-content: '';
-display: block;
-position: fixed;
-bottom: 0;
+  z-index: 10;
+  width: 100vw;
+  content: '';
+  display: block;
+  position: fixed;
+  bottom: 0;
 }
 html, body, main{
   height: 100%; 
