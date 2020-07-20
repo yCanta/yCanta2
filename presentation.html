@@ -9,10 +9,20 @@
     <script type="text/javascript">presentation_embed</script>
 
     <style type="text/css">
+      :root {
+        --font-color: black;
+        --background-color: white;
+        --bg-image: url("");
+        --fixed-image: url('');
+        --fg-image: url('');
+      }
 
       /*===============================*/
       /* First non-presentation styles */
       /*===============================*/
+      *{
+        box-sizing: border-box;
+      }
       .slide {
         transition: .25s;
         padding: 1rem;
@@ -21,6 +31,7 @@
         bottom: 0;
         left: 0;
         right: 0;
+        z-index: 1;
       }
       #pre_slide {
         transform: translateX(-100%);
@@ -146,16 +157,102 @@
       }
 
       #help {
-        background-color: white;
         position: fixed;
         top: 0;
         bottom: 0;
-        border-top: solid 1px black;
-        border-bottom: solid 1px black;
-        margin-bottom: 30px;
-        border-collapse: collapse;
+        right: 0;
+        left: 0;
         z-index: 5;
+        backdrop-filter: blur(6px);
+        padding: 1rem;
+        overflow-y: auto;
       }
+      #help > div {
+        background-color: white;
+        border-radius: 2rem;
+        padding: 1rem;
+        max-width: 600px;
+        margin-left: auto;
+        margin-right: auto;
+        filter: drop-shadow(2px 2px 4px lightgray);
+      }
+      .helpLine > * {
+        margin-right: 1rem;
+      }
+      #files {
+        display: grid;
+        grid-template-columns: 1fr 3fr;
+      }
+
+      /*Switch*/
+      .switch {
+        position: relative;
+        display: inline-block;
+        width: 90px;
+        height: 34px;
+        vertical-align: middle;
+      }
+      .switch input {display:none;}
+      .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        transition: .4s;
+        border-radius: 34px;
+        border: 1px solid gray;
+      }
+      .slider.font {
+        background-color: lightgray;
+        color: black;
+      }
+      .slider.background {
+        background-color: white;
+        color: gray;
+      }
+      .slider:before {
+        position: absolute;
+        content: "";
+        height: 20px;
+        width: 20px;
+        left: 4px;
+        bottom: 6px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+      }
+      .slider.background:before {
+        background-color: gray;
+      }
+      input:checked + .slider.font {
+        color: white;
+      }
+      input:checked + .slider.background {
+        background-color: black;
+      }
+      input:focus + .slider {
+        box-shadow: 0 0 1px #2196F3;
+      }
+      input:checked + .slider:before {
+        -webkit-transform: translateX(26px);
+        -ms-transform: translateX(26px);
+        transform: translateX(60px);
+      }
+      /*------ ADDED CSS ---------*/
+      .slider:after {
+       content: attr(data-text);
+       display: block;
+       position: absolute;
+       transform: translate(-50%,-50%);
+       top: 50%;
+       left: 50%;
+       font-size: 12px;
+       font-family: Verdana, sans-serif;
+       font-weight: bold;
+      }
+      /*End Switch*/
 
       #help td.description {
         padding-left: 1em;
@@ -165,6 +262,20 @@
         border-top: solid 1px black;
         padding-top: 5px;
         margin-top: 5px;
+      }
+
+      #helpButton {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        border: 1px solid white;
+        padding: 12px 17px 12px 17px;
+        border-radius: 200px;
+        color: gray;
+        backdrop-filter: blur(2px);
+        font-weight: bold;
+        background-color: rgba(255, 255, 255, 0.6);
+        filter: drop-shadow(2px 2px 4px lightgray);
       }
 
       /* black and white screen clearing */
@@ -230,7 +341,43 @@
         margin-left: 2em;
         bottom: 1em;
       }
-
+      /*===============================*/
+      /* Background image css
+      /*===============================*/
+      #slides::before, #slides, #slides::after {
+        content: "";
+        display: block;
+        background-position: bottom;
+        background-size: cover;
+        background-repeat: no-repeat;
+        position: fixed;
+        top:0;
+        right:0;
+        left:0;
+        bottom: 0;    
+        transition: 2s;
+        overflow: hidden;
+      }
+      #slides::before {
+        background-image: var(--bg-image);
+        background-repeat: no-repeat;
+        width: 110vw;
+        height: 110vh;
+        transform: translateX(calc(.2% - var(--percent)*.04%));
+        z-index: -2;
+      }
+      #slides {
+        background-image: var(--fixed-image);
+        width: 100vw;
+        height: 100vh;
+        z-index: 1;
+      }
+      #slides::after {
+        background-image: var(--fg-image);
+        width: 100vw;
+        height: 100vh;
+        transform: translateX(calc(-5% + var(--percent)*.1%));
+      }
     </style>
 
     <title></title>
@@ -249,7 +396,7 @@
     </div>
     <div id="cur_slide" class="slide">
       <div class="content">
-        <div style="width: 100%;position: absolute; top: 40%;"><div style="width: 100%;text-align: center"><h1>Presenting</h1><h2><i id="pres_title">Lorem Ipsum</i></h2></div></div>
+        <div style="width: calc(100% - 2rem); position: absolute; top: 40%;"><div style="text-align: center"><h1>Presenting</h1><h2><i id="pres_title">Lorem Ipsum</i></h2></div></div>
       </div>
     </div>
     <div id="post_slide" class="slide">
@@ -258,7 +405,11 @@
   </div>
 
   <div id="statusbar">
-    <div id="searchbox"><div id="searchresults"></div><input type="text"/><span class="info"></span></div>
+    <div id="searchbox">
+      <div id="searchresults"></div>
+      <input type="text"/><span class="info"></span>
+      <info id="helpButton" onclick="toggleHelp();">?</info>
+      </div>
     <div id="progress"></div>
   </div>
   <footer id="data" data="songbookData">
