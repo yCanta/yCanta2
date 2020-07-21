@@ -151,9 +151,9 @@ function toggleHelp() {
 
     content += '<h4>Main Window:</h4>';
     content += '<div class="helpLine"> <select><!--option value="Song">Songs</option--><option value="Verse">Verse</option></select>'
-    content += '<label onchange="whiteScreen()" class="switch"><input type="checkbox" id="togBtn"><div data-text="TEXT" class="slider font"></div></label>';
-    content += '<label onchange="blackScreen()" class="switch"><input type="checkbox" id="togBtn"><div data-text="BG" class="slider background"></div></label>';
-    content += '<label onchange="toggleChords()"><input type="checkbox"> Chords</label>';
+    content += '<label onchange="whiteScreen(true)" class="switch"><input type="checkbox" id="fgText"><div data-text="TEXT" class="slider font"></div></label>';
+    content += '<label onchange="blackScreen(true)" class="switch"><input type="checkbox" id="bgColor"><div data-text="BG" class="slider background"></div></label>';
+    content += '<label onchange="toggleChords(true)"><input id="chngChords" type="checkbox"> Chords</label>';
     content += '<label onchange=""><input type="checkbox"> Image backgrounds</label></div>';
     content += '<h4>Child Windows: <input type="button" style="margin-right: 1rem;" onclick="openWindow()" value="Add mirrored window"></input><button onclick="" value=""><img style="height: 1rem; vertical-align: middle" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+Cjxzdmcgd2lkdGg9IjI0cHgiIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAwIDI0IDI0IiB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHhtbG5zOnNrZXRjaD0iaHR0cDovL3d3dy5ib2hlbWlhbmNvZGluZy5jb20vc2tldGNoL25zIj4KICAgIDwhLS0gR2VuZXJhdG9yOiBTa2V0Y2ggMy4yLjIgKDk5ODMpIC0gaHR0cDovL3d3dy5ib2hlbWlhbmNvZGluZy5jb20vc2tldGNoIC0tPgogICAgPHRpdGxlPmljX2Nhc3RfYmxhY2tfMjRkcDwvdGl0bGU+CiAgICA8ZGVzYz5DcmVhdGVkIHdpdGggU2tldGNoLjwvZGVzYz4KICAgIDxkZWZzPjwvZGVmcz4KICAgIDxnIGlkPSJQYWdlLTEiIHN0cm9rZT0ibm9uZSIgc3Ryb2tlLXdpZHRoPSIxIiBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHNrZXRjaDp0eXBlPSJNU1BhZ2UiPgogICAgICAgIDxnIGlkPSJpY19jYXN0X2JsYWNrXzI0ZHAiIHNrZXRjaDp0eXBlPSJNU0FydGJvYXJkR3JvdXAiPgogICAgICAgICAgICA8ZyBpZD0iaWNfcmVtb3ZlX2NpcmNsZV93aGl0ZV8yNGRwIiBza2V0Y2g6dHlwZT0iTVNMYXllckdyb3VwIj4KICAgICAgICAgICAgICAgIDxwYXRoIGQ9Ik0xLDE4IEwxLDIxIEw0LDIxIEM0LDE5LjM0IDIuNjYsMTggMSwxOCBMMSwxOCBaIE0xLDE0IEwxLDE2IEMzLjc2LDE2IDYsMTguMjQgNiwyMSBMOCwyMSBDOCwxNy4xMyA0Ljg3LDE0IDEsMTQgTDEsMTQgWiBNMSwxMCBMMSwxMiBDNS45NywxMiAxMCwxNi4wMyAxMCwyMSBMMTIsMjEgQzEyLDE0LjkyIDcuMDcsMTAgMSwxMCBMMSwxMCBaIE0yMSwzIEwzLDMgQzEuOSwzIDEsMy45IDEsNSBMMSw4IEwzLDggTDMsNSBMMjEsNSBMMjEsMTkgTDE0LDE5IEwxNCwyMSBMMjEsMjEgQzIyLjEsMjEgMjMsMjAuMSAyMywxOSBMMjMsNSBDMjMsMy45IDIyLjEsMyAyMSwzIEwyMSwzIFoiIGlkPSJjYXN0IiBmaWxsPSIjMDAwMDAwIiBza2V0Y2g6dHlwZT0iTVNTaGFwZUdyb3VwIj48L3BhdGg+CiAgICAgICAgICAgICAgICA8cmVjdCBpZD0iYm91bmRzIiBza2V0Y2g6dHlwZT0iTVNTaGFwZUdyb3VwIiB4PSIwIiB5PSIwIiB3aWR0aD0iMjQiIGhlaWdodD0iMjQiPjwvcmVjdD4KICAgICAgICAgICAgPC9nPgogICAgICAgIDwvZz4KICAgICAgICA8ZyBpZD0iYXNzZXRzIiBza2V0Y2g6dHlwZT0iTVNMYXllckdyb3VwIiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtMjA4LjAwMDAwMCwgLTEwNi4wMDAwMDApIj4KICAgICAgICAgICAgPGcgaWQ9IjY0cHgiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDAuMDAwMDAwLCAxMTQuMDAwMDAwKSI+PC9nPgogICAgICAgIDwvZz4KICAgIDwvZz4KPC9zdmc+"></button></h4>'
     content += '<div class="helpLine">1. <select><!--option value="Song">Songs</option--><option value="Verse">Verse</option></select>'
@@ -179,7 +179,7 @@ function toggleHelp() {
   // now certain that all is inited
   $('#help').slideToggle('fast');
 }
-function toggleChords() {
+function toggleChords(touch=false) {
   if(isSearching()) {
     return;
   }
@@ -190,6 +190,10 @@ function toggleChords() {
   else {
     $('body').addClass("nochords")
     scaleText();
+  }
+
+  if(!touch){
+    $('#chngChords').prop("checked", !$('#chngChords').prop("checked"));
   }
 }
 
@@ -245,9 +249,11 @@ function isSearching(){
   return $('#searchbox').css('display') != 'none';
 }
 
-function beginSearch(){
+function beginSearch(touch=false){
   $('#searchbox').show();
-  $('#searchbox input').focus();
+  if(!touch){
+    $('#searchbox input').focus();
+  }
   $('#searchbox input').val('');
 }
 
@@ -582,10 +588,11 @@ function gotoVerse(num){
   }
 }
 
-function whiteScreen(){
+function whiteScreen(touch=false){
+  if(!touch){
+    $('#fgText').prop("checked", !$('#fgText').prop("checked"));
+  }
   var body = $('body');
-  //if(body.hasClass('white')){
-
   if(body.hasClass('white')){
     body.removeClass('white');
   }
@@ -594,10 +601,11 @@ function whiteScreen(){
   }
 }
 
-function blackScreen(){
+function blackScreen(touch=false){
+  if(!touch){
+    $('#bgColor').prop("checked", !$('#bgColor').prop("checked"));
+  }
   var body = $('body');
-  //if(body.hasClass('white')){
-
   if(body.hasClass('black')){
     body.removeClass('black');
   }
@@ -775,7 +783,7 @@ function makeDraggable() {
         endSearch();
       }
       else {
-        beginSearch();
+        beginSearch(true);
       }
       $('#help').hide();
     }

@@ -972,14 +972,17 @@
                       presHtml = presHtml.replace('jQuery_embed', data);
                       $.getScript("presentation.js", function(data) {
                         presHtml = presHtml.replace('presentation_embed', data);
-                        if(hash.indexOf('new') > -1){
+                        if(hash.indexOf('new') > -1){                          //New window/tab
                           window.location = '#'+window.songbook._id;
                           window.presentationFrame = window.open('','_blank', height="200", width="200");
                         }
-                        else {
-                          let ifrm = document.getElementById('presentation');
+                        else {                                                 //Iframe
+                          document.getElementById('presentation').remove();
+                          var ifrm = document.createElement('iframe');
+                          ifrm.id = "presentation";
+                          document.body.appendChild(ifrm);
                           ifrm.contentWindow.focus();
-                          window.presentationFrame = ifrm.contentWindow || ifrm.contentDocument.document || ifrm.contentDocument;
+                          window.presentationFrame = ifrm.contentWindow || ifrm.contentDocument.document || ifrm. contentDocument;
                         }
                         window.presentationFrame.document.write(presHtml);
                         window.presentationFrame.document.close();

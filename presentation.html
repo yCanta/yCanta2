@@ -11,10 +11,16 @@
     <style type="text/css">
       :root {
         --font-color: black;
-        --background-color: white;
+        --bg-color: white;
         --bg-image: url("");
-        --fixed-image: url('');
-        --fg-image: url('');
+        --fixed-image: url("");
+        --fg-image: url("");
+      }
+      body.black {
+        --bg-color: black;
+      }
+      body.white {
+        --font-color: white;
       }
 
       /*===============================*/
@@ -42,8 +48,8 @@
       }
 
       body {
-        color: #000;
-        background-color: #fff;
+        color: var(--font-color);
+        background-color: var(--bg-color);
       }
 
       stitle, author, scripture_ref, copyright, line {display: block; white-space: pre;}
@@ -89,7 +95,7 @@
         position: fixed;
         bottom: 0px;
         border: solid 1px gray;
-        background-color: white;
+        background-color: var(--bg-color);
         width: 100%;
         z-index: 2;
       }
@@ -168,13 +174,24 @@
         overflow-y: auto;
       }
       #help > div {
-        background-color: white;
+        background-color: var(--bg-color);
         border-radius: 2rem;
         padding: 1rem;
         max-width: 600px;
         margin-left: auto;
         margin-right: auto;
         filter: drop-shadow(2px 2px 4px lightgray);
+      }
+      #help > div > *,
+      #searchbox,
+      #searchbox input {
+        color: gray;
+      }
+      #searchbox input {
+        background: transparent;
+      }
+      #searchbox input:focus {
+        outline-color: gray;
       }
       .helpLine > * {
         margin-right: 1rem;
@@ -277,30 +294,6 @@
         background-color: rgba(255, 255, 255, 0.6);
         filter: drop-shadow(2px 2px 4px lightgray);
       }
-
-      /* black and white screen clearing */
-      body.black {
-        background-color: #000;
-      }
-      body.black #statusbar {
-        background-color: #222;
-      }
-      body.black #statusbar input {
-        background-color: #222;
-      }
-      body.black #statusbar #searchresults .match {
-        color: #500;
-      }
-
-      body.white {
-        color: #fff;
-      }
-      body.white #statusbar {
-        color: gray;
-      }
-      body.white #statusbar input {
-        color: gray;
-      }
       /*====================================*/
       /* Chord style overrides below        */
       /*====================================*/
@@ -309,12 +302,10 @@
         margin-bottom: 1em;
         font-size: 60%;
         font-style: italic; 
-        color: grey;
       }
       body.presentation chunk[type=verse] span {
         font-size: 60%;
         font-style: italic; 
-        color: gray;
       }
       body.nochords chunk:before {
         margin-bottom: 0em;
@@ -354,8 +345,7 @@
         top:0;
         right:0;
         left:0;
-        bottom: 0;    
-        transition: 2s;
+        bottom: 0;
         overflow: hidden;
       }
       #slides::before {
@@ -363,8 +353,9 @@
         background-repeat: no-repeat;
         width: 110vw;
         height: 110vh;
-        transform: translateX(calc(.2% - var(--percent)*.04%));
+        transform: translate3d(calc(.2% - var(--percent)*.04%),0,0);
         z-index: -2;
+        transition: 2s;
       }
       #slides {
         background-image: var(--fixed-image);
@@ -376,7 +367,8 @@
         background-image: var(--fg-image);
         width: 100vw;
         height: 100vh;
-        transform: translateX(calc(-5% + var(--percent)*.1%));
+        transform: translate3d(calc(-5% + var(--percent)*.1%),0,0);
+        transition: 2s;
       }
     </style>
 
@@ -408,7 +400,7 @@
     <div id="searchbox">
       <div id="searchresults"></div>
       <input type="text"/><span class="info"></span>
-      <info id="helpButton" onclick="toggleHelp();">?</info>
+      <info id="helpButton" onclick="toggleHelp(); endSearch();">?</info>
       </div>
     <div id="progress"></div>
   </div>
