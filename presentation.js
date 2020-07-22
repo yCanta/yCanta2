@@ -15,14 +15,14 @@ presentation_key_map = {
                   "Toggle Chords on/off"   ],
   //'p'         : [ togglePresentation, "Enter/exit fullscreen presentation mode"   ],
   'F11'       : [ function(){}, "Enter/exit fullscreen presentation mode"   ],
-  'escape'    : [ escapeAction      , "Exit search, help, or presentation mode"   ],
+  'Escape'    : [ escapeAction      , "Exit search, help, or presentation mode"   ],
       
   't'         : [ function() {if(! isSearching()) blackScreen(); },
                   "Toggle screen background to/from black" ],
   'f'         : [ function() {if(! isSearching()) whiteScreen(); },
                   "Toggle screen foreground to/from white" ],
 
-  'enter'     : [ function() {if(isSearching()) searchResult(1);},
+  'Enter'     : [ function() {if(isSearching()) searchResult(1);},
                   "When in search mode show the first search result"              ],
   '1'         : [ function() {numberHit(1);},
                   "Show the first search result/verse depending on mode"          ],
@@ -45,19 +45,19 @@ presentation_key_map = {
   '0'         : [ function() {numberHit(10);},
                   "Show the tenth verse"                ],
 
-  'right'     : [ nextChunk         , "Go to the next verse/chunk"                ],
-  'down'      : [ nextChunk         , "Go to the next verse/chunk"                ],
+  'ArrowRight': [ nextChunk         , "Go to the next verse/chunk"                ],
+  'ArrowDown' : [ nextChunk         , "Go to the next verse/chunk"                ],
   '>'         : [ function() {if(! isSearching()) nextChunk();},
                   "Go to the next verse/chorus if a search is not in progress"    ],
   '.'         : [ function() {if(! isSearching()) nextChunk();},
                   "Go to the next verse/chorus if a search is not in progress"    ],
-  'space'     : [ function() {if(! isSearching()) nextChunk();},
+  ' '         : [ function() {if(! isSearching()) nextChunk();},
                   "Go to the next verse/chorus if a search is not in progress"    ],
 
-  'pagedown'  : [ nextSong,           "Go to the next song"                       ],
+  'PageDown'  : [ nextSong,           "Go to the next song"                       ],
 
-  'left'      : [ prevChunk         , "Go to the previous verse/chorus"           ],
-  'up'        : [ prevChunk         , "Go to the previous verse/chorus"           ],
+  'ArrowLeft' : [ prevChunk         , "Go to the previous verse/chorus"           ],
+  'ArrowUp'   : [ prevChunk         , "Go to the previous verse/chorus"           ],
   '<'         : [ function (){if(! isSearching()) prevChunk();}, 
                   "Go to the previous verse/chorus if a search is not in progress"],
   ','         : [ function (){if(! isSearching()) prevChunk();},
@@ -69,11 +69,11 @@ presentation_key_map = {
                   "Go to the bridge of the current song if a search is not in progress"],  
   'e'         : [ function (){if(! isSearching()) gotoEnding();},
                   "Go to the ending of the current song if a search is not in progress"],  
-  'pageup'    : [ prevSong,           "Go to the previous song"                   ],
+  'PageUp'    : [ prevSong,           "Go to the previous song"                   ],
 
-  'home'      : [ function (){if(! isSearching()) firstSong();},
+  'Home'      : [ function (){if(! isSearching()) firstSong();},
                   "Go to the first song in the songbook"      ],
-  'end'       : [ function (){if(! isSearching()) lastSong();}, 
+  'End'       : [ function (){if(! isSearching()) lastSong();}, 
                   "Go to the last song in the songbook"       ],
 
   's'         : [ function() {if(! isSearching()) beginSearch();},
@@ -86,7 +86,6 @@ presentation_key_map = {
 $(document).ready(function(){
     $("stitle").click(toggleSongVisible);
 
-    $(document).keypress({method: 'keypress'}, processKey);  // global key handler
     $(document).keydown({method: 'keydown'}, processKey);   
 
     $('#searchbox').blur(endSearch); // XXX: need to work on this
@@ -428,7 +427,7 @@ function firstSong(){
     return;
   }
   window.songbook.song_index = 0;
-  current_song = window.songbook.song_index;
+  current_song = window.songbook.songs[window.songbook.song_index];
   current_song.chunk_index = 0;
   showChunk('first_song');
 }
@@ -623,39 +622,6 @@ function numberHit(num){
   }
 }
 
-function keyEventToString(e) {
-  var key = undefined;
-                
-  if(e.data.method == "keydown"){
-    switch(e.keyCode){
-      case 27 : key = 'escape'; break;
-      case 33 : key = 'pageup'; break;
-      case 34 : key = 'pagedown'; break;
-      case 35 : key = 'end'; break;
-      case 36 : key = 'home'; break;
-      case 37 : key = 'left'; break;
-      case 38 : key = 'up'; break;
-      case 39 : key = 'right'; break;
-      case 40 : key = 'down'; break;
-      case 122: key = 'F11'; break;
-      default : e.stopPropagation(); return; break;
-    }
-  }
-  else if(e.which == 13) { // enter -- want as a string no newline char which can be \n \r ...
-    key = 'enter';
-  }
-  else if(String.fromCharCode(e.which) == ' '){ // write out a space human readably
-    key = 'space';
-  }
-  else{
-    key = String.fromCharCode(e.which);
-  }
-  // this is to prevent keys from showing up in the input dialog in chrome and opera
-  if((e.which == 47 || e.which == 115)& ! isSearching()) { 
-    e.preventDefault()
-  }
-  return key;
-}
 
 function resetText() {
   $("#cur_slide .content").parent().css("font-size", "100%");
@@ -743,8 +709,10 @@ function escapeAction() {
 }
 
 function processKey(e){ 
-  key = keyEventToString(e);
-
+  key = e.key;
+  if((key == '/' || key == 's') & !isSearching()) { 
+    e.preventDefault()
+  }
   console.log("key: " + key, e);
 
   if(key in presentation_key_map){
