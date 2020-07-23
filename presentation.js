@@ -87,6 +87,7 @@ $(document).ready(function(){
     $("stitle").click(toggleSongVisible);
 
     $(document).keydown({method: 'keydown'}, processKey);   
+    document.getElementById('searchinput').addEventListener('beforeinput', processKey);
 
     $('#searchbox').blur(endSearch); // XXX: need to work on this
     $('#searchbox input').val(''); // initialize to empty
@@ -713,6 +714,11 @@ function processKey(e){
   if((key == '/' || key == 's') & !isSearching()) { 
     e.preventDefault()
   }
+
+  if(e.target.nodeName =='INPUT') {  //workaround for chrome mobile which decided not implement keydown.
+    key = e.data;
+  }
+
   console.log("key: " + key, e);
 
   if(key in presentation_key_map){
