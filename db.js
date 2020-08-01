@@ -364,7 +364,7 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
         stitle = "New Song";
       }
       song.title        = stitle;
-      song.authors      = song_html.find('authors').text().split(',').split('|').map(Function.prototype.call, String.prototype.trim);
+      song.authors      = song_html.find('authors').text().replace('|',',').split(',').map(Function.prototype.call, String.prototype.trim);
       song.scripture_ref= song_html.find('scripture_ref').text().split(',').map(Function.prototype.call, String.prototype.trim);
       song.introduction = song_html.find('introduction').text();
       song.key          = song_html.find('key').text();
