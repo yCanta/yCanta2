@@ -375,7 +375,9 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
       song_html.find('chunk').each(function(){
         var lines = [];
         $(this).children().each(function(){ //add line contents
-          lines.push($(this).html());
+          if($(this).html().trim().length != 0) {
+            lines.push($(this).html().replace(/\n/g, ""));
+          }
         });
         chunks.push([{'type': $(this).attr('type').toLowerCase()}, lines]);
       });
