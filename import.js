@@ -149,6 +149,7 @@ async function importSongV1(f){
       //let's us change things when we're done.
       Promise.all(songbook_promise_list).then(function(result){
         document.getElementById('progress_text').innerHTML = 'All docs imported!';
+        initializeSongbooksList();
       });
     });
   }, function (e) {
@@ -211,6 +212,7 @@ async function importSongV2(f){
     //import song
     Promise.resolve(uploadIfNewer(song)).then(function(result){
       console.log('done!', result);
+      document.getElementById('progress_text').innerHTML = 'All docs imported!';
     });
   }
 
@@ -234,7 +236,9 @@ async function importSongV2(f){
     }
     promiseList.push(uploadIfNewer(songbook));
     Promise.all(promiseList).then(function(results){
-    console.log('done!', results.length);
+      console.log('done!', results.length);
+      initializeSongbooksList();
+      document.getElementById('progress_text').innerHTML = 'All docs imported!';
     });
   }
 
@@ -266,6 +270,7 @@ async function importSongV2(f){
             db.put(doc, function callback(err, result) {
               if (!err) {
                 console.log('imported: ', doc.title);
+                document.getElementById('progress_text').innerHTML = 'imported: ', doc.title;
                 resolve('n_'+doc_type+'s');
                 window.import['n_'+doc_type+'s']++;
                 updateProgress();
