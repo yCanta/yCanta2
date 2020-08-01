@@ -892,7 +892,7 @@ function prepSaveSong(element) {
     });
     resolve('song is prepped for saving');
   }).then(function() {
-    return saveSong(parseHash('s-'));
+    return saveSong(window.song._id);
   }).then(function() {
     window.location.hash=$(element).attr('href'); 
   }).catch(function (err) {
