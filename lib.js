@@ -491,7 +491,6 @@ console.error = console.debug = console.info =  console.log
 function toggleFullscreen(el){
   var fullscreen = $(el).closest(".column");
   var full = fullscreen.hasClass('fullscreen');
-  console.log(full);
 
   $('.fullscreen').removeClass('fullscreen');
   if(!full) {
@@ -613,11 +612,32 @@ function mapSongbookRowToValue(row) {
   };
 }
 function mapSongRowToValue(row) {
-  return { 'song-id':           row.doc._id,
-    'song-rev':                 row.doc._rev,
-    'song-search':              row.doc.search,
-    'link': '#'+window.songbook._id+'&'+row.doc._id,
-    'name': row.doc.title
+  let id, rev, search, title, deleted;
+  deleted = false;
+  if(row.deleted || row.value.deleted){
+    deleted = true;
+    id = row.id;
+    try {
+      rev = row.value.rev;
+    }
+    catch {
+      rev = row.doc._id;
+    } 
+    search = "";
+    title = "Deleted";
+  }
+  else {
+    id = row.doc._id;
+    rev = row.doc._rev;
+    search = row.doc.search;
+    title = row.doc.title;
+  }
+  return { 'song-id':           id,
+    'song-rev':                 rev,
+    'song-search':              search,
+    'song-deleted':             deleted,
+    'link': '#'+window.songbook._id+'&'+id,
+    'name': title
   };
 }
 
@@ -629,6 +649,7 @@ function buildSongbookList(songs, target_class='songbook_content',
       { data: ['song-id'] },
       { data: ['song-rev'] },
       { data: ['song-search'] },
+      { data: ['song-deleted'] },
       { name: 'link', attr: 'href'},
       'name'
     ],
@@ -647,10 +668,10 @@ function buildSongbookList(songs, target_class='songbook_content',
     }
 
     if(saved_list != undefined){
-      var songIdInList = saved_list.get('song-id',songs[i].doc._id);
+      var songIdInList = saved_list.get('song-id',songs[i].id);
       if(songIdInList.length > 0){
         // we need to update if the revision is different.
-        var songRevInList = saved_list.get('song-rev', songs[i].doc._rev);
+        var songRevInList = saved_list.get('song-rev', songs[i].value.rev);
         if(songRevInList < 1){
           songIdInList[0].values(mapSongRowToValue(songs[i]));
           console.log('heya!');
@@ -1202,7 +1223,16 @@ function count(word) {
   }
 }
 
-function loadInfo(song=true) {
+async function songInSongbooks(song_id){
+  let result = await db.allDocs({
+    include_docs: true,
+    startkey: 'sb-',
+    endkey: 'sb-\ufff0',
+  });
+  return result.rows.filter(sb => sb.doc.songrefs.map(ref => ref.id).indexOf(song_id) > -1);  
+}
+
+async function loadInfo(song=true) {
   if(song){
     $('#dialog h5').text('Song');
     let song_id = window.song._id;
@@ -1210,21 +1240,16 @@ function loadInfo(song=true) {
       '<small>Added: '+window.song.addedBy+', '+new Date(window.song.added).toLocaleString()+'</small><br />'+
       '<small>Edited: '+window.song.editedBy+', '+new Date(window.song.edited).toLocaleString()+'</small><br />'+
       '<small>'+(window.song._rev.split('-')[0] - 1)+' previous edits</small>';
-    db.allDocs({
-      include_docs: true,
-      startkey: 'sb-',
-      endkey: 'sb-\ufff0',
-    }).then(function(result){
-      let sbs = result.rows.filter(sb => sb.doc.songrefs.map(ref => ref.id).indexOf(song_id) > -1);
-      if(sbs.length > 0){
-       content += '<div class="left"><br /><b>Used in:</b><br />' + sbs.map(sb => '<a href="#'+sb.doc._id+'&'+window.song._id+'">'+sb.doc.title+'</a>').join('<br />') + '</div>';
-      }
-      else {
-        content += '<div class="left"><br /><b>Not used in any songbook</b></div>';
-      }
-      document.querySelector('#dialog .content').innerHTML = content;
-      $('#dialog').slideDown('fast');
-    });
+  
+    let sbs = await songInSongbooks(song_id);
+    if(sbs.length > 0){
+     content += '<div class="left"><br /><b>Used in:</b><br />' + sbs.map(sb => '<a href="#'+sb.doc._id+'&'+window.song._id+'">'+sb.doc.title+'</a>').join('<br />') + '</div>';
+    }
+    else {
+      content += '<div class="left"><br /><b>Not used in any songbook</b></div>';
+    }
+    document.querySelector('#dialog .content').innerHTML = content;
+    $('#dialog').slideDown('fast');
   }
   else{
     $('#dialog h5').text('Songbook');

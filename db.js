@@ -478,8 +478,14 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
 
 function loadSong(song_id) {
   return new Promise(function(resolve, reject) {
-    function createSongHtml(song) {
+    function createSongHtml(song, deleted = false) {
       window.song = song;
+      if(deleted) {
+        $('#song').addClass('deleted');
+      }
+      else {
+        $('#song').removeClass('deleted');
+      }
       var song_html = '<song data-rev="' + song._rev + '" data-id="' + song._id + '" data-user-fav="'+(window.user.fav_songs.indexOf(song._id) > -1 ? 'true' : 'false')+'">' + 
         '<stitle><a data-song class="title_link">' + song.title + '</a><span onclick="event.stopPropagation(); toggleFavSong($(this).closest(\'song\').attr(\'data-id\'))"></span><info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo();"></info></stitle>' +  
         '<authors><author>' + song.authors.join('</author>, <author>') + '</author></authors>' + 
@@ -530,15 +536,28 @@ function loadSong(song_id) {
       db.get(song_id).then(function(song){
         createSongHtml(song);
       }).catch(function (err) {
-        console.log(err);
-        reject('got an error!');
-        //should load the songbook and explain what's up.
+        //Let's load up a deleted song.
+        if(err.reason == 'deleted'){
+          db.get(song_id, {revs: true, open_revs: "all"})
+          .then(function(result){
+            db.get(song_id,{rev:(result[0].ok._revisions.start - 1)+'-'+result[0].ok._revisions.ids[1]})
+            .then(function(song){
+              createSongHtml(song, true);
+            });
+          });
+        }
+        else {
+          console.log(err);
+          reject('got an error!');
+        }
+        //should load the song and explain what's up.
       });
     }  
   });
 }
-function deleteSong(song_id) {
-  if (confirm("Are you sure you want to delete song:\n\n" + window.song.title + "?")) {
+async function deleteSong(song_id) {
+  let sbs = await songInSongbooks(song_id);
+  if (confirm("Are you sure you want to delete song:\n -" + window.song.title + "?\n\nIt is in the following songbooks:\n -" + sbs.map(sb => sb.doc.title).join('\n -') )) {
     db.get(window.song._id).then(function (doc) {
       return db.remove(doc);
     }).then(function(){
@@ -703,7 +722,7 @@ function loadSongbook(songbook_id) {
        
       db.allDocs(options).then(function(result){
         var sb_song_ids = result.rows.map(function (row) {
-          return row.doc._id
+          return row.id
         });
 
         //first delete any songs no longer in the songbook
@@ -718,9 +737,14 @@ function loadSongbook(songbook_id) {
         }
         //Sort then add and update the new ones
         result.rows.sort(function(a, b){
-          if(a.doc.title < b.doc.title) { return -1; }
-          if(a.doc.title > b.doc.title) { return 1; }
-          return 0;
+          if(a.doc){
+            if(a.doc.title < b.doc.title) { return -1; }
+            if(a.doc.title > b.doc.title) { return 1; }
+            return 0;
+          }
+          else {
+            return 0;
+          }
         });
         window.songbook.songrefs = result.rows.map(function (row) {
           return {id: row.id, status: 'n'};

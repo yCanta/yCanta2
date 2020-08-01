@@ -163,6 +163,32 @@ a {
 }
 
 /*CSS FOR Song Display*/
+#song * {
+  transition: none !important;
+}
+.deleted button,
+.deleted a,
+.deleted {
+  color: gray !important;
+}
+.deleted .float-menu {
+  pointer-events: none;
+  cursor: default;
+}
+.deleted:before {
+  position: absolute;
+  display: block;
+  content: 'DELETED';
+  font-weight: bold;
+  color: red;
+  margin-top: .5rem;
+  margin-left: 1rem;
+  z-index: 2;
+}
+li[data-song-deleted="true"] a {
+  color: gray;
+  text-decoration: line-through;
+}
 stitle, cat, author, scrip_ref, key, copyright {
   cursor: pointer;
 }

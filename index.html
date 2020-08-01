@@ -158,7 +158,8 @@
               <li id="song-item-template" 
                   data-song-id=""
                   data-song-rev=""
-                  data-song-search="">
+                  data-song-search=""
+                  data-song-deleted="">
                   <a href="" class="link name" tabindex="0"></a>
               </li>
             </ul>
@@ -175,7 +176,8 @@
                 <li id="song-item-template-edit" 
                   data-song-id=""
                   data-song-rev=""
-                  data-song-search="">
+                  data-song-search=""
+                  data-song-deleted="">
                   <a href="" class="name"tabindex="0" ></a>
                 </li>
               </ul>
@@ -783,6 +785,7 @@
         }
 
         $('.edit_buttons').remove();
+        $('.deleted').removeClass('deleted');
         //if blank - should have to do nothing  
         if(hash == ''){
           $('body').attr('class','header');
