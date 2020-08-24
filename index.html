@@ -44,11 +44,11 @@
       <div>
         <h2 id="title"><a href="#">yCanta</a></h2>
         <span class="loggedin_display" style="position: absolute; top:0;right:0; z-index:1;"><span id="username_d"></span>
-          <button style="background-color:white; opacity: .8;" class="btn" onclick="dbLogout();">Logout</button>
+          <button style="background-color: var(--background-color); opacity: .8;" class="btn" onclick="dbLogout();">Logout</button>
         </span>
         <hr>
       </div>
-      <div style="overflow: auto; height: calc(100% - 75px);">
+      <div style="overflow: auto; height: calc(100vh - 75px);">
 
         <div id="login">
           <h2>Login:</h2>
@@ -108,7 +108,7 @@
         <div class="row">
           <div class="subcolumn">
             <div id="songbooks">
-              <div id="songbooks_header">
+              <div id="songbooks_header" class="column_header">
                 <h3><a class="title_link" href="#songbooks">Songbooks</a></h3>
                 <input aria-label="Search" class="search deletable" type="text" data-target="#songbooks" data-trigger="change" placeholder="Search">
               </div>
@@ -138,7 +138,7 @@
         <div class="row">
           <div class="subcolumn">
             <div id="songbook_content">
-              <div id="songbook_header">
+              <div id="songbook_header" class="column_header">
                 <h3><a data-songbook class="title_link" href="#" id="songbook_title">All Songs</a></h3>
                 <input aria-label="Search" class="search deletable" type="text" data-target="#songbook_content" data-trigger="change" placeholder="Search">
                 <nav id="category_filter_container">
@@ -166,7 +166,7 @@
           </div>
           <div class="subcolumn sidebar" id="songListEdit">
             <div id="songbook_edit_togglesongs" style="width: 240px">
-              <div class="sticky">
+              <div class="column_header">
                 <h3>Add a song?<button onclick="$(this).closest('.sidebar-open').removeClass('sidebar-open');" class="icon-fl-right close-icon">&times;</button></h3>
                 <input aria-label="Search" class="search deletable" type="text" data-target="#songbook_edit_togglesongs" data-trigger="change" placeholder="Search">
               </div>
@@ -201,7 +201,7 @@
           </div>
           <div class="subcolumn sidebar" id="song-edit">
             <div id="categories" style="width: 240px;">
-              <div class="sticky">
+              <div class="column_header">
                 <h3>Song Categories<button onclick="$(this).closest('#song-edit').removeClass('sidebar-open');" class="icon-fl-right close-icon">&times;</button></h3>
                 <input aria-label="Search" class="search deletable" type="text" data-target="#categories" data-trigger="change" placeholder="Search">
               </div>
@@ -229,20 +229,22 @@
         <div class="row">
           <div class="subcolumn">
             <div class="content">
-              <h3 class="export_header">Export</h3>
+              <div class="column_header">
+                <h3 class="export_header">Export</h3>
+              </div>
               <table>
                 <tr>
                   <td>
-                    <button style="background-color: lightgray" class="btn" onclick="download(JSON.stringify(window.exportObject),window.exportObject.title+'.json','application/json')">SaveV2</button>
+                    <button style="background-color: var(--edit-color);" class="btn" onclick="download(JSON.stringify(window.exportObject),window.exportObject.title+'.json','application/json')">SaveV2</button>
                   </td>
                 </tr>
                 <tr>
                   <td>
-                    <button style="background-color: lightgray" class="btn" onclick="makePDF(window.exportObject, document.querySelector('iframe'))">GeneratePDF</button>
+                    <button style="background-color: var(--edit-color);" class="btn" onclick="makePDF(window.exportObject, document.querySelector('iframe'))">GeneratePDF</button>
                   </td>
                   <td style="width: 100%">
                     <div id='pdf_progress_bar' style='border: 1px solid black; position: relative;'>
-                      <div style='border-right: 1px solid gray; background-color: white; width:0%; height:1.2em;text-align: center;' id='pdf_progress'>
+                      <div style='border-right: 1px solid gray; background-color: var(--background-color); width:0%; height:1.2em; text-align: center;' id='pdf_progress'>
                       </div>
                       <span id='pdf_progress_text' style='font-size:small; white-space:nowrap; position: absolute; top:0; right: 0; left: 0; bottom: 0; text-align: center;'></span>
                     </div>
@@ -251,7 +253,7 @@
               </table>
               <br>
               <label for="format">Format</label>
-              <select style="width: 100%; background-color: lightblue; margin: .5em 0 1em 0" class="lbl-toggle" id="format" name="format">
+              <select style="width: 100%; background-color: var(--song-color); margin: .5em 0 1em 0" class="lbl-toggle" id="format" name="format">
               </select>
               <form id="export_form">
                 <input id="collapsible1" class="toggle" type="radio">
@@ -643,27 +645,29 @@
                   </div>
                 </div>
               </form>
-              <button class="btn" id="save_as_default"style="background-color: white" onclick="saveExportDefault();$(this).addClass('bluehighlight'); 
+              <button class="btn" id="save_as_default"style="background-color: var(--background-color);" onclick="saveExportDefault();$(this).addClass('bluehighlight'); 
                 setTimeout(function(){ $('#save_as_default').removeClass('bluehighlight'); }, 300)">Save as my default</button>
-              <button class="btn" id="export_copy" onclick="copyToClipboard(JSON.stringify($('#export_form').serializeArray())); $(this).addClass('bluehighlight'); setTimeout(function(){ $('#export_copy').removeClass('bluehighlight'); }, 300)" style="background-color: white;padding: .15rem .55rem .15rem .55rem;font-size: 1.5rem;">⎘</button>
+              <button class="btn" id="export_copy" onclick="copyToClipboard(JSON.stringify($('#export_form').serializeArray())); $(this).addClass('bluehighlight'); setTimeout(function(){ $('#export_copy').removeClass('bluehighlight'); }, 300)" style="background-color: var(--background-color); padding: .15rem .55rem .15rem .55rem;font-size: 1.5rem;">⎘</button>
               <button class="btn" id="export_paste" onclick="navigator.clipboard.readText().then(text => {
                   set_value_by_id(JSON.parse(text)); $('#paper_margin_top').trigger('change');
                 }).catch(err => {
                   console.error('Failed to read clipboard contents: ', err);
                 }); 
                 $(this).addClass('bluehighlight'); 
-                setTimeout(function(){ $('#export_paste').removeClass('bluehighlight'); }, 300)" style="background-color: white;padding: .5rem .6rem .5rem .6rem;">📋</button>
+                setTimeout(function(){ $('#export_paste').removeClass('bluehighlight'); }, 300)" style="background-color: var(--background-color); padding: .5rem .6rem .5rem .6rem;">📋</button>
             </div>
           </div>
           <div class="subcolumn sidebar" id="exportPreview">
             <div style="width: 280px;">
-              <div class="sticky">
-                <h3>Preview<button onclick="$(this).closest('#exportPreview').removeClass('sidebar-open');" class="icon-fl-right close-icon">&times;</button></h3><input id="auto_refresh" name="auto_refresh" type="checkbox"><label for="auto_refresh">Automatic refresh?</label>
+              <div>
+                <div class="column_header">
+                  <h3>Preview<button onclick="$(this).closest('#exportPreview').removeClass('sidebar-open');" class="icon-fl-right close-icon">&times;</button></h3><input id="auto_refresh" name="auto_refresh" type="checkbox"><label for="auto_refresh">Automatic refresh?</label>
                   <!-- can't seem to get chrome to display this in iframe, objects or any other thingy without crashing on src change.  I get an "awSnap!" message and closed out tab -->
+                </div>
                 <iframe title="Generated PDF" width="320" height="450" src="" title="Presentation Slideshow"></iframe>
                 <br>
                 <br>
-                <a id="downloadPDF" class="btn" style="background-color: lightsalmon;" download>Download</a>
+                <a id="downloadPDF" class="btn" style="background-color: var(--highlight-color);" download>Download</a>
               </div>
             </div>
           </div>

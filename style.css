@@ -1,16 +1,19 @@
 :root {
-  --songbookList-color: lightyellow;
+  --songbookList-color: lemonchiffon;
   --songList-color: lightsalmon;
   --song-color: lightblue;
   --export-color: bisque;
-  --edit-color: lightgray;
-  /*
-  --songbookList-color: white;
-  --songList-color: white;
-  --song-color: white;
-  --export-color: white;
-  --edit-color: white;
-  */
+  --edit-color: gainsboro;
+  
+  --background-color: white;
+  --text-color: black;
+
+  --box-shadow-var: 0 0 20px 2px rgba(0, 0, 0, 0.2);
+/*
+  --background-color: black;
+  --text-color: white;
+  --edit-color: gray;
+*/
 }
 *:focus {
   outline: 1px;
@@ -81,6 +84,8 @@ html::after {
 html, body, main{
   height: 100%; 
   margin: 0;
+  color: var(--text-color);
+  background-color: var(--background-color);
 }
 
 main, header {
@@ -92,7 +97,7 @@ li > a {
 }
 a {
   text-decoration: none;
-  color: black;
+  color: var(--text-color);
 }
 .left {
   text-align: left;
@@ -142,24 +147,25 @@ a {
 
 /*Standard Styling for columns */
 #songbookList {
-  background-color: var(--songbookList-color);
+  --highlight-color: var(--songbookList-color);
   z-index: 1;
 }
 #songList {
-  background-color: var(--songList-color);
+  --highlight-color: var(--songList-color);
   z-index: 2;
 }
 #song {
-  background-color: var(--song-color);
+  --highlight-color: var(--song-color);
   z-index: 3;
 }
 #export {
-  background-color: var(--export-color);
+  --highlight-color: var(--export-color);
   z-index: 4;
 }
 
 .sidebar {
-  background-color: var(--edit-color);
+  --background-color: var(--edit-color);
+  background-color: var(--background-color);
 }
 
 /*CSS FOR Song Display*/
@@ -254,29 +260,14 @@ info:after {
   color: black;
   display: inline-block;
 }
-#songbook_header {
+stitle,
+.column_header {
   position: sticky;
   top: 0;
-  background-color: var(--songList-color);
+  background-color: var(--background-color);
   z-index: 1;
-  padding-top: 0.1px;
-}
-.export_header { 
-  position: sticky;
-  z-index: 1;
-  top: 0;
-  padding-top: 0.1px;
-  background-color: var(--export-color);
-}
-#songbooks_header {
-  position: sticky;
-  top: 0;
-  background-color: var(--songbookList-color);
-  z-index: 1;
-  padding-top: 0.1px;
-}
-stitle {
-  background-color: var(--song-color);
+  margin: 0 -1rem 0 -1rem;
+  padding: 0.1px 1rem 0 1rem;
 }
 .song-highlight a {
   background-color: var(--song-color);
@@ -353,13 +344,6 @@ stitle {
 [contenteditable=true]:empty:not(:focus):before{
   color:grey;
   font-style:italic;
-}
-.sticky {
-  position: sticky;
-  top: 0;
-  padding-top: 0.1px;
-  background-color: var(--edit-color);
-  z-index: 10;
 }
 .pre {
   font-family: monospace;
@@ -440,8 +424,8 @@ ul li {
   border-radius: 2rem;
   padding: 5px 15px 5px 15px;
   display: inline-block;
-  border: 1px solid gray;
   margin: 1rem .5rem 1rem .5rem;
+  color: var(--text-color);
 }
 .btn-small {
   padding: 2px 7px 2px 7px;
@@ -548,6 +532,7 @@ span.deleteicon input {
 }
 .column {
   max-height: 100%;
+  background-color: var(--background-color);
 }
 .subcolumn {
   height: 100%;
@@ -558,17 +543,14 @@ span.deleteicon input {
 .subcolumn > div {
   padding: 0 1rem 0 1rem;
 }
-.column, body.edit .sidebar {
-  box-shadow: 0 0 20px 2px rgba(0, 0, 0, 0.2);
+.column, body.edit .sidebar, body.export .sidebar {
+  box-shadow: var(--box-shadow-var);
   overflow-y: auto;
   overflow-x: hidden;
 }
 .sidebar {
-  border-left: 1.5px solid gray;
   z-index: 7;
-}
-html body .subcolumn.sidebar {
-  box-shadow: none;
+  height: 100%;
 }
 #songbookList, #songList, #song {
   width: 100%;
@@ -577,7 +559,6 @@ html body .subcolumn.sidebar {
 /*Fullscreen*/
 main.fullscreen,
 .fullscreen {
-  background-color: inherit;
   z-index: 11 !important;
   position: fixed !important;
   top: 0 !important;
@@ -759,7 +740,7 @@ input[type="number"] {
 .song .hide_for_songs {
   display: none;
 }
-/*For Mobile devices only*/
+/*For phone in portrait*/
 @media only screen and (max-width: 639px) {
   body .sidebar,
   body.edit .sidebar {
@@ -780,14 +761,18 @@ input[type="number"] {
     border-bottom: 1px solid #EEE;
     border-radius: 20px;
   }
-  .active .row {
-    border-top: 1px solid black;
-  }
   #songbooks,
   #song .content,
   #export .content,
   #songbook_content {
     width: 95vw;
+  }
+
+  body stitle {
+    padding-top: .6rem;
+  }
+  h3 {
+    margin-top: .6rem;
   }
 
   header,
@@ -817,6 +802,7 @@ input[type="number"] {
   .songList main,
   .songList #songbookList {
     transform: translate3d(0, 0, 0);
+    --background-color: var(--highlight-color);
   }
   .songList #songList {
     transform: translate3d(0, 4rem, 0);
@@ -826,6 +812,7 @@ input[type="number"] {
   .song #songbookList,
   .song #songList {
     transform: translate3d(0, 0, 0);
+    --background-color: var(--highlight-color);
   }
   .song #song {
     transform: translate3d(0, 4rem, 0);
@@ -833,7 +820,7 @@ input[type="number"] {
 
   .sidebar {
     position: fixed;
-    border-top: 1.5px solid black;
+    border-top: 8px solid var(--highlight-color);
     top: 0;
     bottom: 0;
     right: 0;
@@ -857,6 +844,7 @@ input[type="number"] {
   .export #songList,
   .song.export #song {
     transform: translate3d(0, 0, 0);
+    --background-color: var(--highlight-color);
   }
   .export #export {
     transform: translate3d(0, 4rem, 0);
@@ -868,6 +856,7 @@ input[type="number"] {
     transform: translate3d(0, 0, 0);
   }
 }
+/** Phone in landscape **/
 @media only screen and (max-height: 500px) and (min-width: 640px) {
   .songList #header,
   .song #header,
@@ -883,6 +872,7 @@ input[type="number"] {
     margin-top: .5rem;
   }
 }
+/** Phone in portrait and landscape**/
 @media only screen and (max-width: 639px),
 only screen and (max-height: 500px) {
   main, header {
@@ -897,6 +887,10 @@ only screen and (max-height: 500px) {
   }
   .edit song {
     margin-bottom: 10rem;
+  }
+
+  .row {
+    border-top: 8px solid var(--highlight-color);
   }
 
   /*float for mobile*/
@@ -932,9 +926,9 @@ only screen and (max-height: 500px) {
     width: 2em;
     height: 2em;
     line-height: 2em;
-    background-color: lightgray;
+    background-color: var(--highlight-color);
     border-radius: 20em;
-    border: 1px solid gray;
+
   }
   .float-menu .float-menu-item.float-menu-editing {
     height: 0;
@@ -954,7 +948,7 @@ only screen and (max-height: 500px) {
     right: auto;
   }
 }
-/*larger screens only */
+/*larger screen and landscape phone */
 @media only screen and (min-width: 640px){
   body {
     display: flex;
@@ -977,7 +971,6 @@ only screen and (max-height: 500px) {
   main {
     flex: 0 1 100%;
     display: flex;
-    background-color: lightgray;
     overflow-y: hidden;
   }
   body {
@@ -998,8 +991,9 @@ only screen and (max-height: 500px) {
   body main .sidebar {
     flex: 0 0 0;
   }
-
-  /* */
+  #column-filler {
+    background-color: var(--edit-color);
+  }
   .row {
     flex: 0 1 auto;
     display: flex;
@@ -1086,9 +1080,6 @@ only screen and (max-height: 500px) {
   #column-filler {
     flex: 1 1 auto;
   }
-  .column:first-child .row {  
-    border-left: 1px solid gray;  
-  }
   .close-icon {
     display: none;
   }
@@ -1102,9 +1093,11 @@ only screen and (max-height: 500px) {
   }
   body.song #songbookList .title_link {
     transform:  translate3d(-10%, -50%, 0) rotate(-90deg);
-    background-color: var(--songbookList-color);
     z-index: 10;
     display: block;
+  }
+  body.song #songbookList #songbooks_header {
+    background-color: var(--songbookList-color);
   }
   body.song #songbookList a {
     height: 15rem;
@@ -1121,13 +1114,13 @@ only screen and (max-height: 500px) {
     width: 400px;
   }
 }
+/**larger than phone landscape or otherwise**/
 @media only screen and (min-width: 640px) and (min-height: 501px){
   .float-menu:not(:last-child) {
     display: flex;
     flex-direction: row-reverse;
     width: 100%;
     top: 0;
-    background-color: white;
     border-bottom: 2px solid black;
     height: 2.2em;
     padding-right: 1rem;
@@ -1137,6 +1130,12 @@ only screen and (max-height: 500px) {
   }
   .float-menu-item:not(:first-child):after {
     content: ' //';
+  }
+  .float-menu {
+    background-color: var(--highlight-color);
+  }
+  .column:first-child .row {  
+    border-left: 1px solid lightgray;  
   }
 }
 /* smartphones, touchscreens */
