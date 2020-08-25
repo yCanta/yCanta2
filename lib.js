@@ -1163,8 +1163,8 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
       active.style.removeProperty('transition');
     }
     dragEl.style.removeProperty('transform');
-    dragEl.style.removeProperty('transition');
     document.body.classList.remove('revertBackground');
+    dragEl.style.removeProperty('transition');
   }, false); 
 }
 
