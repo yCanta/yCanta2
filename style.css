@@ -535,6 +535,7 @@ span.deleteicon input {
 .column {
   max-height: 100%;
   background-color: var(--background-color);
+  contain: strict;
 }
 .subcolumn {
   height: 100%;
@@ -1008,7 +1009,6 @@ only screen and (max-height: 500px) {
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
-    contain: strict;
   }
   .subcolumn {
     flex: 1 1 400px;
