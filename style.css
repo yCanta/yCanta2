@@ -72,6 +72,9 @@ body, body *,
 .no-overscroll, .no-overscroll *{
   overscroll-behavior: contain;
 }
+body {
+  background-color: var(--background-color);
+}
 html::after {
   border-bottom: 5px solid green;
   z-index: 10;
@@ -85,7 +88,6 @@ html, body, main{
   height: 100%; 
   margin: 0;
   color: var(--text-color);
-  background-color: var(--background-color);
 }
 
 main, header {
@@ -826,6 +828,10 @@ input[type="number"] {
     right: 0;
     width: 280px;
     transform: translate3d(280px, 0, 0);
+  }
+
+  body.revertBackground .column {
+    --background-color: inherit !important;
   }
 
   /*Focus edit*/

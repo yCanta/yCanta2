@@ -1113,6 +1113,7 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
           active.style.transition = 'all 0s';
         }
         dragEl.style.transition = 'all 0s';
+        document.body.classList.add('revertBackground');
         //e.preventDefault();
       }
       else {
@@ -1163,6 +1164,7 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
     }
     dragEl.style.removeProperty('transform');
     dragEl.style.removeProperty('transition');
+    document.body.classList.remove('revertBackground');
   }, false); 
 }
 
