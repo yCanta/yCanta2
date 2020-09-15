@@ -646,16 +646,15 @@ input[type='radio'].toggle {
 }
 .lbl-toggle {
   display: block;
-
   font-weight: bold;
   font-family: monospace !important;
   font-size: 1.2rem;
   text-transform: uppercase;
-
   padding: 0.5rem;
   background: var(--song-color);
   cursor: pointer;
   border-radius: 8px;
+  border: none;
 }
 .lbl-toggle::before {
   transform: rotate(0) translateX(0) translateY(-2px);

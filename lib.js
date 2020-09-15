@@ -507,7 +507,7 @@ function bindSearchToList(list, id){
 }
 
 function bindToSongEdit() {
-  $('#song').on('change', '[type="checkbox"]', function() {
+  $('#song #categories').on('change', '[type="checkbox"]', function() {
     //add/remove categories as checkboxes are modified
     var cats = $('categories').text().trim();
     if(cats != ''){
@@ -839,10 +839,10 @@ function editSong() {
   $('#song authors').html($('#song author').map(function(){return $(this).text();}).get().join(', '));
   $('#song categories').html($('#song cat').map(function(){return $(this).text();}).get().join(', '));
   $('#song scripture_ref').html($('#song cat').map(function(){return $(this).text();}).get().join(', '));
-  $('#song').first('.subcolumn').find('stitle .title_link,authors,scripture_ref,introduction,key,chunk,copyright').toTextarea({
+  $('#song').first('.subcolumn').find('stitle .title_link,authors,scripture_ref,introduction,key,chunk,copyright,cclis').toTextarea({
     allowHTML: false,//allow HTML formatting with CTRL+b, CTRL+i, etc.
     allowImg: false,//allow drag and drop images
-    doubleEnter: true,//make a single line so it will only expand horizontally
+    doubleEnter: true,//have double enter create a second field
     singleLine: false,//make a single line so it will only expand horizontally
     pastePlainText: false,//paste text without styling as source
     placeholder: false//a placeholder when no text is entered. This can also be set by a placeholder="..." or data-placeholder="..." attribute
@@ -851,6 +851,19 @@ function editSong() {
     .on('click', function(){
       $('#song-edit').toggleClass('sidebar-open').find('.search').focus();
     });
+  let cclis_text = $('cclis').text().replace('CCLIS: ', '');
+  $('#song cclis').before('<label>CCLIS: <input id="cclis_checkbox" onchange="$(\'cclis\').toggle();"'+(cclis_text ? 'checked' : '')+' type="checkbox"></input> </label>');  
+  if(cclis_text){
+    $('cclis').show();
+    if(isNaN(cclis_text.replace('CCLIS: ',''))){
+      cclis_text = '';
+    }
+    $('cclis').text(cclis_text);
+  }
+  else {
+    $('cclis').hide();
+  }
+
   window.editing = true;
 
   //load categories
@@ -869,7 +882,7 @@ function editSong() {
     window.categories_list = new List('categories', options, values);
     bindSearchToList(window.categories_list, '#categories');
     //set checkboxes
-    $('#song [type="checkbox"]').prop("checked", false);
+    $('#categories [type="checkbox"]').prop("checked", false);
     $('categories').text().split(',').forEach(function(cat){
       if(cat.trim()!= ''){
         $('label span:contains("'+cat.trim()+'")').prev().prop("checked", true);
@@ -892,6 +905,7 @@ function prepSaveSong(element) {
     window.editing=false;
   }
   return new Promise(function(resolve, reject) {
+    $('#song song').hide();
     $('#song').first('.subcolumn').find('song').children().attr('contenteditable', 'false');
     $('song chunk').each(function(index){
       var lines = $(this).html().split('\n');
@@ -911,6 +925,14 @@ function prepSaveSong(element) {
       });
       $(this).html(content);
     });
+    if($('#cclis_checkbox')[0].checked){
+      if(!$('cclis').text()){
+        $('cclis').text('on');
+      }
+    }
+    else {
+      $('cclis').text('');
+    }
     resolve('song is prepped for saving');
   }).then(function() {
     return saveSong(window.song._id);

@@ -82,6 +82,10 @@ chunk:before {
   margin-top: 1em;
   margin-bottom: 0em;
 }
+.edit cclis {
+  display: inline-block;
+  width: 5rem;
+}
 .edit chunk {
   margin-bottom: 1em;
 }
@@ -115,11 +119,9 @@ copyright {
 introduction:before {
  content: ''; 
 }
-cclis:not(:empty):before {
-  content: 'CCLI'; visibility: visible;
+cclis {
   margin-bottom: 2em;
 }
-cclis {visibility: hidden;}
 stitle[contentEditable=true]:empty:before{
   content: 'Title ';
 }

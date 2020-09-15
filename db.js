@@ -370,6 +370,9 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
       song.key          = song_html.find('key').text();
       song.categories   = song_html.find('categories').text().split(',').map(Function.prototype.call, String.prototype.trim);
       song.cclis        = song_html.find('cclis').text();
+      if(song.cclis & isNaN(song.cclis)){
+        song.cclis = 'on';
+      }
       //Compile Song Content, a list of lists.  Chunks and lines
       var chunks = [];
       song_html.find('chunk').each(function(){
@@ -493,7 +496,7 @@ function loadSong(song_id) {
         '<introduction>' + song.introduction + '</introduction>' + 
         '<key>' + song.key + '</key>' + 
         '<categories><cat>' + song.categories.sort().join('</cat>, <cat>') + '</cat></categories>' + 
-        '<cclis>' + (song.cclis != false ? true : '') + '</cclis>';
+        '<cclis>' + (song.cclis != false ? 'CCLIS' + (!isNaN(song.cclis) ? ': '+song.cclis: '') : '') + '</cclis>';
       song.content.forEach(function(chunk){
         song_html += '<chunk type="' + chunk[0].type + '">';
         chunk[1].forEach(function(line){
@@ -506,12 +509,6 @@ function loadSong(song_id) {
       $('#song .content').html(song_html);
       resolve("song_loaded");
 
-      bindSearch('cat', 'c:');
-      bindSearch('author', 'a:');
-      bindSearch('scrip_ref', 's:');
-      bindSearch('stitle', 't:');
-      bindSearch('key', 'k:');
-      bindSearch('copyright', 'c:');      
       $('#song key').transpose();
       if($('#dialog')[0].style.display=="block") {loadInfo()}
     }
