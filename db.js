@@ -13,6 +13,7 @@ function updateOnlineStatus(event) {
   online = navigator.onLine;
   console.log("beforeend", "Event: " + event.type + "; Status: " + condition);
 }
+//Update Online status
 window.addEventListener('load', function() {
   function update(event) {
     updateOnlineStatus(event);
@@ -268,7 +269,7 @@ function dbLogout(){
     });
   }
 
-/*
+  /*
 
   syncHandler.on('complete', function (info) {
     // replication was canceled!
@@ -276,8 +277,7 @@ function dbLogout(){
 
   syncHandler.cancel(); // <-- this cancels it
 
-*/
-
+  */
 }
 
 function initializeSongbooksList(){
@@ -387,7 +387,7 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
       song.content      = chunks;
       song.copyright    = song_html.find('copyright').text();
 
-//Put together Search field.
+  //Put together Search field.
       let punctuation = /[^a-zA-Z0-9\s:-]/g;
 
       function formatArray(array, letter){
@@ -850,6 +850,79 @@ function addSongToSongbook(song_id, songbook_id=window.songbook._id) {
   }
 }
 
+function loadRawDbObject(rawDb_id, element_drop) {
+  console.log(rawDb_id);
+  if(rawDb_id != 'categories' && rawDb_id != window.user._id){
+    alert('yo! Stop it!');
+    return;
+  }
+  db.get(rawDb_id).then(function(json_object){
+    const keys = Object.keys(json_object);
+
+    let html_string = '<div id="rawObRoot" data-id="'+json_object['_id']+'" data-rev="'+json_object['_rev']+'"><h3>File_Id: '+json_object['_id']+'</h3></div>';
+
+    keys.forEach((key, index) => {
+      if(key != '_id' && key != '_rev'){
+        let key_content;
+        let key_content_type = typeof(json_object[key]);
+        //Array in the key, then
+        if(Array.isArray(json_object[key])) {
+          key_content = json_object[key].join('\n');
+          key_content_type = 'array';
+        }
+        else if(key_content_type == "string" || key_content_type == "number") {
+          key_content = json_object[key];
+        }
+        html_string += `<div class="key" data-name="${key}"><h4>Field: ${key}</h4><pre class="key_content" data-content-type="${key_content_type}">${key_content}</pre></div>`;
+      }
+    });
+
+    html_string += '<button class="btn" onclick="$(\'#raw_edit\').html(\'\');" style="background-color: var(--background-color);">Cancel</button><button class="btn" onclick="saveRawDbObject($(\'#raw_edit\'));" style="background-color: var(--background-color);">Save</button>'
+
+    element_drop.html(html_string);
+    $('.key_content').toTextarea({
+    allowHTML: false,//allow HTML formatting with CTRL+b, CTRL+i, etc.
+    allowImg: false,//allow drag and drop images
+    doubleEnter: false,//have double enter create a second field
+    singleLine: false,//make a single line so it will only expand horizontally
+    pastePlainText: true,//paste text without styling as source
+    placeholder: false//a placeholder when no text is entered. This can also be set by a placeholder="..." or data-placeholder="..." attribute
+  });
+  }).catch(function (err) {
+    console.log(err);
+    reject('got an error!');
+  });
+}
+function saveRawDbObject(html) {
+  let json_object = {};
+  json_object._id = html.find('#rawObRoot').attr('data-id');
+  json_object._rev = html.find('#rawObRoot').attr('data-rev');
+
+  if(json_object._id != 'categories' && json_object._id != window.user._id){
+    alert('yo! Stop it!');
+    return;
+  }
+
+  let keys = html.find('.key')
+  
+  for(i = 0; i < keys.length; i++){
+    let key_content = $(keys[i]).find('.key_content').text();
+    let key_content_type = $(keys[i]).find('.key_content').attr('data-content-type');
+    console.log(key_content_type);
+    if(key_content_type == 'array'){
+      key_content = key_content.split('\n');
+    }
+    json_object[keys[i].getAttribute('data-name')] = key_content;
+  }
+
+  db.put(json_object).then(function(result) {
+    console.log('Successfully updated: ', result);
+  }).catch(function(result){
+    console.log("Error - couldn't make it work", result);
+  });
+  html.html('');
+}
+
 function saveExportDefault() {
   let opts = $('#export_form').serializeArray();
   $('#user_export_pref').attr('value',JSON.stringify(opts));
@@ -871,7 +944,6 @@ function saveExportDefault() {
     console.log("id of record: " + info.id);
   });
 }
-
 function toggleFavSongbook(id){
   db.get(window.user._id).then(function(user){
     let i = -1;
@@ -919,27 +991,3 @@ function toggleFavSong(id) {
   });
 }
 
-
-var song = {
-  _id: 's-aSong.song',
-  title: 'Jesu Jesu',
-  authors: ['Tom Colvin', 'yolo'],
-  scripture_ref: ['1 Cor 1:13'],
-  introduction: '',
-  key: 'E',
-  categories: ["Humility", "Love for Others", "Servanthood", "Children's Songs"],
-  cclis: true,
-  content: [[{type: 'chorus'},
-    ["<c>E</c>Jesu, Jesu,",
-    "Fill us with you <c>A</c>love,",
-    "Show us how to <c>E</c>serve",
-    "The neighbors we<c>B</c> have from <c>E</c>You."]],
-    [{type: 'verse'},
-    ["<c>E</c>Jesu, Jesu,",
-    "Fill us with you <c>A</c>love,",
-    "Show us how to <c>E</c>serve",
-    "The neighbors we<c>B</c> have from <c>E</c>You."]]
-    ],
-  copyright: '© 1969 Hope Publishing Company',
-  search: "t:Jesu Jesu a:Tom Colvin a:yolo s:!s i:!i k:E c:Children's Songs c:Humility c:Love for Others c:Servanthoodcp:© 1969 Hope Publishing CompanycclisJesu, Jesu, Fill us with you love, Show us how to serve The neighbors we have from You. Jesu, Jesu, Fill us with you love, Show us how to serve The neighbors we have from You. "
-};

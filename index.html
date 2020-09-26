@@ -77,8 +77,11 @@
           <h2>Brief Introduction</h2>
 
           You can view songbooks or songs by selecting one of the above buttons.<br><br>
-          
+
           <h2>Utilities</h2>
+          <a class="btn" href="#" onclick="loadRawDbObject('categories',$('#raw_edit'));">Edit Categories</a>
+          <a class="btn" href="#" onclick="loadRawDbObject(window.user._id,$('#raw_edit'));">Edit User</a>
+          <div id="raw_edit"></div><br>
           <div>
           To import more songs, choose a zip of V1 songs or a json file of V2 and upload it below.</div>
           <label class="btn">Upload songs:<input type="file" id="file" name="file" accept=".json,.zip" />

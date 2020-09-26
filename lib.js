@@ -844,7 +844,7 @@ function editSong() {
     allowImg: false,//allow drag and drop images
     doubleEnter: true,//have double enter create a second field
     singleLine: false,//make a single line so it will only expand horizontally
-    pastePlainText: false,//paste text without styling as source
+    pastePlainText: true,//paste text without styling as source
     placeholder: false//a placeholder when no text is entered. This can also be set by a placeholder="..." or data-placeholder="..." attribute
   });
   $('#song categories').addClass('contenteditable-disabled').prop('tabindex',"0")
