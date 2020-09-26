@@ -1178,6 +1178,7 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
       else if (startx && dragSide == 'top' && disty > 200 ){
         dragAction();
         e.preventDefault();
+        return; // don't fix layout just yet - we'll do that after hashchange.
       }
     }
     if(active) {
