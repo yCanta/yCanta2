@@ -18,6 +18,7 @@
 *:focus {
   outline: 1px;
   outline-color: transparent;
+  border-radius: 2rem;
   box-shadow: 0 0 0 2px rgba(0, 123, 255, .5) !important;
 }
 *{
@@ -28,6 +29,15 @@
 "Droid Sans", "Helvetica Neue", sans-serif;
 }
 /*normalize*/
+html {
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+  -webkit-tap-highlight-color: transparent; /* For some Androids */
+}
+.link:active,
+.float-menu-icon:active,
+.btn:active {
+  -webkit-transform: scale3d(0.9, 0.9, 1);
+}
 button,
 input,
 optgroup,
@@ -773,12 +783,6 @@ input[type="number"] {
     border-top: 1px solid #EEE;
     border-bottom: 1px solid #EEE;
     border-radius: 20px;
-  }
-  #songbooks,
-  #song .content,
-  #export .content,
-  #songbook_content {
-    width: 95vw;
   }
 
   body stitle {
