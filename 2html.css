@@ -28,13 +28,20 @@ line {
   display: block;
   position: relative;
   padding-top: 1em;
+  line-height: 2;
+}
+line::first-line {
+  line-height: initial;
 }
 .nochords line {
- padding-top: 0em;
+  line-height: initial;
+  padding-top: 0;
 }
 c {
- position: absolute;
- bottom: 1em;
+ position: relative;
+ top: -1em;
+ display: inline-block;
+ width: 0;
 }
 .nochords c {
  display: none;
