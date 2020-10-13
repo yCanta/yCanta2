@@ -581,6 +581,7 @@ main.fullscreen,
   left: 0 !important;
   transform: translate3d(0,0,0) !important;
   height: 100vh !important;
+  margin: 0;
 }
 
 /*Focus Present */
