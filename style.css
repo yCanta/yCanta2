@@ -181,7 +181,7 @@ a {
 }
 
 /*CSS FOR Song Display*/
-#song * {
+#song song * {
   transition: none !important;
 }
 .deleted button,
@@ -388,8 +388,8 @@ stitle,
 }
 .icon-fl-right {
   float: right;
-  width: 1.5em;
-  height: 1.5em;
+  width: 1.75em;
+  height: 1.75em;
   text-align: center;
 }
 .active .float-menu-item{
@@ -421,8 +421,9 @@ ul li {
   list-style-type: none;
 }
 .close-icon {
-  border: 1px solid black;
   border-radius: 5em;
+  background-color: var(--highlight-color);
+  box-shadow: var(--box-shadow-var);
 }
 .songbookList-color {
   background-color: var(--songbookList-color);
@@ -1016,7 +1017,7 @@ only screen and (max-height: 500px) {
     background-color: var(--edit-color);
   }
   .row {
-    flex: 0 1 auto;
+    flex: 1 1 auto;
     display: flex;
   }
   .column {
@@ -1132,7 +1133,7 @@ only screen and (max-height: 500px) {
   }
   #song .content,
   #songbook_content {
-    width: 400px;
+    min-width: 400px;
   }
 }
 /**larger than phone landscape or otherwise**/

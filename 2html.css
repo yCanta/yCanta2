@@ -15,8 +15,10 @@ stitle {
   padding-top: 1em;
   top: 0;
   z-index: 1;
+  column-span: all;
 }
 chunk {
+  break-inside: avoid;
   position: relative;
   display: block;
   margin-left: 2em;
@@ -40,18 +42,22 @@ c {
 
 /*counter stuff  */
 song {
- display: block;
- white-space: pre-wrap;
- counter-reset: verse_n; 
- margin-bottom: 3rem;
+  display: block;
+  white-space: pre-wrap;
+  counter-reset: verse_n; 
+  padding-bottom: 3rem;
+  column-width: 300px;
+  column-fill: auto;
+  column-rule: 2px solid var(--edit-color);
+  column-gap: 4rem;
 }
 .nochords [type=verse]:before {
   top: 1.2em;
 }
 [type=verse]:before {
- top: 2.1em;
- content: counter(verse_n) ")";
- counter-increment: verse_n;
+  top: 2.1em;
+  content: counter(verse_n) ")";
+  counter-increment: verse_n;
 }
 /*end of counter stuff */
 chunk:before {

@@ -1105,7 +1105,7 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
   let disty = 0;
   let width = 0;
   let height = 0;
-  let active;
+  let active, revert;
 
   dragEl.addEventListener('touchstart', function(e){
     //document.documentElement.classList.add('no-overscroll');
@@ -1115,6 +1115,7 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
     width = getTranslate3d(dragEl)[4]; // get original translateX value
     height = getTranslate3d(dragEl)[5]
     active = document.getElementsByClassName('active')[0];
+    revert = true;
 
     // only do stuff if in right place
     if (dragSide == 'right' && screen.width < 640){
@@ -1135,7 +1136,6 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
           active.style.transition = 'all 0s';
         }
         dragEl.style.transition = 'all 0s';
-        document.body.classList.add('revertBackground');
         //e.preventDefault();
       }
       else {
@@ -1157,6 +1157,10 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
         dragEl.style.transform = 'translate3d('+ parseInt((dist)) + 'px, 0, 0)';
       }
       else if (dragSide == 'top'){
+        if(revert){
+          document.body.classList.add('revertBackground');
+          revert = false;
+        }
         dragEl.style.transform = 'translate3d(0,'+ parseInt((disty)) + 'px, 0)';
         if(active){
           active.style.transform = 'translate3d(0,'+ parseInt((disty+60)) + 'px, 0)';
@@ -1229,6 +1233,9 @@ function confirmWhenEditing() {
       window.editing=false; //It's ok to lose changes
       return false;
     } else { //we aren't leaving 
+      //reset the style elements on all columns
+      $('.column').removeAttr('style');
+      document.body.classList.remove('revertBackground');
       return true;
     }
   }
