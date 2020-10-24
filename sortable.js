@@ -63,6 +63,10 @@ function dragDrop( e, selector='li' ) {
     dataxInBookUpdate(selected);
     song = selected.cloneNode(true);
     bind_songbook_edit(song);
+    if($(song).attr('data-song-id')=="section"){
+      add_edit_pencil(song);
+    }
+
     $(song).find('a').after('<button>&#128465;</button>');
     $(song).find('button')[0].addEventListener('click', function( e ) {
       dataxInBookUpdate(song, true);

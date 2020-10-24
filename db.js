@@ -610,20 +610,24 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
       var songs = [];
       if(songbook_html.find('.list li').length > 0){
         songbook_html.find('.list li').each(function(){
-          songs.push({id: $(this).attr('data-song-id'),
-                      status: 'n',
-                      key: 'Am',
-                      comments: ['Hi']
-                    });
-          });
+          let song_id = $(this).attr('data-song-id');
+          if(song_id == 'section') {
+            songs.push({id: song_id, title: $(this).children("a").text()});
+          }
+          else{
+            songs.push({id: song_id, status: 'n', key: 'Am'});
+          }
+        });
       }
       else {
-        songbook_html.find('songref').each(function(){
-          songs.push({id: $(this).attr('ref'),
-                      status: $(this).attr('status'),
-                      key: 'Am',
-                      comments: ['Hi']
-                    });
+        songbook_html.find('songref, section').each(function(){
+          console.log(this.nodeName.toLowerCase());
+          if(this.nodeName.toLowerCase() == "section"){
+            songs.push({id: "section", title: $(this).attr('title')});
+          }
+          else {
+            songs.push({id: $(this).attr('ref'), status: $(this).attr('status'), key: 'Am'});
+          }
         });
       }
       songbook.songrefs = songs;
@@ -789,8 +793,17 @@ function loadSongbook(songbook_id) {
         db.allDocs({
           include_docs: true,
           keys: sb_song_ids, //we need error handling for missing ids
-        }).then(function (result) {
-          buildSongbookList(result.rows);
+        }).then(function (song_ref_result) {
+          let songbook_build = [];
+          for(item of result.songrefs){
+            if(item.id=="section"){
+              songbook_build.push(item);
+            }
+            else {
+              songbook_build.push(song_ref_result.rows.filter(obj => obj.id === item.id)[0]);
+            }
+          }
+          buildSongbookList(songbook_build);
         }).catch(function (err) {
           console.log(err);
         });

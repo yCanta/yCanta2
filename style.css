@@ -206,6 +206,21 @@ li[data-song-deleted="true"] a {
   color: gray;
   text-decoration: line-through;
 }
+li[data-song-id="section"] {
+  border-bottom: 2px solid var(--edit-color);
+  background-color: var(--highlight-color);
+  border-top-left-radius: 1rem;
+  border-top-right-radius: 1rem;
+  font-weight: bold;
+}
+li[data-song-id="section"] a {
+  border: none !important;
+  pointer-events: none;
+}
+.edit_pencil {
+  margin-right: 1.5rem;
+  font-size: .7rem;
+}
 stitle, cat, author, scrip_ref, key, copyright {
   cursor: pointer;
 }
@@ -340,7 +355,7 @@ stitle,
 .edit #songbook_content li button {
   position: absolute;
   right: .5em;
-  bottom: .7rem;
+  bottom: .5rem;
 }
 [contenteditable='true'], .contenteditable-disabled {
   border: 1px gray dashed;
@@ -876,6 +891,13 @@ input[type="number"] {
   }
   .export #export .sidebar-open {
     transform: translate3d(0, 0, 0);
+  }
+
+  /*Left Slide out */
+  .lSlideOut{
+    transform: translate3d(0,4rem,0) !important;
+    z-index: 4 !important;
+    width: 300px !important;
   }
 }
 /** Phone in landscape **/

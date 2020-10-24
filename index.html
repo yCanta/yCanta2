@@ -933,7 +933,7 @@
                   include_docs: true,
                   keys: sb_song_ids, //we need error handling for missing ids
                 }).then(function (result) {
-                  window.exportObject.songs = result.rows;
+                  window.exportObject.songs = result.rows.filter(song => song.key != "section");
                   //PREPROCESS THE SONGBOOK OBJECT
                   let procesed_song = [];
                   for(song of window.exportObject.songs) {
@@ -978,7 +978,7 @@
                   keys: sb_song_ids, //we need error handling for missing ids
                 }).then(function (result) {
                   //Save json object to data id'd element
-                  let myString = JSON.stringify({songs: result.rows, title: window.songbook.title});
+                  let myString = JSON.stringify({songs: result.rows.filter(song => song.key != "section"), title: window.songbook.title});
                   let presHtml = '';
 
                   //load the presentation.html, jquery and presentation.js file into their spots.
