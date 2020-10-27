@@ -72,6 +72,12 @@ function dragDrop( e, selector='li' ) {
       dataxInBookUpdate(song, true);
       scaleRemove(song);
     });
+    $(song).attr('data-song-status','n')[0].addEventListener('click', function(e) {
+      if(window.editing && window.songbook.showStatus && e.offsetX < 20){
+        e.preventDefault();
+        cycleStatus(this);
+      }
+    });
     if(li.nodeName === 'UL'){  //This catches empty lists
       li.append(song);
     }

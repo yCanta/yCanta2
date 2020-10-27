@@ -612,14 +612,21 @@ function mapSongbookRowToValue(row) {
   };
 }
 function mapSongRowToValue(row) {
-  let id, rev, search, title, deleted;
+  let id, rev, search, status, title, deleted;
   deleted = false;
+  if(row.status === undefined){  status = "";}
+  else {status = row.status;}
+  try { 
+    if(row.deleted || row.value.deleted){ deleted = true;}
+  }
+  catch {}
+
   if(row.id=="section"){
     id = row.id;
     search = row.title;
     title = row.title;
   }
-  else if(row.deleted || row.value.deleted){
+  else if(deleted){
     deleted = true;
     id = row.id;
     try {
@@ -629,17 +636,20 @@ function mapSongRowToValue(row) {
       rev = row.doc._id;
     } 
     search = "";
+    status = status;
     title = "Deleted";
   }
   else {
     id = row.doc._id;
     rev = row.doc._rev;
     search = row.doc.search;
+    status = status;
     title = row.doc.title;
   }
   return { 'song-id':           id,
     'song-rev':                 rev,
     'song-search':              search,
+    'song-status':              status,
     'song-deleted':             deleted,
     'link': '#'+window.songbook._id+'&'+id,
     'name': title
@@ -654,6 +664,7 @@ function buildSongbookList(songs, target_class='songbook_content',
       { data: ['song-id'] },
       { data: ['song-rev'] },
       { data: ['song-search'] },
+      { data: ['song-status'] },
       { data: ['song-deleted'] },
       { name: 'link', attr: 'href'},
       'name'
@@ -694,7 +705,7 @@ function buildSongbookList(songs, target_class='songbook_content',
   if(edit != true) {
     window.songbook_list = new List(target_class, options, values);
     bindSearchToList(window.songbook_list, '#songbook_content');
-    $('#songbook_content input').trigger('change')[0].dispatchEvent(new KeyboardEvent("keyup"));
+    $('#songbook_header input').trigger('change')[0].dispatchEvent(new KeyboardEvent("keyup"));
   }
   else{
     window.songbook_edit_togglesongs_list = new List(target_class, options, values);
@@ -759,6 +770,17 @@ function add_edit_pencil(song){
     $(e.target).parent().children('a').text(input);
   });
 }
+function cycleStatus(e) {
+  if($(e).attr('data-song-status')=='n'){
+    $(e).attr('data-song-status','a');
+  }
+  else if($(e).attr('data-song-status')=='a'){
+    $(e).attr('data-song-status','r');
+  }
+  else if($(e).attr('data-song-status')=='r'){
+    $(e).attr('data-song-status','n');
+  }
+}
 
 function editSongbook() {
   let buttons = '<div class="edit_buttons"><button data-songbook class="btn" style="background-color: lightgray;" onclick="saveSongbook(parseHash(\'sb-\'));">Save</button>';
@@ -770,8 +792,9 @@ function editSongbook() {
 
   $('#songList #songbook_title').attr('contenteditable', 'true');
   $('#songList #songbook_content input.search').parent().addClass('disabled-hidden')[0].disabled=true;
-  $('#songList #songbook_content nav').addClass('disabled-hidden');    
-
+  $('#songList #songbook_content nav').addClass('disabled-hidden');
+  $('#songbook_header').append('<span class="edit_buttons">Song Status: <label id="showStatusID" class="switch" onchange="(this.firstElementChild.checked ? ($(\'#songbook_content\').addClass(\'showStatus\'), window.songbook.showStatus=true) : ($(\'#songbook_content\').removeClass(\'showStatus\'), window.songbook.showStatus=false) );"><input type="checkbox" id="statusON"' + (window.songbook.showStatus ? 'checked': '') +'><div class="slider"></div></label> ');//+
+                              //Comments: <label class="switch"><input type="checkbox" id="commentsON"><div class="slider"></div></label></span>');
   //load all the songs into song adder
   db.allDocs({
     include_docs: true,
@@ -825,6 +848,12 @@ function editSongbook() {
           dataxInBookUpdate(copySong, true);
           scaleRemove(copySong);
         });
+        $(copySong).attr('data-song-status','n')[0].addEventListener('click', function(e) {
+          if(window.editing && window.songbook.showStatus && e.offsetX < 20){
+            e.preventDefault();
+            cycleStatus(this);
+          }
+        });
         $('#songbook_content .list').append(copySong);
         $('#songbook_content .list li:last-child')[0].scrollIntoView();
       });
@@ -833,6 +862,14 @@ function editSongbook() {
       this.addEventListener('drop', dragDrop, false);
       this.addEventListener('dragover', dragOver, false);
     });
+    $('#songbook_content li').each(function(){
+      this.addEventListener('click', function(e) {
+        if(window.editing && window.songbook.showStatus && e.offsetX < 20){
+          e.preventDefault();
+          cycleStatus(this);
+        }
+      })
+    })
     $('#songList #songbook_title').parent().removeAttr('href');
   }).catch(function(err){
     console.log(err);
@@ -993,6 +1030,12 @@ function prepExport(){
     }
     innerhtml += "<option value='[]'>Custom</option>";
     $('#format').html(innerhtml).trigger('change');
+    if(window.songbook.showStatus){
+      $('#export').addClass('showStatus');
+    }
+    else { 
+      $('#export').removeClass('showStatus'); 
+    }
   });
 
 }
@@ -1073,13 +1116,13 @@ function export_form_summary_update() {
   document.getElementById('ccli_summary').innerHTML = 'CCLI: ' + (document.getElementById('ccli').value || 'none');
   let print_summary = '';
   if(document.getElementById('print_a').checked){
-    print_summary += '👍';
+    print_summary += '✓';
   }
   if(document.getElementById('print_n').checked){
-    print_summary += '⏱️';
+    print_summary += '~';
   }
   if(document.getElementById('print_r').checked){
-    print_summary += '👎';
+    print_summary += '✗';
   }
   if(print_summary == ''){
     print_summary = 'all';

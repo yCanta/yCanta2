@@ -294,7 +294,6 @@ function parse(export_object, cfg) {
 
   // iterate through all songs in the songbook
   for(let i = 0; i < export_object.songs.length; i++) {
-    
     if(cfg.SONGS_TO_PRINT.indexOf(export_object.songrefs[i].status)==-1){
       continue;
     }
@@ -1695,7 +1694,8 @@ function read_config(config_array) {
 
   options.DEBUG_MARGINS =          safe_var(config_array.debug_margins,              'string');
 
-  if (options.SONGS_TO_PRINT == '') {
+  if (options.SONGS_TO_PRINT == '' || !window.songbook.showStatus) {
+    console.log('hi');
     options.SONGS_TO_PRINT = 'anr';
   }
   let opts = {size: options.PAPER_SIZE, layout: options.PAPER_ORIENTATION, autoFirstPage: true};

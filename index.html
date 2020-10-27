@@ -162,6 +162,7 @@
                   data-song-id=""
                   data-song-rev=""
                   data-song-search=""
+                  data-song-status=""
                   data-song-deleted="">
                   <a href="" class="link name" tabindex="0"></a>
               </li>
@@ -180,6 +181,7 @@
                   data-song-id=""
                   data-song-rev=""
                   data-song-search=""
+                  data-song-status=""
                   data-song-deleted="">
                   <a href="" class="name"tabindex="0" ></a>
                 </li>
@@ -278,15 +280,21 @@
                 </label>
                 <div class="collapsible-content">
                   <div class="content-inner">
-                    <div class="t3 hide_for_songs" title="Choose the songs you want to print based on status">
+                    <div class="t3 hide_for_songs export_status" title="Choose the songs you want to print based on status">
                       <label>Print</label>
                       <span>
-                        <label for="print_a">👍</label>
-                        <input type="checkbox" id="print_a" name="print_a">
-                        <label for="print_n">⏱️</label>
-                        <input type="checkbox" id="print_n" name="print_n">
-                        <label for="print_r">👎</label>
-                        <input type="checkbox" id="print_r" name="print_r">
+                        <label class="switch">
+                          <input type="checkbox" id="print_a" name="print_a">
+                          <div class="slider" data-text="✓"></div>
+                        </label>
+                        <label class="switch">
+                          <input type="checkbox" id="print_n" name="print_n">
+                          <div class="slider" data-text="~"></div>
+                        </label>
+                        <label class="switch">
+                          <input type="checkbox" id="print_r" name="print_r">
+                          <div class="slider" data-text="✗"></div>
+                        </label>
                       </span>
                     </div>
                     <div class="t3" title="Font to be used in the songbook">
@@ -304,8 +312,11 @@
                       </select>
                     </div>
                     <div class="t3 hide_for_songs">
-                      <label for="start_song_on_new_page">Start songs on new pages:</label>
-                      <input type="checkbox" id="start_song_on_new_page" name="start_song_on_new_page">
+                      <label>Start songs on new pages:</label>
+                      <label class="switch">
+                        <input type="checkbox" id="start_song_on_new_page" name="start_song_on_new_page">
+                        <div class="slider"></div>
+                      </label>
                     </div>
                     <div class="t3 hide_for_songs">
                       <label for="hide_booktitle">Hide book title?</label>
@@ -552,8 +563,11 @@
                         <option value="no-index">Off</option>
                       </select>
                       <span style="text-align: right; width: 100%;">
-                        <label for="include_first_line">Include 1st verse and chorus?</label>
-                        <input type="checkbox" id="include_first_line" name="include_first_line">
+                        <span>Include 1st verse and chorus?</span>
+                        <label class="switch">
+                          <input type="checkbox" id="include_first_line" name="include_first_line">
+                          <div class="slider"></div>
+                        </label>
                       </span>
                     </div>
                     <div class="t3">
@@ -861,6 +875,7 @@
           $('body').attr('class', 'song export');
           $('.active').removeClass('active');
           $('#export').addClass('active');
+          $('#export').removeClass('showStatus');
           Promise.all([loadSongbook(parseHash('sb-')), loadSong(parseHash('s-'))])
             .then(function(){
               window.exportObject = window.song;
@@ -933,25 +948,24 @@
                   include_docs: true,
                   keys: sb_song_ids, //we need error handling for missing ids
                 }).then(function (result) {
-                  window.exportObject.songs = result.rows.filter(song => song.key != "section");
+                  window.exportObject.songs = result.rows;
                   //PREPROCESS THE SONGBOOK OBJECT
                   let procesed_song = [];
                   for(song of window.exportObject.songs) {
                     // -- REMOVE ALL COMMENTS
-                    for(var i = song.doc.content.length - 1; i >= 0; i--) {
-                      if(song.doc.content[i][0].type === 'comment') {
-                        song.doc.content.splice(i, 1);
+                    if(song.key != "section"){
+                      for(var i = song.doc.content.length - 1; i >= 0; i--) {
+                        if(song.doc.content[i][0].type === 'comment') {
+                          song.doc.content.splice(i, 1);
+                        }
                       }
                     }
-                    // -- REMOVE ALL EMPTY SONGS
-                    if(song.doc.content.length != 0) {
-                      procesed_song.push(song);        
-                    }
+                    procesed_song.push(song);        
                   }
                   window.exportObject.songs = procesed_song;
 
                   prepExport();
-                  resolve('Its done')
+                  resolve('Its done');
                 }).catch(function (err) {
                   console.log(err);
                 });

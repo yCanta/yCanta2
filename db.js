@@ -137,7 +137,11 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
         //update all songs in songbooks
         if(window.songbook_list != undefined ){
           window.songbook_list.get('song-id',change.doc._id)
-            .forEach(function(song){song.values(mapSongRowToValue(change))});
+            .forEach(function(song){
+              let new_change = mapSongRowToValue(change);
+              new_change['song-status'] = song.values()['song-status'];
+              song.values(new_change);
+            });
         }
         if(window.songbook_edit_togglesongs_list != undefined){
           window.songbook_edit_togglesongs_list.get('song-id',change.doc._id)
@@ -598,9 +602,15 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
       }
       if (songbook_html.find('#songbook_title').length > 0){
         songbook.title  = songbook_html.find('#songbook_title').text().trim();
+        if(songbook_html.hasClass('showStatus')){
+          songbook.showStatus = true;
+        }
+        else{
+          songbook.showStatus = false;
+        }
       }
       else{
-        songbook.title = songbook_html.find('title').text().trim();
+        songbook.title = songbook_html.find('title').text().trim(); //V1 Import
       }
       if (songbook.title == "" || songbook.title == undefined){
         songbook.title = "New Songbook";
@@ -615,18 +625,20 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
             songs.push({id: song_id, title: $(this).children("a").text()});
           }
           else{
-            songs.push({id: song_id, status: 'n', key: 'Am'});
+            songs.push({id: song_id, status: $(this).attr('data-song-status'), key: 'Am'});
           }
         });
       }
       else {
         songbook_html.find('songref, section').each(function(){
-          console.log(this.nodeName.toLowerCase());
           if(this.nodeName.toLowerCase() == "section"){
             songs.push({id: "section", title: $(this).attr('title')});
           }
           else {
             songs.push({id: $(this).attr('ref'), status: $(this).attr('status'), key: 'Am'});
+            if($(this).attr('status') != 'n'){
+              songbook.showStatus = true;
+            }
           }
         });
       }
@@ -769,6 +781,7 @@ function loadSongbook(songbook_id) {
       }
       $('#songbook_title').removeAttr('contenteditable');
       $('#songbook_content .search').parent().removeAttr('disabled');
+      $('#songbook_content').removeClass('showStatus'); 
       $('.disabled-hidden').removeClass('disabled-hidden');
       $('#songbook_title').text('').removeAttr('data-rev');
       resolve('loaded songbook');
@@ -800,7 +813,9 @@ function loadSongbook(songbook_id) {
               songbook_build.push(item);
             }
             else {
-              songbook_build.push(song_ref_result.rows.filter(obj => obj.id === item.id)[0]);
+              let to_push = song_ref_result.rows.filter(obj => obj.id === item.id)[0];
+              to_push.status = item.status;
+              songbook_build.push(to_push);
             }
           }
           buildSongbookList(songbook_build);
@@ -811,6 +826,12 @@ function loadSongbook(songbook_id) {
         $('#songbook_title').removeAttr('contenteditable');
         $('#songbook_content .search').parent().removeAttr('disabled');
         $('.disabled-hidden').removeClass('disabled-hidden');
+        if(window.songbook.showStatus){
+          $('#songbook_content').addClass('showStatus');
+        }
+        else {
+          $('#songbook_content').removeClass('showStatus'); 
+        }
         $('#songbook_title').html(result.title).attr('data-rev',result._rev).attr('data-songbook-id',result._id).nextAll().remove();
         $('#songbook_title').parent().append('<span onclick="event.stopPropagation(); toggleFavSongbook(\''+result._id+'\')"></span>'+
           '<info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo(false);"></info>');
