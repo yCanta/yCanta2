@@ -135,12 +135,31 @@ async function importSongV1(f){
                   resolve('done');
                 });
               }
+              //Comments
+              else if(zipEntry.name.endsWith('.comment') && songbook != ""){
+                comments_list = [];
+                let songs = songbook.split('\n');
+                for(song of songs){
+                  if(song.trim().length < 10){ //too short to be anything useful
+                    continue
+                  }
+                  let song_path = song.match(/'(.*?)'/)[0].replace("'songs/","").replace("':","");
+                  //{id: c_songbook.song , comments: [{date: , user: , comment: }]}
+                  let id = 'c_'+'sb-i'+CRC32.str(zipEntry.name.replace('songbooks/','').replace('.comment','.xml'),0)+'_s-i'+CRC32.str(song_path,0)
+                  let comments = song.match(/<div\b(?:|(?:(?!<\/?div).))*<\/div>/g).map(function(comment) {
+                    return {date: comment.match(/(?<=\()(.*?)(?=\):)/g)[0], user: $(comment).find('b').text(), comment: $(comment).find('pre').text()}
+                  });
+                  comments_list.push({_id: id, comments: comments});
+                }
+                db.bulkDocs(comments_list);
+                resolve('done');
+              }
               else {
                 window.import.n_other++;
                 updateProgress();
                 window.import.progressText.innerHTML = zipEntry.name;
                 console.log(zipEntry.name + ' is not a songbook!');
-                resolve('done')
+                resolve('done');
               }
             })
           })
