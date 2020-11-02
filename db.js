@@ -166,6 +166,18 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
           window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
         }
       }
+      else if(change.doc._id.startsWith('c_')){
+        let songbook_id = change.doc._id.match(/sb-.*?_/g)[0].replace('_','');
+        if(window.songbook._id == songbook_id && window.songbook.showComments){
+          let song_id = change.doc._id.match(/s-.*?$/g)[0];
+          $('li[data-song-id="'+song_id+'"] .toggle_comment').attr('data-comment-number', change.doc.comments.length);
+          let comments = '';
+          for(comment of change.doc.comments){
+            comments += `<div><b>${comment.user} </b>${new Date(comment.date).toLocaleTimeString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})}<pre>${comment.comment}</pre></div>`;
+          }
+          $('li[data-song-id="'+song_id+'"] .comments').html(comments);
+        }
+      }
       else if(change.doc._id == window.user._id){
         let fav_sbs = change.doc.fav_sbs;
         //jquery remove all favs
@@ -602,12 +614,8 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
       }
       if (songbook_html.find('#songbook_title').length > 0){
         songbook.title  = songbook_html.find('#songbook_title').text().trim();
-        if(songbook_html.hasClass('showStatus')){
-          songbook.showStatus = true;
-        }
-        else{
-          songbook.showStatus = false;
-        }
+        (songbook_html.hasClass('showStatus') ? songbook.showStatus = true : songbook.showStatus = false);
+        (songbook_html.hasClass('showComments') ? songbook.showComments = true : songbook.showComments = false);
       }
       else{
         songbook.title = songbook_html.find('title').text().trim(); //V1 Import
@@ -629,7 +637,7 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
           }
         });
       }
-      else {
+      else {  //Saving a V1 songref
         songbook_html.find('songref, section').each(function(){
           if(this.nodeName.toLowerCase() == "section"){
             songs.push({id: "section", title: $(this).attr('title')});
@@ -709,7 +717,6 @@ function loadSongbook(songbook_id) {
 
   return new Promise(function(resolve, reject) {
     if(songbook_id == window.songbook._id){
-      //console.log('Songbook is already loaded');
       resolve('songbook already loaded');
     }
     else if(songbook_id == undefined || songbook_id == 'sb-allSongs' || songbook_id == 'sb-favoriteSongs') {
@@ -765,6 +772,8 @@ function loadSongbook(songbook_id) {
         buildSongbookList(result.rows);
         $('#songbook_title').removeAttr('contenteditable');
         $('#songbook_content .search').parent().removeAttr('disabled');
+        $('#songbook_content').removeClass('showStatus'); 
+        $('#songbook_content').removeClass('showComments'); 
         $('.disabled-hidden').removeClass('disabled-hidden');
         $('#songbook_title').html('<i>'+window.songbook.title+'</i>').removeAttr('data-rev').attr('data-songbook-id', songbook_id);
         $('#songList .float-menu').addClass('special');
@@ -782,6 +791,7 @@ function loadSongbook(songbook_id) {
       $('#songbook_title').removeAttr('contenteditable');
       $('#songbook_content .search').parent().removeAttr('disabled');
       $('#songbook_content').removeClass('showStatus'); 
+      $('#songbook_content').removeClass('showComments'); 
       $('.disabled-hidden').removeClass('disabled-hidden');
       $('#songbook_title').text('').removeAttr('data-rev');
       resolve('loaded songbook');
@@ -791,18 +801,9 @@ function loadSongbook(songbook_id) {
         var sb_song_ids = result.songrefs.map(function (row) {
           return row.id
         });
-        
-        //first delete any songs no longer in the songbook
         if(window.songbook_list != undefined){
-          /*window.songbook_list.items.forEach(function(old_song){
-            if(!sb_song_ids.includes(old_song.values()['song-id'])){
-              window.songbook_list.remove('song-id',old_song.values()['song-id']);
-            }
-          });*/
-          //^may be faster than the full wipe, but I need to figure out how to update urls
           window.songbook_list.clear();
         }
-        //then add and update the new ones
         db.allDocs({
           include_docs: true,
           keys: sb_song_ids, //we need error handling for missing ids
@@ -826,12 +827,8 @@ function loadSongbook(songbook_id) {
         $('#songbook_title').removeAttr('contenteditable');
         $('#songbook_content .search').parent().removeAttr('disabled');
         $('.disabled-hidden').removeClass('disabled-hidden');
-        if(window.songbook.showStatus){
-          $('#songbook_content').addClass('showStatus');
-        }
-        else {
-          $('#songbook_content').removeClass('showStatus'); 
-        }
+        (window.songbook.showStatus ? $('#songbook_content').addClass('showStatus') : $('#songbook_content').removeClass('showStatus'));
+        (window.songbook.showComments ? $('#songbook_content').addClass('showComments') : $('#songbook_content').removeClass('showComments'));
         $('#songbook_title').html(result.title).attr('data-rev',result._rev).attr('data-songbook-id',result._id).nextAll().remove();
         $('#songbook_title').parent().append('<span onclick="event.stopPropagation(); toggleFavSongbook(\''+result._id+'\')"></span>'+
           '<info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo(false);"></info>');
@@ -846,12 +843,70 @@ function loadSongbook(songbook_id) {
         else {
           $('#songbook_title').attr('data-user-fav', 'false'); 
         }
+        //Load comments
+        if(window.songbook.showComments && location.hash.search('edit') == -1){
+          loadSongbookComments();
+        }
         resolve('loaded songbook');
       }).catch(function(err){
         console.log(err);
       });
     }
   });
+}
+
+function loadSongbookComments() {
+  let options = {
+    include_docs: true,
+    startkey: 'c_'+window.songbook._id,
+    endkey: 'c_'+window.songbook._id+'\ufff0',
+  }  
+  db.allDocs(options).then(function(result){
+    let songs_with_comments = result.rows.map(item => item.doc);
+    $('#songbook_content .list li:not([data-song-id="section"])').append('<div class="commentsContainer"><div class="comments"></div><textarea class="comment" style="width:100%"></textarea><button class="btn" onclick="addComment(this)">Add comment</button></div>');
+    $('#songbook_content .list li:not([data-song-id="section"]) a').after('<button class="toggle_comment" onclick="$(this).next(\'.commentsContainer\').toggle();">💬</button>')
+    for(song of songs_with_comments) {
+      let song_id = song._id.match(/s-.*/g)[0];
+      let comments = [];
+      for(comment of song.comments){
+        comments.push(`<div><b>${comment.user} </b>${new Date(comment.date).toLocaleTimeString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})}<pre>${comment.comment}</pre></div>`);
+      }
+      $('li[data-song-id="'+song_id+'"] .comments').append(comments.join(''));
+      $('li[data-song-id="'+song_id+'"] .toggle_comment').attr('data-comment-number', comments.length);
+    }
+  }).catch(function(err){
+    console.log(err);
+  });
+}
+function addComment(element) {
+  let commentText = $(element).prev('textarea').val().trim();
+  if(commentText == ""){
+    alert('Please add some text! :)');
+    return;
+  }
+  else {
+    let comment_object = {date: new Date().getTime(), user: window.user._id, comment: commentText};
+    let comment_id = 'c_'+window.songbook._id+'_'+$(element).closest('li').attr('data-song-id');
+    db.get(comment_id).then(function(comment){
+      comment.comments.push(comment_object);
+      db.put(comment).then(function(result){
+        if(result.ok != true) {
+          console.log(result);
+        }
+      });
+      $(element).prev('textarea').val('');
+    }).catch(function(err){
+      if(err.status = 404){
+        db.put({_id: comment_id, comments: [comment_object]}).then(function(result){
+          $(element).prev('textarea').val('');
+        }).catch(function(err){
+          console.log(err);
+        });
+      }else{
+        console.log(err);
+      }
+    });
+  }
 }
 
 function addSongToSongbook(song_id, songbook_id=window.songbook._id) {

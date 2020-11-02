@@ -793,8 +793,9 @@ function editSongbook() {
   $('#songList #songbook_title').attr('contenteditable', 'true');
   $('#songList #songbook_content input.search').parent().addClass('disabled-hidden')[0].disabled=true;
   $('#songList #songbook_content nav').addClass('disabled-hidden');
-  $('#songbook_header').append('<span class="edit_buttons">Song Status: <label id="showStatusID" class="switch" onchange="(this.firstElementChild.checked ? ($(\'#songbook_content\').addClass(\'showStatus\'), window.songbook.showStatus=true) : ($(\'#songbook_content\').removeClass(\'showStatus\'), window.songbook.showStatus=false) );"><input type="checkbox" id="statusON"' + (window.songbook.showStatus ? 'checked': '') +'><div class="slider"></div></label> ');//+
-                              //Comments: <label class="switch"><input type="checkbox" id="commentsON"><div class="slider"></div></label></span>');
+  $('#songbook_header').append('<span class="edit_buttons">Song Status: <label id="showStatusID" class="switch" onchange="(this.firstElementChild.checked ? ($(\'#songbook_content\').addClass(\'showStatus\'), window.songbook.showStatus=true) : ($(\'#songbook_content\').removeClass(\'showStatus\'), window.songbook.showStatus=false) );"><input type="checkbox" id="statusON"' + (window.songbook.showStatus ? 'checked': '') +'><div class="slider"></div></label> ' +
+                              'Comments: <label class="switch" onchange="(this.firstElementChild.checked ? ($(\'#songbook_content\').addClass(\'showComments\'), window.songbook.showComments=true) : ($(\'#songbook_content\').removeClass(\'showComments\'), window.songbook.showComments=false) );"><input type="checkbox" id="commentsON"' + (window.songbook.showComments ? 'checked': '') + '><div class="slider"></div></label></span>');
+  $('.commentsContainer, .toggle_comment').remove();
   //load all the songs into song adder
   db.allDocs({
     include_docs: true,
@@ -1338,8 +1339,8 @@ async function loadInfo(song=true) {
     $('#dialog h5').text('Song');
     let song_id = window.song._id;
     let content = '<b>'+window.song.title+'</b><br />'+
-      '<small>Added: '+window.song.addedBy+', '+new Date(window.song.added).toLocaleString()+'</small><br />'+
-      '<small>Edited: '+window.song.editedBy+', '+new Date(window.song.edited).toLocaleString()+'</small><br />'+
+      '<small>Added: '+window.song.addedBy+', '+new Date(window.song.added).toLocaleTimeString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})+'</small><br />'+
+      '<small>Edited: '+window.song.editedBy+', '+new Date(window.song.edited).toLocaleTimeString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})+'</small><br />'+
       '<small>'+(window.song._rev.split('-')[0] - 1)+' previous edits</small>';
   
     let sbs = await songInSongbooks(song_id);

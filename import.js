@@ -143,15 +143,23 @@ async function importSongV1(f){
                   if(song.trim().length < 10){ //too short to be anything useful
                     continue
                   }
-                  let song_path = song.match(/'(.*?)'/)[0].replace("'songs/","").replace("':","");
+                  let song_path = song.match(/'(.*?)'/)[0].replace("'songs/","").replace("'","");
                   //{id: c_songbook.song , comments: [{date: , user: , comment: }]}
                   let id = 'c_'+'sb-i'+CRC32.str(zipEntry.name.replace('songbooks/','').replace('.comment','.xml'),0)+'_s-i'+CRC32.str(song_path,0)
                   let comments = song.match(/<div\b(?:|(?:(?!<\/?div).))*<\/div>/g).map(function(comment) {
-                    return {date: comment.match(/(?<=\()(.*?)(?=\):)/g)[0], user: $(comment).find('b').text(), comment: $(comment).find('pre').text()}
+                    return {date: new Date(comment.match(/(?<=\()(.*?)(?=\):)/g)[0]).getTime(), user: $(comment).find('b').text(), comment: $(comment).find('pre').text()}
                   });
                   comments_list.push({_id: id, comments: comments});
                 }
                 db.bulkDocs(comments_list);
+                db.get('sb-i'+CRC32.str(zipEntry.name.replace('songbooks/','').replace('.comment','.xml'),0)).then(function(result) {
+                  result.showComments = true;
+                  db.put(result).then(function(result){
+                    console.log(result);
+                  });
+                }).catch(function(err){
+                  console.log(err);
+                });
                 resolve('done');
               }
               else {

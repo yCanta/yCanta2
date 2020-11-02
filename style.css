@@ -363,12 +363,11 @@ stitle,
 }
 .edit #songbook_content li {
   cursor: move;
-  position: relative;
 }
-#songbook_content li button {
+#songbook_content li > button {
   position: absolute;
-  right: .5em;
-  bottom: .5rem;
+  right: .75em;
+  top: .5rem;
 }
 [contenteditable='true'], .contenteditable-disabled {
   border: 1px gray dashed;
@@ -384,7 +383,7 @@ stitle,
   color:grey;
   font-style:italic;
 }
-.pre {
+pre, .pre {
   font-family: monospace;
 }
 .edit-icon {
@@ -446,6 +445,7 @@ ul {
 }
 ul li {
   list-style-type: none;
+  position: relative;
 }
 .close-icon {
   border-radius: 5em;
@@ -475,16 +475,16 @@ ul li {
   border-bottom: 5px solid yellow;
 }
 span.deleteicon {
-    position: relative;
+  position: relative;
 }
 span.deleteicon span {
-    position: absolute;
-    display: block;
-    top: 0;
-    right: 10px;
-    width: 16px;
-    height: 16px;
-    cursor: pointer;
+  position: absolute;
+  display: block;
+  top: 0;
+  right: 10px;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
 }
 input.deletable + span:after {   
   position: absolute;
@@ -595,6 +595,30 @@ span.deleteicon input {
 }
 #songbookList, #songList, #song {
   width: 100%;
+}
+
+.commentsContainer {
+  display: none;
+  margin: 0 0 0 1rem;
+  padding: 0.5rem;
+  background-color: var(--edit-color);
+  border-bottom-right-radius: 1rem;
+  border-bottom-left-radius: 1rem;
+}
+.comments pre {
+  padding: 0px;
+  margin: 0px;
+  margin-bottom: 2px;
+}
+.toggle_comment:after {
+  display: block;
+  content: attr(data-comment-number);
+  position: absolute;
+  top: -.5rem;
+  left: 1rem;
+  background-color: var(--background-color);
+  padding: 2px;
+  border-radius: 2rem;
 }
 
 /*Fullscreen*/
