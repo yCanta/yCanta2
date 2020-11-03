@@ -820,6 +820,10 @@ function loadSongbook(songbook_id) {
             }
           }
           buildSongbookList(songbook_build);
+          //Load comments
+          if(window.songbook.showComments && location.hash.search('edit') == -1){
+            loadSongbookComments();
+          }
         }).catch(function (err) {
           console.log(err);
         });
@@ -842,10 +846,6 @@ function loadSongbook(songbook_id) {
         }
         else {
           $('#songbook_title').attr('data-user-fav', 'false'); 
-        }
-        //Load comments
-        if(window.songbook.showComments && location.hash.search('edit') == -1){
-          loadSongbookComments();
         }
         resolve('loaded songbook');
       }).catch(function(err){
