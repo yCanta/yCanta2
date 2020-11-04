@@ -523,10 +523,20 @@ function loadSong(song_id) {
       song_html +=  '<copyright>' + song.copyright + '</copyright>' +
                   '</song>'
       $('#song .content').html(song_html);
+      let regex = /(https?:\/\/)?(?:www\.)?(youtu(?:\.be\/([-\w]+)|be\.com\/watch\?v=([-\w]+)))\w/g;
+      //set youtube_links
+      ($("song line").text().match(regex) != null ? window.youtube_links = [...$("song line").text().match(regex)] : window.youtube_links = []);
+      if(window.youtube_links.length > 0) {
+        $('#song key').before('<button class="btn" style="padding: 5px; margin-top: 0;" onclick="loadSongPlayer();">&#127932;</button>')
+      }
+      //add hrefs to comments
+      $('song chunk[type="comment"]').each(function(){
+        $(this).html($(this).html().replace(/(((http|https|ftp):\/\/)*[\w?=&.\/-;#~%-]+\.[\w?=&.\/-;#~%-]+(?![\w\s?&.\/;#~%"=-]*>))/g, '<a href="$1" target="_blank">$1</a> '));
+      });
       resolve("song_loaded");
 
       $('#song key').transpose();
-      if($('#dialog')[0].style.display=="block") {loadInfo()}
+      if(document.getElementById('dialog').style.display=="block" && document.getElementById('dialog').getAttribute('data-use')=="info") {loadInfo()}
     }
     if(song_id === 's-new-song'){
       var song = {
@@ -836,7 +846,7 @@ function loadSongbook(songbook_id) {
         $('#songbook_title').html(result.title).attr('data-rev',result._rev).attr('data-songbook-id',result._id).nextAll().remove();
         $('#songbook_title').parent().append('<span onclick="event.stopPropagation(); toggleFavSongbook(\''+result._id+'\')"></span>'+
           '<info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo(false);"></info>');
-        if($('#dialog')[0].style.display=="block" && !parseHash('s-')){  //prevents info view flicker when you click on songbooks in song info view.
+        if(document.getElementById('dialog').style.display=="block" && !parseHash('s-') && document.getElementById('dialog').getAttribute('data-use')=="info"){  //prevents info view flicker when you click on songbooks in song info view.
           loadInfo(false);
         }
         var dateAfter = new Date();

@@ -1337,9 +1337,9 @@ async function songInSongbooks(song_id){
 async function loadInfo(song=true) {
   if(song){
     $('#dialog h5').text('Song');
+    document.getElementById('dialog').setAttribute('data-use','info');
     let song_id = window.song._id;
-    let content = '<b>'+window.song.title+'</b><br />'+
-      '<small>Added: '+window.song.addedBy+', '+new Date(window.song.added).toLocaleTimeString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})+'</small><br />'+
+    let content = '<small>Added: '+window.song.addedBy+', '+new Date(window.song.added).toLocaleTimeString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})+'</small><br />'+
       '<small>Edited: '+window.song.editedBy+', '+new Date(window.song.edited).toLocaleTimeString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})+'</small><br />'+
       '<small>'+(window.song._rev.split('-')[0] - 1)+' previous edits</small>';
   
@@ -1351,16 +1351,91 @@ async function loadInfo(song=true) {
       content += '<div class="left"><br /><b>Not used in any songbook</b></div>';
     }
     document.querySelector('#dialog .content').innerHTML = content;
+    document.querySelector('#dialog .title').innerHTML = window.song.title;
     $('#dialog').slideDown('fast');
   }
   else{
     $('#dialog h5').text('Songbook');
-    let content = '<b>'+window.songbook.title+'</b><br />'+
-      '<small>Added: '+window.songbook.addedBy+', '+new Date(window.songbook.added).toLocaleString()+'</small><br />'+
-      '<small>Edited: '+window.songbook.editedBy+', '+new Date(window.songbook.edited).toLocaleString()+'</small><br />'+
+    let content = '<small>Added: '+window.songbook.addedBy+', '+new Date(window.songbook.added).toLocaleTimeString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})+'</small><br />'+
+      '<small>Edited: '+window.songbook.editedBy+', '+new Date(window.songbook.edited).toLocaleTimeString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})+'</small><br />'+
       '<small>'+(window.songbook._rev.split('-')[0] - 1)+' previous edits</small>';
     document.querySelector('#dialog .content').innerHTML = content;
+    document.querySelector('#dialog .title').innerHTML = window.songbook.title;
     $('#dialog').slideDown('fast');
+  }
+}
+
+function loadSongPlayer(){
+  $('#dialog h5').text('Playing');
+  document.getElementById('dialog').setAttribute('data-use','player');
+  document.querySelector('#dialog .title').innerHTML = window.song.title;
+
+  let song_id = window.song._id;
+  let content = '<div id="player"></div>';
+  content += '<span id="playlistnumber"></span><button class="btn" onclick="window.player.previousVideo()">⏮<button><button id="play" class="btn" onclick="toggleVideo();">⏵<button><button class="btn" onclick="window.player.nextVideo()">⏭<button>'
+
+  document.querySelector('#dialog .content').innerHTML = content;
+
+  $('#dialog').slideDown('fast');
+  window.player = new YT.Player('player', {
+    height: '100',
+    width: '150',
+    //videoId: id,
+    playerVars: { 'autoplay': 0, 'controls': 0 },
+    events: {
+      'onReady': onPlayerReady,
+      'onStateChange': onPlayerStateChange
+    }
+  });
+}
+
+
+//Load up youtube needed elements.
+var tag = document.createElement('script');
+
+tag.src = "https://www.youtube.com/iframe_api";
+var firstScriptTag = document.getElementsByTagName('script')[0];
+firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+function onPlayerReady(event) {
+  let ids = window.youtube_links.map(link => link.match(/(be\/|v\=)([-\w]+)\S/)[0].replace('be/','').replace('v=',''));
+  window.player.cuePlaylist(ids);
+}
+function onPlayerStateChange(event){
+  $('#playlistnumber').text((window.player.getPlaylistIndex()+1).toString()+'/'+window.player.getPlaylist().length.toString());
+  switch(window.player.getPlayerState()){
+    case 1:  //playing 
+      $('#dialog #play').text('⏸');
+      break;
+    case -1:  //unstarted
+    case 0:   //ended
+    case 2:   //paused
+    case 5:   //queued
+      $('#dialog #play').text('⏵');
+      break;
+    default:
+      //console.log("Can't help ya...",window.player.getPlayerState());
+  }
+}
+function pauseVideo() {
+  window.player.pauseVideo();
+}
+function playVideo() {
+  window.player.playVideo();
+}
+function toggleVideo() {
+  switch(window.player.getPlayerState()){
+    case 1:  //playing 
+      pauseVideo();
+      break;
+    case -1:  //unstarted
+    case 0:   //ended
+    case 2:   //paused
+    case 5:   //queued
+      playVideo();
+      break;
+    default:
+      console.log("Can't help ya...",window.player.getPlayerState());
   }
 }
 
