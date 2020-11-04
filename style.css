@@ -146,6 +146,10 @@ chunk[type="comment"] a {
   margin: 0;
   padding: 1rem;
 }
+#dialog[data-use="player"]{
+  width: 300px;
+  width: min(300px, 60vh);
+}
 #dialog .content {
   max-height: calc(80vh - 4rem);
   overflow: auto;

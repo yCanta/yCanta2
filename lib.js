@@ -1371,17 +1371,17 @@ function loadSongPlayer(){
   document.querySelector('#dialog .title').innerHTML = window.song.title;
 
   let song_id = window.song._id;
-  let content = '<div id="player"></div>';
-  content += '<span id="playlistnumber"></span><button class="btn" onclick="window.player.previousVideo()">⏮<button><button id="play" class="btn" onclick="toggleVideo();">⏵<button><button class="btn" onclick="window.player.nextVideo()">⏭<button>'
+  let content = '<br><br><div id="player"></div>';
+  content += '<span id="playlistnumber"></span><button class="btn" onclick="window.player.previousVideo()">⏮<button><button id="play" class="btn" onclick="toggleVideo();">▶<button><button class="btn" onclick="window.player.nextVideo()">⏭<button>'
 
   document.querySelector('#dialog .content').innerHTML = content;
 
   $('#dialog').slideDown('fast');
   window.player = new YT.Player('player', {
-    height: '100',
-    width: '150',
+    height: '',
+    width: '100%',
     //videoId: id,
-    playerVars: { 'autoplay': 0, 'controls': 0 },
+    playerVars: { 'autoplay': 0, 'controls': 1 },
     events: {
       'onReady': onPlayerReady,
       'onStateChange': onPlayerStateChange
@@ -1411,7 +1411,7 @@ function onPlayerStateChange(event){
     case 0:   //ended
     case 2:   //paused
     case 5:   //queued
-      $('#dialog #play').text('⏵');
+      $('#dialog #play').text('▶');
       break;
     default:
       //console.log("Can't help ya...",window.player.getPlayerState());
