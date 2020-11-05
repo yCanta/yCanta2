@@ -9,6 +9,7 @@
   --text-color: black;
 
   --box-shadow-var: 0 0 20px 2px rgba(0, 0, 0, 0.2);
+  --btn-shadow-var: 0 2px 2px 2px rgba(0, 0, 0, 0.1);
 /*
   --background-color: black;
   --text-color: white;
@@ -469,7 +470,7 @@ ul li {
   background-color: var(--songList-color);
 }
 .btn {
-  box-shadow: 0 2px 2px 2px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--btn-shadow-var);
   font-weight: bold;
   border-radius: 2rem;
   padding: 5px 15px 5px 15px;
@@ -1429,6 +1430,7 @@ only screen and (max-height: 500px) {
   padding: 5px 11px 5px 11px;
   display: inline-block;
   margin: 0 0 0 5px;
+  box-shadow: var(--btn-shadow-var);
 }
 #category_filter_container.open .cat_filter_btn{
   border-bottom-left-radius: 0;
@@ -1448,6 +1450,7 @@ only screen and (max-height: 500px) {
   width: 370px;
   transform: scaleY(0);
   overflow: hidden;
+  box-shadow: var(--btn-shadow-var);
 }
 #category_filter select {
   background-color: lightcyan;
