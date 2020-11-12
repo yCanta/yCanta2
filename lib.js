@@ -1381,6 +1381,7 @@ function loadSongPlayer(){
     height: '',
     width: '100%',
     //videoId: id,
+    host: 'http://www.youtube-nocookie.com',
     playerVars: { 'autoplay': 0, 'controls': 1 },
     events: {
       'onReady': onPlayerReady,

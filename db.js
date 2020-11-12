@@ -44,7 +44,7 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
   if(newDb){
     dbName = $('#newDbName').val().trim()+'(local)';
     console.log('New DB');
-    //initialize database;
+    //initialize local database;
     db = new PouchDB(dbName);
     
     //create User doc
@@ -379,6 +379,7 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
       if (stitle == "" || stitle == undefined){
         stitle = "New Song";
       }
+      let regex = /(https?:\/\/)?(?:www\.)?(youtu(?:\.be\/([-\w]+)|be\.com\/watch\?v=([-\w]+)))\w/g;
       song.title        = stitle;
       song.authors      = song_html.find('authors').text().replace(/\|/g,',').split(',').map(Function.prototype.call, String.prototype.trim);
       song.scripture_ref= song_html.find('scripture_ref').text().split(',').map(Function.prototype.call, String.prototype.trim);
@@ -386,6 +387,9 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
       song.key          = song_html.find('key').text();
       song.categories   = song_html.find('categories').text().split(',').map(Function.prototype.call, String.prototype.trim);
       song.cclis        = song_html.find('cclis').text();
+      song.yt           = (regex.test(song_html.find('line').text()) ? song_html.find('line').text().match(regex).length : '');
+      song.chords       = (song_html.find('c').length > 0 ? 'chords' : '');
+
       if(song.cclis & isNaN(song.cclis)){
         song.cclis = 'on';
       }
@@ -412,6 +416,9 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
       function formatText(text, letter){
         return (text != '' ? text : '!'+letter);
       }
+      function formatNumber(number, letter){
+        return (number != '' ? letter + number : '!'+letter);
+      }
       function formatSongContent(content){
         var song_content = '';
         
@@ -431,13 +438,15 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
         return song_content;
       }
       let ssearch =  't:' + song.title + '\n'
-                   + ' a:' + formatArray(song.authors, 'a') + '\n'
-                   + ' s:' + formatArray(song.scripture_ref, 's') + '\n'
-                   + ' i:' + formatText(song.introduction, 'i') + '\n'
-                   + ' k:' + formatText(song.key, 'k') + '\n'
-                   + ' c:' + formatArray(song.categories, 'c') + '\n'
-                   + ' cp:' + formatText(song.copyright, 'cp') + '\n'
-                   + ((song.cclis!='') ? ' cclis ' : ' !cclis ') + '\n'
+                   + 'a:' + formatArray(song.authors, 'a') + '\n'
+                   + 's:' + formatArray(song.scripture_ref, 's') + '\n'
+                   + 'i:' + formatText(song.introduction, 'i') + '\n'
+                   + 'k:' + formatText(song.key, 'k') + '\n'
+                   + 'c:' + formatArray(song.categories, 'c') + '\n'
+                   + 'cp:' + formatText(song.copyright, 'cp') + '\n'
+                   + 'yt:' + formatNumber(song.yt, 'yt') + '\n'
+                   + 'cclis:' + formatNumber(song.cclis, 'cclis') + '\n'
+                   + 'chords:' + formatText(song.chords, 'chords') + '\n'
                    + formatSongContent(song.content); + '\n'
 
       song.search = ssearch.replace(/ +?/g, ' ');
@@ -527,7 +536,7 @@ function loadSong(song_id) {
       //set youtube_links
       ($("song line").text().match(regex) != null ? window.youtube_links = [...$("song line").text().match(regex)] : window.youtube_links = []);
       if(window.youtube_links.length > 0) {
-        $('#song key').before('<button class="btn" style="padding: 5px 8px; margin-top: 0; background-color:var(--highlight-color);" onclick="loadSongPlayer();">♫</button>')
+        $('#song key').before('<button class="btn" style="padding: 5px 8px; margin-top: 0; background-color:var(--highlight-color);" onclick="loadSongPlayer();">▶</button>')
       }
       //add hrefs to comments
       $('song chunk[type="comment"]').each(function(){
