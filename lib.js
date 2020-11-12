@@ -1439,6 +1439,30 @@ function toggleVideo() {
       console.log("Can't help ya...",window.player.getPlayerState());
   }
 }
+//Keep the video playing even when it goes into the background.
+var hidden, visibilityChange; 
+if (typeof document.hidden !== "undefined") {  
+  hidden = "hidden";
+  visibilityChange = "visibilitychange";
+} else if (typeof document.msHidden !== "undefined") {
+  hidden = "msHidden";
+  visibilityChange = "msvisibilitychange";
+} else if (typeof document.webkitHidden !== "undefined") {
+  hidden = "webkitHidden";
+  visibilityChange = "webkitvisibilitychange";
+}
+
+function handleVisibilityChange() {
+  if (document[hidden] && $('#dialog')[0].style.display != 'none') {
+    window.player.play();
+  }
+}
+
+if (typeof document.addEventListener === "undefined" || hidden === undefined) {
+  console.log("Your browser doesn't support playing music in background");
+} else {
+  document.addEventListener(visibilityChange, handleVisibilityChange, false);
+}
 
 /* crc32.js (C) 2014-present SheetJS -- http://sheetjs.com */
 /* vim: set ts=2: */
