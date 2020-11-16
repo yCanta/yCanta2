@@ -781,26 +781,24 @@ th {
   text-align: left;
 }
 /*This is not usable on mobile devices... they don't have access to the title tooltip*/
-[title] {
+[rel=tooltip] {
   position: relative;
 }
-[title]:after {
+[rel=tooltip]:after {
   position: absolute;
-  top: -5px;
+  top: -4px;
   color: blue;
-  vertical-align: middle;
   content: 'i';
   width: 1rem;
   height: 1rem;
-
   font-size: small;
-  font-style: oblique;
+  font-style: italic;
   font-weight: normal;
   text-align: center;
-
-  border: 1px blue solid;
-  border-radius: 20px;
-  background-color: beige;
+  padding-right: 1px;
+  padding-bottom: 1px;
+  border-radius: 50%;
+  background-color: var(--highlight-color);
 }
 input[type="number"] {
   padding-left: 0.1rem;
@@ -1471,4 +1469,52 @@ only screen and (max-height: 500px) {
 }
 .bluehighlight {
   background-color: var(--song-color) !important;
+}
+
+/*TOOLTIP CSS*/
+[rel="tooltip"] {
+}
+[rel="tooltip"] {
+  cursor: help;
+}
+#tooltip {
+  text-align: center;
+  font-style: italic;
+  background: var(--export-color);
+  position: absolute;
+  z-index: 100;
+  padding: 15px;
+  border-radius: 2rem;
+  box-shadow: var(--box-shadow-var);
+}
+ 
+#tooltip:after { /* triangle decoration */
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-top: 10px solid var(--export-color);
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -10px;
+  margin-left: -10px;
+}
+
+#tooltip.top:after {
+  border-top-color: transparent;
+  border-bottom: 10px solid var(--export-color);
+  top: -20px;
+  bottom: auto;
+}
+
+#tooltip.left:after {
+  left: 10px;
+  margin: 0;
+}
+
+#tooltip.right:after {
+  right: 10px;
+  left: auto;
+  margin: 0;
 }

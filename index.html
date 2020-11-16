@@ -280,7 +280,7 @@
                 </label>
                 <div class="collapsible-content">
                   <div class="content-inner">
-                    <div class="t3 hide_for_songs export_status" title="Choose the songs you want to print based on status">
+                    <div class="t3 hide_for_songs export_status" rel="tooltip" title="Choose the songs you want to print based on status">
                       <label>Print</label>
                       <span>
                         <label class="switch">
@@ -297,8 +297,8 @@
                         </label>
                       </span>
                     </div>
-                    <div class="t3" title="Font to be used in the songbook">
-                      <label for="font_face">Default Font</label>
+                    <div class="t3">
+                      <label for="font_face"  rel="tooltip" title="Font to be used in the songbook">Default Font</label>
                       <select size="1" id="font_face" name="font_face" style="display: inline-block;">
                         <option value="Courier">Courier</option><option value="Courier-Bold">Courier-Bold</option><option value="Courier-BoldOblique">Courier-BoldOblique</option><option value="Courier-Oblique">Courier-Oblique</option><option value="Helvetica" selected>Helvetica</option><option value="Helvetica-Bold">Helvetica-Bold</option><option value="Helvetica-BoldOblique">Helvetica-BoldOblique</option><option value="Helvetica-Oblique">Helvetica-Oblique</option><option value="Symbol">Symbol</option><option value="Times-Bold">Times-Bold</option><option value="Times-BoldItalic">Times-BoldItalic</option><option value="Times-Italic">Times-Italic</option><option value="Times-Roman">Times-Roman</option><option value="ZapfDingbats">ZapfDingbats</option>
                       </select>
@@ -325,7 +325,7 @@
                       </select>
                     </div>
                     <div class="t3">
-                      <label for="songtitle_format" title="${num} substitutes the song number">Song title # format:</label>
+                      <label for="songtitle_format" rel="tooltip" title="${num} substitutes the song number">Song title # format:</label>
                       <input size="10" type="text" id="songtitle_format" value="${num} " name="songtitle_format">
                     </div>
                     <div class="t3">
@@ -350,8 +350,8 @@
                       <tr>
                         <th></th>
                         <th><small>Size</small></th>
-                        <th title="Space below the text"><small>Space</small></th>
-                        <th title="Allow automatic reduction of font size to this percentage of the set font size"><small>Resize</small></th>
+                        <th rel="tooltip" title="Space below the text"><small>Space</small></th>
+                        <th rel="tooltip" title="Allow automatic reduction of font size to this percentage of the set font size"><small>Resize</small></th>
                       </tr>
                       <tr class="hide_for_songs">
                         <td>Book Title</td>
@@ -375,7 +375,7 @@
                         <td>Line</td>
                         <td><input type="number" id="songline_size" name="songline_size" value="12"></td>
                         <td><input type="number" id="songline_space" name="songline_space" value="4"></td>
-                        <td title="Allow automatic reduction of font size to this percentage of the set font size">
+                        <td rel="tooltip" title="Allow automatic reduction of font size to this percentage of the set font size">
                           <select size="1" id="resize_percent" name="resize_percent">
                             <option value="100">100%</option><option value="95">95%</option><option value="90">90%</option><option value="85">85%</option><option value="80">80%</option><option value="75">75%</option><option value="70">70%</option><option value="65">65%</option><option value="60">60%</option><option value="55">55%</option><option value="50">50%</option>
                             <option value="0">Wrap</option>
@@ -389,12 +389,12 @@
                         <td></td>
                       </tr>
                       <tr>
-                        <td colspan=2 title="Spacing before Chorus/Verse/Bridge/etc">Block Spacing</td>
+                        <td colspan=2 rel="tooltip" title="Spacing before Chorus/Verse/Bridge/etc">Block Spacing</td>
                         <td><input type="number" id="songchunk_b4" name="songchunk_b4" value="12"></td>
                         <td></td>
                       </tr>
                       <tr>
-                        <td colspan=2 title="Spacing after the end of the song">Song Spacing</td>
+                        <td colspan=2 rel="tooltip" title="Spacing after the end of the song">Song Spacing</td>
                         <td><input type="number" id="song_space_after" name="song_space_after" value="12"></td>
                         <td></td>
                       </tr>
@@ -441,14 +441,14 @@
                 </label>
                 <div class="collapsible-content">
                   <div class="content-inner">
-                    <div class="t3" title="Number of columns">
-                      <label for="columns">Columns</label>
+                    <div class="t3">
+                      <label for="columns" rel="tooltip" title="Number of columns">Columns</label>
                       <span>
                         <input type="number" id="columns" name="columns" value="1">
                       </span>
                     </div>
-                    <div class="t3" title="Choose the physical layout of the songbook">
-                      <label for="page_layout">Layout</label>
+                    <div class="t3">
+                      <label for="page_layout" rel="tooltip" title="Choose the physical layout of the songbook">Layout</label>
                       <select size="1" id="page_layout" name="page_layout">
                         <option value="single-sided">single-sided</option><option value="booklet">booklet</option><option value="double-sided">double-sided</option><option value="adobe-booklet">adobe-booklet</option>
                       </select>
@@ -596,7 +596,7 @@
                       <tr>
                         <th><small>Titles</small></th>
                         <th><small>Size</small></th>
-                        <th title="Spacing below the text"><small>Space</small></th>
+                        <th rel="tooltip" title="Spacing below the text"><small>Space</small></th>
                         <th><small>Font</small></th>
                       </tr>
                       <tr>
@@ -610,7 +610,7 @@
                         </td>
                       </tr>
                       <tr>
-                        <td title="Spacing between songs and the Index if index on same page as songs" colspan=2 class="art"><small>Space Before</small></td>
+                        <td rel="tooltip" title="Spacing between songs and the Index if index on same page as songs" colspan=2 class="art"><small>Space Before</small></td>
                         <td><input type="number" id="index_title_b4" name="index_title_b4" value="20"></td>
                         <td></td>
                       </tr>
@@ -625,7 +625,7 @@
                         </td>
                       </tr>
                       <tr>
-                        <td title="Spacing before catedories in the category index" colspan=2 class="art"><small>Space Before</small></td>
+                        <td rel="tooltip" title="Spacing before catedories in the category index" colspan=2 class="art"><small>Space Before</small></td>
                         <td><input type="number" id="index_cat_b4" name="index_cat_b4" value="12"></td>
                         <td></td>
                       </tr>
@@ -655,7 +655,7 @@
                         </td>
                       </tr>
                       <tr>
-                        <td title="Categories to exclude (separate with a ',' no spaces allowed)">Excluded categories</td>
+                        <td rel="tooltip" title="Categories to exclude (separate with a ',' no spaces allowed)">Excluded categories</td>
                         <td colspan="3"><input size="30" type="text" id="index_cat_exclude" name="index_cat_exclude"></td>
                       </tr>
                     </table>
@@ -681,7 +681,7 @@
                   <h3>Preview<button onclick="$(this).closest('#exportPreview').removeClass('sidebar-open');" class="icon-fl-right close-icon">&times;</button></h3><input id="auto_refresh" name="auto_refresh" type="checkbox"><label for="auto_refresh">Automatic refresh?</label>
                   <!-- can't seem to get chrome to display this in iframe, objects or any other thingy without crashing on src change.  I get an "awSnap!" message and closed out tab -->
                 </div>
-                <iframe title="Generated PDF" width="320" height="450" src="" title="Presentation Slideshow"></iframe>
+                <iframe rel="tooltip" title="Generated PDF" width="320" height="450" src="" rel="tooltip" title="Presentation Slideshow"></iframe>
                 <br>
                 <br>
                 <a id="downloadPDF" class="btn" style="background-color: var(--highlight-color);" download>Download</a>
