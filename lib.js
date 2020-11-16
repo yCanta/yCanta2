@@ -1439,7 +1439,7 @@ function toggleVideo() {
       console.log("Can't help ya...",window.player.getPlayerState());
   }
 }
-//Keep the video playing even when it goes into the background.
+//Keep the video playing even when it goes into the background.  -- I don't think this is doing anything.
 var hidden, visibilityChange; 
 if (typeof document.hidden !== "undefined") {  
   hidden = "hidden";

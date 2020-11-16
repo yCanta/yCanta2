@@ -146,6 +146,10 @@ chunk[type="comment"] a {
   text-align: center;
   margin: 0;
   padding: 1rem;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 #dialog[data-use="player"]{
   width: 300px;
@@ -1451,7 +1455,7 @@ only screen and (max-height: 500px) {
 #category_filter {
   position: absolute;
   left: -218px;
-  width: 370px;
+  width: 300px;
   transform: scaleY(0);
   overflow: hidden;
   box-shadow: var(--btn-shadow-var);
