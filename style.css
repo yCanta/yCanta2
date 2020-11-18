@@ -1522,3 +1522,11 @@ only screen and (max-height: 500px) {
   left: auto;
   margin: 0;
 }
+.float-menu-icon::after,
+.emoji::after {
+  display: inline;
+  content: '\FE0E';
+}
+.looping {
+  background-color: var(--song-color);
+}

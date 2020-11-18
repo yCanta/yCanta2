@@ -1372,7 +1372,11 @@ function loadSongPlayer(){
 
   let song_id = window.song._id;
   let content = '<br><br><div id="player"></div>';
-  content += '<span id="playlistnumber"></span><button class="btn" onclick="window.player.previousVideo()">⏮<button><button id="play" class="btn" onclick="toggleVideo();">▶<button><button class="btn" onclick="window.player.nextVideo()">⏭<button>'
+  content += '<span id="playlistnumber" style="margin: 1rem .5rem 1rem .5rem;"></span>'+
+             '<button class="btn emoji" onclick="window.player.previousVideo()">⏮<button>'+
+             '<button id="play" class="btn emoji" onclick="toggleVideo();">▶<button>'+
+             '<button class="btn emoji" onclick="window.player.nextVideo()">⏭<button>'+
+             '<button id="loop" class="btn emoji" onclick="toggleLoop();">🔁</button>'
 
   document.querySelector('#dialog .content').innerHTML = content;
 
@@ -1401,6 +1405,7 @@ firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 function onPlayerReady(event) {
   let ids = window.youtube_links.map(link => link.match(/(be\/|v\=)([-\w]+)\S/)[0].replace('be/','').replace('v=',''));
   window.player.cuePlaylist(ids);
+  window.player.loop = false;
 }
 function onPlayerStateChange(event){
   $('#playlistnumber').text((window.player.getPlaylistIndex()+1).toString()+'/'+window.player.getPlaylist().length.toString());
@@ -1417,6 +1422,20 @@ function onPlayerStateChange(event){
     default:
       //console.log("Can't help ya...",window.player.getPlayerState());
   }
+}
+function toggleLoop(){
+  switch(window.player.loop) {
+    case true: 
+      window.player.loop = false;
+      $('#loop').removeClass('looping');
+      break;
+    case false: 
+      window.player.loop = true;
+      $('#loop').addClass('looping');
+      break;
+  }
+  window.player.setLoop(window.player.loop);
+
 }
 function pauseVideo() {
   window.player.pauseVideo();
