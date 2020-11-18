@@ -1,7 +1,5 @@
- $(function () {
-
-  $("#file").on("change", function(evt) {
-    // Closure to capture the file information.
+function startHandlingFiles(){
+  try {
     async function handleFile(f) {
       let result = '';
 
@@ -16,18 +14,14 @@
       }
       return result;
     }
-
-    var files = evt.target.files;  // we can have multiple files selected.
+    var files = document.getElementById('file').files;  // we can have multiple files selected.
     for (var i = 0; i < files.length; i++) {
       handleFile(files[i]);
     }
-  }).on("click", function () {  //let's you select the same file twice.
-    var $result = $("#result");
-    this.value = null;
-    $result.html("");
-    $result[0].style='';
-  });
-})
+  } catch(err) {
+    alert(err);
+  }
+}
 function updateProgress(){
   let i = window.import;
   i.progressBar.style.background = 'linear-gradient(to right, '+
