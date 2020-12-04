@@ -1657,19 +1657,3 @@ $(function() {
     tooltip.bind( 'click', remove_tooltip );
   });
 });
-
-window.onerror = function (msg, url, lineNo, columnNo, error) {
-  var string = msg.toLowerCase();
-  var substring = "script error";
-
-  var message = [
-    'Message: ' + msg,
-    'URL: ' + url,
-    'Line: ' + lineNo,
-    'Column: ' + columnNo,
-    'Error object: ' + JSON.stringify(error)
-  ].join(' - ');
-
-  alert(message);
-  return false;
-};
