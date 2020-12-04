@@ -434,8 +434,8 @@ pre, .pre {
   font-size: 1.5em;
   display: initial;
   position: absolute;
-  top: 1em;
-  right: 1em;
+  top: 1rem;
+  right: 0.5rem;
   z-index: 6;
   padding: 0 .5rem 0.25rem .5rem;
   border-radius: 2rem;
@@ -1157,6 +1157,9 @@ only screen and (max-height: 500px) {
   body main .sidebar {
     flex: 0 0 0;
   }
+  .active .tr {
+    top: 1.5rem;
+  }
   #column-filler {
     background-color: var(--edit-color);
   }
@@ -1275,7 +1278,7 @@ only screen and (max-height: 500px) {
     min-width: 375px;
     max-width: 425px;
   }
-  #song .content,
+  #song .subcolumn > div,
   #songbook_content {
     min-width: 400px;
   }
