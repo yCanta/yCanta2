@@ -1335,9 +1335,9 @@ async function songInSongbooks(song_id){
 }
 
 async function loadInfo(song=true) {
+  document.getElementById('dialog').setAttribute('data-use','info');
   if(song){
     $('#dialog h5').text('Song');
-    document.getElementById('dialog').setAttribute('data-use','info');
     let song_id = window.song._id;
     let content = '<small>Added: '+window.song.addedBy+', '+new Date(window.song.added).toLocaleTimeString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})+'</small><br />'+
       '<small>Edited: '+window.song.editedBy+', '+new Date(window.song.edited).toLocaleTimeString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})+'</small><br />'+
