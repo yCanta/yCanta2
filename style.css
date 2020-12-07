@@ -660,7 +660,7 @@ main.fullscreen,
 #presentation {
   display: block;
   position: fixed;
-  transform: translateY(100%);
+  transform: translateY(-100%);
   border: 0;
   width: 100vw;
   height: 100vh;
@@ -691,6 +691,7 @@ body.present.songList #presentation {
   border-radius: 20px;
   border: 1px rgb(238, 238, 238) inset;
   padding-left: .5em;
+  width: calc(100% - 4rem);
 }
 .search + span:after {position: relative;}
 .search + span:before {
@@ -930,7 +931,7 @@ input[type="number"] {
   }
   main,
   .column {
-    transform: translate3d(0, 100vh, 0);
+    transform: translate3d(0, max(100vh, 800px), 0);
     height: calc(100vh - 4rem);
   }
   
@@ -1257,7 +1258,7 @@ only screen and (max-height: 500px) {
     min-width: 375px;
     max-width: 425px;
   }
-  #song .subcolumn > div,
+  #song .subcolumn:first-child > div,
   #songbook_content {
     min-width: 400px;
   }
@@ -1436,9 +1437,11 @@ only screen and (max-height: 500px) {
 }
 #category_filter {
   position: absolute;
-  left: -218px;
+  right: -1rem;
   width: 300px;
-  transform: scaleY(0);
+  transform: scale(0);
+  transform-origin: 95% top;
+  opacity: 0;
   overflow: hidden;
   box-shadow: var(--btn-shadow-var);
 }
@@ -1447,8 +1450,9 @@ only screen and (max-height: 500px) {
   border-radius: 2rem;
 }
 .open #category_filter{
-  transform: scaleY(1);
+  transform: scale(1);
   padding: 5px;
+  opacity: 1;
 }
 .mb23 {
   margin-bottom: 2.5em
