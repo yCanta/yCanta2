@@ -53,7 +53,6 @@ song {
   display: block;
   white-space: pre-wrap;
   counter-reset: verse_n; 
-  padding-bottom: 3rem;
   column-width: 300px;
   column-fill: auto;
   column-rule: 2px solid var(--edit-color);

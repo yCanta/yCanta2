@@ -340,7 +340,17 @@ stitle,
   background-color: var(--background-color);
   z-index: 1;
   margin: 0 -1rem 0 -1rem;
-  padding: 0.1px 1rem 0 1rem;
+  padding: 0.1px 1rem 0.5rem 1rem;
+}
+.edit.song stitle,
+.edit.songList #songbook_header {
+  top: 60px;
+}
+.edit_buttons:first-child {
+  position: sticky;
+  background-color: var(--background-color);
+  top: 0;
+  z-index: 1;
 }
 .song-highlight a {
   background-color: var(--song-color);
@@ -454,9 +464,11 @@ pre, .pre {
 }
 .active .float-menu-item{
   opacity: 1;
+  pointer-events: auto;
 }
 .float-menu-item {
   opacity: 0;
+  pointer-events: none;
   white-space: pre;
   margin-top: .5em;
   margin-bottom: .5em;
@@ -1028,6 +1040,10 @@ input[type="number"] {
   body.songbookList header h2 {
     margin-top: .5rem;
   }
+  .edit stitle,
+  .edit #songbook_header {
+    position: initial;
+  }
 }
 /** Phone in portrait and landscape**/
 @media only screen and (max-width: 639px),
@@ -1042,10 +1058,6 @@ only screen and (max-height: 500px) {
   body.songbookList header {
     border-bottom: gray 1px solid;
   }
-  .edit song {
-    margin-bottom: 10rem;
-  }
-
   .row {
     border-top: 8px solid var(--highlight-color);
   }
@@ -1057,6 +1069,7 @@ only screen and (max-height: 500px) {
     bottom: 1em;
     z-index: 6;
     text-align: right;
+    pointer-events: none;
   }
   .float-menu-item.uncollapsed:not(:last-child) {
     transform: scale(1);
@@ -1064,7 +1077,7 @@ only screen and (max-height: 500px) {
   }
   .float-menu-item:not(:last-child){
     transform: scale(0);
-    transform-origin: 85% bottom;
+    transform-origin: 85% 250%;
     opacity: 0;
     background: rgba(250, 250, 250, 0.75);
     border-radius: 2rem;
@@ -1310,6 +1323,7 @@ only screen and (max-height: 500px) {
 @media (hover: hover) and (min-width: 640px) and (min-height: 501px) {
   .column:hover .float-menu-item{
     opacity: 1;
+    pointer-events: auto;
   }
 }
 /*Export CSS Icons */
