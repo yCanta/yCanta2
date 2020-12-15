@@ -11,7 +11,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
     <link rel="mask-icon" href="safari-pinned-tab.svg" color="#ff0000">
 
-    <script src="jquery-3.4.0.min.js"></script>
+    <script src="jquery-3.5.1.min.js"></script>
     <script src="pouchdb.min.js"></script>
     <script src="pouchdb.all-dbs.min.js"></script>
     <script src="pouchdb.authentication.min.js"></script>
@@ -22,11 +22,11 @@
     <script async src="jquery.toTextarea.js"></script>
     <script src="list.min.js"></script>
     <script src="sortable.js"></script>
-    <script defer src="jszip.min.js"></script>
+    <script async src="jszip.min.js"></script>
     <script async src="import.js"></script>
-    <script defer src="pdfformatter.js"></script>
-    <script defer src="pdfkit.standalone.js"></script>
-    <script defer src="blob-stream.js"></script>
+    <script async src="pdfformatter.js"></script>
+    <script async src="pdfkit.standalone.js"></script>
+    <script async src="blob-stream.js"></script>
     <!--script type="text/javascript" src="json-url.js"></script-->
 
     <link rel="stylesheet" type="text/css" href="style.css">
@@ -44,7 +44,7 @@
       <div>
         <h2 id="title"><a href="#">yCanta</a></h2>
         <span class="loggedin_display" style="position: absolute; top:0;right:0; z-index:1;"><span id="username_d"></span>
-          <button style="background-color: var(--background-color); opacity: .8;" class="btn" onclick="dbLogout();">Logout</button>
+          <button style="background-color: var(--background-color);" class="btn" onclick="dbLogout();">Logout</button>
         </span>
         <hr>
       </div>
@@ -678,7 +678,7 @@
                   <h3>Preview<button onclick="$(this).closest('#exportPreview').removeClass('sidebar-open');" class="icon-fl-right close-icon">&times;</button></h3><input id="auto_refresh" name="auto_refresh" type="checkbox"><label for="auto_refresh">Automatic refresh?</label>
                   <!-- can't seem to get chrome to display this in iframe, objects or any other thingy without crashing on src change.  I get an "awSnap!" message and closed out tab -->
                 </div>
-                <iframe rel="tooltip" title="Generated PDF" width="320" height="450" src="" rel="tooltip" title="Presentation Slideshow"></iframe>
+                <iframe rel="tooltip" title="Generated PDF" width="320" height="450" src="" rel="tooltip"></iframe>
                 <br>
                 <br>
                 <a id="downloadPDF" class="btn" style="background-color: var(--highlight-color);" download>Download</a>
@@ -700,7 +700,7 @@
     </dialog>
     <footer>
     </footer>
-    <iframe id="presentation"></iframe>
+    <iframe id="presentation" title="Presentation Slideshow"></iframe>
     <script>
       dragDialog();
 
@@ -996,7 +996,7 @@
                   //load the presentation.html, jquery and presentation.js file into their spots.
                   $.getScript("presentation.html", function(data) {
                     presHtml = data;
-                    $.getScript("jquery-3.4.0.min.js", function(data) {
+                    $.getScript("jquery-3.5.1.min.js", function(data) {
                       presHtml = presHtml.replace('jQuery_embed', data);
                       $.getScript("presentation.js", function(data) {
                         presHtml = presHtml.replace('presentation_embed', data);
@@ -1046,7 +1046,6 @@
         }
         window.old_hash = window.location.hash;
         $('.column').removeAttr('style');
-        document.body.classList.remove('revertBackground');
       }
     </script>
   </body>  

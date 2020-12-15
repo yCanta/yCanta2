@@ -342,14 +342,20 @@ stitle,
   margin: 0 -1rem 0 -1rem;
   padding: 0.1px 1rem 0.5rem 1rem;
 }
+stitle,
+.subcolumn:first-child .column_header {
+  background: linear-gradient(180deg, var(--highlight-color) 0%, var(--background-color) 100%);
+}
 .edit.song stitle,
 .edit.songList #songbook_header {
   top: 60px;
 }
 .edit_buttons:first-child {
   position: sticky;
-  background-color: var(--background-color);
+  background-color: var(--highlight-color);
   top: 0;
+  margin: 0 -1rem;
+  padding: 0 1rem;
   z-index: 1;
 }
 .song-highlight a {
@@ -542,7 +548,6 @@ span.deleteicon input {
 }
 #login h2 {
   font-size: xx-large;
-  color: darkgray;
   left: -1rem;
   position: relative;
 }
@@ -926,13 +931,6 @@ input[type="number"] {
     border-radius: 20px;
   }
 
-  body stitle {
-    padding-top: .6rem;
-  }
-  .column_header h3 {
-    margin-top: .6rem;
-  }
-
   header,
   main,
   .column {
@@ -960,7 +958,6 @@ input[type="number"] {
   .songList main,
   .songList #songbookList {
     transform: translate3d(0, 0, 0);
-    --background-color: var(--highlight-color);
   }
   .songList #songList {
     transform: translate3d(0, 4rem, 0);
@@ -970,7 +967,6 @@ input[type="number"] {
   .song #songbookList,
   .song #songList {
     transform: translate3d(0, 0, 0);
-    --background-color: var(--highlight-color);
   }
   .song #song {
     transform: translate3d(0, 4rem, 0);
@@ -978,16 +974,11 @@ input[type="number"] {
 
   .sidebar {
     position: fixed;
-    border-top: 8px solid var(--highlight-color);
     top: 0;
     bottom: 0;
     right: 0;
     width: 280px;
     transform: translate3d(280px, 0, 0);
-  }
-
-  body.revertBackground .column {
-    --background-color: inherit !important;
   }
 
   /*Focus edit*/
@@ -1006,7 +997,6 @@ input[type="number"] {
   .export #songList,
   .song.export #song {
     transform: translate3d(0, 0, 0);
-    --background-color: var(--highlight-color);
   }
   .export #export {
     transform: translate3d(0, 4rem, 0);
@@ -1054,12 +1044,6 @@ only screen and (max-height: 500px) {
   header #title,
   #welcome {
     padding: 0 1rem 0 1rem;
-  }
-  body.songbookList header {
-    border-bottom: gray 1px solid;
-  }
-  .row {
-    border-top: 8px solid var(--highlight-color);
   }
 
   /*float for mobile*/
@@ -1269,7 +1253,6 @@ only screen and (max-height: 500px) {
   }
   #export .content {
     min-width: 375px;
-    max-width: 425px;
   }
   #song .subcolumn:first-child > div,
   #songbook_content {
@@ -1292,9 +1275,6 @@ only screen and (max-height: 500px) {
   }
   .float-menu-item:not(:first-child):after {
     content: ' //';
-  }
-  .float-menu {
-    background-color: var(--highlight-color);
   }
   .column:first-child .row {  
     border-left: 1px solid lightgray;  
