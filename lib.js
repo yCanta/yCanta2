@@ -1185,10 +1185,14 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
     width = getTranslate3d(dragEl)[4]; // get original translateX value
     height = getTranslate3d(dragEl)[5]
     active = document.getElementsByClassName('active')[0];
+    dragTop = false;
+    slideout = false;
+    slideoutEl = dragEl.previousElementSibling;
+    slideback = false;
 
     // only do stuff if in right place
-    if (dragSide == 'right' && screen.width < 640){
-      if (window.editing || e.target.closest('#export')) { 
+    if(dragSide == 'right' && screen.width < 640){
+      if(window.editing || e.target.closest('#export')) { 
         dragEl.style.transition = 'all 0s';
         //e.preventDefault();
       }
@@ -1196,8 +1200,8 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
         startx = false;
       }
     }
-    else if (dragSide == 'top' && screen.width < 640){
-      if((starty < 120)) { 
+    else if(dragSide == 'top' && screen.width < 640){
+      if(starty < 120) { 
         if(active == dragEl){
           active = 0;
         }
@@ -1205,7 +1209,17 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
           active.style.transition = 'all 0s';
         }
         dragEl.style.transition = 'all 0s';
+        dragTop = true;
         //e.preventDefault();
+      }
+      else if(dragEl.classList.contains('slidout')){
+        slideback = true;
+        dragEl.style.transition = 'all 0s';
+      }
+      else if(startx < screen.width/3) {
+        //possible slide out going on
+        slideout = true;
+        slideoutEl.style.transition = 'all 0s';
       }
       else {
         startx = false;
@@ -1219,18 +1233,33 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
   dragEl.addEventListener('touchmove', function(e){
     if(startx){
       var touchobj = e.changedTouches[0]; // reference first touch point for this event
-      var dist = Math.max(parseInt(width) + parseInt((touchobj.clientX) - startx), 0);
+      var dist = parseInt(width) + parseInt((touchobj.clientX) - startx);
       var disty = Math.max(parseInt(height) + parseInt((touchobj.clientY) - starty), 0);
 
       if (dragSide == 'right'){
-        dragEl.style.transform = 'translate3d('+ parseInt((dist)) + 'px, 0, 0)';
+        dragEl.style.transform = 'translate3d('+ parseInt(dist) + 'px, 0, 0)';
       }
       else if (dragSide == 'top'){
-        dragEl.style.transform = 'translate3d(0,'+ parseInt((disty)) + 'px, 0)';
-        if(active){
-          active.style.transform = 'translate3d(0,'+ parseInt((disty+60)) + 'px, 0)';
+        if(slideout){
+          if(dist > 25) {
+            slideoutEl.style.transform = 'translate3d('+ -(parseInt(dist)-25)*4 + 'px, 0, 0)';
+          }
         }
-        e.preventDefault();   
+        else if(slideback){
+          if(dist < -25) {
+            dragEl.classList.remove('slidout');
+            dragEl.style.transform = 'translate3d('+ (parseInt(dist)+25)*4 + 'px, 4rem, 0)';
+            dragEl.style.width = 'min(80%, 300px)';
+            dragEl.style['z-index'] = '7';
+          }
+        }
+        else {
+          dragEl.style.transform = 'translate3d(0,'+ parseInt(disty) + 'px, 0)';
+          if(active){
+            active.style.transform = 'translate3d(0,'+ parseInt((disty+60)) + 'px, 0)';
+          }
+          e.preventDefault();   
+        }
       }
     }
   }, false);
@@ -1238,13 +1267,29 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
   dragEl.addEventListener('touchend', function(e){
     if(startx){
       var touchobj = e.changedTouches[0]; // reference first touch point for this event
-      var dist = Math.abs(parseInt(touchobj.clientX) - startx);
+      var dist = parseInt(touchobj.clientX) - startx;
       var disty = Math.abs(parseInt(touchobj.clientY) - starty);
       if (startx && dragSide == 'right' && dist > 50 ){ //make sure that distance isn't just accidental
         dragAction(dragEl, 'sidebar-open');
         e.preventDefault(); 
       }
-      else if (startx && dragSide == 'top' && disty > 200 ){
+      else if (slideback){
+        if(dist < -100) {
+          e.preventDefault();
+        }
+        else {
+          dragEl.classList.add('slidout');
+        }
+        dragEl.removeAttribute('style');
+      }
+      else if (slideout) {
+        if( dist > 100) {
+          e.preventDefault();
+          slideoutEl.classList.add('slidout');
+        }
+        slideoutEl.removeAttribute('style');
+      }
+      else if (dragTop && disty > 200 ){
         dragAction();
         e.preventDefault();
         return; // don't fix layout just yet - we'll do that after hashchange.

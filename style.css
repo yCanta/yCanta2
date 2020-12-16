@@ -1055,7 +1055,7 @@ only screen and (max-height: 500px) {
     text-align: right;
     pointer-events: none;
   }
-  .float-menu-item.uncollapsed:not(:last-child) {
+  .active .float-menu-item.uncollapsed:not(:last-child) {
     transform: scale(1);
     opacity: 1;
   }
@@ -1510,3 +1510,29 @@ only screen and (max-height: 500px) {
 .looping {
   background-color: var(--song-color);
 }
+.slideout {
+  animation: slideout .5s;
+  animation-fill-mode: forwards;
+}
+.slidout {
+  transform: translate3d(0,4rem,0) !important;
+  z-index: 7 !important;
+  width: min(80%, 300px) !important;
+}
+.slidein {
+  animation: slideback .5s;
+  animation-fill-mode: forwards;
+}
+@keyframes slideout {
+  0%   {transform: translate3d(0,0,0); }
+  49%  {transform: translate3d(-200%,0,0); }
+  50%  {transform: translate3d(-200%,4rem,0); width: 100%;}
+  100% {transform: translate3d(0,4rem,0); z-index: 7; width: min(80%, 300px);}
+}
+@keyframes slideback {
+  0% {transform: translate3d(0,4rem,0); z-index: 7; width: min(80%, 300px);}
+  49%  {transform: translate3d(-200%,4rem,0); width: 100%;}
+  50%  {transform: translate3d(-200%,0,0); }
+  100%   {transform: translate3d(0,0,0); }
+}
+
