@@ -29,13 +29,8 @@ line {
   display: block;
   position: relative;
   padding-top: 1em;
-  line-height: 2;
-}
-line::first-line {
-  line-height: initial;
 }
 .nochords line {
-  line-height: initial;
   padding-top: 0;
 }
 c {
@@ -47,7 +42,6 @@ c {
 .nochords c {
  display: none;
 }
-
 /*counter stuff  */
 song {
   display: block;
@@ -57,6 +51,7 @@ song {
   column-fill: auto;
   column-rule: 2px solid var(--edit-color);
   column-gap: 4rem;
+  margin-bottom: 1rem;
 }
 .nochords [type=verse]:before {
   top: 1.2em;
