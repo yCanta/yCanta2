@@ -1008,11 +1008,11 @@ input[type="number"] {
     transform: translate3d(0, 0, 0);
   }
   .slidout {
-    transform: translate3d(0,4rem,0) !important;
+    transform: translate3d(0,8rem,0) !important;
+    height: calc(100vh - 8rem);
+    transform-origin: bottom;
     z-index: 7 !important;
     width: min(80%, 300px) !important;
-    background: linear-gradient(180deg, var(--background-color) 100px, rgba(255, 255, 255, 0.5) 120px);
-    backdrop-filter: blur(4px);
   }
 }
 /** Phone in landscape **/

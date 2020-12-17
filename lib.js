@@ -1189,6 +1189,7 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
     slideout = false;
     slideoutEl = dragEl.previousElementSibling;
     slideback = false;
+    navigate = false;
 
     // only do stuff if in right place
     if(dragSide == 'right' && screen.width < 640){
@@ -1212,14 +1213,23 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
         dragTop = true;
         //e.preventDefault();
       }
-      else if(dragEl.classList.contains('slidout')){
-        slideback = true;
-        dragEl.style.transition = 'all 0s';
-      }
-      else if(startx < screen.width/5) {
-        //possible slide out going on
-        slideout = true;
-        slideoutEl.style.transition = 'all 0s';
+      else if(!window.editing) {
+        if(dragEl.classList.contains('slidout')){
+          slideback = true;
+          dragEl.style.transition = 'all 0s';
+        }
+        else if(startx < screen.width/5) {
+          //possible slide out going on
+          slideout = true;
+          slideoutEl.style.transition = 'all 0s';
+        }
+        else if(screen.width * .25 < startx && startx < screen.width *.75 && document.body.classList.contains('song')) {
+          navigate = true;
+          dragEl.getElementsByClassName('row')[0].style.transition = 'transform 0s';
+        }
+        else {
+          startx = false;
+        }
       }
       else {
         startx = false;
@@ -1248,9 +1258,16 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
         else if(slideback){
           if(dist < -25) {
             dragEl.classList.remove('slidout');
-            dragEl.style.transform = 'translate3d('+ (parseInt(dist)+25)*4 + 'px, 4rem, 0)';
+            dragEl.style.transform = 'translate3d('+ (parseInt(dist)+25)*4 + 'px, 8rem, 0)';
             dragEl.style.width = 'min(80%, 300px)';
+            dragEl.style.height = 'calc(100vh - 8rem)'
             dragEl.style['z-index'] = '7';
+          }
+        }
+        else if(navigate){
+          if(Math.abs(dist) > 50) {
+            dragEl.getElementsByClassName('row')[0].style.transform = 'translate3d('+ (dist) + 'px, 0, 0)';
+            dragEl.getElementsByClassName('row')[0].style.opacity = '0.5';
           }
         }
         else {
@@ -1288,6 +1305,21 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
           slideoutEl.classList.add('slidout');
         }
         slideoutEl.removeAttribute('style');
+      }
+      else if (navigate) {
+        if(Math.abs(dist) > 100) {
+          e.preventDefault();
+          let currentSong = document.querySelector("#songbook_content [data-song-id='"+window.song._id+"']");
+          if(dist > 0 && currentSong.previousElementSibling) {
+            location.hash = '#'+window.songbook._id+'&'+
+                                currentSong.previousElementSibling.getAttribute('data-song-id'); 
+          }
+          else if(currentSong.nextElementSibling) {
+            location.hash = '#'+window.songbook._id+'&'+
+                                currentSong.nextElementSibling.getAttribute('data-song-id'); 
+          }
+        }
+        dragEl.getElementsByClassName('row')[0].removeAttribute('style');
       }
       else if (dragTop && disty > 200 ){
         dragAction();
