@@ -1216,7 +1216,7 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
         slideback = true;
         dragEl.style.transition = 'all 0s';
       }
-      else if(startx < screen.width/3) {
+      else if(startx < screen.width/5) {
         //possible slide out going on
         slideout = true;
         slideoutEl.style.transition = 'all 0s';
@@ -1237,7 +1237,7 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
       var disty = Math.max(parseInt(height) + parseInt((touchobj.clientY) - starty), 0);
 
       if (dragSide == 'right'){
-        dragEl.style.transform = 'translate3d('+ parseInt(dist) + 'px, 0, 0)';
+        dragEl.style.transform = 'translate3d('+ Math.max(parseInt(dist),0) + 'px, 0, 0)';
       }
       else if (dragSide == 'top'){
         if(slideout){
@@ -1269,7 +1269,7 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
       var touchobj = e.changedTouches[0]; // reference first touch point for this event
       var dist = parseInt(touchobj.clientX) - startx;
       var disty = Math.abs(parseInt(touchobj.clientY) - starty);
-      if (startx && dragSide == 'right' && dist > 50 ){ //make sure that distance isn't just accidental
+      if (startx && dragSide == 'right' && Math.abs(dist) > 50 ){ //make sure that distance isn't just accidental
         dragAction(dragEl, 'sidebar-open');
         e.preventDefault(); 
       }
