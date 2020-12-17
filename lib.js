@@ -1311,15 +1311,17 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
           e.preventDefault();
           let currentSong = document.querySelector("#songbook_content [data-song-id='"+window.song._id+"']");
           if(dist > 0 && currentSong.previousElementSibling) {
+            dragEl.getElementsByClassName('row')[0].style.transform = 'translate3d(-100%, 0, 0)';
             location.hash = '#'+window.songbook._id+'&'+
                                 currentSong.previousElementSibling.getAttribute('data-song-id'); 
           }
           else if(currentSong.nextElementSibling) {
+            dragEl.getElementsByClassName('row')[0].style.transform = 'translate3d(100%, 0, 0)';
             location.hash = '#'+window.songbook._id+'&'+
                                 currentSong.nextElementSibling.getAttribute('data-song-id'); 
           }
         }
-        dragEl.getElementsByClassName('row')[0].removeAttribute('style');
+        setTimeout(function(){dragEl.getElementsByClassName('row')[0].removeAttribute('style')},30);
       }
       else if (dragTop && disty > 200 ){
         dragAction();
