@@ -918,11 +918,6 @@ input[type="number"] {
   body.edit .sidebar-open {
     overflow: auto;
   }
-
-  body.song.export #song .subcolumn,
-  body.songList.export #songList .subcolumn {
-    overflow: hidden;
-  }
   ul li a{
     padding: 5px 10px 5px 10px;
     margin: 5px 0 5px 0;
@@ -930,7 +925,6 @@ input[type="number"] {
     border-bottom: 1px solid #EEE;
     border-radius: 20px;
   }
-
   header,
   main,
   .column {

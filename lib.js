@@ -1187,7 +1187,7 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
     active = document.getElementsByClassName('active')[0];
     dragTop = false;
     slideout = false;
-    slideoutEl = dragEl.previousElementSibling;
+    slideoutEl = (document.body.classList.contains('songList') && document.body.classList.contains('export') ? dragEl.previousElementSibling.previousElementSibling : dragEl.previousElementSibling);
     slideback = false;
     navigate = false;
 
@@ -1223,7 +1223,7 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
           slideout = true;
           slideoutEl.style.transition = 'all 0s';
         }
-        else if(screen.width * .25 < startx && startx < screen.width *.75 && document.body.classList.contains('song')) {
+        else if(screen.width * .25 < startx && startx < screen.width *.75 && document.body.classList.contains('song') && e.target.closest('.sidebar-open') == null) {
           navigate = true;
           dragEl.getElementsByClassName('row')[0].style.transition = 'transform 0s';
         }
