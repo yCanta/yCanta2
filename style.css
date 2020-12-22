@@ -344,7 +344,7 @@ stitle,
 }
 stitle,
 .subcolumn:first-child .column_header {
-  background: linear-gradient(180deg, var(--highlight-color) 0%, var(--background-color) 100%);
+  background: linear-gradient(180deg, var(--highlight-color) 0%, var(--background-color) 90%, transparent 100%);
 }
 .edit.song stitle,
 .edit.songList #songbook_header {

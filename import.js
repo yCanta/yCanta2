@@ -3,7 +3,7 @@ function startHandlingFiles(){
     async function handleFile(f) {
       let result = '';
 
-      if(f.type.search('zip')> -1) {
+      if(f.name.endsWith('zip')) {
         result = await importSongV1(f);
       }
       else if(f.name.endsWith('json')){
