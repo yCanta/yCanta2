@@ -85,6 +85,7 @@ async function importSongV1(f){
           zipEntry.async("string").then(function (song) {
             if(zipEntry.name.match(".*\.(song|son|hym|so1|rnd|poe)$")){
               song = song.replace(/author\>/gi, 'authors\>'); //we pluralized author in new version
+              song = song.replace(/\<[^>]+?\/\>/gi, ''); //empty tags...
               song = song.replace(/\|/gi, ',');  //Replace all the pipes with ,'s
               
               Promise.resolve(saveSong('i'+CRC32.str(zipEntry.name.replace('songs/',''),0), $(song), false))
