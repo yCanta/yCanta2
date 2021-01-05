@@ -1,10 +1,42 @@
 /*jshint esversion: 6 */
-var lorem =
-  'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam in suscipit purus. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; Vivamus nec hendrerit felis. Morbi aliquam facilisis risus eu lacinia. Sed eu leo in turpis fringilla hendrerit. Ut nec accumsan nisl. Suspendisse rhoncus nisl posuere tortor tempus et dapibus elit porta. Cras leo neque, elementum a rhoncus ut, vestibulum non nibh. Phasellus pretium justo turpis. Etiam vulputate, odio vitae tincidunt ultricies, eros odio dapibus nisi, ut tincidunt lacus arcu eu elit. Aenean velit erat, vehicula eget lacinia ut, dignissim non tellus. Aliquam nec lacus mi, sed vestibulum nunc. Suspendisse potenti. Curabitur vitae sem turpis. Vestibulum sed neque eget dolor dapibus porttitor at sit amet sem. Fusce a turpis lorem. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae;\nMauris at ante tellus. Vestibulum a metus lectus. Praesent tempor purus a lacus blandit eget gravida ante hendrerit. Cras et eros metus. Sed commodo malesuada eros, vitae interdum augue semper quis. Fusce id magna nunc. Curabitur sollicitudin placerat semper. Cras et mi neque, a dignissim risus. Nulla venenatis porta lacus, vel rhoncus lectus tempor vitae. Duis sagittis venenatis rutrum. Curabitur tempor massa tortor.';
+importScripts('pdfkit.standalone.js', 'blob-stream.js');
+
+function expand_chord(line){
+  let CHORD_SPACE_RATIO = 0.45;
+
+  let old_line = line.split(/(<c>.*?<\/c>)/)
+  line = '';
+  let chord_line = '';
+  old_line.forEach(function(item){
+    if(item.includes('<c>')){
+      chord_line += item.replace('<c>','').replace('</c>','');
+    }
+    else{
+      line += item;
+      if(line.length > chord_line.length) {
+        chord_line += ' '.repeat(line.length - chord_line.length);
+      }
+    }
+  });
+  
+  // Add space to the end of the chord line to make the chord recognized as a chord when reimporting.
+  var w = (chord_line.split(' ').length - 1); //count
+  var char = chord_line.length - w;
+
+  var w_ad = parseInt(((CHORD_SPACE_RATIO * char)/(1-CHORD_SPACE_RATIO) - w) + 1);
+  if (w_ad > 0) {
+    chord_line += ' '.repeat(w_ad);
+  }
+  var expanded_line = chord_line + '\n' + line.trimEnd();
+  return expanded_line;
+}
+
 var doc;
 var inch = 72;
-function makePDF(lorem, iframe) {
-  format(window.exportObject, iframe, read_config_form());
+
+onmessage = function(e) {
+  console.log('Message received from main script');
+  format(e.data[0],read_config(e.data[1]));
 }
 
 function* range(start, end) {
@@ -1538,14 +1570,14 @@ function format_page(doc, cfg, page_mapping) {
   }
 }
 
-
-function format(songbook, iframe, cfg) {
+function format(songbook, cfg) {
   let old_time = new Date();
   if (typeof songbook == 'object') {
     songbook = parse(songbook, cfg);    // parse into objects
   }
-  window.document.getElementById('pdf_progress').style.width = 0 +'%';
-  window.document.getElementById('pdf_progress_text').innerHTML = 0 +'%';
+  let progress = '0%';
+  postMessage(['progress',progress]);
+
   // calculate the space needed for the songbook pieces
   let doc = new PDFDocument();
   calc_heights(songbook, cfg, doc);
@@ -1571,29 +1603,17 @@ function format(songbook, iframe, cfg) {
     for(const page_mapping of physical_page) {
       format_page(doc, cfg, page_mapping);
     }
-    //This won't work until we start messaging via web workers - UI is frozen until js finishes.
-   // console.log(parseInt(((parseInt(i,10)+1) / pages_ordered.length)*100, 10) +'%');
-    window.document.getElementById('pdf_progress').style.width = parseInt(((parseInt(i,10)+1) / pages_ordered.length)*100,10) +'%';
-    window.document.getElementById('pdf_progress_text').innerHTML = parseInt(((parseInt(i,10)+1) / pages_ordered.length)*100,10) +'%';
+    progress = parseInt(((parseInt(i,10)+1) / pages_ordered.length)*100, 10) +'%';
+    postMessage(['progress',progress]);
   }
 
-  // end and display the document in the iframe to the right
+  // end and return the pdf blob;
   doc.end();
   stream.on('finish', function() {
-    iframe.src = stream.toBlobURL('application/pdf');
-    document.getElementById('downloadPDF').href = stream.toBlobURL('application/pdf');
+    console.log(new Date() - old_time);
+    console.log('Finished making pdf, posting to main thread');
+    postMessage(['pdf',stream.toBlobURL('application/pdf')]);
   });
-  console.log(new Date() - old_time);
-
-}
-
-function read_config_form(){
-  let opts = $('#export_form').serializeArray();
-  let new_opts = [];
-  for(let opt of opts) {
-    new_opts[opt.name] = opt.value;
-  }
-  return read_config(new_opts);
 }
 
 function read_config(config_array) {

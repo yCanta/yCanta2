@@ -1005,10 +1005,26 @@ function prepSaveSong(element) {
   });
 }
 function prepExport(){
-  document.getElementById('pdf_progress').style.width = 0 +'%';
-  document.getElementById('pdf_progress_text').innerHTML = 0 +'%';
+  document.getElementById('pdf_progress').style.width = '0%';
+  document.getElementById('pdf_progress_text').innerHTML = '0%';
   document.querySelector('iframe').src = "";
   $('#display_chords').trigger('change');
+ 
+  //webworker stuff
+  if(typeof(window.pdfFormatter) == 'undefined') {
+    window.pdfFormatter = new Worker('pdfformatter.js');
+    pdfFormatter.onmessage = function(e) {
+      if(e.data[0] == 'pdf'){
+        document.querySelector('iframe').src = e.data[1];
+        document.getElementById('downloadPDF').href = e.data[1];
+        console.log('Message received from worker');
+      }
+      else if(e.data[0] == 'progress'){
+        window.document.getElementById('pdf_progress').style.width = e.data[1];
+        window.document.getElementById('pdf_progress_text').innerHTML = e.data[1];
+      }
+    }
+  }
   db.allDocs({
     include_docs: true,
     startkey: 'cfg-'+window.exportObject._id,
@@ -1156,8 +1172,16 @@ function export_form_summary_update() {
   document.getElementById('index_summary').innerHTML = index_name;
 
   if($('#auto_refresh').is(":checked")){
-    makePDF(window.exportObject, document.querySelector('iframe'))
+    pdfFormatter.postMessage([window.exportObject,read_config_form()]);
   }
+}
+function read_config_form(){
+  let opts = $('#export_form').serializeArray();
+  let new_opts = [];
+  for(let opt of opts) {
+    new_opts[opt.name] = opt.value;
+  }
+  return new_opts;
 }
 function getTranslate3d (el) {
   var values = window.getComputedStyle(el).transform.split(/\w+\(|\);?/);

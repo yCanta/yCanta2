@@ -24,10 +24,6 @@
     <script src="sortable.js"></script>
     <script async src="jszip.min.js"></script>
     <script async src="import.js"></script>
-    <script async src="pdfformatter.js"></script>
-    <script async src="pdfkit.standalone.js"></script>
-    <script async src="blob-stream.js"></script>
-    <!--script type="text/javascript" src="json-url.js"></script-->
 
     <link rel="stylesheet" type="text/css" href="style.css">
     <link rel="stylesheet" type="text/css" href="jquery.myTransposer.css">
@@ -242,11 +238,11 @@
                 </tr>
                 <tr>
                   <td>
-                    <button style="background-color: var(--edit-color);" class="btn" onclick="makePDF(window.exportObject, document.querySelector('iframe'))">GeneratePDF</button>
+                    <button style="background-color: var(--edit-color);" class="btn" onclick="pdfFormatter.postMessage([window.exportObject,read_config_form()]);">GeneratePDF</button>
                   </td>
                   <td style="width: 100%">
                     <div id='pdf_progress_bar' style='border: 1px solid black; position: relative;'>
-                      <div style='border-right: 1px solid gray; background-color: var(--background-color); width:0%; height:1.2em; text-align: center;' id='pdf_progress'>
+                      <div style='border-right: 1px solid gray; background-color: var(--edit-color); width:0%; height:1.2em; text-align: center; transition: all 0s;' id='pdf_progress'>
                       </div>
                       <span id='pdf_progress_text' style='font-size:small; white-space:nowrap; position: absolute; top:0; right: 0; left: 0; bottom: 0; text-align: center;'></span>
                     </div>
