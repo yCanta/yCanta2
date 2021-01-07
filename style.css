@@ -1,6 +1,6 @@
 :root {
-  --songbookList-color: lemonchiffon;
-  --songList-color: lightsalmon;
+  --songbookList-color: #f2c249;
+  --songList-color: #E6772E;
   --song-color: lightblue;
   --export-color: bisque;
   --edit-color: gainsboro;
@@ -597,7 +597,7 @@ input.deletable:placeholder-shown + span:after {
 span.deleteicon input {
   padding-right: 24px;
 }
-.loggedin #lower {
+.loggedin #logged_in {
   display: flex;
 }
 #settings {
@@ -642,7 +642,7 @@ span.deleteicon input {
 .login #login {
   display: block;
 }
-.login #lower div:not(:first-child) {
+.login #login + div {
   display: none;
 }
 #login > * {
@@ -1100,7 +1100,7 @@ only screen and (max-height: 500px) {
     margin: 0;
   }
   header #title,
-  #welcome {
+  #logged_in {
     padding: 0 1rem 0 1rem;
   }
 

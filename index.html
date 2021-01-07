@@ -51,54 +51,56 @@
             <button class="btn d_none create_local" onclick="checkCreateNew();">Create Local</button>
           </div>
         </div>
-        <div id="welcome">
-          <a class="btn songbookList-color" href="#songbooks">Songbooks</a>
-          <a class="btn songList-color" href="#sb-allSongs">All Songs</a>
+        <div id="logged_in">
+          <div id="welcome">
+            <a class="btn songbookList-color" href="#songbooks">Songbooks</a>
+            <a class="btn songList-color" href="#sb-allSongs">All Songs</a>
 
-          <h2>Brief Introduction</h2>
+            <h2>Brief Introduction</h2>
 
-          You can view songbooks or songs by selecting one of the above buttons.<br><br>
-        </div>
-        <div id="settings">
-          <fieldset class="closed">
-            <legend onclick="$(this).parent().toggleClass('closed');">User</legend>
-            <div class="content">
-              <a class="btn" href="#" onclick="loadRawDbObject(window.user._id,$('#user_content'));">Edit User</a>
-              <div id="user_content"></div>
-            </div>
-          </fieldset>
-          <fieldset class="closed">
-            <legend onclick="$(this).parent().toggleClass('closed');">Categories</legend>
-            <div class="content">
-              <a class="btn" href="#" onclick="loadRawDbObject('categories',$('#category_content'));">Edit Categories</a>
-              <div id="category_content"></div>
-            </div>
-          </fieldset>
-          <fieldset class="closed">
-            <legend onclick="$(this).parent().toggleClass('closed');">Import</legend>
-            <div class="content">
-              <div>To import more songs, choose a zip of V1 songs or a json file of V2 and upload it below.</div>
-              <span style="background-color: var(--highlight-color); padding: 1rem; border-radius: 1.5rem;"><input type="file" id="file" name="file" accept=".json,.zip" /><button class="btn" onclick="startHandlingFiles();">Upload</button></span>
-              <div id="result">
+            You can view songbooks or songs by selecting one of the above buttons.<br><br>
+          </div>
+          <div id="settings">
+            <fieldset class="closed">
+              <legend onclick="$(this).parent().toggleClass('closed');">User</legend>
+              <div class="content">
+                <a class="btn" href="#" onclick="loadRawDbObject(window.user._id,$('#user_content'));">Edit User</a>
+                <div id="user_content"></div>
               </div>
-            </div>
-          </fieldset>
-          <fieldset class="closed">
-            <legend onclick="$(this).parent().toggleClass('closed');">Settings</legend>
-            <div class="content">
-              Darkmode:
-              <label onchange="document.documentElement.classList.toggle('dark');" class="switch">
-                <input type="checkbox" id="darkmode" name="darkmode">
-                <div class="slider"></div>
-              </label>
-              <br>
-              <a href="#" class="btn" style="background-color: crimson; color: white;" onclick="if(confirm('Are you sure you want to delete this database?')){ db.destroy().then(function () {
-                dbLogout();
-              }).catch(function (err) {
-                console.log(err);
-            });}">Delete DB</a>
-            </div>
-          </fieldset>
+            </fieldset>
+            <fieldset class="closed">
+              <legend onclick="$(this).parent().toggleClass('closed');">Categories</legend>
+              <div class="content">
+                <a class="btn" href="#" onclick="loadRawDbObject('categories',$('#category_content'));">Edit Categories</a>
+                <div id="category_content"></div>
+              </div>
+            </fieldset>
+            <fieldset class="closed">
+              <legend onclick="$(this).parent().toggleClass('closed');">Import</legend>
+              <div class="content">
+                <div>To import more songs, choose a zip of V1 songs or a json file of V2 and upload it below.</div>
+                <span style="background-color: var(--highlight-color); padding: 1rem; border-radius: 1.5rem;"><input type="file" id="file" name="file" accept=".json,.zip" /><button class="btn" onclick="startHandlingFiles();">Upload</button></span>
+                <div id="result">
+                </div>
+              </div>
+            </fieldset>
+            <fieldset class="closed">
+              <legend onclick="$(this).parent().toggleClass('closed');">Settings</legend>
+              <div class="content">
+                Darkmode:
+                <label onchange="document.documentElement.classList.toggle('dark');" class="switch">
+                  <input type="checkbox" id="darkmode" name="darkmode">
+                  <div class="slider"></div>
+                </label>
+                <br>
+                <a href="#" class="btn" style="background-color: crimson; color: white;" onclick="if(confirm('Are you sure you want to delete this database?')){ db.destroy().then(function () {
+                  dbLogout();
+                }).catch(function (err) {
+                  console.log(err);
+              });}">Delete DB</a>
+              </div>
+            </fieldset>
+          </div>
         </div>
       </div>
 
