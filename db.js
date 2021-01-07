@@ -985,7 +985,8 @@ function loadRawDbObject(rawDb_id, element_drop) {
       }
     });
 
-    html_string += '<button class="btn" onclick="$(\'#raw_edit\').html(\'\');" style="background-color: var(--background-color);">Cancel</button><button class="btn" onclick="saveRawDbObject($(\'#raw_edit\'));" style="background-color: var(--background-color);">Save</button>'
+    console.log(element_drop);
+    html_string += '<button class="btn" onclick="$(\'#'+element_drop[0].id+'\').html(\'\');" style="background-color: var(--background-color);">Cancel</button><button class="btn" onclick="saveRawDbObject($(\'#'+element_drop[0].id+'\'));" style="background-color: var(--background-color);">Save</button>'
 
     element_drop.html(html_string);
     $('.key_content').toTextarea({

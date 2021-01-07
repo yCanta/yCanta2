@@ -11,20 +11,6 @@
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
     <link rel="mask-icon" href="safari-pinned-tab.svg" color="#ff0000">
 
-    <script src="jquery-3.5.1.min.js"></script>
-    <script src="pouchdb.min.js"></script>
-    <script src="pouchdb.all-dbs.min.js"></script>
-    <script src="pouchdb.authentication.min.js"></script>
-
-    <script src="db.js"></script>
-    <script src="lib.js"></script>
-    <script async src="jquery.myTransposer.js"></script>
-    <script async src="jquery.toTextarea.js"></script>
-    <script src="list.min.js"></script>
-    <script src="sortable.js"></script>
-    <script async src="jszip.min.js"></script>
-    <script async src="import.js"></script>
-
     <link rel="stylesheet" type="text/css" href="style.css">
     <link rel="stylesheet" type="text/css" href="jquery.myTransposer.css">
     <link rel="stylesheet" type="text/css" href="2html.css">
@@ -44,8 +30,7 @@
         </span>
         <hr>
       </div>
-      <div style="overflow: auto; height: calc(100vh - 75px);">
-
+      <div id="lower" style="overflow: hidden; height: calc(100vh - 90px);">
         <div id="login">
           <h2>Login:</h2>
           <select id="db_select">
@@ -73,22 +58,47 @@
           <h2>Brief Introduction</h2>
 
           You can view songbooks or songs by selecting one of the above buttons.<br><br>
-
-          <h2>Utilities</h2>
-          <a class="btn" href="#" onclick="loadRawDbObject('categories',$('#raw_edit'));">Edit Categories</a>
-          <a class="btn" href="#" onclick="loadRawDbObject(window.user._id,$('#raw_edit'));">Edit User</a>
-          <div id="raw_edit"></div><br>
-          <div>
-          To import more songs, choose a zip of V1 songs or a json file of V2 and upload it below.</div>
-          <span style="background-color: var(--highlight-color); padding: 1rem; border-radius: 1.5rem;"><input type="file" id="file" name="file" accept=".json,.zip" /><button class="btn" onclick="startHandlingFiles();">Upload</button></span>
-          <div id="result">
-          </div>
-
-          <a href="#" class="btn" style="background-color: crimson; color: white;" onclick="if(confirm('Are you sure you want to delete this database?')){ db.destroy().then(function () {
+        </div>
+        <div id="settings">
+          <fieldset class="closed">
+            <legend onclick="$(this).parent().toggleClass('closed');">User</legend>
+            <div class="content">
+              <a class="btn" href="#" onclick="loadRawDbObject(window.user._id,$('#user_content'));">Edit User</a>
+              <div id="user_content"></div>
+            </div>
+          </fieldset>
+          <fieldset class="closed">
+            <legend onclick="$(this).parent().toggleClass('closed');">Categories</legend>
+            <div class="content">
+              <a class="btn" href="#" onclick="loadRawDbObject('categories',$('#category_content'));">Edit Categories</a>
+              <div id="category_content"></div>
+            </div>
+          </fieldset>
+          <fieldset class="closed">
+            <legend onclick="$(this).parent().toggleClass('closed');">Import</legend>
+            <div class="content">
+              <div>To import more songs, choose a zip of V1 songs or a json file of V2 and upload it below.</div>
+              <span style="background-color: var(--highlight-color); padding: 1rem; border-radius: 1.5rem;"><input type="file" id="file" name="file" accept=".json,.zip" /><button class="btn" onclick="startHandlingFiles();">Upload</button></span>
+              <div id="result">
+              </div>
+            </div>
+          </fieldset>
+          <fieldset class="closed">
+            <legend onclick="$(this).parent().toggleClass('closed');">Settings</legend>
+            <div class="content">
+              Darkmode:
+              <label onchange="document.documentElement.classList.toggle('dark');" class="switch">
+                <input type="checkbox" id="darkmode" name="darkmode">
+                <div class="slider"></div>
+              </label>
+              <br>
+              <a href="#" class="btn" style="background-color: crimson; color: white;" onclick="if(confirm('Are you sure you want to delete this database?')){ db.destroy().then(function () {
                 dbLogout();
               }).catch(function (err) {
                 console.log(err);
             });}">Delete DB</a>
+            </div>
+          </fieldset>
         </div>
       </div>
 
@@ -697,7 +707,45 @@
     <footer>
     </footer>
     <iframe id="presentation" title="Presentation Slideshow"></iframe>
+
+    <script src="jquery-3.5.1.min.js"></script>
+    <script src="pouchdb.min.js"></script>
+    <script src="pouchdb.all-dbs.min.js"></script>
+    <script src="pouchdb.authentication.min.js"></script>
+
+    <script src="db.js"></script>
+    <script src="lib.js"></script>
+    <script async src="jquery.myTransposer.js"></script>
+    <script async src="jquery.toTextarea.js"></script>
+    <script src="list.min.js"></script>
+    <script src="sortable.js"></script>
+    <script async src="jszip.min.js"></script>
+    <script async src="import.js"></script>
     <script>
+      if (window.matchMedia && 
+        window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.classList.add('dark');
+        document.getElementById('darkmode').checked = true;
+        console.log('🎉 Dark mode is desired');
+      }
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+        if (event.matches) {
+          document.documentElement.classList.add('dark');
+          document.getElementById('darkmode').checked = true;
+        } else {
+          document.documentElement.classList.remove('dark');
+          document.getElementById('darkmode').checked = false;
+        }
+      });
+      var sheet = (function() {
+        var style = document.createElement("style");
+        style.appendChild(document.createTextNode(""));
+        document.head.appendChild(style);
+        return style.sheet;
+      })();
+      setTimeout(function(){sheet.insertRule("* { transition: all 0.25s; }", 0);},300);
+      
+
       dragDialog();
 
       $('#song .row').append('<button onclick="toggleFullscreen(this)" class="icon-rotate2x tr emoji">&#8596;</button>');
@@ -765,7 +813,6 @@
         PouchDB.on('created', function (dbName) {
           console.log('Created: ', dbName);
         });
-
 
         $('input.deletable').wrap('<span class="deleteicon" />').after($('<span/>').click(function() {
           $(this).prev('input').val('').trigger('change').focus()[0].dispatchEvent(new KeyboardEvent("keyup"));
