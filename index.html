@@ -59,6 +59,10 @@
             <h2>Brief Introduction</h2>
 
             You can view songbooks or songs by selecting one of the above buttons.<br><br>
+            <fieldset class="updatedSongs">
+              <legend>Last Updated Songs</legend>
+              <ul class="list"></ul>
+            </fieldset>
           </div>
           <div id="settings">
             <fieldset class="closed">
@@ -79,7 +83,7 @@
               <legend onclick="$(this).parent().toggleClass('closed');">Import</legend>
               <div class="content">
                 <div>To import more songs, choose a zip of V1 songs or a json file of V2 and upload it below.</div>
-                <span style="background-color: var(--highlight-color); padding: 1rem; border-radius: 1.5rem;"><input type="file" id="file" name="file" accept=".json,.zip" /><button class="btn" onclick="startHandlingFiles();">Upload</button></span>
+                <span style="background-color: var(--highlight-color); margin: 1rem;"><input type="file" id="file" name="file" accept=".json,.zip" style="max-width: 200px"/><button class="btn" onclick="startHandlingFiles();">Upload</button></span>
                 <div id="result">
                 </div>
               </div>

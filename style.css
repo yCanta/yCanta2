@@ -1,6 +1,6 @@
 :root {
-  --songbookList-color: #f2c249;
-  --songList-color: #E6772E;
+  --songbookList-color: lemonchiffon;
+  --songList-color: lightsalmon;
   --song-color: lightblue;
   --export-color: bisque;
   --edit-color: gainsboro;
@@ -18,10 +18,10 @@
 */
 }
 :root.dark {
-  /*--songbookList-color: lemonchiffon;
-  --songList-color: lightsalmon;
-  --song-color: lightblue;
-  --export-color: bisque;*/
+  --songbookList-color: #f2c249;
+  --songList-color: #E6772E;
+  --song-color: #00B0CC;
+  --export-color: #00cc66;
   --edit-color: #444;
   --edit-color-rgb: 68,68,68;
   
@@ -152,6 +152,10 @@ chunk[type="comment"] a {
   text-decoration: underline;
   color: blue;
 }
+#logged_in {
+  height: 100%;
+  overflow:auto;
+}
 #settings fieldset {
   min-height: 30px;
   width: max-content;
@@ -159,10 +163,12 @@ chunk[type="comment"] a {
   margin: 1rem 0 1rem auto;
   padding: 1rem;
   overflow: hidden;
+  box-shadow: var(--btn-shadow-var);
 }
 #settings fieldset.closed {
   padding: 0;
   border: none;
+  box-shadow: none;
 }
 #settings fieldset.closed legend {
   margin-right: 1rem;
@@ -171,14 +177,16 @@ chunk[type="comment"] a {
   max-height: 0;
   max-width: 0;
 }
-#settings legend {
-  cursor: pointer;
+#lower legend {
   font-weight: bold;
   font-size: 1.2rem;
   border-left: 1px solid black;
   border-right: 1px solid black;
   border-radius: 1rem;
   padding: 0 1rem 0 1rem;
+}
+#settings legend {
+  cursor: pointer;
   margin-left: auto;
   background-color: var(--background-color);
   box-shadow: var(--btn-shadow-var);
@@ -596,14 +604,6 @@ input.deletable:placeholder-shown + span:after {
 }
 span.deleteicon input {
   padding-right: 24px;
-}
-.loggedin #logged_in {
-  display: flex;
-}
-#settings {
-  height: 100%;
-  overflow:auto;
-  margin-left: auto;
 }
 
 /*Login CSS */
@@ -1159,6 +1159,19 @@ only screen and (max-height: 500px) {
     align-items: stretch;
     align-content: stretch;
   }
+  .loggedin #logged_in {
+    display: flex;
+  }
+  #settings,
+  #welcome {
+    flex: 50%;
+    height: 100%;
+    overflow:auto;
+    margin-left: auto;
+    overflow-y: overlay;
+    padding-right: 2rem;
+  }
+
   .header header {
     flex: 0 1 100%;
   }
@@ -1335,11 +1348,8 @@ only screen and (max-height: 500px) {
     content: ' //';
   }
 }
-/* smartphones, touchscreens */
+/*for mouseified devices only */
 @media (hover: hover) and (min-width: 640px) {
-  .lbl-toggle:hover {
-    color: #444;
-  }
   .column:not(:last-child):hover {
     z-index: 6 !important;
   }
