@@ -878,9 +878,9 @@ function editSongbook() {
 }
 
 function editSong() {
-  let buttons = '<div class="edit_buttons"><button data-song class="btn" style="background-color: lightgray;" onclick="prepSaveSong($(this))">Save</button>';
-  buttons += '<button data-song class="btn" style="background-color: lightgray;" onclick="window.editing=false; window.location.hash=$(this).attr(\'href\');">Cancel</button>';
-  buttons += '<button data-song class="btn" style="background-color: lightgray;" onclick="window.editing=false; location.reload()">Reset</button></div>';
+  let buttons = '<div class="edit_buttons"><button data-song class="btn" style="background-color: var(--edit-color);" onclick="prepSaveSong($(this))">Save</button>';
+  buttons += '<button data-song class="btn" style="background-color: var(--edit-color);" onclick="window.editing=false; window.location.hash=$(this).attr(\'href\');">Cancel</button>';
+  buttons += '<button data-song class="btn" style="background-color: var(--edit-color);" onclick="window.editing=false; location.reload()">Reset</button></div>';
   $('song').before(buttons).append(buttons);
 
   $('chunk').each(function(index){

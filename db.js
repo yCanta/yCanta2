@@ -111,7 +111,7 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
       dbLogout();
     });
   }
-  function takeNextStep(username, dbName) {
+  function takeNextStep(username, dbName) {  //after login
     //layout the welcome?  maybe this goes in set login state?
     //Update ui when db changes]s
     db.changes({
@@ -129,6 +129,7 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
       //what type?
       //song?
       if(change.doc._id.startsWith('s-')){
+        loadRecentSongs();  
         //only load song if it's the one that's up.
         if(window.song._id === change.doc._id){
           loadSong(change.doc._id);
@@ -213,6 +214,7 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
     });
     localStorage.setItem('loggedin',JSON.stringify([dbName, username, pin]));
     window.yCantaName = dbName;
+    loadRecentSongs();
     initializeSongbooksList();
     setLoginState();
     //initialized
@@ -294,6 +296,44 @@ function dbLogout(){
   syncHandler.cancel(); // <-- this cancels it
 
   */
+}
+
+function loadRecentSongs(days=1000, number=15){
+  db.changes({
+    include_docs: true,
+    startkey: 's-',
+    endkey: 's-\ufff0',
+    since: 0,
+    filter: function (doc) {
+      return (doc.edited > (new Date().getTime() - days*24*60*60*1000))*!doc._id.includes('sb');
+    }
+  }).then(function(result){
+    result.results.sort(function(a, b){
+      if(a.doc){
+        if(a.doc.edited > b.doc.edited) { return -1; }
+        if(a.doc.edited < b.doc.edited) { return 1; }
+        return 0;
+      }
+      else {
+        return 0;
+      }
+    });
+    let songs = result.results.slice(0, number);
+    let ul_list = '<ul>';
+    let date_hour, old_date_hour;
+    for(song of songs) {
+      old_date_hour = date_hour;
+      date_hour = new Date(song.doc.edited).toLocaleTimeString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit'});
+      if(date_hour != old_date_hour){
+        ul_list += `<div style="margin-top: 1rem; font-weight: bold;">${date_hour}</div>`
+      }
+      ul_list += `<li><a href="#sb-allSongs&${song.doc._id}">${song.doc.title}</a></li>`
+    }
+    ul_list += '</ul>';
+    $('.updatedSongs .list').html(ul_list);
+  }).catch(function(err){
+    console.log(err);
+  });
 }
 
 function initializeSongbooksList(){
@@ -985,7 +1025,6 @@ function loadRawDbObject(rawDb_id, element_drop) {
       }
     });
 
-    console.log(element_drop);
     html_string += '<button class="btn" onclick="$(\'#'+element_drop[0].id+'\').html(\'\');" style="background-color: var(--background-color);">Cancel</button><button class="btn" onclick="saveRawDbObject($(\'#'+element_drop[0].id+'\'));" style="background-color: var(--background-color);">Save</button>'
 
     element_drop.html(html_string);
