@@ -156,39 +156,41 @@ chunk[type="comment"] a {
   height: 100%;
   overflow:auto;
 }
-#settings fieldset {
-  min-height: 30px;
+fieldset {
+  max-width: 100%;
   width: max-content;
-  border: 1px solid black;
-  margin: 1rem 0 1rem auto;
+  border: none;
   padding: 1rem;
   overflow: hidden;
   box-shadow: var(--btn-shadow-var);
+  background-color: var(--background-color);
+  margin-bottom: 1rem;
 }
-#settings fieldset.closed {
+fieldset.closed {
+  height: 30px;
   padding: 0;
   border: none;
   box-shadow: none;
+  background: none;
 }
-#settings fieldset.closed legend {
+fieldset.closed legend {
   margin-right: 1rem;
 }
-#settings fieldset.closed .content {
+fieldset.closed .content {
   max-height: 0;
   max-width: 0;
+  margin: 0;
+  padding: 0;
 }
-#lower legend {
+legend {
+  cursor: pointer;
   font-weight: bold;
   font-size: 1.2rem;
-  border-left: 1px solid black;
-  border-right: 1px solid black;
+  background-color: var(--background-color);
+  border-left: 1px solid var(--edit-color);
+  border-right: 1px solid var(--edit-color);
   border-radius: 1rem;
   padding: 0 1rem 0 1rem;
-}
-#settings legend {
-  cursor: pointer;
-  margin-left: auto;
-  background-color: var(--background-color);
   box-shadow: var(--btn-shadow-var);
 }
 .left {
@@ -206,6 +208,19 @@ chunk[type="comment"] a {
   content: '✓ ';
   cursor: pointer;
 }
+.closing,
+#username_d {
+  display: inline-block;
+  overflow: hidden;
+  white-space: pre; 
+  vertical-align: bottom;
+  max-width: 15rem;
+}
+
+.closed .closing {
+  max-width: 0;
+}
+
 
 /*DIALOG STYLING */
 #dialog {
@@ -1130,7 +1145,7 @@ only screen and (max-height: 500px) {
   .float-menu-item {
     display: block;
     margin-left: auto;
-    width: fit-content;
+    width: max-content;
   }
   .float-menu-icon {
     font-size: 1.5em;
@@ -1162,6 +1177,18 @@ only screen and (max-height: 500px) {
   .loggedin #logged_in {
     display: flex;
   }
+  .closed .closing {
+    max-width: initial;
+  }
+  .align-right legend {
+    margin-left: auto;
+  }
+  fieldset.align-right {
+    margin: 0 0 1rem auto;
+  }
+  #settings {
+    padding-top: 1rem;
+  }
   #settings,
   #welcome {
     flex: 50%;
@@ -1169,7 +1196,7 @@ only screen and (max-height: 500px) {
     overflow:auto;
     margin-left: auto;
     overflow-y: overlay;
-    padding-right: 2rem;
+    padding-right: 1rem;
   }
 
   .header header {

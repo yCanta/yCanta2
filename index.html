@@ -22,12 +22,16 @@
 
   </head>
   <body class="header login">
+    <fieldset class="loggedin_display closed align-right" style="position: absolute; top:1.5rem;right:1rem; z-index:7; margin-right: 0;">
+      <legend onclick="this.parentElement.classList.toggle('closed');" style="margin-right: 0; padding: 0 .4rem; margin-left: auto;"><span id="username_d"></span></legend>
+      <div class="content">
+        <a href="#" style="background-color: var(--background-color);" class="btn" onclick="$(this).closest('fieldset').addClass('closed');">Settings</a>
+        <button style="background-color: var(--background-color);" class="btn" onclick="dbLogout();">Logout</button>
+      </div>
+    </fieldset>
     <header id="header">
       <div>
         <h2 id="title"><a href="#">yCanta</a></h2>
-        <span class="loggedin_display" style="position: absolute; top:0;right:0; z-index:1;"><span id="username_d"></span>
-          <button style="background-color: var(--background-color);" class="btn" onclick="dbLogout();">Logout</button>
-        </span>
         <hr>
       </div>
       <div id="lower" style="overflow: hidden; height: calc(100vh - 90px);">
@@ -60,27 +64,29 @@
 
             You can view songbooks or songs by selecting one of the above buttons.<br><br>
             <fieldset class="updatedSongs">
-              <legend>Recently Updated Songs</legend>
-              <ul class="list"></ul>
+              <legend onclick="this.parentElement.classList.toggle('closed');">Recently Updated Songs</legend>
+              <div class="content">
+                <ul class="list"></ul>
+              </div>
             </fieldset>
           </div>
           <div id="settings">
-            <fieldset class="closed">
-              <legend onclick="$(this).parent().toggleClass('closed');">User</legend>
+            <fieldset class="closed align-right">
+              <legend onclick="this.parentElement.classList.toggle('closed');">User</legend>
               <div class="content">
                 <a class="btn" href="#" onclick="loadRawDbObject(window.user._id,$('#user_content'));">Edit User</a>
                 <div id="user_content"></div>
               </div>
             </fieldset>
-            <fieldset class="closed">
-              <legend onclick="$(this).parent().toggleClass('closed');">Categories</legend>
+            <fieldset class="closed align-right">
+              <legend onclick="this.parentElement.classList.toggle('closed');">Categories</legend>
               <div class="content">
                 <a class="btn" href="#" onclick="loadRawDbObject('categories',$('#category_content'));">Edit Categories</a>
                 <div id="category_content"></div>
               </div>
             </fieldset>
-            <fieldset class="closed">
-              <legend onclick="$(this).parent().toggleClass('closed');">Import</legend>
+            <fieldset class="closed align-right">
+              <legend onclick="this.parentElement.classList.toggle('closed');">Import</legend>
               <div class="content">
                 <div>To import more songs, choose a zip of V1 songs or a json file of V2 and upload it below.</div>
                 <span style="background-color: var(--highlight-color); margin: 1rem;"><input type="file" id="file" name="file" accept=".json,.zip" style="max-width: 200px"/><button class="btn" onclick="startHandlingFiles();">Upload</button></span>
@@ -88,8 +94,8 @@
                 </div>
               </div>
             </fieldset>
-            <fieldset class="closed">
-              <legend onclick="$(this).parent().toggleClass('closed');">Settings</legend>
+            <fieldset class="closed align-right">
+              <legend onclick="this.parentElement.classList.toggle('closed');">Settings</legend>
               <div class="content">
                 Darkmode:
                 <label onchange="document.documentElement.classList.toggle('dark');" class="switch">

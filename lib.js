@@ -579,10 +579,17 @@ function checkCreateNew() {
     }
   });
 }
-
+function updateUsername(){
+  let name = window.user.name.trim();
+  let html = '';
+  for(word of name.split(/\W+/)){
+    html += `${word[0]}<span class="closing">${word.substring(1)} </span>`;
+  }
+  $('#username_d').html(html);
+}
 function setLoginState() {
   window.loggedin = true;
-  $('#username_d').text('Hi, '+window.user.name+'!');
+  updateUsername();
   $('html').addClass('loggedin');
   $('#title a').html('yCanta: ' + window.yCantaName);
   if(location.hash.indexOf('?')>-1){

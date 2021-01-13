@@ -200,6 +200,7 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
           window.songbook._id = '';
           loadSongbook('sb-favoriteSongs');
         }
+        updateUsername()
         window.songbooks_list.reIndex();
         window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
         $('#song song').attr('data-user-fav', (window.user.fav_songs.indexOf($('#song song').attr('data-id'))> -1 ? 'true': 'false'))
@@ -319,8 +320,7 @@ function loadRecentSongs(days=1000, number=15){
       }
     });
     let songs = result.results.slice(0, number);
-    let ul_list = '<ul>';
-    let date_hour, old_date_hour;
+    let ul_list = '', date_hour, old_date_hour;
     for(song of songs) {
       old_date_hour = date_hour;
       date_hour = new Date(song.doc.edited).toLocaleTimeString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit'});
@@ -329,7 +329,6 @@ function loadRecentSongs(days=1000, number=15){
       }
       ul_list += `<li><a href="#sb-allSongs&${song.doc._id}">${song.doc.title}</a></li>`
     }
-    ul_list += '</ul>';
     $('.updatedSongs .list').html(ul_list);
   }).catch(function(err){
     console.log(err);
