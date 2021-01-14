@@ -200,7 +200,7 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
           window.songbook._id = '';
           loadSongbook('sb-favoriteSongs');
         }
-        updateUsername()
+        updateUsername();
         window.songbooks_list.reIndex();
         window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
         $('#song song').attr('data-user-fav', (window.user.fav_songs.indexOf($('#song song').attr('data-id'))> -1 ? 'true': 'false'))
@@ -214,6 +214,22 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
       console.log('Error in db.changes('+err);
     });
     localStorage.setItem('loggedin',JSON.stringify([dbName, username, pin]));
+    //check dark mode and set for app
+    let darkMode = localStorage.getItem(window.user._id+'darkMode');
+    if(darkMode){
+      document.getElementById(darkMode+'Radio').checked = true;
+    }else {
+      document.getElementById('autoRadio').checked = true;
+    }
+    handleDarkMode();
+    //set font size;
+    let fontSize = localStorage.getItem(window.user._id+'fontSize');
+    if(fontSize){
+      document.documentElement.style.fontSize = fontSize+'px';
+      document.getElementById('fontSize').value = fontSize;
+      document.getElementById('fontSizeOutput').value = fontSize + 'px';
+    }
+
     window.yCantaName = dbName;
     loadRecentSongs();
     initializeSongbooksList();

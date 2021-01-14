@@ -23,9 +23,9 @@
   </head>
   <body class="header login">
     <fieldset class="loggedin_display closed align-right" style="position: absolute; top:1.5rem;right:1rem; z-index:7; margin-right: 0;">
-      <legend onclick="this.parentElement.classList.toggle('closed');" style="margin-right: 0; padding: 0 .4rem; margin-left: auto;"><span id="username_d"></span></legend>
+      <legend onclick="this.parentElement.classList.toggle('closed');" style="margin-right: 0; padding: 0 .4rem; margin-left: auto;" id="username_legend"><span id="username_d"></span></legend>
       <div class="content">
-        <a href="#" style="background-color: var(--background-color);" class="btn" onclick="$(this).closest('fieldset').addClass('closed');">Settings</a>
+        <a href="#" style="background-color: var(--background-color);" class="btn" onclick="$(this).closest('fieldset').addClass('closed'); goToSettings();">Settings</a>
         <button style="background-color: var(--background-color);" class="btn" onclick="dbLogout();">Logout</button>
       </div>
     </fieldset>
@@ -92,15 +92,29 @@
                 <span style="background-color: var(--highlight-color); margin: 1rem;"><input type="file" id="file" name="file" accept=".json,.zip" style="max-width: 200px"/><button class="btn" onclick="startHandlingFiles();">Upload</button></span>
                 <div id="result">
                 </div>
-              </div>
+              </div>  
             </fieldset>
-            <fieldset class="closed align-right">
+            <fieldset class="closed align-right" id="appSettings">
               <legend onclick="this.parentElement.classList.toggle('closed');">Settings</legend>
               <div class="content">
-                Darkmode:
-                <label onchange="document.documentElement.classList.toggle('dark');" class="switch">
-                  <input type="checkbox" id="darkmode" name="darkmode">
-                  <div class="slider"></div>
+                <b>Darkmode</b><br><br>
+                <div id="darkmode">
+                  <input type="radio" name="darkmode" id="darkRadio" value="dark" onchange="handleDarkMode();">
+                  <label for="darkRadio">Dark</label>
+                  <input type="radio" name="darkmode" id="autoRadio" value="auto" onchange="handleDarkMode();">
+                  <label for="autoRadio">System</label>
+                  <input type="radio" name="darkmode" id="lightRadio" value="light" onchange="handleDarkMode();">
+                  <label for="lightRadio">Light</label>
+                </div><br><br>
+                <label>
+                  <b>Font Size:</b> <output id="fontSizeOutput">16px</output><br><br>
+                  <input type="range" min="12" max="24" value="16" id="fontSize" name="fontSize" list="tickmarks" onchange="document.getElementById('fontSizeOutput').value=this.value+'px'; document.documentElement.style.fontSize = this.value+'px'; localStorage.setItem(window.user._id+'fontSize', this.value);" style="width:100%; display: block;">
+                  <datalist id="tickmarks">
+                    <option value="12" label="12px"></option>
+                    <option value="16" label="16px"></option>
+                    <option value="24" label="24px"></option>
+                  </datalist>
+
                 </label>
                 <br>
                 <a href="#" class="btn" style="background-color: crimson; color: white;" onclick="if(confirm('Are you sure you want to delete this database?')){ db.destroy().then(function () {
@@ -734,21 +748,17 @@
     <script async src="jszip.min.js"></script>
     <script async src="import.js"></script>
     <script>
-      if (window.matchMedia && 
-        window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        document.documentElement.classList.add('dark');
-        document.getElementById('darkmode').checked = true;
-        console.log('🎉 Dark mode is desired');
-      }
       window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
-        if (event.matches) {
-          document.documentElement.classList.add('dark');
-          document.getElementById('darkmode').checked = true;
-        } else {
-          document.documentElement.classList.remove('dark');
-          document.getElementById('darkmode').checked = false;
+        if(document.getElementById('autoRadio').checked == true) {
+          if (event.matches) {
+            document.documentElement.classList.add('dark');
+            console.log('🎉 Dark mode is desired');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
         }
       });
+
       var sheet = (function() {
         var style = document.createElement("style");
         style.appendChild(document.createTextNode(""));

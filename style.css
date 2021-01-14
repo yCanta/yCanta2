@@ -39,6 +39,9 @@
   outline-color: transparent;
   box-shadow: 0 0 0 2px rgba(0, 123, 255, .5) !important;
 }
+#title a:focus {
+  box-shadow: 0 2px 1px rgba(0, 123, 255, .5) !important;
+}
 *{
   box-sizing: border-box;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
@@ -167,7 +170,7 @@ fieldset {
   margin-bottom: 1rem;
 }
 fieldset.closed {
-  height: 30px;
+  height: 1.857rem;
   padding: 0;
   border: none;
   box-shadow: none;
@@ -175,6 +178,11 @@ fieldset.closed {
 }
 fieldset.closed legend {
   margin-right: 1rem;
+}
+.header fieldset.closed #username_legend:before {
+  position: absolute;
+  content: 'Hi, ';
+  left: -2rem;
 }
 fieldset.closed .content {
   max-height: 0;
@@ -219,6 +227,22 @@ legend {
 
 .closed .closing {
   max-width: 0;
+}
+
+#darkmode {
+  background: linear-gradient(rgba(255, 255, 255, 0) 45%, rgba(var(--edit-color-rgb), 1) 45%, rgba(var(--edit-color-rgb), 1) 65%, rgba(255, 255, 255, 0) 65%);  
+}
+#darkmode input {
+  display: none;
+}
+#darkmode label {
+  cursor: pointer;
+  border-radius: 2rem;
+  padding: 0 1rem;
+  z-index: 1;
+}
+#darkmode input:checked + label {
+  background-color: var(--edit-color);
 }
 
 
@@ -1177,9 +1201,6 @@ only screen and (max-height: 500px) {
   .loggedin #logged_in {
     display: flex;
   }
-  .closed .closing {
-    max-width: initial;
-  }
   .align-right legend {
     margin-left: auto;
   }
@@ -1373,6 +1394,9 @@ only screen and (max-height: 500px) {
   }
   .float-menu-item:not(:first-child):after {
     content: ' //';
+  }
+  .closed .closing {
+    max-width: initial;
   }
 }
 /*for mouseified devices only */

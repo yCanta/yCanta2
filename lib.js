@@ -587,6 +587,36 @@ function updateUsername(){
   }
   $('#username_d').html(html);
 }
+
+function handleDarkMode(){
+  let value = document.querySelector('input[name="darkmode"]:checked').value;
+  switch(value) {
+    case 'dark':
+      document.documentElement.classList.add('dark');
+      break;
+    case 'light':
+      document.documentElement.classList.remove('dark');
+      break;
+    case 'auto':
+      document.getElementById('autoRadio').checked = true;
+      if (window.matchMedia && 
+        window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.classList.add('dark');
+        console.log('🎉 Dark mode is desired');
+      }
+      else {
+        document.documentElement.classList.remove('dark');
+      }
+      break;
+  }
+  //save value to system/user prefs.  
+  localStorage.setItem(window.user._id+'darkMode',value);
+}
+function goToSettings(){
+  document.getElementById('appSettings').classList.remove('closed');
+  document.getElementById('logged_in').scrollTop = document.getElementById('logged_in').scrollHeight;
+  document.getElementById('settings').scrollTop = document.getElementById('settings').scrollHeight;
+}
 function setLoginState() {
   window.loggedin = true;
   updateUsername();
