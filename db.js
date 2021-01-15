@@ -588,15 +588,15 @@ function loadSong(song_id) {
                   '</song>'
       $('#song .content').html(song_html);
       let regex = /(https?:\/\/)?(?:www\.)?(youtu(?:\.be\/([-\w]+)|be\.com\/watch\?v=([-\w]+)))\w/g;
+      //add hrefs to comments
+      $('song chunk[type="comment"]').each(function(){
+        $(this).html($(this).html().replace(/(((http|https|ftp):\/\/)*[\w?=&.\/-;#~%-]+\.[\w?=&.\/-;#~%-]+(?![\w\s?&.\/;#~%"=-]*>))/g, '<a href="$1" target="_blank">$1</a> '));
+      });
       //set youtube_links
       ($("song line").text().match(regex) != null ? window.youtube_links = [...$("song line").text().match(regex)] : window.youtube_links = []);
       if(window.youtube_links.length > 0) {
         $('#song key').before('<button class="btn" style="padding: 5px 8px; margin-top: 0; background-color:var(--highlight-color);" onclick="loadSongPlayer();">▶</button>')
       }
-      //add hrefs to comments
-      $('song chunk[type="comment"]').each(function(){
-        $(this).html($(this).html().replace(/(((http|https|ftp):\/\/)*[\w?=&.\/-;#~%-]+\.[\w?=&.\/-;#~%-]+(?![\w\s?&.\/;#~%"=-]*>))/g, '<a href="$1" target="_blank">$1</a> '));
-      });
       resolve("song_loaded");
 
       $('#song key').transpose();
