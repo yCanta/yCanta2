@@ -616,6 +616,7 @@ async function updateUser(){
     }
     html += '</ul>';
   }
+  html += '<h4>Permissions</h4><ul>Edit View Admin</ul>'
   document.getElementById('user_content').innerHTML = html;
 }
 async function loadCategories(){

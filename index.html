@@ -63,8 +63,8 @@
             <h2>Brief Introduction</h2>
 
             You can view songbooks or songs by selecting one of the above buttons.<br><br>
-            <fieldset class="updatedSongs">
-              <legend onclick="this.parentElement.classList.toggle('closed');">Recently Updated Songs</legend>
+            <fieldset class="updatedSongs closed-mobile">
+              <legend onclick="(this.parentElement.classList.contains('closed-mobile') && (window.innerWidth < 640) ? this.parentElement.classList.remove('closed-mobile') : this.parentElement.classList.toggle('closed'));">Recently Updated Songs</legend>
               <div class="content">
                 <ul class="list"></ul>
               </div>
@@ -763,7 +763,7 @@
         document.head.appendChild(style);
         return style.sheet;
       })();
-      setTimeout(function(){sheet.insertRule("* { transition: all 0.25s, color 0s; }", 0); },300);
+      setTimeout(function(){sheet.insertRule("* { transition: all 0.25s, color 0s, font-size 0s; }", 0); },300);
 
       dragDialog();
 

@@ -1045,6 +1045,13 @@ input[type="number"] {
     transform: translate3d(0, max(100vh, 800px), 0);
     height: calc(100vh - 4rem);
   }
+  fieldset.closed-mobile {
+    height: 1.857rem;
+    padding: 0;
+    border: none;
+    box-shadow: none;
+    background: none;
+  }
   #lower fieldset {
     width: 100%;
   }
