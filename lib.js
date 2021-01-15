@@ -591,31 +591,31 @@ async function updateUser(){
   html = `<h3>${name} <a href="#" onclick="loadRawDbObject(window.user._id,$('#user_content'),'updateUser();');">🖉</a></h3>`;
 
   let sbs = window.user.fav_sbs.filter(sb => sb.length != 0);
+  html += '<h4>Favorite Songbooks</h4><ul>';
   if(sbs.length){
     try {
       var result = await db.allDocs({include_docs: true, keys: sbs});
     } catch (err) {
       console.log(err);
     }
-    html += '<h4>Favorite Songbooks</h4><ul>';
     for(sb of result.rows.sort((a, b) => a.doc.title.localeCompare(b.doc.title))){
       html += `<li><a href="#${sb.doc._id}">${sb.doc.title}</a></li>`;
     }
-    html += '</ul>';
-  }
+  } else {html+='<li>None yet!</li>';}
+  html += '</ul>';
   let songs = window.user.fav_songs.filter(song => song.length != 0);
+  html += '<h4>Favorite Songs</h4><ul>';
   if(songs.length){
     try {
       var result = await db.allDocs({include_docs: true, keys: songs});
     } catch (err) {
       console.log(err);
     }
-    html += '<h4>Favorite Songs</h4><ul>';
     for(song of result.rows.sort((a, b) => a.doc.title.localeCompare(b.doc.title))){
       html += `<li><a href="#sb-favoriteSongs&${song.doc._id}">${song.doc.title}</a></li>`;
     }
-    html += '</ul>';
-  }
+  } else {html+='<li>None yet!</li>';}
+  html += '</ul>';
   html += '<h4>Permissions</h4><ul>Edit View Admin</ul>'
   document.getElementById('user_content').innerHTML = html;
 }
