@@ -614,8 +614,7 @@ function handleDarkMode(){
 }
 function goToSettings(){
   document.getElementById('appSettings').classList.remove('closed');
-  document.getElementById('logged_in').scrollTop = document.getElementById('logged_in').scrollHeight;
-  document.getElementById('settings').scrollTop = document.getElementById('settings').scrollHeight;
+  document.getElementById('appSettings').scrollIntoView();
 }
 function setLoginState() {
   window.loggedin = true;

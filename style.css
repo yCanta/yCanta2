@@ -1357,15 +1357,14 @@ only screen and (max-height: 500px) {
     display: block;
   }
   body.song #songbookList .title_link {
-    transform:  translate3d(-10%, -50%, 0) rotate(-90deg);
+    transform: translate3d(-100%, 0, 0) rotate(-90deg);
+    transform-origin: right;
     z-index: 10;
     display: block;
+    width: max-content;
   }
   body.song #songbookList #songbooks_header {
     background-color: var(--songbookList-color);
-  }
-  body.song #songbookList a {
-    height: 15rem;
   }
   #songbooks {
     width: 300px;
