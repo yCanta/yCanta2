@@ -7,6 +7,7 @@
   --edit-color-rgb: 220,220,220;
   
   --background-color: white;
+  --background-color-rgb: 255,255,255;
   --text-color: black;
 
   --box-shadow-var: 0 0 20px 2px rgba(0, 0, 0, 0.2);
@@ -26,6 +27,7 @@
   --edit-color-rgb: 68,68,68;
   
   --background-color: #333;
+  --background-color-rgb: 51,51,51;
   --text-color: white;
 
   --box-shadow-var: 0 0 20px 2px rgba(0, 0, 0, 0.5);
@@ -166,7 +168,7 @@ fieldset {
   padding: 1rem;
   overflow: hidden;
   box-shadow: var(--btn-shadow-var);
-  background-color: var(--background-color);
+  background-color: var(--edit-color);
   margin-bottom: 1rem;
 }
 fieldset.closed {
@@ -230,7 +232,8 @@ legend {
 }
 
 #darkmode {
-  background: linear-gradient(rgba(255, 255, 255, 0) 45%, rgba(var(--edit-color-rgb), 1) 45%, rgba(var(--edit-color-rgb), 1) 65%, rgba(255, 255, 255, 0) 65%);  
+  background: linear-gradient(rgba(255, 255, 255, 0) 45%, rgba(var(--background-color-rgb), 1) 45%, rgba(var(--background-color-rgb), 1) 65%, rgba(255, 255, 255, 0) 65%);  
+  display: flex;
 }
 #darkmode input {
   display: none;
@@ -238,11 +241,12 @@ legend {
 #darkmode label {
   cursor: pointer;
   border-radius: 2rem;
+  margin: 0 auto;
   padding: 0 1rem;
   z-index: 1;
 }
 #darkmode input:checked + label {
-  background-color: var(--edit-color);
+  background-color: var(--background-color);
 }
 
 
@@ -1041,6 +1045,9 @@ input[type="number"] {
     transform: translate3d(0, max(100vh, 800px), 0);
     height: calc(100vh - 4rem);
   }
+  #lower fieldset {
+    width: 100%;
+  }
   
   /*SongbookList */
   .songbookList main {
@@ -1555,8 +1562,9 @@ only screen and (max-height: 500px) {
   box-shadow: var(--btn-shadow-var);
 }
 #category_filter select {
-  background-color: lightcyan;
+  background-color: var(--song-color);
   border-radius: 2rem;
+  filter: brightness(1.2);
 }
 .open #category_filter{
   transform: scale(1);

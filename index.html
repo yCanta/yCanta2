@@ -71,17 +71,15 @@
             </fieldset>
           </div>
           <div id="settings">
-            <fieldset class="closed align-right">
-              <legend onclick="this.parentElement.classList.toggle('closed');">User</legend>
+            <fieldset id="userProfile" class="align-right">
+              <legend onclick="this.parentElement.classList.toggle('closed');">User Profile</legend>
               <div class="content">
-                <a class="btn" href="#" onclick="loadRawDbObject(window.user._id,$('#user_content'));">Edit User</a>
                 <div id="user_content"></div>
               </div>
             </fieldset>
             <fieldset class="closed align-right">
-              <legend onclick="this.parentElement.classList.toggle('closed');">Categories</legend>
+              <legend onclick="this.parentElement.classList.toggle('closed'); loadCategories();">Categories</legend>
               <div class="content">
-                <a class="btn" href="#" onclick="loadRawDbObject('categories',$('#category_content'));">Edit Categories</a>
                 <div id="category_content"></div>
               </div>
             </fieldset>
@@ -89,7 +87,7 @@
               <legend onclick="this.parentElement.classList.toggle('closed');">Import</legend>
               <div class="content">
                 <div>To import more songs, choose a zip of V1 songs or a json file of V2 and upload it below.</div>
-                <span style="background-color: var(--highlight-color); margin: 1rem;"><input type="file" id="file" name="file" accept=".json,.zip" style="max-width: 200px"/><button class="btn" onclick="startHandlingFiles();">Upload</button></span>
+                <span style="margin: 1rem;"><input type="file" id="file" name="file" accept=".json,.zip" style="max-width: 200px; background: var(--edit-color);"/><button class="btn" onclick="startHandlingFiles();">Upload</button></span>
                 <div id="result">
                 </div>
               </div>  
@@ -765,8 +763,7 @@
         document.head.appendChild(style);
         return style.sheet;
       })();
-      setTimeout(function(){sheet.insertRule("* { transition: all 0.25s; }", 0);},300);
-      
+      setTimeout(function(){sheet.insertRule("* { transition: all 0.25s, color 0s; }", 0); },300);
 
       dragDialog();
 

@@ -200,7 +200,7 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
           window.songbook._id = '';
           loadSongbook('sb-favoriteSongs');
         }
-        updateUsername();
+        updateUser();
         window.songbooks_list.reIndex();
         window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
         $('#song song').attr('data-user-fav', (window.user.fav_songs.indexOf($('#song song').attr('data-id'))> -1 ? 'true': 'false'))
@@ -1013,7 +1013,7 @@ function addSongToSongbook(song_id, songbook_id=window.songbook._id) {
   }
 }
 
-function loadRawDbObject(rawDb_id, element_drop) {
+function loadRawDbObject(rawDb_id, element_drop, onclick) {
   console.log(rawDb_id);
   if(rawDb_id != 'categories' && rawDb_id != window.user._id){
     alert('yo! Stop it!');
@@ -1039,8 +1039,7 @@ function loadRawDbObject(rawDb_id, element_drop) {
         html_string += `<div class="key" data-name="${key}"><h4>Field: ${key}</h4><pre class="key_content" data-content-type="${key_content_type}">${key_content}</pre></div>`;
       }
     });
-
-    html_string += '<button class="btn" onclick="$(\'#'+element_drop[0].id+'\').html(\'\');" style="background-color: var(--background-color);">Cancel</button><button class="btn" onclick="saveRawDbObject($(\'#'+element_drop[0].id+'\'));" style="background-color: var(--background-color);">Save</button>'
+    html_string += '<button class="btn" onclick="'+onclick+'" style="background-color: var(--background-color);">Cancel</button><button class="btn" onclick="saveRawDbObject($(\'#'+element_drop[0].id+'\'));" style="background-color: var(--background-color);">Save</button>'
 
     element_drop.html(html_string);
     $('.key_content').toTextarea({

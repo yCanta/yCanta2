@@ -26,8 +26,8 @@ span.c {
 	width: 2.5em;
 	text-align: center;
 	margin: 0.25em .25em .25em 0.25em;
-	color: #333;
-	background: #eee;
+	color: var(--text-color, #333);
+	background: var(--edit-color, #eee);
   border-radius: 5px;
 	text-decoration: none;
 	padding: .5em 0;

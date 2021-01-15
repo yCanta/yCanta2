@@ -579,13 +579,59 @@ function checkCreateNew() {
     }
   });
 }
-function updateUsername(){
+async function updateUser(){
   let name = window.user.name.trim();
+  //Username in header area
   let html = '';
   for(word of name.split(/\W+/)){
     html += `${word[0]}<span class="closing">${word.substring(1)} </span>`;
   }
   $('#username_d').html(html);
+  //User Profile information in Settings.
+  html = `<h3>${name} <a href="#" onclick="loadRawDbObject(window.user._id,$('#user_content'),'updateUser();');">🖉</a></h3>`;
+
+  let sbs = window.user.fav_sbs.filter(sb => sb.length != 0);
+  if(sbs.length){
+    try {
+      var result = await db.allDocs({include_docs: true, keys: sbs});
+    } catch (err) {
+      console.log(err);
+    }
+    html += '<h4>Favorite Songbooks</h4><ul>';
+    for(sb of result.rows.sort((a, b) => a.doc.title.localeCompare(b.doc.title))){
+      html += `<li><a href="#${sb.doc._id}">${sb.doc.title}</a></li>`;
+    }
+    html += '</ul>';
+  }
+  let songs = window.user.fav_songs.filter(song => song.length != 0);
+  if(songs.length){
+    try {
+      var result = await db.allDocs({include_docs: true, keys: songs});
+    } catch (err) {
+      console.log(err);
+    }
+    html += '<h4>Favorite Songs</h4><ul>';
+    for(song of result.rows.sort((a, b) => a.doc.title.localeCompare(b.doc.title))){
+      html += `<li><a href="#sb-favoriteSongs&${song.doc._id}">${song.doc.title}</a></li>`;
+    }
+    html += '</ul>';
+  }
+  document.getElementById('user_content').innerHTML = html;
+}
+async function loadCategories(){
+  let html = `<h3>Ordered List <a href="#" onclick="loadRawDbObject('categories',$('#category_content'),'loadCategories();');">🖉</a></h3>`;
+
+  try {
+    var result = await db.get('categories');
+  } catch (err) {
+    console.log(err);
+  }
+  html += '<ul>';
+  for(cat of result.categories){
+    html += `<li>${cat}</li>`;
+  }
+  html += '</ul>';
+  document.getElementById('category_content').innerHTML = html;
 }
 
 function handleDarkMode(){
@@ -618,7 +664,7 @@ function goToSettings(){
 }
 function setLoginState() {
   window.loggedin = true;
-  updateUsername();
+  updateUser();
   $('html').addClass('loggedin');
   $('#title a').html('yCanta: ' + window.yCantaName);
   if(location.hash.indexOf('?')>-1){
