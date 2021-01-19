@@ -611,8 +611,8 @@ async function updateUser(){
     } catch (err) {
       console.log(err);
     }
-    for(song of result.rows.sort((a, b) => a.doc.title.localeCompare(b.doc.title))){
-      html += `<li><a href="#sb-favoriteSongs&${song.doc._id}">${song.doc.title}</a></li>`;
+    for(fav_song of result.rows.sort((a, b) => a.doc.title.localeCompare(b.doc.title))){
+      html += `<li><a href="#sb-favoriteSongs&${fav_song.doc._id}">${fav_song.doc.title}</a></li>`;
     }
   } else {html+='<li>None yet!</li>';}
   html += '</ul>';
@@ -629,7 +629,7 @@ async function loadCategories(){
   }
   html += '<ul>';
   for(cat of result.categories){
-    html += `<li>${cat}</li>`;
+    html += `<li><a href="#sb-allSongs" onclick="$('#songbook_header .search').val('c:${cat}')[0].dispatchEvent(new KeyboardEvent('keyup'));">${cat}</a></li>`;
   }
   html += '</ul>';
   document.getElementById('category_content').innerHTML = html;

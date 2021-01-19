@@ -337,13 +337,13 @@ function loadRecentSongs(days=1000, number=15){
     });
     let songs = result.results.slice(0, number);
     let ul_list = '', date_hour, old_date_hour;
-    for(song of songs) {
+    for(rec_song of songs) {
       old_date_hour = date_hour;
-      date_hour = new Date(song.doc.edited).toLocaleTimeString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit'});
+      date_hour = new Date(rec_song.doc.edited).toLocaleTimeString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit'});
       if(date_hour != old_date_hour){
         ul_list += `<div style="margin-top: 1rem; font-weight: bold;">${date_hour}</div>`
       }
-      ul_list += `<li><a href="#sb-allSongs&${song.doc._id}">${song.doc.title}</a></li>`
+      ul_list += `<li><a href="#sb-allSongs&${rec_song.doc._id}">${rec_song.doc.title}</a></li>`
     }
     $('.updatedSongs .list').html(ul_list);
   }).catch(function(err){
@@ -535,7 +535,7 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
       new_song = true;
       let time = new Date().getTime();
       song_id = 's-' + time;
-      var song = {_id: song_id, added: time, addedBy: window.user.name, edited: time, editedBy: window.user.name};
+      let song = {_id: song_id, added: time, addedBy: window.user.name, edited: time, editedBy: window.user.name};
       loadSongContent(song);
       addSongToSongbook(song._id);
     }
@@ -543,7 +543,7 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
     else if(!song_id.startsWith('s-')){
       let time = new Date().getTime();
       song_id = 's-' + song_id;
-      var song = {_id: song_id, added: time, addedBy: window.user.name, edited: time, editedBy: window.user.name};
+      let song = {_id: song_id, added: time, addedBy: window.user.name, edited: time, editedBy: window.user.name};
       loadSongContent(song);
     }
     else {  //existing song hopefully - need to make robust
@@ -1022,7 +1022,7 @@ function loadRawDbObject(rawDb_id, element_drop, onclick) {
   db.get(rawDb_id).then(function(json_object){
     const keys = Object.keys(json_object);
 
-    let html_string = '<div id="rawObRoot" data-id="'+json_object['_id']+'" data-rev="'+json_object['_rev']+'"><h3>File_Id: '+json_object['_id']+'</h3></div>';
+    let html_string = '<div id="rawObRoot" data-id="'+json_object['_id']+'" data-rev="'+json_object['_rev']+'"><h3>Editing: '+json_object['_id']+'</h3></div>';
 
     keys.forEach((key, index) => {
       if(key != '_id' && key != '_rev'){
@@ -1036,7 +1036,7 @@ function loadRawDbObject(rawDb_id, element_drop, onclick) {
         else if(key_content_type == "string" || key_content_type == "number") {
           key_content = json_object[key];
         }
-        html_string += `<div class="key" data-name="${key}"><h4>Field: ${key}</h4><pre class="key_content" data-content-type="${key_content_type}">${key_content}</pre></div>`;
+        html_string += `<fieldset class="key" data-name="${key}"><legend>${key}</legend><pre class="key_content" data-content-type="${key_content_type}">${key_content}</pre></fieldset>`;
       }
     });
     html_string += '<button class="btn" onclick="'+onclick+'" style="background-color: var(--background-color);">Cancel</button><button class="btn" onclick="saveRawDbObject($(\'#'+element_drop[0].id+'\'));" style="background-color: var(--background-color);">Save</button>'

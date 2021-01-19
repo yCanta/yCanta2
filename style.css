@@ -242,7 +242,7 @@ legend {
   cursor: pointer;
   border-radius: 2rem;
   margin: 0 auto;
-  padding: 0 1rem;
+  padding: 0 1rem 0.15rem 1rem;
   z-index: 1;
 }
 #darkmode input:checked + label {
@@ -256,15 +256,15 @@ legend {
   position: fixed;
   z-index: 12;
   background-color: var(--background-color);
-  border-radius : 400px;
-  width: 200px;
-  min-height: 200px;
+  border-radius : 25rem;
+  width: 12.5rem;
+  min-height: 12.5rem;
   max-height: 80vh;
-  filter: drop-shadow(3px 1px 4px var(--edit-color));
   border: 0;
   text-align: center;
   margin: 0;
   padding: 1rem;
+  box-shadow: 5px 1px 3px rgba(var(--edit-color-rgb), .8), -2px 1px 4px rgba(var(--edit-color-rgb), .8);
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
@@ -272,12 +272,12 @@ legend {
   color: var(--text-color);
 }
 #dialog[data-use="player"]{
-  width: 300px;
-  width: min(300px, 60vh);
+  width: 18.75rem;
+  width: min(18.75rem, 60vh);
 }
 #dialog .title {
   display: block;
-  width: min(98%, 100% - 1rem, 200px);
+  width: min(98%, 100% - 1rem, 12.5rem);
   margin-left: auto;
   margin-right: auto
 }
@@ -455,7 +455,7 @@ stitle,
 }
 .edit.song stitle,
 .edit.songList #songbook_header {
-  top: 60px;
+  top: 3.75rem;
 }
 .edit_buttons:first-child {
   position: sticky;
@@ -1016,8 +1016,25 @@ input[type="number"] {
 }
 /*End Switch*/
 
+#rawObRoot ~ fieldset {
+  border-left: 2px solid var(--background-color);
+  box-shadow: none;
+}
+#rawObRoot ~ fieldset pre,
+#rawObRoot ~ fieldset legend {
+  margin: 0;
+}
+#rawObRoot ~ fieldset legend {
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  cursor: default;
+  padding-bottom: .1rem;
+  padding-left: .45rem;
+}
+
 /*For phone in portrait*/
-@media only screen and (max-width: 639px) {
+@media only screen and (max-width: 39.99rem) {
   body .sidebar,
   body.edit .sidebar {
     overflow: hidden;
@@ -1127,7 +1144,7 @@ input[type="number"] {
   }
 }
 /** Phone in landscape **/
-@media only screen and (max-height: 500px) and (min-width: 640px) {
+@media only screen and (max-height: 31.25rem) and (min-width: 40rem) {
   .songList #header,
   .song #header,
   .export #header {
@@ -1137,7 +1154,7 @@ input[type="number"] {
     position: relative;
   }
 }
-@media only screen and (max-height: 500px) {
+@media only screen and (max-height: 31.25rem) {
   body.songbookList header h2 {
     margin-top: .5rem;
   }
@@ -1147,8 +1164,8 @@ input[type="number"] {
   }
 }
 /** Phone in portrait and landscape**/
-@media only screen and (max-width: 639px),
-only screen and (max-height: 500px) {
+@media only screen and (max-width: 39.99rem),
+only screen and (max-height: 31.25rem) {
   main, header {
     margin: 0;
   }
@@ -1203,7 +1220,7 @@ only screen and (max-height: 500px) {
   }
 }
 /*larger screen and landscape phone */
-@media only screen and (min-width: 640px){
+@media only screen and (min-width: 40rem){
   body {
     display: flex;
     flex-direction: column;
@@ -1253,7 +1270,7 @@ only screen and (max-height: 500px) {
     overflow: hidden;
   }
   body main #songbookList {
-    flex: 0 1 300px;
+    flex: 0 1 18.75rem;
   }
   body main #songList {
     flex: 0 0 0;
@@ -1283,13 +1300,13 @@ only screen and (max-height: 500px) {
     flex-wrap: nowrap;
   }
   .subcolumn {
-    flex: 1 1 400px;
+    flex: 1 1 25rem;
   }
 
   /*Focus songbookList*/
   body.songbookList #songbookList {
     z-index: 5;
-    flex: 0 0 300px;
+    flex: 0 0 18.75rem;
   }
   body.songbookList #song {
     z-index: 1;
@@ -1298,18 +1315,18 @@ only screen and (max-height: 500px) {
   /*Focus songList*/
   body.songList #songList {
     z-index: 5;
-    flex: 0 0 400px;
+    flex: 0 0 25rem;
   }
   body.songList #songbookList {
-    flex: 0 1 300px;
+    flex: 0 1 18.75rem;
   }
 
   /*Focus song*/
   body.song #song{
-    flex: 0 0 400px;
+    flex: 0 0 25rem;
   }
   body.song #songList {
-    flex: 0 1 400px;
+    flex: 0 1 25rem;
   }
   body.song #songbookList {
     flex: 0 0 2.5rem;
@@ -1323,10 +1340,10 @@ only screen and (max-height: 500px) {
 
   /*Focus edit*/
   body.edit .sidebar {
-    flex: 0 0 280px;
+    flex: 0 0 17.5rem;
   }
   body.edit .sidebar-open {
-    flex: 0 0 280px;
+    flex: 0 0 17.5rem;
   }
   /*Focus export*/
   body.export.song #song, 
@@ -1338,13 +1355,13 @@ only screen and (max-height: 500px) {
     flex-shrink: 2;
   }
   body.export #export .sidebar {
-    flex: 0 0 360px;
+    flex: 0 0 22.5rem;
   }
   body.export #export .sidebar-open {
-    flex: 0 0 360px;
+    flex: 0 0 22.5rem;
   }
   body.export #export {
-    flex: 0 0.05 800px;
+    flex: 0 0.05 50rem;
   }
 /*--From below */
   #songbookList li span:after {
@@ -1364,7 +1381,7 @@ only screen and (max-height: 500px) {
   }
   body.edit.song #song, 
   body.edit.songList #songList {
-    flex: 0 .2 740px;
+    flex: 0 .2 46.25rem;
   }
   body.song #songbookList #songbooks_header h3 {
     height: 100vh;
@@ -1381,18 +1398,18 @@ only screen and (max-height: 500px) {
     background-color: var(--songbookList-color);
   }
   #songbooks {
-    width: 300px;
+    width: 18.75rem;
   }
   #export .content {
-    min-width: 375px;
+    min-width: 23.5rem;
   }
   #song .subcolumn:first-child > div,
   #songbook_content {
-    min-width: 400px;
+    min-width: 25rem;
   }
 }
 /**larger than phone landscape or otherwise**/
-@media only screen and (min-width: 640px) and (min-height: 501px){
+@media only screen and (min-width: 40rem) and (min-height: 31.26rem){
   .float-menu:not(:last-child) {
     display: flex;
     flex-direction: row-reverse;
@@ -1413,7 +1430,7 @@ only screen and (max-height: 500px) {
   }
 }
 /*for mouseified devices only */
-@media (hover: hover) and (min-width: 640px) {
+@media (hover: hover) and (min-width: 40rem) {
   .column:not(:last-child):hover {
     z-index: 6 !important;
   }
@@ -1429,7 +1446,7 @@ only screen and (max-height: 500px) {
     color: black;
   }
 }
-@media (hover: hover) and (min-width: 640px) and (min-height: 501px) {
+@media (hover: hover) and (min-width: 40rem) and (min-height: 31.26rem) {
   .column:hover .float-menu-item{
     opacity: 1;
     pointer-events: auto;
@@ -1561,7 +1578,7 @@ only screen and (max-height: 500px) {
 #category_filter {
   position: absolute;
   right: -1rem;
-  width: 300px;
+  width: 18.75rem;
   transform: scale(0);
   transform-origin: 95% top;
   opacity: 0;

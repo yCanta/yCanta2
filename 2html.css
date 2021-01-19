@@ -13,7 +13,7 @@ stitle {
   font-weight: bold;
   position: sticky;
   padding-top: 1em;
-  padding-right: 2.75rem;
+  padding-right: 2.75em;
   top: 0;
   z-index: 1;
   column-span: all;
@@ -47,7 +47,7 @@ song {
   display: block;
   white-space: pre-wrap;
   counter-reset: verse_n; 
-  column-width: 300px;
+  column-width: 18.75rem;
   column-fill: auto;
   column-rule: 2px solid var(--edit-color);
   column-gap: 4rem;
