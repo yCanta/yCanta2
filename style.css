@@ -39,10 +39,7 @@
 *:focus {
   outline: 1px;
   outline-color: transparent;
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, .5) !important;
-}
-#title a:focus {
-  box-shadow: 0 2px 1px rgba(0, 123, 255, .5) !important;
+  box-shadow: 0 3px 1px rgba(0, 123, 255, .5) !important;
 }
 *{
   box-sizing: border-box;
@@ -382,7 +379,7 @@ stitle, cat, author, scrip_ref, key, copyright {
   cursor: move;
 }
 .song.edit .wrap:hover {
-  box-shadow: 0 0 0 1px rgb(143,186,200);
+  box-shadow: 0 0 0 1px var(--song-color);
   border-radius: 2px;
 }
 .song.edit .toTextarea {
