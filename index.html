@@ -11,20 +11,6 @@
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
     <link rel="mask-icon" href="safari-pinned-tab.svg" color="#ff0000">
 
-    <script src="jquery-3.5.1.min.js"></script>
-    <script src="pouchdb.min.js"></script>
-    <script src="pouchdb.all-dbs.min.js"></script>
-    <script src="pouchdb.authentication.min.js"></script>
-
-    <script src="db.js"></script>
-    <script src="lib.js"></script>
-    <script async src="jquery.myTransposer.js"></script>
-    <script async src="jquery.toTextarea.js"></script>
-    <script src="list.min.js"></script>
-    <script src="sortable.js"></script>
-    <script async src="jszip.min.js"></script>
-    <script async src="import.js"></script>
-
     <link rel="stylesheet" type="text/css" href="style.css">
     <link rel="stylesheet" type="text/css" href="jquery.myTransposer.css">
     <link rel="stylesheet" type="text/css" href="2html.css">
@@ -36,16 +22,19 @@
 
   </head>
   <body class="header login">
+    <fieldset class="loggedin_display closed align-right" style="position: absolute; top:1.5rem;right:1rem; z-index:7; margin-right: 0;">
+      <legend onclick="this.parentElement.classList.toggle('closed');" style="margin-right: 0; padding: 0 .4rem; margin-left: auto;" id="username_legend"><span id="username_d"></span></legend>
+      <div class="content">
+        <a href="#" style="background-color: var(--background-color);" class="btn" onclick="$(this).closest('fieldset').addClass('closed'); goToSettings();">Settings</a>
+        <button style="background-color: var(--background-color);" class="btn" onclick="dbLogout();">Logout</button>
+      </div>
+    </fieldset>
     <header id="header">
       <div>
         <h2 id="title"><a href="#">yCanta</a></h2>
-        <span class="loggedin_display" style="position: absolute; top:0;right:0; z-index:1;"><span id="username_d"></span>
-          <button style="background-color: var(--background-color);" class="btn" onclick="dbLogout();">Logout</button>
-        </span>
         <hr>
       </div>
-      <div style="overflow: auto; height: calc(100vh - 75px);">
-
+      <div id="lower" style="overflow: hidden; height: calc(100vh - 90px);">
         <div id="login">
           <h2>Login:</h2>
           <select id="db_select">
@@ -66,29 +55,74 @@
             <button class="btn d_none create_local" onclick="checkCreateNew();">Create Local</button>
           </div>
         </div>
-        <div id="welcome">
-          <a class="btn songbookList-color" href="#songbooks">Songbooks</a>
-          <a class="btn songList-color" href="#sb-allSongs">All Songs</a>
+        <div id="logged_in">
+          <div id="welcome">
+            <a class="btn songbookList-color" href="#songbooks">Songbooks</a>
+            <a class="btn songList-color" href="#sb-allSongs">All Songs</a>
 
-          <h2>Brief Introduction</h2>
+            <h2>Brief Introduction</h2>
 
-          You can view songbooks or songs by selecting one of the above buttons.<br><br>
-
-          <h2>Utilities</h2>
-          <a class="btn" href="#" onclick="loadRawDbObject('categories',$('#raw_edit'));">Edit Categories</a>
-          <a class="btn" href="#" onclick="loadRawDbObject(window.user._id,$('#raw_edit'));">Edit User</a>
-          <div id="raw_edit"></div><br>
-          <div>
-          To import more songs, choose a zip of V1 songs or a json file of V2 and upload it below.</div>
-          <span style="background-color: var(--highlight-color); padding: 1rem; border-radius: 1.5rem;"><input type="file" id="file" name="file" accept=".json,.zip" /><button class="btn" onclick="startHandlingFiles();">Upload</button></span>
-          <div id="result">
+            You can view songbooks or songs by selecting one of the above buttons.<br><br>
+            <fieldset class="updatedSongs closed-mobile">
+              <legend onclick="(this.parentElement.classList.contains('closed-mobile') && (window.innerWidth < 640) ? this.parentElement.classList.remove('closed-mobile') : this.parentElement.classList.toggle('closed'));">Recently Updated Songs</legend>
+              <div class="content">
+                <ul class="list"></ul>
+              </div>
+            </fieldset>
           </div>
+          <div id="settings">
+            <fieldset id="userProfile" class="align-right">
+              <legend onclick="this.parentElement.classList.toggle('closed');">User Profile</legend>
+              <div class="content">
+                <div id="user_content"></div>
+              </div>
+            </fieldset>
+            <fieldset class="closed align-right">
+              <legend onclick="this.parentElement.classList.toggle('closed'); loadCategories();">Categories</legend>
+              <div class="content">
+                <div id="category_content"></div>
+              </div>
+            </fieldset>
+            <fieldset class="closed align-right">
+              <legend onclick="this.parentElement.classList.toggle('closed');">Import</legend>
+              <div class="content">
+                <div>To import more songs, choose a zip of V1 songs or a json file of V2 and upload it below.</div>
+                <span style="margin: 1rem;"><input type="file" id="file" name="file" accept=".json,.zip" style="max-width: 200px; background: var(--edit-color);"/><button class="btn" onclick="startHandlingFiles();">Upload</button></span>
+                <div id="result">
+                </div>
+              </div>  
+            </fieldset>
+            <fieldset class="closed align-right" id="appSettings">
+              <legend onclick="this.parentElement.classList.toggle('closed');">Settings</legend>
+              <div class="content">
+                <b>Darkmode</b><br><br>
+                <div id="darkmode">
+                  <input type="radio" name="darkmode" id="darkRadio" value="dark" onchange="handleDarkMode();">
+                  <label for="darkRadio">Dark</label>
+                  <input type="radio" name="darkmode" id="autoRadio" value="auto" onchange="handleDarkMode();">
+                  <label for="autoRadio">System</label>
+                  <input type="radio" name="darkmode" id="lightRadio" value="light" onchange="handleDarkMode();">
+                  <label for="lightRadio">Light</label>
+                </div><br><br>
+                <label>
+                  <b>Font Size:</b> <output id="fontSizeOutput">16px</output><br><br>
+                  <input type="range" min="12" max="20" value="16" id="fontSize" name="fontSize" list="tickmarks" onchange="document.getElementById('fontSizeOutput').value=this.value+'px'; document.documentElement.style.fontSize = this.value+'px'; localStorage.setItem(window.user._id+'fontSize', this.value);" style="width:100%; display: block;">
+                  <datalist id="tickmarks">
+                    <option value="12" label="12px"></option>
+                    <option value="16" label="16px"></option>
+                    <option value="20" label="20px"></option>
+                  </datalist>
 
-          <a href="#" class="btn" style="background-color: crimson; color: white;" onclick="if(confirm('Are you sure you want to delete this database?')){ db.destroy().then(function () {
-                dbLogout();
-              }).catch(function (err) {
-                console.log(err);
-            });}">Delete DB</a>
+                </label>
+                <br>
+                <a href="#" class="btn" style="background-color: crimson; color: white;" onclick="if(confirm('Are you sure you want to delete this database?')){ db.destroy().then(function () {
+                  dbLogout();
+                }).catch(function (err) {
+                  console.log(err);
+              });}">Delete DB</a>
+              </div>
+            </fieldset>
+          </div>
         </div>
       </div>
 
@@ -176,7 +210,7 @@
                   data-song-search=""
                   data-song-status=""
                   data-song-deleted="">
-                  <a href="" class="name"tabindex="0" ></a>
+                  <a href="" class="name" tabindex="0" ></a>
                 </li>
               </ul>
             </div>
@@ -697,7 +731,40 @@
     <footer>
     </footer>
     <iframe id="presentation" title="Presentation Slideshow"></iframe>
+
+    <script src="jquery-3.5.1.min.js"></script>
+    <script src="pouchdb.min.js"></script>
+    <script src="pouchdb.all-dbs.min.js"></script>
+    <script src="pouchdb.authentication.min.js"></script>
+
+    <script src="db.js"></script>
+    <script src="lib.js"></script>
+    <script async src="jquery.myTransposer.js"></script>
+    <script async src="jquery.toTextarea.js"></script>
+    <script src="list.min.js"></script>
+    <script src="sortable.js"></script>
+    <script async src="jszip.min.js"></script>
+    <script async src="import.js"></script>
     <script>
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+        if(document.getElementById('autoRadio').checked == true) {
+          if (event.matches) {
+            document.documentElement.classList.add('dark');
+            console.log('🎉 Dark mode is desired');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        }
+      });
+
+      var sheet = (function() {
+        var style = document.createElement("style");
+        style.appendChild(document.createTextNode(""));
+        document.head.appendChild(style);
+        return style.sheet;
+      })();
+      setTimeout(function(){sheet.insertRule("* { transition: all 0.25s, color 0s, font-size 0s; }", 0); },300);
+
       dragDialog();
 
       $('#song .row').append('<button onclick="toggleFullscreen(this)" class="icon-rotate2x tr emoji">&#8596;</button>');
@@ -765,7 +832,6 @@
         PouchDB.on('created', function (dbName) {
           console.log('Created: ', dbName);
         });
-
 
         $('input.deletable').wrap('<span class="deleteicon" />').after($('<span/>').click(function() {
           $(this).prev('input').val('').trigger('change').focus()[0].dispatchEvent(new KeyboardEvent("keyup"));

@@ -111,7 +111,7 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
       dbLogout();
     });
   }
-  function takeNextStep(username, dbName) {
+  function takeNextStep(username, dbName) {  //after login
     //layout the welcome?  maybe this goes in set login state?
     //Update ui when db changes]s
     db.changes({
@@ -129,6 +129,7 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
       //what type?
       //song?
       if(change.doc._id.startsWith('s-')){
+        loadRecentSongs();  
         //only load song if it's the one that's up.
         if(window.song._id === change.doc._id){
           loadSong(change.doc._id);
@@ -199,6 +200,7 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
           window.songbook._id = '';
           loadSongbook('sb-favoriteSongs');
         }
+        updateUser();
         window.songbooks_list.reIndex();
         window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
         $('#song song').attr('data-user-fav', (window.user.fav_songs.indexOf($('#song song').attr('data-id'))> -1 ? 'true': 'false'))
@@ -212,7 +214,24 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
       console.log('Error in db.changes('+err);
     });
     localStorage.setItem('loggedin',JSON.stringify([dbName, username, pin]));
+    //check dark mode and set for app
+    let darkMode = localStorage.getItem(window.user._id+'darkMode');
+    if(darkMode){
+      document.getElementById(darkMode+'Radio').checked = true;
+    }else {
+      document.getElementById('autoRadio').checked = true;
+    }
+    handleDarkMode();
+    //set font size;
+    let fontSize = localStorage.getItem(window.user._id+'fontSize');
+    if(fontSize){
+      document.documentElement.style.fontSize = fontSize+'px';
+      document.getElementById('fontSize').value = fontSize;
+      document.getElementById('fontSizeOutput').value = fontSize + 'px';
+    }
+
     window.yCantaName = dbName;
+    loadRecentSongs();
     initializeSongbooksList();
     setLoginState();
     //initialized
@@ -294,6 +313,42 @@ function dbLogout(){
   syncHandler.cancel(); // <-- this cancels it
 
   */
+}
+
+function loadRecentSongs(days=1000, number=15){
+  db.changes({
+    include_docs: true,
+    startkey: 's-',
+    endkey: 's-\ufff0',
+    since: 0,
+    filter: function (doc) {
+      return (doc.edited > (new Date().getTime() - days*24*60*60*1000))*!doc._id.includes('sb');
+    }
+  }).then(function(result){
+    result.results.sort(function(a, b){
+      if(a.doc){
+        if(a.doc.edited > b.doc.edited) { return -1; }
+        if(a.doc.edited < b.doc.edited) { return 1; }
+        return 0;
+      }
+      else {
+        return 0;
+      }
+    });
+    let songs = result.results.slice(0, number);
+    let ul_list = '', date_hour, old_date_hour;
+    for(rec_song of songs) {
+      old_date_hour = date_hour;
+      date_hour = new Date(rec_song.doc.edited).toLocaleTimeString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit'});
+      if(date_hour != old_date_hour){
+        ul_list += `<div style="margin-top: 1rem; font-weight: bold;">${date_hour}</div>`
+      }
+      ul_list += `<li><a href="#sb-allSongs&${rec_song.doc._id}">${rec_song.doc.title}</a></li>`
+    }
+    $('.updatedSongs .list').html(ul_list);
+  }).catch(function(err){
+    console.log(err);
+  });
 }
 
 function initializeSongbooksList(){
@@ -480,7 +535,7 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
       new_song = true;
       let time = new Date().getTime();
       song_id = 's-' + time;
-      var song = {_id: song_id, added: time, addedBy: window.user.name, edited: time, editedBy: window.user.name};
+      let song = {_id: song_id, added: time, addedBy: window.user.name, edited: time, editedBy: window.user.name};
       loadSongContent(song);
       addSongToSongbook(song._id);
     }
@@ -488,7 +543,7 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
     else if(!song_id.startsWith('s-')){
       let time = new Date().getTime();
       song_id = 's-' + song_id;
-      var song = {_id: song_id, added: time, addedBy: window.user.name, edited: time, editedBy: window.user.name};
+      let song = {_id: song_id, added: time, addedBy: window.user.name, edited: time, editedBy: window.user.name};
       loadSongContent(song);
     }
     else {  //existing song hopefully - need to make robust
@@ -533,15 +588,15 @@ function loadSong(song_id) {
                   '</song>'
       $('#song .content').html(song_html);
       let regex = /(https?:\/\/)?(?:www\.)?(youtu(?:\.be\/([-\w]+)|be\.com\/watch\?v=([-\w]+)))\w/g;
+      //add hrefs to comments
+      $('song chunk[type="comment"]').each(function(){
+        $(this).html($(this).html().replace(/(((http|https|ftp):\/\/)*[\w?=&.\/-;#~%-]+\.[\w?=&.\/-;#~%-]+(?![\w\s?&.\/;#~%"=-]*>))/g, '<a href="$1" target="_blank">$1</a> '));
+      });
       //set youtube_links
       ($("song line").text().match(regex) != null ? window.youtube_links = [...$("song line").text().match(regex)] : window.youtube_links = []);
       if(window.youtube_links.length > 0) {
         $('#song key').before('<button class="btn" style="padding: 5px 8px; margin-top: 0; background-color:var(--highlight-color);" onclick="loadSongPlayer();">▶</button>')
       }
-      //add hrefs to comments
-      $('song chunk[type="comment"]').each(function(){
-        $(this).html($(this).html().replace(/(((http|https|ftp):\/\/)*[\w?=&.\/-;#~%-]+\.[\w?=&.\/-;#~%-]+(?![\w\s?&.\/;#~%"=-]*>))/g, '<a href="$1" target="_blank">$1</a> '));
-      });
       resolve("song_loaded");
 
       $('#song key').transpose();
@@ -958,7 +1013,7 @@ function addSongToSongbook(song_id, songbook_id=window.songbook._id) {
   }
 }
 
-function loadRawDbObject(rawDb_id, element_drop) {
+function loadRawDbObject(rawDb_id, element_drop, onclick) {
   console.log(rawDb_id);
   if(rawDb_id != 'categories' && rawDb_id != window.user._id){
     alert('yo! Stop it!');
@@ -967,7 +1022,7 @@ function loadRawDbObject(rawDb_id, element_drop) {
   db.get(rawDb_id).then(function(json_object){
     const keys = Object.keys(json_object);
 
-    let html_string = '<div id="rawObRoot" data-id="'+json_object['_id']+'" data-rev="'+json_object['_rev']+'"><h3>File_Id: '+json_object['_id']+'</h3></div>';
+    let html_string = '<div id="rawObRoot" data-id="'+json_object['_id']+'" data-rev="'+json_object['_rev']+'"><h3>Editing: '+json_object['_id']+'</h3></div>';
 
     keys.forEach((key, index) => {
       if(key != '_id' && key != '_rev'){
@@ -981,11 +1036,10 @@ function loadRawDbObject(rawDb_id, element_drop) {
         else if(key_content_type == "string" || key_content_type == "number") {
           key_content = json_object[key];
         }
-        html_string += `<div class="key" data-name="${key}"><h4>Field: ${key}</h4><pre class="key_content" data-content-type="${key_content_type}">${key_content}</pre></div>`;
+        html_string += `<fieldset class="key" data-name="${key}"><legend>${key}</legend><pre class="key_content" data-content-type="${key_content_type}">${key_content}</pre></fieldset>`;
       }
     });
-
-    html_string += '<button class="btn" onclick="$(\'#raw_edit\').html(\'\');" style="background-color: var(--background-color);">Cancel</button><button class="btn" onclick="saveRawDbObject($(\'#raw_edit\'));" style="background-color: var(--background-color);">Save</button>'
+    html_string += '<button class="btn" onclick="'+onclick+'" style="background-color: var(--background-color);">Cancel</button><button class="btn" onclick="saveRawDbObject($(\'#'+element_drop[0].id+'\'));" style="background-color: var(--background-color);">Save</button>'
 
     element_drop.html(html_string);
     $('.key_content').toTextarea({

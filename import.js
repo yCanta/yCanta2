@@ -26,15 +26,15 @@ function updateProgress(){
   let i = window.import;
   i.progressBar.style.background = 'linear-gradient(to right, '+
     'var(--song-color) '     +i.n_songs/i.file_count*100+'%,'+
-    'lightgray '             +i.n_songs/i.file_count*100+'%,'+
-    'lightgray '             +(i.n_songs+i.n_songs2)/i.file_count*100+'%,'+
+    'var(--edit-color) '     +i.n_songs/i.file_count*100+'%,'+
+    'var(--edit-color) '     +(i.n_songs+i.n_songs2)/i.file_count*100+'%,'+
     'var(--songList-color) ' +(i.n_songs+i.n_songs2)/i.file_count*100+'%,'+
     'var(--songList-color) ' +(i.n_songs+i.n_songs2+i.n_songbooks)/i.file_count*100+'%,'+
-    'lightgray '             +(i.n_songs+i.n_songs2+i.n_songbooks)/i.file_count*100+'%,'+
-    'lightgray '             +(i.n_songs+i.n_songs2+i.n_songbooks+i.n_songbooks2)/i.file_count*100+'%,'+
-    'yellow '                +(i.n_songs+i.n_songs2+i.n_songbooks+i.n_songbooks2)/i.file_count*100+'%,'+
-    'yellow '                +(i.n_songs+i.n_songs2+i.n_songbooks+i.n_songbooks2+i.n_other)/i.file_count*100+'%,'+
-    'white 0)';
+    'var(--edit-color) '     +(i.n_songs+i.n_songs2+i.n_songbooks)/i.file_count*100+'%,'+
+    'var(--edit-color) '     +(i.n_songs+i.n_songs2+i.n_songbooks+i.n_songbooks2)/i.file_count*100+'%,'+
+    'var(--songbookList-color) ' +(i.n_songs+i.n_songs2+i.n_songbooks+i.n_songbooks2)/i.file_count*100+'%,'+
+    'var(--songbookList-color) ' +(i.n_songs+i.n_songs2+i.n_songbooks+i.n_songbooks2+i.n_other)/i.file_count*100+'%,'+
+    'var(--edit-color) 0)';
   window.import = i;
 }
 async function importSongV1(f){

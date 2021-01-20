@@ -14,10 +14,12 @@ span.c {
 }
 
 .transpose-keys {
-  width: 19rem;
-	margin: 10px 0;
-	overflow: auto;
-	font: normal 11px sans-serif;
+  width: max-content;
+  margin: 10px 0;
+  overflow: auto;
+  font: normal 0.6875rem sans-serif;
+  display: grid;
+  grid-template: auto / auto auto auto auto auto auto auto auto auto;
 }
 .transpose-keys a { 
   cursor: pointer;
@@ -26,8 +28,8 @@ span.c {
 	width: 2.5em;
 	text-align: center;
 	margin: 0.25em .25em .25em 0.25em;
-	color: #333;
-	background: #eee;
+	color: var(--text-color, #333);
+	background: var(--edit-color, #eee);
   border-radius: 5px;
 	text-decoration: none;
 	padding: .5em 0;

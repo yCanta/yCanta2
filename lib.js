@@ -579,10 +579,93 @@ function checkCreateNew() {
     }
   });
 }
+async function updateUser(){
+  let name = window.user.name.trim();
+  //Username in header area
+  let html = '';
+  for(word of name.split(/\W+/)){
+    html += `${word[0]}<span class="closing">${word.substring(1)} </span>`;
+  }
+  $('#username_d').html(html);
+  //User Profile information in Settings.
+  html = `<h3>${name} <a href="#" onclick="loadRawDbObject(window.user._id,$('#user_content'),'updateUser();');">🖉</a></h3>`;
 
+  let sbs = window.user.fav_sbs.filter(sb => sb.length != 0);
+  html += '<h4>Favorite Songbooks</h4><ul>';
+  if(sbs.length){
+    try {
+      var result = await db.allDocs({include_docs: true, keys: sbs});
+    } catch (err) {
+      console.log(err);
+    }
+    for(sb of result.rows.sort((a, b) => a.doc.title.localeCompare(b.doc.title))){
+      html += `<li><a href="#${sb.doc._id}">${sb.doc.title}</a></li>`;
+    }
+  } else {html+='<li>None yet!</li>';}
+  html += '</ul>';
+  let songs = window.user.fav_songs.filter(song => song.length != 0);
+  html += '<h4>Favorite Songs</h4><ul>';
+  if(songs.length){
+    try {
+      var result = await db.allDocs({include_docs: true, keys: songs});
+    } catch (err) {
+      console.log(err);
+    }
+    for(fav_song of result.rows.sort((a, b) => a.doc.title.localeCompare(b.doc.title))){
+      html += `<li><a href="#sb-favoriteSongs&${fav_song.doc._id}">${fav_song.doc.title}</a></li>`;
+    }
+  } else {html+='<li>None yet!</li>';}
+  html += '</ul>';
+  html += '<h4>Permissions</h4><ul>Edit View Admin</ul>'
+  document.getElementById('user_content').innerHTML = html;
+}
+async function loadCategories(){
+  let html = `<h3>Ordered List <a href="#" onclick="loadRawDbObject('categories',$('#category_content'),'loadCategories();');">🖉</a></h3>`;
+
+  try {
+    var result = await db.get('categories');
+  } catch (err) {
+    console.log(err);
+  }
+  html += '<ul>';
+  for(cat of result.categories){
+    html += `<li><a href="#sb-allSongs" onclick="$('#songbook_header .search').val('c:${cat}')[0].dispatchEvent(new KeyboardEvent('keyup'));">${cat}</a></li>`;
+  }
+  html += '</ul>';
+  document.getElementById('category_content').innerHTML = html;
+}
+
+function handleDarkMode(){
+  let value = document.querySelector('input[name="darkmode"]:checked').value;
+  switch(value) {
+    case 'dark':
+      document.documentElement.classList.add('dark');
+      break;
+    case 'light':
+      document.documentElement.classList.remove('dark');
+      break;
+    case 'auto':
+      document.getElementById('autoRadio').checked = true;
+      if (window.matchMedia && 
+        window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.classList.add('dark');
+        console.log('🎉 Dark mode is desired');
+      }
+      else {
+        document.documentElement.classList.remove('dark');
+      }
+      break;
+  }
+  //save value to system/user prefs.  
+  localStorage.setItem(window.user._id+'darkMode',value);
+}
+function goToSettings(){
+  document.getElementById('appSettings').classList.remove('closed');
+  document.getElementById('appSettings').scrollIntoView();
+}
 function setLoginState() {
   window.loggedin = true;
-  $('#username_d').text('Hi, '+window.user.name+'!');
+  updateUser();
   $('html').addClass('loggedin');
   $('#title a').html('yCanta: ' + window.yCantaName);
   if(location.hash.indexOf('?')>-1){
@@ -783,9 +866,9 @@ function cycleStatus(e) {
 }
 
 function editSongbook() {
-  let buttons = '<div class="edit_buttons"><button data-songbook class="btn" style="background-color: lightgray;" onclick="saveSongbook(parseHash(\'sb-\'));">Save</button>';
-  buttons += '<button data-songbook class="btn" style="background-color: lightgray;" onclick="window.editing=false; window.songbook._id=\'\'; window.location.hash=$(this).attr(\'href\'); $(\'.edit_buttons\').remove();">Cancel</button>';
-  buttons += '<button data-songbook class="btn" style="background-color: lightgray;" onclick="window.editing=false; location.reload()">Reset</button></div>';
+  let buttons = '<div class="edit_buttons"><button data-songbook class="btn" style="background-color: var(--edit-color);" onclick="saveSongbook(parseHash(\'sb-\'));">Save</button>';
+  buttons += '<button data-songbook class="btn" style="background-color: var(--edit-color);" onclick="window.editing=false; window.songbook._id=\'\'; window.location.hash=$(this).attr(\'href\'); $(\'.edit_buttons\').remove();">Cancel</button>';
+  buttons += '<button data-songbook class="btn" style="background-color: var(--edit-color);" onclick="window.editing=false; location.reload()">Reset</button></div>';
   $('#songbook_content').prepend(buttons).append(buttons);
   $('#songbook_content .search').val('')[0].dispatchEvent(new KeyboardEvent('keyup'));
   updateAllLinks();
@@ -878,9 +961,9 @@ function editSongbook() {
 }
 
 function editSong() {
-  let buttons = '<div class="edit_buttons"><button data-song class="btn" style="background-color: lightgray;" onclick="prepSaveSong($(this))">Save</button>';
-  buttons += '<button data-song class="btn" style="background-color: lightgray;" onclick="window.editing=false; window.location.hash=$(this).attr(\'href\');">Cancel</button>';
-  buttons += '<button data-song class="btn" style="background-color: lightgray;" onclick="window.editing=false; location.reload()">Reset</button></div>';
+  let buttons = '<div class="edit_buttons"><button data-song class="btn" style="background-color: var(--edit-color);" onclick="prepSaveSong($(this))">Save</button>';
+  buttons += '<button data-song class="btn" style="background-color: var(--edit-color);" onclick="window.editing=false; window.location.hash=$(this).attr(\'href\');">Cancel</button>';
+  buttons += '<button data-song class="btn" style="background-color: var(--edit-color);" onclick="window.editing=false; location.reload()">Reset</button></div>';
   $('song').before(buttons).append(buttons);
 
   $('chunk').each(function(index){
