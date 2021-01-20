@@ -629,10 +629,13 @@ async function loadCategories(){
   }
   html += '<ul>';
   for(cat of result.categories){
-    html += `<li><a href="#sb-allSongs" onclick="$('#songbook_header .search').val('c:${cat}')[0].dispatchEvent(new KeyboardEvent('keyup'));">${cat}</a></li>`;
+    html += `<li><a href="#sb-allSongs" onclick="searchSBfor(this.text)">${cat}</a></li>`;
   }
   html += '</ul>';
   document.getElementById('category_content').innerHTML = html;
+}
+function searchSBfor(text){
+  $('#songbook_header .search').val('c:'+text)[0].dispatchEvent(new KeyboardEvent('keyup'));
 }
 
 function handleDarkMode(){
