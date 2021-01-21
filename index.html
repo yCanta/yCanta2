@@ -856,6 +856,9 @@
         });
       });   
       function hashchanged(){
+        let pres_iframe = document.getElementById('presentation');
+        if(pres_iframe){setTimeout(function(){pres_iframe.remove()},300);}
+
         var hash = location.hash;
         if(window.old_hash == hash){
           return
@@ -1070,7 +1073,6 @@
                                 window.presentationFrame = window.open('','_blank', height="200", width="200");
                               }
                               else {                                                 //Iframe
-                                document.getElementById('presentation').remove();
                                 var ifrm = document.createElement('iframe');
                                 ifrm.id = "presentation";
                                 document.body.appendChild(ifrm);
