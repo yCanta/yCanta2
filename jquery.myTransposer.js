@@ -172,11 +172,11 @@
     };
     var transposeChord = function (selector, delta, targetKey) {
       var el = $(selector);
-      var oldChord = el.text();
+      var oldChord = el.text().match(opts.chordReplaceRegex)[0];
       var oldChordRoot = getChordRoot(oldChord);
       var newChordRoot = getNewKey(oldChordRoot, delta, targetKey);
       var newChord = newChordRoot.name + oldChord.substr(oldChordRoot.length);
-      el.text(newChord);
+      el.text(el.text().replace(opts.chordReplaceRegex,newChord));
     };
     var getNewWhiteSpaceLength = function (a, b, c) {
       if (a > b)
