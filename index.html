@@ -1062,10 +1062,10 @@
                   $.ajax({url: "presentation.html",
                     success: function (data){
                       presHtml = data;
-                      $.ajax({url: "jquery-3.5.1.min.js",
+                      $.ajax({url: "jquery-3.5.1.min.js", dataType: 'text',
                         success: function (data){
                           presHtml = presHtml.replace('jQuery_embed', data);
-                          $.ajax({url: "presentation.js",
+                          $.ajax({url: "presentation.js", dataType: 'text',
                             success: function (data){
                               presHtml = presHtml.replace('presentation_embed', data);
                               if(hash.indexOf('new') > -1){                          //New window/tab
