@@ -43,16 +43,19 @@
           <button class="btn" onclick="if(confirm('are you sure you want to delete all data?')){clearAllDbs();};">Clear all</button>
           <input id="newDbUrl" class="d_none" placeholder="DB Url" type="text"></input>
           <input id="newDbName" class="d_none create_local" placeholder="DB Name" type="text"></input>
+          <input id="remote_url" class="d_none connect_remote" placeholder="Remote URL" type="url"></input>
           <input id="username" placeholder="Username" type="text"></input>
-          <input id="pwd" class="d_none" placeholder="Password" type="password"></input>
-          <div class="pin d_none create_local login_local">
+          <input id="pwd" class="d_none connect_remote" placeholder="Password" type="password"></input>
+          <span class="connect_remote d_none connect_remote">Make available offline by adding a pin</span>
+          <div class="pin d_none create_local login_local connect_remote">
             <input id="pin" placeholder="Pin" type="password"></input>
-            <input id="pin2" class="d_none create_local" placeholder="Renter Pin" type="password"></input>
+            <input id="pin2" class="d_none create_local connect_remote" placeholder="Renter Pin" type="password"></input>
             <span class="d_none">⚠️ Offline - enter pin</span><br>
           </div>
           <div style="text-align: right;">
-            <button class="btn d_none login_local" onclick="if(checkLogin()){dbLogin();}">Login</button>
+            <button class="btn d_none login_local login_remote" onclick="if(checkLogin()){dbLogin('login_local');}">Login</button>
             <button class="btn d_none create_local" onclick="checkCreateNew();">Create Local</button>
+            <button class="btn d_none connect_remote" onclick="dbLogin('login_remote');">Connect Remote</button>
           </div>
         </div>
         <div id="logged_in">
@@ -764,7 +767,6 @@
         return style.sheet;
       })();
       setTimeout(function(){sheet.insertRule("* { transition: all 0.25s, color 0s, font-size 0s; }", 0); },300);
-
       dragDialog();
 
       $('#song .row').append('<button onclick="toggleFullscreen(this)" class="icon-rotate2x tr emoji">&#8596;</button>');
@@ -850,6 +852,9 @@
           if($('#db_select :selected').val() == 'create_local') {
             $('#login').addClass('create_local');
           }
+          else if($('#db_select :selected').val() == 'connect_remote') {
+            $('#login').addClass('connect_remote');
+          }
           else {
             $('#login').addClass('login_local');
           }
@@ -887,7 +892,8 @@
         else if(hash.startsWith('#login')) {
           let userPin = JSON.parse(localStorage.getItem('loggedin'));
           try {
-            dbLogin(false, userPin[0], userPin[1], userPin[2]);
+            console.log(userPin);
+            dbLogin('login_local', userPin[0], userPin[1], userPin[2]);
             console.log("still logged in!");
           }
           catch {
@@ -902,6 +908,7 @@
               db_opts += '<option value="'+item+'">'+item+'</option>';
             }
             db_opts += '<option value="create_local">Create Local</option>';
+            db_opts += '<option value="connect_remote">Connect Remote</option>';
             $('#db_select').html(db_opts).trigger('change');
             console.log(log_opts);
 

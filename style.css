@@ -692,17 +692,12 @@ span.deleteicon input {
 #login button {
   margin: 1rem;
 }
-/*Create Local*/
-#login.create_local .create_local {
+#login.create_local .create_local, /*Create Local*/
+#login.login_local .login_local, /*Login Local*/
+#login.connect_remote .connect_remote, /*Connect Remote*/
+#login.login_remote .login_remote { /*Login Remote*/
   display: initial;
 }
-/*Login Local*/
-#login.login_local .login_local {
-  display: initial;
-}
-/*Connect Remote*/
-
-/*Login Remote*/
 
 
 /*Styling!*/

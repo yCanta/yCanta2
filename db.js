@@ -31,7 +31,8 @@ function clearAllDbs() {
   });
 }
 
-function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
+function dbLogin(type, dbName=false, username=false, pin=false, pwd=false, remote_url=false) {
+  console.log(type,dbName,username,pin,pwd,remote_url);
   if(!dbName){
     dbName = $('#db_select :selected').val();
   }
@@ -41,7 +42,13 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
   if(!pin){
     pin = $('#pin').val().trim();
   }
-  if(newDb){
+  if(!pwd){
+    pwd = $('#pwd').val();
+  }
+  if(!remote_url){
+    remote_url = $('#remote_url').val();
+  }
+  if(type=="create_local"){
     dbName = $('#newDbName').val().trim()+'(local)';
     console.log('New DB');
     //initialize local database;
@@ -85,10 +92,11 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
         console.log(err);
       }
     });
+    console.log(username,dbName)
     takeNextStep(username,dbName);
   }
-  else {
-    console.log('Logging in');
+  else if(type=="login_local"){
+    console.log('Logging in locally');
     db = new PouchDB(dbName);
     //check if pin matches
     db.get('_local/u-'+username).then(function(userPin){
@@ -111,6 +119,42 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
       dbLogout();
     });
   }
+  else if(type=="login_remote"){
+    var remoteDb = new PouchDB('remote_url', {skip_setup: true});
+    
+    var ajaxOpts = {
+      ajax: {
+        headers: {
+          Authorization: 'Basic ' + window.btoa(username+':'+pwd)
+        }
+      }
+    };
+
+    remoteDb.logIn(username, pwd, ajaxOpts).then(function (batman) {
+      console.log("I'm Batman.", batman);
+      return remoteDb.allDocs();
+    }).then(function(docs){
+      syncHandler = db.sync(remoteDb, {
+        live: true,
+        retry: true
+      }).on('change', function (change) {
+        console.log('Synced some stuff');
+        // yo, something changed!
+      }).on('paused', function (info) {
+        // replication was paused, usually because of a lost connection
+      }).on('active', function (info) {
+        // replication was resumed
+      }).on('error', function (err) {
+        // totally unhandled error (shouldn't happen)
+      });
+      console.log(docs);
+    });
+    console.log(dbName, username, pwd );
+  }
+  else {
+    console.log('not sure what you want to login to');
+  }
+
   function takeNextStep(username, dbName) {  //after login
     //layout the welcome?  maybe this goes in set login state?
     //Update ui when db changes]s
@@ -244,56 +288,7 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
 
   return false;
 
-  /*let pwd = $('#pwd').val();
-  let pin = $('#pin').val();
-  if(newDb)
-  console.log(dbName, username, pin);
-  db = new PouchDB(dbName);
-
-  //We're not online!
-  if(!online){
-    console.log(dbName, username, pin );
-  }
-  //we're online!
-  else {
-    var remoteDb = new PouchDB('https://bc1e4819-c782-4aad-8525-2e2340011ce7-bluemix.cloudantnosqldb.appdomain.cloud/canaanf/', {skip_setup: true});
-    
-    var ajaxOpts = {
-      ajax: {
-        headers: {
-          Authorization: 'Basic ' + window.btoa(username+':'+pwd)
-        }
-      }
-    };
-
-
-    remoteDb.logIn(username, pwd, ajaxOpts).then(function (batman) {
-      console.log("I'm Batman.", batman);
-
-      return remoteDb.allDocs();
-
-    }).then(function(docs){
-
-      syncHandler = db.sync(remoteDb, {
-        live: true,
-        retry: true
-      }).on('change', function (change) {
-        console.log('Synced some stuff');
-        // yo, something changed!
-      }).on('paused', function (info) {
-        // replication was paused, usually because of a lost connection
-      }).on('active', function (info) {
-        // replication was resumed
-      }).on('error', function (err) {
-        // totally unhandled error (shouldn't happen)
-      });
-
-      console.log(docs);
-    });
-
-    console.log(dbName, username, pwd );
-
-  }*/
+  /**/
 }
 
 function dbLogout(){

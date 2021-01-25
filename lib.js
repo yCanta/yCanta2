@@ -572,7 +572,7 @@ function checkCreateNew() {
     }
     //Go ahead and log in.
     if(response) {
-      dbLogin(true);
+      dbLogin('create_local');
     }
     else {
       return;
