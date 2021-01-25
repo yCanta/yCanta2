@@ -1548,41 +1548,54 @@ async function loadInfo(song=true) {
 }
 
 function loadSongPlayer(){
-  $('#dialog h5').text('Playing');
-  document.getElementById('dialog').setAttribute('data-use','player');
-  document.querySelector('#dialog .title').innerHTML = window.song.title;
-
-  let song_id = window.song._id;
-  let content = '<br><br><div id="player"></div>';
-  content += '<span id="playlistnumber" style="margin: 1rem .5rem 1rem .5rem;"></span>'+
-             '<button class="btn emoji" onclick="window.player.previousVideo()">⏮<button>'+
-             '<button id="play" class="btn emoji" onclick="toggleVideo();">▶<button>'+
-             '<button class="btn emoji" onclick="window.player.nextVideo()">⏭<button>'+
-             '<button id="loop" class="btn emoji" onclick="toggleLoop();">🔁</button>'
-
-  document.querySelector('#dialog .content').innerHTML = content;
-
-  $('#dialog').slideDown('fast');
-  window.player = new YT.Player('player', {
-    height: '',
-    width: '100%',
-    //videoId: id,
-    host: 'http://www.youtube-nocookie.com',
-    playerVars: { 'autoplay': 0, 'controls': 1 },
-    events: {
-      'onReady': onPlayerReady,
-      'onStateChange': onPlayerStateChange
-    }
-  });
+  let yt_script_el = document.getElementById('yt_script');
+  if(!yt_script_el) {       //Load up youtube needed elements.
+    var tag = document.createElement('script');
+    tag.id = 'yt_script';
+    tag.src = "https://www.youtube.com/iframe_api";
+    var firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);  
+    tag.addEventListener('load', function() {
+      setTimeout(function(){
+        try{
+          setItUp();
+        }
+        catch{
+          console.log('second try')
+          setTimeout(function(){setItUp();},1000);
+        };  //setTimeout seems to be needed for new YT.Player() to be ready
+      },20);
+    });
+  }
+  else { 
+    setItUp();
+  }
+  function setItUp(){
+    $('#dialog h5').text('Playing');
+    document.getElementById('dialog').setAttribute('data-use','player');
+    document.querySelector('#dialog .title').innerHTML = window.song.title;
+    let song_id = window.song._id;
+    let content = '<br><br><div id="player"></div>';
+    content += '<span id="playlistnumber" style="margin: 1rem .5rem 1rem .5rem;"></span>'+
+               '<button class="btn emoji" onclick="window.player.previousVideo()">⏮<button>'+
+               '<button id="play" class="btn emoji" onclick="toggleVideo();">▶<button>'+
+               '<button class="btn emoji" onclick="window.player.nextVideo()">⏭<button>'+
+               '<button id="loop" class="btn emoji" onclick="toggleLoop();">🔁</button>'
+    document.querySelector('#dialog .content').innerHTML = content;
+    $('#dialog').slideDown('fast');
+    window.player = new YT.Player('player', {
+      height: '',
+      width: '100%',
+      //videoId: id,
+      host: 'http://www.youtube-nocookie.com',
+      playerVars: { 'autoplay': 0, 'controls': 1 },
+      events: {
+        'onReady': onPlayerReady,
+        'onStateChange': onPlayerStateChange
+      }
+    });
+  }
 }
-
-
-//Load up youtube needed elements.
-var tag = document.createElement('script');
-
-tag.src = "https://www.youtube.com/iframe_api";
-var firstScriptTag = document.getElementsByTagName('script')[0];
-firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
 function onPlayerReady(event) {
   let ids = window.youtube_links.map(link => link.match(/(be\/|v\=)([-\w]+)\S/)[0].replace('be/','').replace('v=',''));
