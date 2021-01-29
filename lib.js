@@ -529,13 +529,19 @@ function bindToSongEdit() {
 }
 
 function checkLogin(){
+  let db_name = $('#db_select :selected').val();
   let good = true;
   let pin = $('#pin').val();
+  let pwd = $('#pwd').val();
   let username = $('#username').val();
 
-  if(pin.trim() == '' || username.trim() == ''){
+  if(db_name.endsWith('(local)') && (pin.trim() == '' || username.trim() == '')){
     good = false;
-    alert('Username or password not entered');
+    alert('Username or pin not entered');
+  }
+  else if(db_name.endsWith('(remote)') && (pwd.trim() == '' || username.trim() == '')){
+    good = false;
+    alert('Username or pwd not entered');
   }
 
   return good;
@@ -554,30 +560,28 @@ function checkCreateNew() {
   let pin2 = $('#pin2').val().trim();
   let username = $('#username').val();
 
-  return PouchDB.allDbs().then(function (all_dbs) {
-    let response = true;
+  let response = true;
 
-    //checks against existing databases
-    if(all_dbs.indexOf(dbName) > -1){
-      alert('Database name already taken - try another!');
-      response = false;
-    }
-    else if(pin == '' || username == ''){
-      response = false;
-      alert('Username or pin are not entered');
-    }
-    else if(pin != pin2) {
-      response = false;
-      alert('Pin and confirmation pin are not equal');
-    }
-    //Go ahead and log in.
-    if(response) {
-      dbLogin('create_local');
-    }
-    else {
-      return;
-    }
-  });
+  let databases = JSON.parse(localStorage.getItem('databases'));
+  if(databases.find(db => db.name === dbName)){
+    alert('Database name already taken - try another!');
+    response = false;
+  }
+  else if(pin == '' || username == ''){
+    response = false;
+    alert('Username or pin are not entered');
+  }
+  else if(pin != pin2) {
+    response = false;
+    alert('Pin and confirmation pin are not equal');
+  }
+  //Go ahead and log in.
+  if(response) {
+    dbLogin('create_local');
+  }
+  else {
+    return;
+  }
 }
 async function updateUser(){
   let name = window.user.name.trim();

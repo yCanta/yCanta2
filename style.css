@@ -676,7 +676,7 @@ span.deleteicon input {
   margin: 5rem auto 5rem auto;
   padding: 0 1rem 0 1rem;
   padding-top: 1.5rem;
-  max-width: 370px; 
+  max-width: 420px; 
   border: 1px solid gray; 
   background-color: var(--edit-color);
 }

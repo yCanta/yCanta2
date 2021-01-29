@@ -1,5 +1,5 @@
 //initialize global variable.
-var db, syncHandler;
+var db, syncHandler, remoteDb;
 
 var online = false;
 
@@ -23,18 +23,43 @@ window.addEventListener('load', function() {
 });
 updateOnlineStatus();
 
-function clearAllDbs() { 
+function clearAllData() { 
   window.indexedDB.databases().then((r) => {
       for (var i = 0; i < r.length; i++) window.indexedDB.deleteDatabase(r[i].name);
+      localStorage.clear();
   }).then(() => {
       location.reload();
   });
+}
+
+async function dbExists(dbName) {
+  return new Promise(function(resolve, reject) {
+    const testdb = new PouchDB(dbName);
+    testdb.info().then(function (details) {
+      if (details.doc_count == 0 && details.update_seq == 0) {
+        console.log(dbName + 'database does not exist');
+        testdb.destroy().then(function() {console.log('test db removed');});
+        resolve(false);
+      }
+      else {
+        console.log(dbName + 'database exists');
+        resolve(true);
+      }
+    }).catch(function (err) {
+      console.log('error: ' + err);
+      resolve(false);
+    });
+  })
 }
 
 function dbLogin(type, dbName=false, username=false, pin=false, pwd=false, remote_url=false) {
   console.log(type,dbName,username,pin,pwd,remote_url);
   if(!dbName){
     dbName = $('#db_select :selected').val();
+  }
+  if(type=="login"){
+    if(dbName.endsWith('(local)')){type+='_local'}
+    else if(dbName.endsWith('(remote)')){type+='_remote'}
   }
   if(!username){
     username = $('#username').val().trim();
@@ -45,12 +70,15 @@ function dbLogin(type, dbName=false, username=false, pin=false, pwd=false, remot
   if(!pwd){
     pwd = $('#pwd').val();
   }
-  if(!remote_url){
+  if(!remote_url && type == 'connect_remote'){
     remote_url = $('#remote_url').val();
+  }
+  else if(!remote_url && type == 'login_remote'){
+    remote_url = $('#db_select :selected').attr('data-url');
   }
   if(type=="create_local"){
     dbName = $('#newDbName').val().trim()+'(local)';
-    console.log('New DB');
+    console.log('New DB: '+dbName);
     //initialize local database;
     db = new PouchDB(dbName);
     
@@ -62,6 +90,16 @@ function dbLogin(type, dbName=false, username=false, pin=false, pwd=false, remot
       fav_songs: []
     }
     window.user = user;
+    
+    let new_db = {};
+    new_db.name = dbName;
+    new_db.type = 'local';
+
+    let databases = JSON.parse(localStorage.getItem('databases'));
+    if(!databases){databases = [];}
+    databases.push(new_db);
+    localStorage.setItem('databases',JSON.stringify(databases));
+
     db.put(user, function callback(err, result) {
       if(!err) {
         console.log('added user: ', username);
@@ -119,9 +157,17 @@ function dbLogin(type, dbName=false, username=false, pin=false, pwd=false, remot
       dbLogout();
     });
   }
-  else if(type=="login_remote"){
-    var remoteDb = new PouchDB('remote_url', {skip_setup: true});
-    
+  else if(type=="connect_remote"){
+    //create User doc for window var.
+    let user = {
+      _id: 'u-'+username,
+      name: username,
+      fav_sbs: [],
+      fav_songs: []
+    }
+    window.user = user;
+    //https://user1:pwd@  -- want to format to this at beginning of url using username/pwd that was provided?
+    remoteDb = new PouchDB(remote_url, {skip_setup: true});
     var ajaxOpts = {
       ajax: {
         headers: {
@@ -129,16 +175,39 @@ function dbLogin(type, dbName=false, username=false, pin=false, pwd=false, remot
         }
       }
     };
-
-    remoteDb.logIn(username, pwd, ajaxOpts).then(function (batman) {
+/*
+    db.replicate.from(url).on('complete', function(info) {
+    // then two-way, continuous, retriable sync
+    db.sync(url, opts)
+      .on('change', onSyncChange)
+      .on('paused', onSyncPaused)
+      .on('error', onSyncError);
+    }).on('error', onSyncError);
+*/
+    remoteDb.logIn(username, pwd, ajaxOpts).then(async function (batman) {
       console.log("I'm Batman.", batman);
-      return remoteDb.allDocs();
-    }).then(function(docs){
+      let info = await remoteDb.info();
+      dbName = info.db_name + '(remote)';
+
+      let new_db = {};
+      new_db.name = dbName;
+      new_db.type = 'remote';
+      new_db.url = remote_url;
+
+      let databases = JSON.parse(localStorage.getItem('databases'));
+      if(!databases){databases = [];}
+      databases.push(new_db);
+      localStorage.setItem('databases',JSON.stringify(databases));
+
+      db = new PouchDB(dbName);
+      
+      takeNextStep(username,dbName);
+
       syncHandler = db.sync(remoteDb, {
         live: true,
         retry: true
       }).on('change', function (change) {
-        console.log('Synced some stuff');
+        console.log('Synced some stuff', parseInt(parseInt(change.change.last_seq.split('-')[0].replace('-',''))/parseInt(info.update_seq.replace('-',''))*100)+'%');
         // yo, something changed!
       }).on('paused', function (info) {
         // replication was paused, usually because of a lost connection
@@ -147,9 +216,67 @@ function dbLogin(type, dbName=false, username=false, pin=false, pwd=false, remot
       }).on('error', function (err) {
         // totally unhandled error (shouldn't happen)
       });
-      console.log(docs);
+
+    }).catch(function(error){
+      if(error.name == 'unauthorized' || error.name == 'forbidden'){
+        alert('Username or Password are incorrect');
+      }
+      else {
+        console.log('Log in error:', error);
+      }
     });
-    console.log(dbName, username, pwd );
+  }
+  else if(type=="login_remote"){
+    //create User doc for window var.
+    let user = {
+      _id: 'u-'+username,
+      name: username,
+      fav_sbs: [],
+      fav_songs: []
+    }
+    window.user = user;
+
+    remoteDb = new PouchDB(remote_url, {skip_setup: true});
+
+    var ajaxOpts = {
+      ajax: {
+        headers: {
+          Authorization: 'Basic ' + window.btoa(username+':'+pwd)
+        }
+      }
+    };
+
+    remoteDb.logIn(username, pwd, ajaxOpts).then(async function (batman) {
+      console.log("I'm Batman.", batman);
+      let info = await remoteDb.info();
+      dbName = info.db_name + '(remote)';
+      
+      db = new PouchDB(dbName);
+      
+      takeNextStep(username,dbName);
+
+      syncHandler = db.sync(remoteDb, {
+        live: true,
+        retry: true
+      }).on('change', function (change) {
+        console.log('Synced some stuff',parseInt(parseInt(change.change.last_seq.split('-')[0].replace('-',''))/parseInt(info.update_seq.replace('-',''))*100)+'%');
+        // yo, something changed!
+      }).on('paused', function (info) {
+        // replication was paused, usually because of a lost connection
+      }).on('active', function (info) {
+        // replication was resumed
+      }).on('error', function (err) {
+        // totally unhandled error (shouldn't happen)
+      });
+
+    }).catch(function(error){
+      if(error.name == 'unauthorized' || error.name == 'forbidden'){
+        alert('Username or Password are incorrect');
+      }
+      else {
+        console.log('Log in error:', error);
+      }
+    });
   }
   else {
     console.log('not sure what you want to login to');
@@ -157,7 +284,7 @@ function dbLogin(type, dbName=false, username=false, pin=false, pwd=false, remot
 
   function takeNextStep(username, dbName) {  //after login
     //layout the welcome?  maybe this goes in set login state?
-    //Update ui when db changes]s
+    //Update ui when db changes
     db.changes({
       since: 'now',
       live: true,
@@ -223,7 +350,7 @@ function dbLogin(type, dbName=false, username=false, pin=false, pwd=false, remot
           $('li[data-song-id="'+song_id+'"] .comments').html(comments);
         }
       }
-      else if(change.doc._id == window.user._id){
+      else if(change.doc._id.startsWith('u-')){
         let fav_sbs = change.doc.fav_sbs;
         //jquery remove all favs
         $('#songbooks .list li').each(function(){
@@ -257,6 +384,7 @@ function dbLogin(type, dbName=false, username=false, pin=false, pwd=false, remot
       // handle errors
       console.log('Error in db.changes('+err);
     });
+    //only for local, for remote, we store pwd and url, etc.
     localStorage.setItem('loggedin',JSON.stringify([dbName, username, pin]));
     //check dark mode and set for app
     let darkMode = localStorage.getItem(window.user._id+'darkMode');
