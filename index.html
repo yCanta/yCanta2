@@ -39,7 +39,7 @@
           <h2>Login:</h2>
           <select id="db_select">
             <option value="new">Create local</option>
-          </select><button class="btn btn-small" onclick="if(confirm('Are you sure you want to delete: '+$('#db_select').val()+'?')){new PouchDB($('#db_select').val()).destroy().then(function () {  console.log('database deleted'); setTimeout(function(){location.reload();},1000); }).catch(function (err) { alert('Could not delete database', err)});}" title="delete this database">🗑</button>
+          </select><button class="btn btn-small" onclick="if(confirm('Are you sure you want to delete: '+$('#db_select').val()+'?')){new PouchDB($('#db_select').val()).destroy().then(function () {  console.log('database deleted'); removeDbfromLocalStorage($('#db_select').val()); setTimeout(function(){location.reload();},1000); }).catch(function (err) { alert('Could not delete database', err)});}" title="delete this database">🗑</button>
           <button class="btn" onclick="if(confirm('Are you sure you want to delete all data?')){clearAllData();};">Clear all data</button>
           <input id="newDbUrl" class="d_none" placeholder="DB Url" type="text"></input>
           <input id="newDbName" class="d_none create_local" placeholder="DB Name" type="text"></input>
@@ -895,9 +895,9 @@
         }
         //Login
         else if(hash.startsWith('#login')) {
-          let userPin = JSON.parse(localStorage.getItem('loggedin'));
+          let loggedIn = JSON.parse(localStorage.getItem('loggedin'));
           try {
-            dbLogin('login_local', userPin[0], userPin[1], userPin[2]);
+            dbLogin('login', loggedIn.dbName, loggedIn.username, loggedIn.pin, loggedIn.pwd);
             console.log("still logged in!");
           }
           catch {
@@ -913,8 +913,8 @@
               db_opts += `<option value="${db.name}" data-url="${db.url}">${db.name}</option>`
             }
           }
-          db_opts += '<option value="create_local">Create Local</option>';
           db_opts += '<option value="connect_remote">Connect Remote</option>';
+          db_opts += '<option value="create_local">Create Local</option>';
           setTimeout(function(){$('#db_select').html(db_opts).trigger('change');},0);
 
           window.document.title = "yCanta2 - Login";

@@ -652,7 +652,7 @@ span.deleteicon input {
   width: calc(100% - 2rem);
 }
 #login h2 {
-  font-size: xx-large;
+  font-size: 2rem;
   left: -1rem;
   position: relative;
 }

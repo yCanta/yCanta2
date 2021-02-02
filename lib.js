@@ -563,7 +563,7 @@ function checkCreateNew() {
   let response = true;
 
   let databases = JSON.parse(localStorage.getItem('databases'));
-  if(databases.find(db => db.name === dbName)){
+  if(databases && databases.find(db => db.name === dbName)){
     alert('Database name already taken - try another!');
     response = false;
   }
@@ -583,6 +583,47 @@ function checkCreateNew() {
     return;
   }
 }
+function parseUrl(url, username=false, pwd=false){
+  //browser parts of an a element ['href','protocol','host','hostname','port','pathname','search','hash']
+  let a = document.createElement('a');
+  a.href = url;
+
+  if(username){ //we want to add username/pwd
+    if(a['host']!=''){
+      url = `${a['protocol']}//${username}:${pwd}@${a['host']}${a['pathname']}`;
+    } else { //no protocol included
+      url = `http://${username}:${pwd}@${remote_url}`;
+    }
+  }
+  else {  //we want to strip out the username/pwd
+    if(a['host']!=''){
+      url = `${a['protocol']}//${a['host']}${a['pathname']}`;
+    } else { //no protocol included
+      url = `http://${remote_url}`;
+    }
+  }
+  return url;
+}
+
+function addDBtoLocalStorage(dbName, type, remote_url=false){
+  //UPDATE LOCAL STORAGE DATABASES
+  let new_db = {};
+  new_db.name = dbName;
+  new_db.type = type;
+  if(remote_url){
+    new_db.url = parseUrl(remote_url);
+  }
+  let databases = JSON.parse(localStorage.getItem('databases'));
+  if(!databases){databases = [];}
+  databases.push(new_db);
+  localStorage.setItem('databases',JSON.stringify(databases));
+}
+function removeDbfromLocalStorage(dbName){
+  let databases = JSON.parse(localStorage.getItem('databases'));
+  databases = databases.filter(el => el.name !== dbName );
+  localStorage.setItem('databases',JSON.stringify(databases)); 
+}
+
 async function updateUser(){
   let name = window.user.name.trim();
   //Username in header area

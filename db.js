@@ -24,6 +24,8 @@ window.addEventListener('load', function() {
 updateOnlineStatus();
 
 function clearAllData() { 
+  //This doesn't work on FF or safari - they don't have .databases() implemented.
+  //Move this to look up database names from local storage index that was just added for non Chrome browsers.
   window.indexedDB.databases().then((r) => {
       for (var i = 0; i < r.length; i++) window.indexedDB.deleteDatabase(r[i].name);
       localStorage.clear();
@@ -52,8 +54,8 @@ async function dbExists(dbName) {
   })
 }
 
-function dbLogin(type, dbName=false, username=false, pin=false, pwd=false, remote_url=false) {
-  console.log(type,dbName,username,pin,pwd,remote_url);
+async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false, remote_url=false) {
+  let public_computer = document.getElementById('public_computer').checked;
   if(!dbName){
     dbName = $('#db_select :selected').val();
   }
@@ -76,9 +78,10 @@ function dbLogin(type, dbName=false, username=false, pin=false, pwd=false, remot
   else if(!remote_url && type == 'login_remote'){
     remote_url = $('#db_select :selected').attr('data-url');
   }
+
   if(type=="create_local"){
     dbName = $('#newDbName').val().trim()+'(local)';
-    console.log('New DB: '+dbName);
+    console.log('New local DB: '+dbName);
     //initialize local database;
     db = new PouchDB(dbName);
     
@@ -91,14 +94,8 @@ function dbLogin(type, dbName=false, username=false, pin=false, pwd=false, remot
     }
     window.user = user;
     
-    let new_db = {};
-    new_db.name = dbName;
-    new_db.type = 'local';
-
-    let databases = JSON.parse(localStorage.getItem('databases'));
-    if(!databases){databases = [];}
-    databases.push(new_db);
-    localStorage.setItem('databases',JSON.stringify(databases));
+    //UPDATE LOCAL STORAGE DATABASES
+    addDBtoLocalStorage(dbName, 'local');
 
     db.put(user, function callback(err, result) {
       if(!err) {
@@ -130,23 +127,22 @@ function dbLogin(type, dbName=false, username=false, pin=false, pwd=false, remot
         console.log(err);
       }
     });
-    console.log(username,dbName)
+    console.log(username,dbName);
     takeNextStep(username,dbName);
   }
   else if(type=="login_local"){
     console.log('Logging in locally');
     db = new PouchDB(dbName);
     //check if pin matches
-    db.get('_local/u-'+username).then(function(userPin){
-      if(userPin.pin == pin) {
+    db.get('_local/u-'+username).then(function(localUser){
+      if(localUser.pin == pin) {
         console.log('Pin is correct!');
         db.get('u-'+username).then(function(response) {
           window.user = response;
           takeNextStep(username,dbName);
         });
       }
-      //if not then close the db
-      else {
+      else { //if not then close the db
         console.log('Username or pin was incorrect');
         alert('Username or pin was incorrect');
         dbLogout();
@@ -158,6 +154,7 @@ function dbLogin(type, dbName=false, username=false, pin=false, pwd=false, remot
     });
   }
   else if(type=="connect_remote"){
+    console.log('Connecting to remote db');
     //create User doc for window var.
     let user = {
       _id: 'u-'+username,
@@ -166,7 +163,8 @@ function dbLogin(type, dbName=false, username=false, pin=false, pwd=false, remot
       fav_songs: []
     }
     window.user = user;
-    //https://user1:pwd@  -- want to format to this at beginning of url using username/pwd that was provided?
+ 
+    remote_url = parseUrl(remote_url, username, pwd);
     remoteDb = new PouchDB(remote_url, {skip_setup: true});
     var ajaxOpts = {
       ajax: {
@@ -175,34 +173,122 @@ function dbLogin(type, dbName=false, username=false, pin=false, pwd=false, remot
         }
       }
     };
-/*
-    db.replicate.from(url).on('complete', function(info) {
-    // then two-way, continuous, retriable sync
-    db.sync(url, opts)
-      .on('change', onSyncChange)
-      .on('paused', onSyncPaused)
-      .on('error', onSyncError);
-    }).on('error', onSyncError);
-*/
-    remoteDb.logIn(username, pwd, ajaxOpts).then(async function (batman) {
+
+    try {
+      let batman = await remoteDb.logIn(username, pwd, ajaxOpts);
+      
       console.log("I'm Batman.", batman);
       let info = await remoteDb.info();
       dbName = info.db_name + '(remote)';
 
-      let new_db = {};
-      new_db.name = dbName;
-      new_db.type = 'remote';
-      new_db.url = remote_url;
+      //UPDATE LOCAL STORAGE DATABASES
+      addDBtoLocalStorage(dbName, 'remote', remote_url);
 
-      let databases = JSON.parse(localStorage.getItem('databases'));
-      if(!databases){databases = [];}
-      databases.push(new_db);
-      localStorage.setItem('databases',JSON.stringify(databases));
-
-      db = new PouchDB(dbName);
-      
+      if(public_computer){
+        db = new PouchDB(dbName, {adapter: 'memory'});
+      } else {
+        db = new PouchDB(dbName);
+      }
       takeNextStep(username,dbName);
+    }
+    catch(error) {
+      dbLogout();
+      if(error.name == 'unauthorized' || error.name == 'forbidden'){
+        alert('Username or Password are incorrect');
+      }
+      else {
+        console.log('Log in error:', error);
+      }
+    }
+  }
+  else if(type=="login_remote"){
+    console.log('Logging in to remote db');
+    
+    if(public_computer){
+      db = new PouchDB(dbName, {adapter: 'memory'});
+    } else {
+      db = new PouchDB(dbName);
+    }
+    try {
+      let localUser = await db.get('_local/u-'+username);
+      if(localUser.pwd == pwd) {
+        console.log('Pwd is correct!');
+        remote_url = localUser.remote_url;
+        db.get('u-'+username).then(function(response) {
+          window.user = response;
+        }).catch(function(error){
+          console.log('username does not exist in database at this time, creating temporary for window object');
+          let user = {
+            _id: 'u-'+username,
+            name: username,
+            fav_sbs: [],
+            fav_songs: []
+          }
+          window.user = user;
+        });
 
+        remote_url = parseUrl(remote_url, username, pwd);
+        remoteDb = new PouchDB(remote_url, {skip_setup: true});
+        var ajaxOpts = {
+          ajax: {
+            headers: {
+              Authorization: 'Basic ' + window.btoa(username+':'+pwd)
+            }
+          }
+        };
+
+        remoteDb.logIn(username, pwd, ajaxOpts).then(async function (batman) {
+          console.log("I'm Batman.", batman);
+          takeNextStep(username,dbName);
+          
+        }).catch(function(error){
+          dbLogout();
+          if(error.name == 'unauthorized' || error.name == 'forbidden'){
+            alert('Username or Password are incorrect');
+          }
+          else {
+            console.log('Log in error:', error);
+          }
+        });
+      }
+      else {
+        dbLogout();
+        alert('pwd or username are incorrect');
+      }
+    } 
+    catch(err) {
+      console.log(err);
+      alert('username or pwd was not correct');
+      dbLogout();
+    }
+  }
+  else {
+    dbLogout();
+    console.log('not sure what you want to login to');
+  }
+
+  function takeNextStep(username, dbName) {  //after login
+    //Store logged in status: pin for local, for remote we store pwd.
+    console.log(username, dbName)
+    if(dbName.endsWith('(local)')){
+      localStorage.setItem('loggedin',JSON.stringify({dbName: dbName, username: username, pin:pin}));
+    }
+    else if(!public_computer && dbName.endsWith('(remote)')){
+      localStorage.setItem('loggedin',JSON.stringify({dbName: dbName, username: username, pwd:pwd}));
+      //store username/pwd/url
+      db.put({_id: '_local/u-'+username, pwd: pwd, remote_url: remote_url}, function callback(err, result) {
+        if(!err) {
+          console.log("added user's pwd");
+        }
+        else {
+          console.log(err);
+        }
+      });
+    }
+
+    //Setup sync for remote database connections
+    if(db.name.endsWith('(remote)')){
+      console.log('sjdljkwl');
       syncHandler = db.sync(remoteDb, {
         live: true,
         retry: true
@@ -216,73 +302,8 @@ function dbLogin(type, dbName=false, username=false, pin=false, pwd=false, remot
       }).on('error', function (err) {
         // totally unhandled error (shouldn't happen)
       });
-
-    }).catch(function(error){
-      if(error.name == 'unauthorized' || error.name == 'forbidden'){
-        alert('Username or Password are incorrect');
-      }
-      else {
-        console.log('Log in error:', error);
-      }
-    });
-  }
-  else if(type=="login_remote"){
-    //create User doc for window var.
-    let user = {
-      _id: 'u-'+username,
-      name: username,
-      fav_sbs: [],
-      fav_songs: []
     }
-    window.user = user;
 
-    remoteDb = new PouchDB(remote_url, {skip_setup: true});
-
-    var ajaxOpts = {
-      ajax: {
-        headers: {
-          Authorization: 'Basic ' + window.btoa(username+':'+pwd)
-        }
-      }
-    };
-
-    remoteDb.logIn(username, pwd, ajaxOpts).then(async function (batman) {
-      console.log("I'm Batman.", batman);
-      let info = await remoteDb.info();
-      dbName = info.db_name + '(remote)';
-      
-      db = new PouchDB(dbName);
-      
-      takeNextStep(username,dbName);
-
-      syncHandler = db.sync(remoteDb, {
-        live: true,
-        retry: true
-      }).on('change', function (change) {
-        console.log('Synced some stuff',parseInt(parseInt(change.change.last_seq.split('-')[0].replace('-',''))/parseInt(info.update_seq.replace('-',''))*100)+'%');
-        // yo, something changed!
-      }).on('paused', function (info) {
-        // replication was paused, usually because of a lost connection
-      }).on('active', function (info) {
-        // replication was resumed
-      }).on('error', function (err) {
-        // totally unhandled error (shouldn't happen)
-      });
-
-    }).catch(function(error){
-      if(error.name == 'unauthorized' || error.name == 'forbidden'){
-        alert('Username or Password are incorrect');
-      }
-      else {
-        console.log('Log in error:', error);
-      }
-    });
-  }
-  else {
-    console.log('not sure what you want to login to');
-  }
-
-  function takeNextStep(username, dbName) {  //after login
     //layout the welcome?  maybe this goes in set login state?
     //Update ui when db changes
     db.changes({
@@ -384,8 +405,6 @@ function dbLogin(type, dbName=false, username=false, pin=false, pwd=false, remot
       // handle errors
       console.log('Error in db.changes('+err);
     });
-    //only for local, for remote, we store pwd and url, etc.
-    localStorage.setItem('loggedin',JSON.stringify([dbName, username, pin]));
     //check dark mode and set for app
     let darkMode = localStorage.getItem(window.user._id+'darkMode');
     if(darkMode){
@@ -413,29 +432,27 @@ function dbLogin(type, dbName=false, username=false, pin=false, pwd=false, remot
     $('#login :input').each(function(){$(this).val('')});
     return true;
   }
-
   return false;
-
-  /**/
 }
 
 function dbLogout(){
   if(!confirmWhenEditing()){
     setLogoutState();
-    db.close().then(function () {
+    db.close().then(function() {
       console.log('closed db');
     });
-  }
-
+    remoteDb.close().then(function() {
+      console.log('closed remote db');
+    }).catch(function(error){
+      console.log('remote db already closed');
+    });
+    syncHandler.cancel(); // <-- this cancels it
   /*
-
   syncHandler.on('complete', function (info) {
     // replication was canceled!
   });
-
-  syncHandler.cancel(); // <-- this cancels it
-
   */
+  }
 }
 
 function loadRecentSongs(days=1000, number=15){
