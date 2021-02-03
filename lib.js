@@ -633,7 +633,7 @@ async function updateUser(){
   }
   $('#username_d').html(html);
   //User Profile information in Settings.
-  html = `<h3>${name} <a href="#" onclick="loadRawDbObject(window.user._id,$('#user_content'),'updateUser();');">🖉</a></h3>`;
+  html = `<h3>${name} <a href="#" onclick="loadRawDbObject(window.user._id,$('#user_content'),'updateUser();');" class="mirror">&#9998;</a></h3>`;
 
   let sbs = window.user.fav_sbs.filter(sb => sb.length != 0);
   html += '<h4>Favorite Songbooks</h4><ul>';
@@ -665,7 +665,7 @@ async function updateUser(){
   document.getElementById('user_content').innerHTML = html;
 }
 async function loadCategories(){
-  let html = `<h3>Ordered List <a href="#" onclick="loadRawDbObject('categories',$('#category_content'),'loadCategories();');">🖉</a></h3>`;
+  let html = `<h3>Ordered List <a href="#" onclick="loadRawDbObject('categories',$('#category_content'),'loadCategories();');" class="mirror">&#9998;</a></h3>`;
 
   try {
     var result = await db.get('categories');
@@ -688,20 +688,16 @@ function handleDarkMode(){
   switch(value) {
     case 'dark':
       document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
       break;
     case 'light':
       document.documentElement.classList.remove('dark');
+      document.documentElement.classList.add('light');
       break;
     case 'auto':
       document.getElementById('autoRadio').checked = true;
-      if (window.matchMedia && 
-        window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        document.documentElement.classList.add('dark');
-        console.log('🎉 Dark mode is desired');
-      }
-      else {
-        document.documentElement.classList.remove('dark');
-      }
+      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.remove('light');
       break;
   }
   //save value to system/user prefs.  
@@ -715,7 +711,7 @@ function setLoginState() {
   window.loggedin = true;
   updateUser();
   $('html').addClass('loggedin');
-  $('#title a').html('yCanta: ' + window.yCantaName);
+  $('#title a').html(`yCanta: ${window.yCantaName.split('(')[0]}<sup style="font-size: .8rem; font-weight: normal; color: var(--songList-color);"> ${window.yCantaName.match(/\((.*?)\)/)[1].toUpperCase()}</sup>`);
   if(location.hash.indexOf('?')>-1){
     location.hash = location.hash.split('?').slice(1).join('?');
   }

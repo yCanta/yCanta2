@@ -26,7 +26,7 @@
       <legend onclick="this.parentElement.classList.toggle('closed');" style="margin-right: 0; padding: 0 .4rem; margin-left: auto;" id="username_legend"><span id="username_d"></span></legend>
       <div class="content">
         <a href="#" style="background-color: var(--background-color);" class="btn" onclick="$(this).closest('fieldset').addClass('closed'); goToSettings();">Settings</a>
-        <button style="background-color: var(--background-color);" class="btn" onclick="dbLogout();">Logout</button>
+        <button style="background-color: var(--background-color);" class="btn" onclick="$(this).closest('fieldset').addClass('closed'); dbLogout();">Logout</button>
       </div>
     </fieldset>
     <header id="header">
@@ -76,9 +76,15 @@
           </div>
           <div id="settings">
             <fieldset id="userProfile" class="align-right">
-              <legend onclick="this.parentElement.classList.toggle('closed');">User Profile</legend>
+              <legend onclick="this.parentElement.classList.toggle('closed');">My Profile</legend>
               <div class="content">
                 <div id="user_content"></div>
+              </div>
+            </fieldset>
+            <fieldset id="allUsers" class="closed align-right">
+              <legend onclick="this.parentElement.classList.toggle('closed');">All users</legend>
+              <div class="content">
+                <div id="all_users"></div>
               </div>
             </fieldset>
             <fieldset class="closed align-right">
