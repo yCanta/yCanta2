@@ -9,9 +9,11 @@ function updateOnlineStatus(event) {
     event.type = 'windowLoad';
   }
   var condition = navigator.onLine ? "online" : "offline";
-  document.documentElement.className = condition;
+  document.documentElement.classList.remove("online");
+  document.documentElement.classList.remove("offline");
+  document.documentElement.classList.add(condition);
   online = navigator.onLine;
-  console.log("beforeend", "Event: " + event.type + "; Status: " + condition);
+  console.log("Event: " + event.type + "; Status: " + condition);
 }
 //Update Online status
 window.addEventListener('load', function() {
@@ -209,7 +211,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     } else {
       db = new PouchDB(dbName);
     }
-    try {
+    try { //change to check first if online, if so try logging in there first then log in to local once success, otherwise log in like we have here with locally saved pwd.
       let localUser = await db.get('_local/u-'+username);
       if(localUser.pwd == pwd) {
         console.log('Pwd is correct!');
@@ -267,7 +269,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     console.log('not sure what you want to login to');
   }
 
-  function takeNextStep(username, dbName) {  //after login
+  async function takeNextStep(username, dbName) {  //after login
     //Store logged in status: pin for local, for remote we store pwd.
     console.log(username, dbName)
     if(dbName.endsWith('(local)')){
@@ -288,7 +290,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
 
     //Setup sync for remote database connections
     if(db.name.endsWith('(remote)')){
-      console.log('sjdljkwl');
+      let info = await remoteDb.info();
       syncHandler = db.sync(remoteDb, {
         live: true,
         retry: true
