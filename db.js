@@ -325,9 +325,13 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       if(change.doc._id.startsWith('s-')){
         loadRecentSongs();  
         //only load song if it's the one that's up.
-        if(window.song._id === change.doc._id){
+        if(window.song._id === change.doc._id && document.body.classList.contains('song')){
           loadSong(change.doc._id);
-          console.log('reloaded: ', change.doc.title);
+          notyf.info('Song updated', 'var(--song-color)');
+        } else {
+          notyf.info(`Song "${change.doc.title}" updated by ${change.doc.editedBy}`,
+                     'var(--song-color)',
+                     `#${window.songbook._id}&${change.doc._id}`);
         }
         //update all songs in songbooks
         if(window.songbook_list != undefined ){
@@ -349,10 +353,14 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       }
       //songbook?
       else if(change.doc._id.startsWith('sb-')){
-        if(window.songbook._id ===  change.doc._id){
-          console.log('reloaded: ', change.doc._id);
+        if(window.songbook._id === change.doc._id && (document.body.classList.contains('songList') || document.body.classList.contains('song'))){
           window.songbook = '';
           loadSongbook(change.doc._id);
+          notyf.info('Songbook updated', 'var(--songList-color)');
+        } else {
+          notyf.info(`Songbook "${change.doc.title}" updated by ${change.doc.editedBy}`,
+                     'var(--songList-color)',
+                     `#${change.doc._id}`);
         }
         //update the songbook entry in songbooks_list
         if(window.songbooks_list != undefined){
@@ -371,6 +379,8 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
             comments += `<div><b>${comment.user} </b>${new Date(comment.date).toLocaleTimeString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})}<pre>${comment.comment}</pre></div>`;
           }
           $('li[data-song-id="'+song_id+'"] .comments').html(comments);
+          notyf.info(`Comment added to "${song_id}" by ${change.doc.comments[change.doc.comments.length - 1].user}`,
+                     'var(--songList-color)');
         }
       }
       else if(change.doc._id.startsWith('u-')){
@@ -395,6 +405,8 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
           loadSongbook('sb-favoriteSongs');
         }
         updateUser();
+        notyf.info(`User Updated "${change.doc.name}"`,
+                     'var(--edit-color)');
         window.songbooks_list.reIndex();
         window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
         $('#song song').attr('data-user-fav', (window.user.fav_songs.indexOf($('#song song').attr('data-id'))> -1 ? 'true': 'false'))
