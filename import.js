@@ -60,8 +60,8 @@ async function importSongV1(f){
     }));
     let progress =  "<div id='progress_bar' style='width:min(100%, 400px); height: 1rem; border: 1px solid black; background: linear-gradient(to right, white 0);'>"+
                     "</div>";
-    $title.append($(progress));
-    $title.append($("<div id='progress_text' style='width:min(100%, 400px); font-size:small; white-space:nowrap; overflow: hidden;'></div>"));
+    $title.after($("<div id='progress_text' style='width:min(100%, 400px); max-width: 80vw; font-size:small; white-space:nowrap; overflow: hidden;'></div>"));
+    $title.after($(progress));
     //Import files
     window.import.n_songs = 0;
     window.import.n_songs2 = 0;
@@ -193,8 +193,8 @@ async function importSongV2(f){
 
   let progress =  "<div id='progress_bar' style='width:min(100%, 400px); height: 1rem; border: 1px solid black; background: linear-gradient(to right, white 0);'>"+
                   "</div>";
-  $title.append($(progress));
-  $title.append($("<div id='progress_text' style='width:min(100%, 400px); font-size:small; white-space:nowrap; overflow: hidden;'></div>"));
+  $title.after($("<div id='progress_text' style='width:min(100%, 400px); max-width: 80vw; font-size:small; white-space:nowrap; overflow: hidden;'></div>"));
+  $title.after($(progress));
   //Import files    
   window.import = {};
   window.import.n_songs = 0;

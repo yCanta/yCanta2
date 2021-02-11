@@ -108,6 +108,38 @@ Array.prototype.equals = function (array) {
 // Hide method from for-in loops
 Object.defineProperty(Array.prototype, "equals", {enumerable: false});
 
+var notyf = new Notyf({
+  duration: 5000,
+  position: {x: 'left', y: 'bottom'},
+  types: [{
+      type: 'info',
+      background: 'var(--songbookList-color)',
+      icon: false
+    },{
+      type: 'success',
+      background: 'var(--song-color)',
+      icon: false
+    }]
+});
+
+notyf.info = function(message, color='var(--songbookList-color)', url=false){
+  if(url){
+    notyf.open({
+      type: 'info',
+      message: message,
+      background: color
+    }).on('click', ({target, event}) => {
+      window.location.href = url;
+    });
+  } else {
+    notyf.open({
+      type: 'info',
+      message: message,
+      background: color
+    });
+  }
+}
+
 window.addEventListener("resize", function(){
   window.setTimeout(function(){
     document.activeElement.scrollIntoView({block: 'start'});
