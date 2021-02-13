@@ -504,19 +504,20 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
         }
         return song_content;
       }
-      let ssearch =  't:' + song.title + '\n'
-                   + 'a:' + formatArray(song.authors, 'a') + '\n'
-                   + 's:' + formatArray(song.scripture_ref, 's') + '\n'
-                   + 'i:' + formatText(song.introduction, 'i') + '\n'
-                   + 'k:' + formatText(song.key, 'k') + '\n'
-                   + 'c:' + formatArray(song.categories, 'c') + '\n'
-                   + 'cp:' + formatText(song.copyright, 'cp') + '\n'
-                   + 'yt:' + formatNumber(song.yt, 'yt') + '\n'
-                   + 'cclis:' + formatNumber(song.cclis, 'cclis') + '\n'
-                   + 'chords:' + formatText(song.chords, 'chords') + '\n'
-                   + formatSongContent(song.content); + '\n'
+      let ssearch =  't:' + song.title + '\0'
+                   + 'a:' + formatArray(song.authors, 'a') + '\0'
+                   + 's:' + formatArray(song.scripture_ref, 's') + '\0'
+                   + 'i:' + formatText(song.introduction, 'i') + '\0'
+                   + 'k:' + formatText(song.key, 'k') + '\0'
+                   + 'c:' + formatArray(song.categories, 'c') + '\0'
+                   + 'cp:' + formatText(song.copyright, 'cp') + '\0'
+                   + 'yt:' + formatNumber(song.yt, 'yt') + '\0'
+                   + 'cclis:' + formatNumber(song.cclis, 'cclis') + '\0'
+                   + 'chords:' + formatText(song.chords, 'chords') + '\0'
+                   + formatSongContent(song.content); + '\0'
 
-      song.search = ssearch.replace(/ +?/g, ' ');
+      song.search = ssearch.replace(/\s{2,}/g, ' ');
+      console.log(song)
 
       db.put(song, function callback(err, result) {
         if (!err) {

@@ -2,6 +2,7 @@
 punctuation = /[^a-zA-Z0-9\s:-]/g;
 
 var tappedTwice = false;
+const MAX_SEARCH_RESULTS = 5;
   
 last_search_results = [];
 current_song = 0;
@@ -204,9 +205,13 @@ function searchDatabase(){
     return;
   }
 
-  var re = new RegExp(text, 'i');
+  var re = new RegExp('(' + text + ')([^\0\n]*)', 'i');
   var match_object = []
+  var total_matches = 0;
   var matches = window.songbook.songs.filter(function(item) { 
+      if(total_matches >= MAX_SEARCH_RESULTS){
+        return false; // we only show MAX_SEARCH_RESULTS, don't waste time testing regex
+      }
       var result = re.test(item.doc.search);
       if(result == true){  //then test to see if we already have this line in the results
         for(var i=0; i<match_object.length; i++) {
@@ -215,14 +220,12 @@ function searchDatabase(){
             break;
           }
         }
-        match_object.push(item)
+        match_object.push(item);
+        total_matches += 1;
       }
       return result;
   });
 
-  // only keep first 5
-  var total_matches = matches.length;
-  var matches = matches.slice(0, 5);
   last_search_results = matches;     // save for future reference
 
   // format for display
@@ -231,13 +234,17 @@ function searchDatabase(){
   var textmatches = matches.map(function(item) {
       let m = re.exec(item.doc.search);
       count += 1;
+      let matchline_start = Math.max(
+          item.doc.search.substring(0,m.index).lastIndexOf('\n') || 0
+        , item.doc.search.substring(0,m.index).lastIndexOf('\0') || 0);
+      let matchline_end = m.index + m[1].length + m[2].length;
 
-      return ('<div onclick="javascript:void(searchResult('+(count)+'));">' 
-        + '<span class="count">['+count+']</span> ' 
-        + '<span class="song">' + item.doc.title + '</span>: ' 
-        + '<span class="matchline">' + item.doc.search.substring((item.doc.search.substring(0,m.index).lastIndexOf('\n') || 0), m.index) 
-        + '<span class="match">' + m[0] + '</span>' 
-        + item.doc.search.substring(m.index + m[0].length, item.doc.search.indexOf('\n', m.index+m[0].length) || item.doc.search.length) + '</span></div>');
+      return ('<div onclick="javascript:void(searchResult('+(count)+'));">'
+        + '<span class="count">['+count+']</span> '
+        + '<span class="song">' + item.doc.title + '</span>: '
+        + '<span class="matchline">' + item.doc.search.substring(matchline_start, m.index)
+        + '<span class="match">' + m[1] + '</span>'
+        + item.doc.search.substring(m.index + m[1].length, matchline_end) + '</span></div>');
   });
 
   $('#searchresults').html(textmatches.join('\n'));
@@ -615,7 +622,7 @@ function blackScreen(touch=false){
 }
 
 function numberHit(num){
-  if(isSearching() & num <= 5){
+  if(isSearching() & num <= MAX_SEARCH_RESULTS){
     searchResult(num)
   }
   else if(inPresentation()){
