@@ -710,20 +710,29 @@ function escapeAction() {
 }
 
 function processKey(e){ 
+  //console.log("key: '" + e.key +"'", "originalEvent.key: '" + e.originalEvent.key + "'", e);
   key = e.key;
   if((key == '/' || key == 's') & !isSearching()) { 
     e.preventDefault()
   }
 
-  if(e.target.nodeName =='INPUT') {  //workaround for chrome mobile which decided not implement keydown.
-    key = e.data;
-  }
+  // TODO: workaround breaks firefox which the INPUT field has focus
+  // disabling workaround for now, I think it will work as-is on chrome mobile with a bluetooth keyboard
+  // mobile needs a bunch of work before it works well for presentations anyways
+  //if(e.target.nodeName =='INPUT') {  //workaround for chrome mobile which decided not implement keydown.
+  //  console.log('switching to:', e.data);
+  //  key = e.data;
+  //}
 
-  console.log("key: " + key, e);
+  //console.log("key: '" + key +"'", e);
 
   if(key in presentation_key_map){
+  //  console.log("Presentation map function: ", presentation_key_map[key])
     presentation_key_map[key][0](); // call the right function
   }
+  //else {
+  //  console.log("Key '"+key+"' not in presentation map");
+  //}
 
   if(isSearching()){ 
     setTimeout(searchDatabase, 10);
