@@ -198,7 +198,7 @@ function toggleChords(touch=false) {
 }
 
 function searchDatabase(){
-  var text = $('#searchbox input').val().replace(/[^a-zA-Z0-9\s:-]/g, '');
+  var text = $('#searchbox input').val();
   if(jQuery.trim(text).length < 2){
     $('#searchresults').empty();
     return;
