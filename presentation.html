@@ -97,9 +97,37 @@
       }
 
       #progress {
+        height: 0.3em;
+        display: flex;
+        flex-direction: row;
+      }
+      #progress div {
+        flex-basis: 0;
+        flex-grow: 1;
         background-color: gray;
-        height: 0.25em;
-        width: 0%;
+        border-left: solid 1px black;
+        border-right: solid 1px black;
+      }
+      #progress .before {
+        filter: opacity(0.4);
+      }
+      #progress .current {
+        filter: opacity(1);
+      }
+      #progress .after {
+        filter: opacity(0.4);
+      }
+      #progress [class*="chorus"] {
+        background-color: green;
+      }
+      #progress .verse {
+        background-color: blue;
+      }
+      #progress .bridge {
+        background-color: red;
+      }
+      #progress .ending {
+        background-color: yellow;
       }
 
       #searchbox {
