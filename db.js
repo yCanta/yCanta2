@@ -494,7 +494,7 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
           //we are ignoring comments for now
           if(content[i][0].type != 'comment') {
             for (j = 0; j < content[i][1].length; j++ ) {
-              let new_line = escapeRegExp(remove_chords(content[i][1][j]).replace(/\s\s+/g,' ').replace(punctuation,'') + '\n');
+              let new_line = escapeRegExp(remove_chords(content[i][1][j]).replace(/\s{2,}/g,' ').replace(punctuation,'').trim() + '\n');
               if(song_content.search(new_line) === -1) {
                 //this content is not in the search, add it!
                 song_content += new_line;
