@@ -178,6 +178,7 @@ async function importSongV1(f){
         }
         initializeSongbooksList();
         dbChanges();
+        loadRecentSongs();
       });
     });
   }, function (e) {
@@ -186,6 +187,7 @@ async function importSongV1(f){
       text : "Error reading " + f.name + ": " + e.message
     }));
     dbChanges();
+    loadRecentSongs();
   });
   return 'toga';
 }
