@@ -38,6 +38,7 @@ function updateProgress(){
   window.import = i;
 }
 async function importSongV1(f){
+  changeHandler.cancel();
   var $result = $("#result");
   // remove content
   $result.html("");
@@ -110,6 +111,7 @@ async function importSongV1(f){
     });
 
     var songbook_promise_list = [];
+    var songbook_with_comments = [];
     Promise.all(promise_list).then(function(result){
       console.log(Object.keys(song_map).length + ' songs loaded');
       //Import songbooks
@@ -147,14 +149,7 @@ async function importSongV1(f){
                   comments_list.push({_id: id, comments: comments});
                 }
                 db.bulkDocs(comments_list);
-                db.get('sb-i'+CRC32.str(zipEntry.name.replace('songbooks/','').replace('.comment','.xml'),0)).then(function(result) {
-                  result.showComments = true;
-                  db.put(result).then(function(result){
-                    console.log(result);
-                  });
-                }).catch(function(err){
-                  console.log(err);
-                });
+                songbook_with_comments.push('sb-i'+CRC32.str(zipEntry.name.replace('songbooks/','').replace('.comment','.xml'),0));
                 resolve('done');
               }
               else {
@@ -171,7 +166,18 @@ async function importSongV1(f){
       //let's us change things when we're done.
       Promise.all(songbook_promise_list).then(function(result){
         document.getElementById('progress_text').innerHTML = 'All docs imported!';
+        for(sb_id of songbook_with_comments){
+          db.get(sb_id).then(function(result) {
+            result.showComments = true;
+            db.put(result).then(function(result){
+              console.log(result);
+            });
+          }).catch(function(err){
+            console.log(err);
+          });
+        }
         initializeSongbooksList();
+        dbChanges();
       });
     });
   }, function (e) {
@@ -179,6 +185,7 @@ async function importSongV1(f){
       "class" : "alert alert-danger",
       text : "Error reading " + f.name + ": " + e.message
     }));
+    dbChanges();
   });
   return 'toga';
 }
