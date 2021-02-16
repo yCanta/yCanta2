@@ -90,16 +90,48 @@
       #statusbar {
         position: fixed;
         bottom: 0px;
-        border: solid 1px gray;
         background-color: var(--bg-color);
         width: 100%;
         z-index: 2;
       }
 
+      #searchbox {
+        border: solid 1px gray;
+      }
+
       #progress {
+        height: 0.3em;
+        display: flex;
+        flex-direction: row;
+      }
+      #progress div {
+        flex-basis: 0;
+        flex-grow: 1;
         background-color: gray;
-        height: 0.25em;
-        width: 0%;
+      }
+      #progress div:not(:first-child) {
+        margin-left: 2px;
+      }
+      #progress .before {
+        filter: opacity(0.4);
+      }
+      #progress .current {
+        filter: opacity(1);
+      }
+      #progress .after {
+        filter: opacity(0.4);
+      }
+      #progress [class*="chorus"] {
+        background-color: green;
+      }
+      #progress .verse {
+        background-color: blue;
+      }
+      #progress .bridge {
+        background-color: yellow;
+      }
+      #progress .ending {
+        background-color: red;
       }
 
       #searchbox {
