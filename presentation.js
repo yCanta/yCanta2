@@ -407,16 +407,28 @@ function showChunk(name) {
     $('#post_slide .content').html(build_chunk(post_chunk, post_song));
 
     var total = current_song.doc.content.length;
-    $('#progress').css('width', ''+(((current_song.chunk_index + 1) / total) * 100)+'%'); // set progress bar
     $('#slides').css('--percent', (((current_song.chunk_index + 1) / total) * 100));
+    let progress_text = ''
+    for(let chunk_index = 0; chunk_index < total; chunk_index++) {
+      progress_text += '<div class="'+current_song.doc.content[chunk_index][0].type.replace(/[^a-z]/g,'');
+      if(chunk_index < current_song.chunk_index){
+        progress_text += ' before';
+      } else if(chunk_index == current_song.chunk_index) {
+        progress_text += ' current';
+      } else {
+        progress_text += ' after';
+      }
+      progress_text += '"></div>';
+    }
+    $('#progress').html(progress_text);
 
     scaleText();
 
     $.each(secondary_windows, function(index,value) { 
       try{
         $(this.document).find('#slides').html($("#cur_slide").clone());
+        $(this.document).find('#statusbar').html($("#progress").clone()); // set progress bar
         this.scaleText();
-        $(this.document).find('#progress').css('width', ''+((pos / total) * 100)+'%'); // set progress bar
         $(this.document).find('#slides').css('--percent', (((current_song.chunk_index + 1) / total) * 100));
       }
       catch(err){

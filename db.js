@@ -30,6 +30,119 @@ function clearAllDbs() {
       location.reload();
   });
 }
+function dbChanges() {
+  window.changeHandler = db.changes({
+    since: 'now',
+    live: true,
+    include_docs: true
+  }).on('change', function (change) {
+    // received a change
+    if (change.deleted) {
+      // document was deleted
+      console.log('deleted: ' + change.doc._id);
+    } else {
+      // document was added/modified
+    }
+    //what type?
+    //song?
+    if(change.doc._id.startsWith('s-')){
+      loadRecentSongs();  
+      //only load song if it's the one that's up.
+      if(window.song._id === change.doc._id && document.body.classList.contains('song')){
+        loadSong(change.doc._id);
+        notyf.info('Song updated', 'var(--song-color)');
+      } else {
+        notyf.info(`Song "${change.doc.title}" updated by ${change.doc.editedBy}`,
+                   'var(--song-color)',
+                   `#${window.songbook._id}&${change.doc._id}`);
+      }
+      //update all songs in songbooks
+      if(window.songbook_list != undefined ){
+        window.songbook_list.get('song-id',change.doc._id)
+          .forEach(function(song){
+            let new_change = mapSongRowToValue(change);
+            new_change['song-status'] = song.values()['song-status'];
+            song.values(new_change);
+          });
+      }
+      if(window.songbook_edit_togglesongs_list != undefined){
+        window.songbook_edit_togglesongs_list.get('song-id',change.doc._id)
+          .forEach(function(song){song.values(mapSongRowToValue(change))});
+      }
+      if(window.songbook._id == 'sb-allSongs') {
+        window.songbook._id = '';
+        loadSongbook('sb-allSongs');
+      }
+    }
+    //songbook?
+    else if(change.doc._id.startsWith('sb-')){
+      if(window.songbook._id === change.doc._id && (document.body.classList.contains('songList') || document.body.classList.contains('song'))){
+        window.songbook = '';
+        loadSongbook(change.doc._id);
+        notyf.info('Songbook updated', 'var(--songList-color)');
+      } else {
+        notyf.info(`Songbook "${change.doc.title}" updated by ${change.doc.editedBy}`,
+                   'var(--songList-color)',
+                   `#${change.doc._id}`);
+      }
+      //update the songbook entry in songbooks_list
+      if(window.songbooks_list != undefined){
+        window.songbooks_list.get('songbook-id',change.doc._id)
+          .forEach(function(songbook){songbook.values(mapSongbookRowToValue(change))});
+        window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
+      }
+    }
+    else if(change.doc._id.startsWith('c_')){
+      let songbook_id = change.doc._id.match(/sb-.*?_/g)[0].replace('_','');
+      if(window.songbook._id == songbook_id && window.songbook.showComments){
+        let song_id = change.doc._id.match(/s-.*?$/g)[0];
+        $('li[data-song-id="'+song_id+'"] .toggle_comment').attr('data-comment-number', change.doc.comments.length);
+        let comments = '';
+        for(comment of change.doc.comments){
+          comments += `<div><b>${comment.user} </b>${new Date(comment.date).toLocaleTimeString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})}<pre>${comment.comment}</pre></div>`;
+        }
+        $('li[data-song-id="'+song_id+'"] .comments').html(comments);
+        notyf.info(`Comment added to "${song_id}" by ${change.doc.comments[change.doc.comments.length - 1].user}`,
+                   'var(--songList-color)');
+      }
+    }
+    else if(change.doc._id == window.user._id){
+      let fav_sbs = change.doc.fav_sbs;
+      //jquery remove all favs
+      $('#songbooks .list li').each(function(){
+        let fav = false;
+        if(fav_sbs.indexOf($(this).attr('data-songbook-id')) > -1) {
+          fav = true;
+        }
+        $(this).attr('data-user-fav', fav);
+      })
+      if(fav_sbs.indexOf(window.songbook._id) > -1) {
+        $('#songbook_title').attr('data-user-fav', 'true');
+      }
+      else {
+        $('#songbook_title').attr('data-user-fav', 'false'); 
+      }
+      window.user = change.doc;
+      if(window.songbook._id == 'sb-favoriteSongs') {
+        window.songbook._id = '';
+        loadSongbook('sb-favoriteSongs');
+      }
+      updateUser();
+      notyf.info(`User Updated "${change.doc.name}"`,
+                   'var(--edit-color)');
+      window.songbooks_list.reIndex();
+      window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
+      $('#song song').attr('data-user-fav', (window.user.fav_songs.indexOf($('#song song').attr('data-id'))> -1 ? 'true': 'false'))
+    }
+    //else... let it go! for now
+    else {
+      console.log('changed:',change.doc._id);
+    }
+  }).on('error', function (err) {
+    // handle errors
+    console.log('Error in db.changes('+err);
+  });
+}
 
 function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
   if(!dbName){
@@ -114,117 +227,8 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
   function takeNextStep(username, dbName) {  //after login
     //layout the welcome?  maybe this goes in set login state?
     //Update ui when db changes]s
-    db.changes({
-      since: 'now',
-      live: true,
-      include_docs: true
-    }).on('change', function (change) {
-      // received a change
-      if (change.deleted) {
-        // document was deleted
-        console.log('deleted: ' + change.doc._id);
-      } else {
-        // document was added/modified
-      }
-      //what type?
-      //song?
-      if(change.doc._id.startsWith('s-')){
-        loadRecentSongs();  
-        //only load song if it's the one that's up.
-        if(window.song._id === change.doc._id && document.body.classList.contains('song')){
-          loadSong(change.doc._id);
-          notyf.info('Song updated', 'var(--song-color)');
-        } else {
-          notyf.info(`Song "${change.doc.title}" updated by ${change.doc.editedBy}`,
-                     'var(--song-color)',
-                     `#${window.songbook._id}&${change.doc._id}`);
-        }
-        //update all songs in songbooks
-        if(window.songbook_list != undefined ){
-          window.songbook_list.get('song-id',change.doc._id)
-            .forEach(function(song){
-              let new_change = mapSongRowToValue(change);
-              new_change['song-status'] = song.values()['song-status'];
-              song.values(new_change);
-            });
-        }
-        if(window.songbook_edit_togglesongs_list != undefined){
-          window.songbook_edit_togglesongs_list.get('song-id',change.doc._id)
-            .forEach(function(song){song.values(mapSongRowToValue(change))});
-        }
-        if(window.songbook._id == 'sb-allSongs') {
-          window.songbook._id = '';
-          loadSongbook('sb-allSongs');
-        }
-      }
-      //songbook?
-      else if(change.doc._id.startsWith('sb-')){
-        if(window.songbook._id === change.doc._id && (document.body.classList.contains('songList') || document.body.classList.contains('song'))){
-          window.songbook = '';
-          loadSongbook(change.doc._id);
-          notyf.info('Songbook updated', 'var(--songList-color)');
-        } else {
-          notyf.info(`Songbook "${change.doc.title}" updated by ${change.doc.editedBy}`,
-                     'var(--songList-color)',
-                     `#${change.doc._id}`);
-        }
-        //update the songbook entry in songbooks_list
-        if(window.songbooks_list != undefined){
-          window.songbooks_list.get('songbook-id',change.doc._id)
-            .forEach(function(songbook){songbook.values(mapSongbookRowToValue(change))});
-          window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
-        }
-      }
-      else if(change.doc._id.startsWith('c_')){
-        let songbook_id = change.doc._id.match(/sb-.*?_/g)[0].replace('_','');
-        if(window.songbook._id == songbook_id && window.songbook.showComments){
-          let song_id = change.doc._id.match(/s-.*?$/g)[0];
-          $('li[data-song-id="'+song_id+'"] .toggle_comment').attr('data-comment-number', change.doc.comments.length);
-          let comments = '';
-          for(comment of change.doc.comments){
-            comments += `<div><b>${comment.user} </b>${new Date(comment.date).toLocaleTimeString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})}<pre>${comment.comment}</pre></div>`;
-          }
-          $('li[data-song-id="'+song_id+'"] .comments').html(comments);
-          notyf.info(`Comment added to "${song_id}" by ${change.doc.comments[change.doc.comments.length - 1].user}`,
-                     'var(--songList-color)');
-        }
-      }
-      else if(change.doc._id == window.user._id){
-        let fav_sbs = change.doc.fav_sbs;
-        //jquery remove all favs
-        $('#songbooks .list li').each(function(){
-          let fav = false;
-          if(fav_sbs.indexOf($(this).attr('data-songbook-id')) > -1) {
-            fav = true;
-          }
-          $(this).attr('data-user-fav', fav);
-        })
-        if(fav_sbs.indexOf(window.songbook._id) > -1) {
-          $('#songbook_title').attr('data-user-fav', 'true');
-        }
-        else {
-          $('#songbook_title').attr('data-user-fav', 'false'); 
-        }
-        window.user = change.doc;
-        if(window.songbook._id == 'sb-favoriteSongs') {
-          window.songbook._id = '';
-          loadSongbook('sb-favoriteSongs');
-        }
-        updateUser();
-        notyf.info(`User Updated "${change.doc.name}"`,
-                     'var(--edit-color)');
-        window.songbooks_list.reIndex();
-        window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
-        $('#song song').attr('data-user-fav', (window.user.fav_songs.indexOf($('#song song').attr('data-id'))> -1 ? 'true': 'false'))
-      }
-      //else... let it go! for now
-      else {
-        console.log('changed:',change.doc._id);
-      }
-    }).on('error', function (err) {
-      // handle errors
-      console.log('Error in db.changes('+err);
-    });
+    dbChanges();
+
     localStorage.setItem('loggedin',JSON.stringify([dbName, username, pin]));
     //check dark mode and set for app
     let darkMode = localStorage.getItem(window.user._id+'darkMode');
@@ -755,9 +759,9 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
       }).then(function(){
         if(change_url){
           window.location.hash = '#'+window.songbook._id;
+          $('.edit_buttons').remove();
+          initializeSongbooksList();
         }
-        $('.edit_buttons').remove();
-        initializeSongbooksList();
         resolve('all good!');
       }).catch(function (err) {
         console.log(err);
