@@ -476,25 +476,31 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
 
   //Put together Search field.
       let punctuation = /[^a-zA-Z0-9\s:-]/g;
+      let duplicateWhitespace = /\s{2,}/g;
 
       function formatArray(array, letter){
-        return (array != '' ? array.join(' '+letter+':') : '!'+letter);
+        return (array != '' ? array.join(' '+letter+':') : '!'+letter).replace(duplicateWhitespace, ' ');
       }
       function formatText(text, letter){
-        return (text != '' ? text : '!'+letter);
+        return (text != '' ? text : '!'+letter).replace(duplicateWhitespace, ' ');
       }
       function formatNumber(number, letter){
-        return (number != '' ? letter + number : '!'+letter);
+        return (number != '' ? letter + number : '!'+letter).replace(duplicateWhitespace, ' ');
       }
       function formatSongContent(content){
         var song_content = '';
-        
+
         var i, j;
-        for (i = 0; i < content.length; i++) { 
+        for (i = 0; i < content.length; i++) {
           //we are ignoring comments for now
           if(content[i][0].type != 'comment') {
             for (j = 0; j < content[i][1].length; j++ ) {
-              let new_line = escapeRegExp(remove_chords(content[i][1][j]).replace(/\s{2,}/g,' ').replace(punctuation,'').trim() + '\n');
+              let new_line = escapeRegExp(
+                remove_chords(content[i][1][j])
+                .replace(duplicateWhitespace,' ')
+                .replace(punctuation,'')
+                .trim() + '\n'
+              );
               if(song_content.search(new_line) === -1) {
                 //this content is not in the search, add it!
                 song_content += new_line;
@@ -504,7 +510,7 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
         }
         return song_content;
       }
-      let ssearch =  't:' + song.title + '\0'
+      song.search =  't:' + song.title + '\0'
                    + 'a:' + formatArray(song.authors, 'a') + '\0'
                    + 's:' + formatArray(song.scripture_ref, 's') + '\0'
                    + 'i:' + formatText(song.introduction, 'i') + '\0'
@@ -516,7 +522,6 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
                    + 'chords:' + formatText(song.chords, 'chords') + '\0'
                    + formatSongContent(song.content); + '\0'
 
-      song.search = ssearch.replace(/\s{2,}/g, ' ');
       console.log(song)
 
       db.put(song, function callback(err, result) {
