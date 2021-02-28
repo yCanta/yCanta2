@@ -3,7 +3,7 @@ var prefetchedURLs = [
   'jquery-3.5.1.min.js',
   'pouchdb.min.js',
   'pdfkit.standalone.js',
-  'blob-stream.js'
+  'blob-stream.js',
   'db.js',
   'lib.js',
   'sw.js',
