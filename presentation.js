@@ -2,6 +2,7 @@
 punctuation = /[^a-zA-Z0-9\s:-]/g;
 
 var tappedTwice = false;
+const MAX_SEARCH_RESULTS = 5;
   
 last_search_results = [];
 current_song = 0;
@@ -198,15 +199,19 @@ function toggleChords(touch=false) {
 }
 
 function searchDatabase(){
-  var text = $('#searchbox input').val().replace(/[^a-zA-Z0-9\s:-]/g, '');
+  var text = $('#searchbox input').val();
   if(jQuery.trim(text).length < 2){
     $('#searchresults').empty();
     return;
   }
 
-  var re = new RegExp(text, 'i');
+  var re = new RegExp('(' + text + ')([^\0\n]*)', 'i');
   var match_object = []
+  var total_matches = 0;
   var matches = window.songbook.songs.filter(function(item) { 
+      if(total_matches >= MAX_SEARCH_RESULTS){
+        return false; // we only show MAX_SEARCH_RESULTS, don't waste time testing regex
+      }
       var result = re.test(item.doc.search);
       if(result == true){  //then test to see if we already have this line in the results
         for(var i=0; i<match_object.length; i++) {
@@ -215,14 +220,12 @@ function searchDatabase(){
             break;
           }
         }
-        match_object.push(item)
+        match_object.push(item);
+        total_matches += 1;
       }
       return result;
   });
 
-  // only keep first 5
-  var total_matches = matches.length;
-  var matches = matches.slice(0, 5);
   last_search_results = matches;     // save for future reference
 
   // format for display
@@ -231,13 +234,17 @@ function searchDatabase(){
   var textmatches = matches.map(function(item) {
       let m = re.exec(item.doc.search);
       count += 1;
+      let matchline_start = Math.max(
+          item.doc.search.substring(0,m.index).lastIndexOf('\n') || 0
+        , item.doc.search.substring(0,m.index).lastIndexOf('\0') || 0);
+      let matchline_end = m.index + m[1].length + m[2].length;
 
-      return ('<div onclick="javascript:void(searchResult('+(count)+'));">' 
-        + '<span class="count">['+count+']</span> ' 
-        + '<span class="song">' + item.doc.title + '</span>: ' 
-        + '<span class="matchline">' + item.doc.search.substring((item.doc.search.substring(0,m.index).lastIndexOf('\n') || 0), m.index) 
-        + '<span class="match">' + m[0] + '</span>' 
-        + item.doc.search.substring(m.index + m[0].length, item.doc.search.indexOf('\n', m.index+m[0].length) || item.doc.search.length) + '</span></div>');
+      return ('<div onclick="javascript:void(searchResult('+(count)+'));">'
+        + '<span class="count">['+count+']</span> '
+        + '<span class="song">' + item.doc.title + '</span>: '
+        + '<span class="matchline">' + item.doc.search.substring(matchline_start, m.index)
+        + '<span class="match">' + m[1] + '</span>'
+        + item.doc.search.substring(m.index + m[1].length, matchline_end) + '</span></div>');
   });
 
   $('#searchresults').html(textmatches.join('\n'));
@@ -400,16 +407,28 @@ function showChunk(name) {
     $('#post_slide .content').html(build_chunk(post_chunk, post_song));
 
     var total = current_song.doc.content.length;
-    $('#progress').css('width', ''+(((current_song.chunk_index + 1) / total) * 100)+'%'); // set progress bar
     $('#slides').css('--percent', (((current_song.chunk_index + 1) / total) * 100));
+    let progress_text = ''
+    for(let chunk_index = 0; chunk_index < total; chunk_index++) {
+      progress_text += '<div class="'+current_song.doc.content[chunk_index][0].type.replace(/[^a-z]/g,'');
+      if(chunk_index < current_song.chunk_index){
+        progress_text += ' before';
+      } else if(chunk_index == current_song.chunk_index) {
+        progress_text += ' current';
+      } else {
+        progress_text += ' after';
+      }
+      progress_text += '"></div>';
+    }
+    $('#progress').html(progress_text);
 
     scaleText();
 
     $.each(secondary_windows, function(index,value) { 
       try{
         $(this.document).find('#slides').html($("#cur_slide").clone());
+        $(this.document).find('#statusbar').html($("#progress").clone()); // set progress bar
         this.scaleText();
-        $(this.document).find('#progress').css('width', ''+((pos / total) * 100)+'%'); // set progress bar
         $(this.document).find('#slides').css('--percent', (((current_song.chunk_index + 1) / total) * 100));
       }
       catch(err){
@@ -615,7 +634,7 @@ function blackScreen(touch=false){
 }
 
 function numberHit(num){
-  if(isSearching() & num <= 5){
+  if(isSearching() & num <= MAX_SEARCH_RESULTS){
     searchResult(num)
   }
   else if(inPresentation()){
@@ -710,20 +729,29 @@ function escapeAction() {
 }
 
 function processKey(e){ 
+  //console.log("key: '" + e.key +"'", "originalEvent.key: '" + e.originalEvent.key + "'", e);
   key = e.key;
   if((key == '/' || key == 's') & !isSearching()) { 
     e.preventDefault()
   }
 
-  if(e.target.nodeName =='INPUT') {  //workaround for chrome mobile which decided not implement keydown.
-    key = e.data;
-  }
+  // TODO: workaround breaks firefox which the INPUT field has focus
+  // disabling workaround for now, I think it will work as-is on chrome mobile with a bluetooth keyboard
+  // mobile needs a bunch of work before it works well for presentations anyways
+  //if(e.target.nodeName =='INPUT') {  //workaround for chrome mobile which decided not implement keydown.
+  //  console.log('switching to:', e.data);
+  //  key = e.data;
+  //}
 
-  console.log("key: " + key, e);
+  //console.log("key: '" + key +"'", e);
 
   if(key in presentation_key_map){
+  //  console.log("Presentation map function: ", presentation_key_map[key])
     presentation_key_map[key][0](); // call the right function
   }
+  //else {
+  //  console.log("Key '"+key+"' not in presentation map");
+  //}
 
   if(isSearching()){ 
     setTimeout(searchDatabase, 10);
