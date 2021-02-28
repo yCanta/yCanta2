@@ -11,7 +11,6 @@ var prefetchedURLs = [
   'jquery.toTextarea.js',
   'list.min.js',
   'import.js',
-  'list.min.js',
   'jszip.min.js',
   'notyf.min.js',
   'pdfformatter.js',
