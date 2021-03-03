@@ -1034,6 +1034,7 @@ function editSong() {
       $('#song-edit').toggleClass('sidebar-open').find('.search').focus();
     });
   let cclis_text = $('cclis').text().replace('CCLIS: ', '');
+  $('#song cclis').wrap('<div style="margin-bottom: 1rem;"></div>')
   $('#song cclis').before('<label>CCLIS: <input id="cclis_checkbox" onchange="$(\'cclis\').toggle();"'+(cclis_text ? 'checked' : '')+' type="checkbox"></input> </label>');  
   if(cclis_text){
     $('cclis').show();
