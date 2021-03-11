@@ -162,6 +162,7 @@
           <a data-song-edit="new" class="float-menu-item"><span class="float-menu-icon">+</span> Add Song</a>
           <button data-home onclick="deleteSongbook(window.songbook._id)" class="float-menu-item delete"><span class="float-menu-icon">&#128465;</span> Delete</button>
           <button data-songbook-present class="float-menu-item" id="present"><span class="float-menu-icon">&#128253;</span> Present</button>
+          <button data-songbook-present class="float-menu-item" id="newpresent"><span class="float-menu-icon">&#128253;</span> newpresent</button>
           <a data-songbook-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</a>
           <a data-songbook-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>
           <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>
@@ -1039,6 +1040,15 @@
               updateAllLinks();
               window.document.title = "yCanta2: Exporting " + window.songbook.title;
           });
+        }
+        //if songbook present
+        else if((hash.search('#sb-') != -1) && (hash.search('&newpresent') != -1)) {
+          // idea for inline present:
+          // 1. load first song in songbook
+          // 2. set some class on first chunk in song and have CSS so only that chunk shows and resize with JS to fit
+          // 3. capture key strokes to handle next/prev etc (move the css class). If moving to new song load that song
+          loadSong(window.songbook.songrefs[0].id);
+          alert('newpresent');
         }
         //if songbook present
         else if((hash.search('#sb-') != -1) && (hash.search('&present') != -1)) {

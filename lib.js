@@ -485,6 +485,10 @@ $(function () {
     $('#song').toggleClass('nochords');
   });
 
+  $('#newpresent').mousedown(function(event) {
+    window.location = '#'+window.songbook._id+'&newpresent';
+  });
+
   $('#present').mousedown(function(event) {
     switch (event.which) {
       case 1:
