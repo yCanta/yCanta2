@@ -885,7 +885,7 @@
           window.document.title = "yCanta2";
           updateAllLinks();
         }
-        //Login
+//Login
         else if(hash.startsWith('#login')) {
           let userPin = JSON.parse(localStorage.getItem('loggedin'));
           try {
@@ -913,7 +913,7 @@
 
           window.document.title = "yCanta2 - Login";
         }
-        //Songbooks
+//Songbooks
         else if(hash == '#songbooks'){
           $('body').attr('class','songbookList');
           $('.active').removeClass('active');
@@ -934,7 +934,7 @@
               window.document.title = "yCanta2: Editing " + window.song.title;
           });
         }
-        //if song export
+//if song export
         else if((hash.search('&s-') != -1) && (hash.search('&export') != -1)) {
           //Initiate song export
           $('body').attr('class', 'song export');
@@ -966,7 +966,7 @@
               window.document.title = "yCanta2: Exporting " + window.song.title;
           });
         }
-        //if song
+//if song
         else if(hash.search('&s-') != -1) {
           if(hash.search('s-new-song') != -1){
             window.location.hash = '#' + window.songbook._id;
@@ -981,7 +981,7 @@
               window.document.title = "yCanta2: "+window.songbook.title + " > " + window.song.title;
           });          
         }
-        //if songbook edit
+//if songbook edit
         else if((hash.search('#sb-') != -1) && (hash.search('&edit') != -1)) {
           //Initiate songbook edit
           $('body').attr('class', 'songList edit');
@@ -994,7 +994,7 @@
               window.document.title = "yCanta2: Editing " + window.songbook.title;
           });
         }
-        //if songbook export
+//if songbook export
         else if((hash.search('#sb-') != -1) && (hash.search('&export') != -1)) {
           //Initiate songbook export
           $('body').attr('class', 'songList export');
@@ -1040,7 +1040,7 @@
               window.document.title = "yCanta2: Exporting " + window.songbook.title;
           });
         }
-        //if songbook present
+//if songbook present
         else if((hash.search('#sb-') != -1) && (hash.search('&present') != -1)) {
           //Initiate songbook export
           Promise.resolve(loadSongbook(parseHash('sb-')))
@@ -1105,7 +1105,7 @@
             }
           });
         }
-        //if songbook
+//if songbook
         else if(hash.search('#sb-') != -1) {
           $('body').attr('class', 'songList');
           $('.active').removeClass('active');
