@@ -330,6 +330,10 @@ legend {
   --background-color: var(--edit-color);
   background-color: var(--background-color);
 }
+#pdf {
+  width:100%; 
+  height: calc(100vh - 12rem)
+}
 
 /*CSS FOR Song Display*/
 #song song * {
@@ -1103,14 +1107,14 @@ input[type="number"] {
     top: 0;
     bottom: 0;
     right: 0;
-    width: 280px;
-    transform: translate3d(280px, 0, 0);
+    width: 90vw;
+    transform: translate3d(90vw, 0, 0);
   }
 
   /*Focus edit*/
   .edit.songList #songList .sidebar,
   .edit.song #song .sidebar {
-    transform: translate3d(250px, 0, 0);
+    transform: translate3d(80vw, 0, 0);
   }
   .edit.songList #songList .sidebar-open,
   .edit.song #song .sidebar-open {
@@ -1128,7 +1132,7 @@ input[type="number"] {
     transform: translate3d(0, 4rem, 0);
   }
   .export #export .sidebar {
-    transform: translate3d(250px, 0, 0);
+    transform: translate3d(80vw, 0, 0);
   }
   .export #export .sidebar-open {
     transform: translate3d(0, 0, 0);
@@ -1159,6 +1163,9 @@ input[type="number"] {
   .edit stitle,
   .edit #songbook_header {
     position: initial;
+  }
+  #pdf {
+    height: calc(100vh - 7rem)
   }
 }
 /** Phone in portrait and landscape**/
