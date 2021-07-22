@@ -332,7 +332,10 @@ legend {
 }
 #pdf {
   width:100%; 
-  height: calc(100vh - 12rem)
+  height: calc(100vh - 12rem);
+}
+.fullscreen #pdf {
+  height: calc(100vh - 9rem);
 }
 
 /*CSS FOR Song Display*/
@@ -1360,10 +1363,7 @@ only screen and (max-height: 31.25rem) {
     flex-shrink: 2;
   }
   body.export #export .sidebar {
-    flex: 0 0 22.5rem;
-  }
-  body.export #export .sidebar-open {
-    flex: 0 0 22.5rem;
+    flex: 2 0 22.5rem;
   }
   body.export #export {
     flex: 0 0.05 50rem;

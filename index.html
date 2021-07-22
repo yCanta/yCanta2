@@ -274,6 +274,7 @@
                 <tr>
                   <td>
                     <button style="background-color: var(--edit-color);" class="btn" onclick="pdfFormatter.postMessage([window.exportObject,read_config_form()]);">GeneratePDF</button>
+                    <small style="margin-left: 1rem;"><input id="auto_refresh" name="auto_refresh" type="checkbox"><label for="auto_refresh"> Auto refresh?</label></small>
                   </td>
                   <td style="width: 100%">
                     <div id='pdf_progress_bar' style='border: 1px solid black; position: relative;'>
@@ -706,8 +707,10 @@
             <div>
               <div>
                 <div class="column_header">
-                  <h3>Preview<button onclick="$(this).closest('#exportPreview').removeClass('sidebar-open');" class="icon-fl-right close-icon">&times;</button></h3><input id="auto_refresh" name="auto_refresh" type="checkbox"><label for="auto_refresh">Automatic refresh?</label>
-                  <!-- can't seem to get chrome to display this in iframe, objects or any other thingy without crashing on src change.  I get an "awSnap!" message and closed out tab -->
+                  <h3>Preview
+                    <button onclick="$(this).closest('#exportPreview').removeClass('sidebar-open');" class="icon-fl-right close-icon">&times;</button>
+                    <button onclick="toggleFullscreen(this)" class="icon-rotate2x icon-fl-right emoji" style="  border-radius: 2rem;">↔</button>
+                  </h3>
                 </div>
                 <iframe src="pdfjs-2.8.335-dist/web/viewer.html?file=" id="pdf"></iframe>
               </div>
@@ -855,6 +858,7 @@
         });
       });   
       function hashchanged(){
+        $('.fullscreen').removeClass('fullscreen');
         let pres_iframe = document.getElementById('presentation');
         if(pres_iframe){setTimeout(function(){pres_iframe.remove()},300);}
 
