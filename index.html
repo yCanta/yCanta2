@@ -274,6 +274,7 @@
                 <tr>
                   <td>
                     <button style="background-color: var(--edit-color);" class="btn" onclick="pdfFormatter.postMessage([window.exportObject,read_config_form()]);">GeneratePDF</button>
+                    <small style="margin-left: 1rem;"><input id="auto_refresh" name="auto_refresh" type="checkbox"><label for="auto_refresh"> Auto refresh?</label></small>
                   </td>
                   <td style="width: 100%">
                     <div id='pdf_progress_bar' style='border: 1px solid black; position: relative;'>
@@ -703,16 +704,15 @@
             </div>
           </div>
           <div class="subcolumn sidebar" id="exportPreview">
-            <div style="width: 280px;">
+            <div>
               <div>
                 <div class="column_header">
-                  <h3>Preview<button onclick="$(this).closest('#exportPreview').removeClass('sidebar-open');" class="icon-fl-right close-icon">&times;</button></h3><input id="auto_refresh" name="auto_refresh" type="checkbox"><label for="auto_refresh">Automatic refresh?</label>
-                  <!-- can't seem to get chrome to display this in iframe, objects or any other thingy without crashing on src change.  I get an "awSnap!" message and closed out tab -->
+                  <h3>Preview
+                    <button onclick="$(this).closest('#exportPreview').removeClass('sidebar-open');" class="icon-fl-right close-icon">&times;</button>
+                    <button onclick="toggleFullscreen(this)" class="icon-rotate2x icon-fl-right emoji" style="  border-radius: 2rem;">↔</button>
+                  </h3>
                 </div>
-                <iframe rel="tooltip" title="Generated PDF" width="320" height="450" src="" rel="tooltip"></iframe>
-                <br>
-                <br>
-                <a id="downloadPDF" class="btn" style="background-color: var(--highlight-color);" download>Download</a>
+                <iframe src="pdfjs-2.8.335-dist/web/viewer.html?file=" id="pdf"></iframe>
               </div>
             </div>
           </div>
@@ -858,6 +858,7 @@
         });
       });   
       function hashchanged(){
+        $('.fullscreen').removeClass('fullscreen');
         let pres_iframe = document.getElementById('presentation');
         if(pres_iframe){setTimeout(function(){pres_iframe.remove()},300);}
 
@@ -885,7 +886,7 @@
           window.document.title = "yCanta2";
           updateAllLinks();
         }
-        //Login
+//Login
         else if(hash.startsWith('#login')) {
           let userPin = JSON.parse(localStorage.getItem('loggedin'));
           try {
@@ -913,7 +914,7 @@
 
           window.document.title = "yCanta2 - Login";
         }
-        //Songbooks
+//Songbooks
         else if(hash == '#songbooks'){
           $('body').attr('class','songbookList');
           $('.active').removeClass('active');
@@ -934,7 +935,7 @@
               window.document.title = "yCanta2: Editing " + window.song.title;
           });
         }
-        //if song export
+//if song export
         else if((hash.search('&s-') != -1) && (hash.search('&export') != -1)) {
           //Initiate song export
           $('body').attr('class', 'song export');
@@ -966,7 +967,7 @@
               window.document.title = "yCanta2: Exporting " + window.song.title;
           });
         }
-        //if song
+//if song
         else if(hash.search('&s-') != -1) {
           if(hash.search('s-new-song') != -1){
             window.location.hash = '#' + window.songbook._id;
@@ -981,7 +982,7 @@
               window.document.title = "yCanta2: "+window.songbook.title + " > " + window.song.title;
           });          
         }
-        //if songbook edit
+//if songbook edit
         else if((hash.search('#sb-') != -1) && (hash.search('&edit') != -1)) {
           //Initiate songbook edit
           $('body').attr('class', 'songList edit');
@@ -994,7 +995,7 @@
               window.document.title = "yCanta2: Editing " + window.songbook.title;
           });
         }
-        //if songbook export
+//if songbook export
         else if((hash.search('#sb-') != -1) && (hash.search('&export') != -1)) {
           //Initiate songbook export
           $('body').attr('class', 'songList export');
@@ -1040,7 +1041,7 @@
               window.document.title = "yCanta2: Exporting " + window.songbook.title;
           });
         }
-        //if songbook present
+//if songbook present
         else if((hash.search('#sb-') != -1) && (hash.search('&present') != -1)) {
           //Initiate songbook export
           Promise.resolve(loadSongbook(parseHash('sb-')))
@@ -1105,7 +1106,7 @@
             }
           });
         }
-        //if songbook
+//if songbook
         else if(hash.search('#sb-') != -1) {
           $('body').attr('class', 'songList');
           $('.active').removeClass('active');

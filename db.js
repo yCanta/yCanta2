@@ -807,9 +807,6 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
 
 function loadSongbook(songbook_id) {
   var dateBefore = new Date();
-  if((songbook_id != 'sb-allSongs') && (songbook_id != 'sb-favoriteSongs')){
-    $('#songList .float-menu').removeClass('special');
-  }
 
   return new Promise(function(resolve, reject) {
     if(songbook_id == window.songbook._id){
@@ -947,6 +944,9 @@ function loadSongbook(songbook_id) {
       }).catch(function(err){
         console.log(err);
       });
+    }
+    if((songbook_id != 'sb-allSongs') && (songbook_id != 'sb-favoriteSongs')){
+      $('#songList .float-menu').removeClass('special');
     }
   });
 }

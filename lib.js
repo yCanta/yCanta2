@@ -1034,6 +1034,7 @@ function editSong() {
       $('#song-edit').toggleClass('sidebar-open').find('.search').focus();
     });
   let cclis_text = $('cclis').text().replace('CCLIS: ', '');
+  $('#song cclis').wrap('<div style="margin-bottom: 1rem;"></div>')
   $('#song cclis').before('<label>CCLIS: <input id="cclis_checkbox" onchange="$(\'cclis\').toggle();"'+(cclis_text ? 'checked' : '')+' type="checkbox"></input> </label>');  
   if(cclis_text){
     $('cclis').show();
@@ -1125,7 +1126,7 @@ function prepSaveSong(element) {
 function prepExport(){
   document.getElementById('pdf_progress').style.width = '0%';
   document.getElementById('pdf_progress_text').innerHTML = '0%';
-  document.querySelector('iframe').src = "";
+
   $('#display_chords').trigger('change');
  
   //webworker stuff
@@ -1133,8 +1134,7 @@ function prepExport(){
     window.pdfFormatter = new Worker('pdfformatter.js');
     pdfFormatter.onmessage = function(e) {
       if(e.data[0] == 'pdf'){
-        document.querySelector('iframe').src = e.data[1];
-        document.getElementById('downloadPDF').href = e.data[1];
+        document.getElementById('pdf').contentWindow.yourMethod(e.data[1]);
         console.log('Message received from worker');
       }
       else if(e.data[0] == 'progress'){

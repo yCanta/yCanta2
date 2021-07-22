@@ -127,8 +127,8 @@ copyright {
 introduction:before {
  content: ''; 
 }
-cclis {
-  margin-bottom: 2em;
+.edit cclis {
+  margin-bottom: 0;
 }
 stitle[contentEditable=true]:empty:before{
   content: 'Title ';
