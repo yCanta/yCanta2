@@ -90,6 +90,14 @@ chunk:before {
   margin-top: 1em;
   margin-bottom: 0em;
 }
+.sorting chunk {
+  max-height: 3rem !important;
+  overflow-y: hidden;
+}
+.sorting .wrap > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
 .edit cclis {
   display: inline-block;
   width: 5rem;

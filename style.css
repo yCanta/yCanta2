@@ -483,20 +483,21 @@ stitle,
   border: 1px #EEE dashed;
 }
 /*Overt,overb, moving are for sortable*/
-.overt { 
+.overt > * { 
   box-shadow: var(--highlight-color) 0px -10px;
   transform: translateY(10px);
   background-color: var(--edit-color);
   z-index: 10;
 }
-.overb { 
+.overb > * { 
   box-shadow: var(--highlight-color) 0px 10px;
   transform: translateY(-10px);
   background-color: var(--edit-color);
   z-index: 10;
 }
-.moving { 
+.moving > * { 
   transform: scale(0.8); 
+  background-color: var(--highlight-color) !important;
 }
 .list {
   min-height: 2rem;
