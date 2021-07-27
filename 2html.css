@@ -83,7 +83,7 @@ chunk:before {
 }
 [type=comment]:before {
  content: 'Comment: ';
- color: #555;
+ color: var(--light-text-color);
  font-style: italic;
 }
 .nochords chunk {
@@ -111,7 +111,7 @@ chunk:before {
   content:'';
 }
 [type=comment] line {
- color: #555;
+ color: var(--light-text-color);
  font-style: italic;
 }
 [type='indented no label'] line {

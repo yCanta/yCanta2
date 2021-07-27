@@ -1666,7 +1666,12 @@ function toggleLoop(){
 
 }
 function pauseVideo() {
-  window.player.pauseVideo();
+  try {
+    window.player.pauseVideo();
+  } 
+  catch(error) {
+    console.log(error);
+  }
 }
 function playVideo() {
   window.player.playVideo();
