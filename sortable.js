@@ -17,7 +17,8 @@ function dragEnd( e, selector='ul li' ) {
   [].forEach.call(document.querySelectorAll(selector), function (song) {
     song.classList.remove('moving');
     song.classList.remove('overt');  
-    song.classList.remove('overb');  
+    song.classList.remove('overb');
+    song.parentNode.classList.remove('sorting');  
   });
   selected = null
 }
@@ -27,7 +28,7 @@ function dragStart( e, selector='li' ) {
   e.dataTransfer.setData( "text/plain", '' )
   selected = e.target.closest(selector);
   selected.classList.add('moving');
-
+  selected.parentNode.classList.add('sorting');
 }
 function dragEnter( e, selector='li' ) {
   var li = e.target.closest(selector);

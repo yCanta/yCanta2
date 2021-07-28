@@ -829,6 +829,7 @@ function buildSongbookList(songs, target_class='songbook_content',
     window.songbook_edit_togglesongs_list = new List(target_class, options, values);
     bindSearchToList(window.songbook_edit_togglesongs_list, '#songListEdit');
   }
+  updateAllLinks();
   return;
 }
 function dataxInBookUpdate(song, remove=false){
@@ -1665,7 +1666,12 @@ function toggleLoop(){
 
 }
 function pauseVideo() {
-  window.player.pauseVideo();
+  try {
+    window.player.pauseVideo();
+  } 
+  catch(error) {
+    console.log(error);
+  }
 }
 function playVideo() {
   window.player.playVideo();
