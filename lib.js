@@ -1630,6 +1630,66 @@ function loadSongPlayer(){
   }
 }
 
+function makeUserNameDraggable(){
+  let container = document.getElementById('username_d').parentElement;
+  let dragItem = container.parentElement;
+
+  let active = false;
+  let currentY;
+  let initialY;
+  let yOffset = 0;
+
+  container.addEventListener("touchstart", dragStart, false);
+  container.addEventListener("touchend", dragEnd, false);
+  container.addEventListener("touchmove", drag, false);
+
+  function dragStart(e) {
+    yOffset = 0;
+    active = false;
+
+    if (e.type === "touchstart") {
+      initialY = e.touches[0].clientY - yOffset;
+    } else {
+      initialY = e.clientY - yOffset;
+    }
+    dragItem.style.transition = "none";
+  }
+
+  function dragEnd(e) {
+    if(Math.abs(yOffset)> 30){
+      window.location.hash = '#';
+    }
+    dragItem.style.removeProperty("transition");
+    dragItem.style.removeProperty("transform");
+  }
+
+  function drag(e) {
+    if(window.location.hash == ''){
+      return;
+    }
+    e.preventDefault();
+  
+    if (e.type === "touchmove") {
+      currentY = e.touches[0].clientY - initialY;
+    } else {
+      currentY = e.clientY - initialY;
+    }
+    yOffset = currentY;
+
+    if(active) {
+      setTranslate(currentY, dragItem);
+    }
+    if(!active && Math.abs(yOffset) > 10) {
+      active = true;
+    }
+  }
+
+  function setTranslate(yPos, el) {
+    el.style.transform = "translate3d(0px, " + yPos + "px, 0)";
+  }
+}
+makeUserNameDraggable();
+
 function onPlayerReady(event) {
   let ids = window.youtube_links.map(link => link.match(/(be\/|v\=)([-\w]+)\S/)[0].replace('be/','').replace('v=',''));
   window.player.cuePlaylist(ids);
