@@ -1117,7 +1117,8 @@ input[type="number"] {
   /*Focus edit*/
   .edit.songList #songList .sidebar,
   .edit.song #song .sidebar {
-    transform: translate3d(80vw, 0, 0);
+    transform: translate3d(15.6rem, 0, 0);
+    width: 17.5rem;
   }
   .edit.songList #songList .sidebar-open,
   .edit.song #song .sidebar-open {
