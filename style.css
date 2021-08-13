@@ -1066,6 +1066,7 @@ input[type="number"] {
   .column {
     transform: translate3d(0, max(100vh, 800px), 0);
     height: calc(100vh - 4rem);
+    opacity: 0;
   }
   fieldset.closed-mobile {
     height: 1.857rem;
@@ -1082,27 +1083,33 @@ input[type="number"] {
   .songbookList main {
     transform: translate3d(0, 4rem, 0);
     height: calc(100vh - 4rem);
+    opacity: 1;
   }
   .songbookList #songbookList {
     transform: translate3d(0, 0, 0);
+    opacity: 1;
   }
 
   /*SongList */
   .songList main,
   .songList #songbookList {
     transform: translate3d(0, 0, 0);
+    opacity: 1;
   }
   .songList #songList {
     transform: translate3d(0, 4rem, 0);
+    opacity: 1;
   }
   /*Song */
   .song main,
   .song #songbookList,
   .song #songList {
     transform: translate3d(0, 0, 0);
+    opacity: 1;
   }
   .song #song {
     transform: translate3d(0, 4rem, 0);
+    opacity: 1;
   }
 
   .sidebar {
@@ -1131,9 +1138,11 @@ input[type="number"] {
   .export #songList,
   .song.export #song {
     transform: translate3d(0, 0, 0);
+    opacity: 1;
   }
   .export #export {
     transform: translate3d(0, 4rem, 0);
+    opacity: 1;
   }
   .export #export .sidebar {
     transform: translate3d(80vw, 0, 0);
