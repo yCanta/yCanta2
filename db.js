@@ -623,25 +623,31 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
 
   //Put together Search field.
       let punctuation = /[^a-zA-Z0-9\s:-]/g;
+      let duplicateWhitespace = /\s{2,}/g;
 
       function formatArray(array, letter){
-        return (array != '' ? array.join(' '+letter+':') : '!'+letter);
+        return (array != '' ? array.join(' '+letter+':') : '!'+letter).replace(duplicateWhitespace, ' ');
       }
       function formatText(text, letter){
-        return (text != '' ? text : '!'+letter);
+        return (text != '' ? text : '!'+letter).replace(duplicateWhitespace, ' ');
       }
       function formatNumber(number, letter){
-        return (number != '' ? letter + number : '!'+letter);
+        return (number != '' ? letter + number : '!'+letter).replace(duplicateWhitespace, ' ');
       }
       function formatSongContent(content){
         var song_content = '';
-        
+
         var i, j;
-        for (i = 0; i < content.length; i++) { 
+        for (i = 0; i < content.length; i++) {
           //we are ignoring comments for now
           if(content[i][0].type != 'comment') {
             for (j = 0; j < content[i][1].length; j++ ) {
-              let new_line = escapeRegExp(remove_chords(content[i][1][j]).replace(/\s\s+/g,' ').replace(punctuation,'') + '\n');
+              let new_line = escapeRegExp(
+                remove_chords(content[i][1][j])
+                .replace(duplicateWhitespace,' ')
+                .replace(punctuation,'')
+                .trim() + '\n'
+              );
               if(song_content.search(new_line) === -1) {
                 //this content is not in the search, add it!
                 song_content += new_line;
@@ -651,19 +657,19 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
         }
         return song_content;
       }
-      let ssearch =  't:' + song.title + '\n'
-                   + 'a:' + formatArray(song.authors, 'a') + '\n'
-                   + 's:' + formatArray(song.scripture_ref, 's') + '\n'
-                   + 'i:' + formatText(song.introduction, 'i') + '\n'
-                   + 'k:' + formatText(song.key, 'k') + '\n'
-                   + 'c:' + formatArray(song.categories, 'c') + '\n'
-                   + 'cp:' + formatText(song.copyright, 'cp') + '\n'
-                   + 'yt:' + formatNumber(song.yt, 'yt') + '\n'
-                   + 'cclis:' + formatNumber(song.cclis, 'cclis') + '\n'
-                   + 'chords:' + formatText(song.chords, 'chords') + '\n'
-                   + formatSongContent(song.content); + '\n'
+      song.search =  't:' + song.title + '\0'
+                   + 'a:' + formatArray(song.authors, 'a') + '\0'
+                   + 's:' + formatArray(song.scripture_ref, 's') + '\0'
+                   + 'i:' + formatText(song.introduction, 'i') + '\0'
+                   + 'k:' + formatText(song.key, 'k') + '\0'
+                   + 'c:' + formatArray(song.categories, 'c') + '\0'
+                   + 'cp:' + formatText(song.copyright, 'cp') + '\0'
+                   + 'yt:' + formatNumber(song.yt, 'yt') + '\0'
+                   + 'cclis:' + formatNumber(song.cclis, 'cclis') + '\0'
+                   + 'chords:' + formatText(song.chords, 'chords') + '\0'
+                   + formatSongContent(song.content); + '\0'
 
-      song.search = ssearch.replace(/ +?/g, ' ');
+      console.log(song)
 
       db.put(song, function callback(err, result) {
         if (!err) {
@@ -944,9 +950,6 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
 
 function loadSongbook(songbook_id) {
   var dateBefore = new Date();
-  if((songbook_id != 'sb-allSongs') && (songbook_id != 'sb-favoriteSongs')){
-    $('#songList .float-menu').removeClass('special');
-  }
 
   return new Promise(function(resolve, reject) {
     if(songbook_id == window.songbook._id){
@@ -1084,6 +1087,9 @@ function loadSongbook(songbook_id) {
       }).catch(function(err){
         console.log(err);
       });
+    }
+    if((songbook_id != 'sb-allSongs') && (songbook_id != 'sb-favoriteSongs')){
+      $('#songList .float-menu').removeClass('special');
     }
   });
 }

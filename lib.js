@@ -870,6 +870,7 @@ function buildSongbookList(songs, target_class='songbook_content',
     window.songbook_edit_togglesongs_list = new List(target_class, options, values);
     bindSearchToList(window.songbook_edit_togglesongs_list, '#songListEdit');
   }
+  updateAllLinks();
   return;
 }
 function dataxInBookUpdate(song, remove=false){
@@ -1075,6 +1076,7 @@ function editSong() {
       $('#song-edit').toggleClass('sidebar-open').find('.search').focus();
     });
   let cclis_text = $('cclis').text().replace('CCLIS: ', '');
+  $('#song cclis').wrap('<div style="margin-bottom: 1rem;"></div>')
   $('#song cclis').before('<label>CCLIS: <input id="cclis_checkbox" onchange="$(\'cclis\').toggle();"'+(cclis_text ? 'checked' : '')+' type="checkbox"></input> </label>');  
   if(cclis_text){
     $('cclis').show();
@@ -1166,7 +1168,7 @@ function prepSaveSong(element) {
 function prepExport(){
   document.getElementById('pdf_progress').style.width = '0%';
   document.getElementById('pdf_progress_text').innerHTML = '0%';
-  document.querySelector('iframe').src = "";
+
   $('#display_chords').trigger('change');
  
   //webworker stuff
@@ -1174,8 +1176,7 @@ function prepExport(){
     window.pdfFormatter = new Worker('pdfformatter.js');
     pdfFormatter.onmessage = function(e) {
       if(e.data[0] == 'pdf'){
-        document.querySelector('iframe').src = e.data[1];
-        document.getElementById('downloadPDF').href = e.data[1];
+        document.getElementById('pdf').contentWindow.yourMethod(e.data[1]);
         console.log('Message received from worker');
       }
       else if(e.data[0] == 'progress'){
@@ -1670,6 +1671,66 @@ function loadSongPlayer(){
   }
 }
 
+function makeUserNameDraggable(){
+  let container = document.getElementById('username_d').parentElement;
+  let dragItem = container.parentElement;
+
+  let active = false;
+  let currentY;
+  let initialY;
+  let yOffset = 0;
+
+  container.addEventListener("touchstart", dragStart, false);
+  container.addEventListener("touchend", dragEnd, false);
+  container.addEventListener("touchmove", drag, false);
+
+  function dragStart(e) {
+    yOffset = 0;
+    active = false;
+
+    if (e.type === "touchstart") {
+      initialY = e.touches[0].clientY - yOffset;
+    } else {
+      initialY = e.clientY - yOffset;
+    }
+    dragItem.style.transition = "none";
+  }
+
+  function dragEnd(e) {
+    if(Math.abs(yOffset)> 30){
+      window.location.hash = '#';
+    }
+    dragItem.style.removeProperty("transition");
+    dragItem.style.removeProperty("transform");
+  }
+
+  function drag(e) {
+    if(window.location.hash == ''){
+      return;
+    }
+    e.preventDefault();
+  
+    if (e.type === "touchmove") {
+      currentY = e.touches[0].clientY - initialY;
+    } else {
+      currentY = e.clientY - initialY;
+    }
+    yOffset = currentY;
+
+    if(active) {
+      setTranslate(currentY, dragItem);
+    }
+    if(!active && Math.abs(yOffset) > 10) {
+      active = true;
+    }
+  }
+
+  function setTranslate(yPos, el) {
+    el.style.transform = "translate3d(0px, " + yPos + "px, 0)";
+  }
+}
+makeUserNameDraggable();
+
 function onPlayerReady(event) {
   let ids = window.youtube_links.map(link => link.match(/(be\/|v\=)([-\w]+)\S/)[0].replace('be/','').replace('v=',''));
   window.player.cuePlaylist(ids);
@@ -1706,7 +1767,12 @@ function toggleLoop(){
 
 }
 function pauseVideo() {
-  window.player.pauseVideo();
+  try {
+    window.player.pauseVideo();
+  } 
+  catch(error) {
+    console.log(error);
+  }
 }
 function playVideo() {
   window.player.playVideo();

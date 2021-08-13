@@ -9,6 +9,7 @@
   --background-color: white;
   --background-color-rgb: 255,255,255;
   --text-color: black;
+  --light-text-color: #555;
 
   --box-shadow-var: 0 0 20px 2px rgba(0, 0, 0, 0.2);
   --btn-shadow-var: 0 2px 2px 2px rgba(0, 0, 0, 0.1);
@@ -24,6 +25,7 @@
   --background-color: #333;
   --background-color-rgb: 51,51,51;
   --text-color: white;
+  --light-text-color: #bbb;
 
   --box-shadow-var: 0 0 20px 2px rgba(0, 0, 0, 0.5);
   --btn-shadow-var: 0 2px 2px 2px rgba(0, 0, 0, 0.3);
@@ -73,7 +75,6 @@
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
 "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans",
 "Droid Sans", "Helvetica Neue", sans-serif;
-  overflow-wrap: break-word;
 }
 /*normalize*/
 html {
@@ -358,6 +359,13 @@ legend {
   --background-color: var(--edit-color);
   background-color: var(--background-color);
 }
+#pdf {
+  width:100%; 
+  height: calc(100vh - 12rem);
+}
+.fullscreen #pdf {
+  height: calc(100vh - 9rem);
+}
 
 /*CSS FOR Song Display*/
 #song song * {
@@ -507,18 +515,21 @@ stitle,
   border: 1px #EEE dashed;
 }
 /*Overt,overb, moving are for sortable*/
-.overt { 
-  border-top: 1px dashed #000 !important;
-  border-top-right-radius: 0;
-  border-top-left-radius: 0;
+.overt > * { 
+  box-shadow: var(--highlight-color) 0px -10px;
+  transform: translateY(10px);
+  background-color: var(--edit-color);
+  z-index: 10;
 }
-.overb { 
-  border-bottom: 1px dashed #000 !important; 
-  border-bottom-right-radius: 0;
-  border-bottom-left-radius: 0;
+.overb > * { 
+  box-shadow: var(--highlight-color) 0px 10px;
+  transform: translateY(-10px);
+  background-color: var(--edit-color);
+  z-index: 10;
 }
-.moving { 
+.moving > * { 
   transform: scale(0.8); 
+  background-color: var(--highlight-color) !important;
 }
 .list {
   min-height: 2rem;
@@ -560,7 +571,7 @@ stitle,
 [contenteditable='true']:focus, .contenteditable-disabled:focus {
   border: 1px dashed darkblue;
 }
-.contenteditable-disabled {color: #555; cursor: pointer}
+.contenteditable-disabled {color: var(--light-text-color); cursor: pointer}
 .contenteditable-disabled:focus {cursor: pointer; color: black;}
 [contenteditable=true]:empty:not(:focus):before{
   color:grey;
@@ -1086,6 +1097,7 @@ input[type="number"] {
   .column {
     transform: translate3d(0, max(100vh, 800px), 0);
     height: calc(100vh - 4rem);
+    opacity: 0;
   }
   fieldset.closed-mobile {
     height: 1.857rem;
@@ -1102,27 +1114,33 @@ input[type="number"] {
   .songbookList main {
     transform: translate3d(0, 4rem, 0);
     height: calc(100vh - 4rem);
+    opacity: 1;
   }
   .songbookList #songbookList {
     transform: translate3d(0, 0, 0);
+    opacity: 1;
   }
 
   /*SongList */
   .songList main,
   .songList #songbookList {
     transform: translate3d(0, 0, 0);
+    opacity: 1;
   }
   .songList #songList {
     transform: translate3d(0, 4rem, 0);
+    opacity: 1;
   }
   /*Song */
   .song main,
   .song #songbookList,
   .song #songList {
     transform: translate3d(0, 0, 0);
+    opacity: 1;
   }
   .song #song {
     transform: translate3d(0, 4rem, 0);
+    opacity: 1;
   }
 
   .sidebar {
@@ -1130,14 +1148,15 @@ input[type="number"] {
     top: 0;
     bottom: 0;
     right: 0;
-    width: 280px;
-    transform: translate3d(280px, 0, 0);
+    width: 90vw;
+    transform: translate3d(90vw, 0, 0);
   }
 
   /*Focus edit*/
   .edit.songList #songList .sidebar,
   .edit.song #song .sidebar {
-    transform: translate3d(250px, 0, 0);
+    transform: translate3d(15.6rem, 0, 0);
+    width: 17.5rem;
   }
   .edit.songList #songList .sidebar-open,
   .edit.song #song .sidebar-open {
@@ -1150,12 +1169,14 @@ input[type="number"] {
   .export #songList,
   .song.export #song {
     transform: translate3d(0, 0, 0);
+    opacity: 1;
   }
   .export #export {
     transform: translate3d(0, 4rem, 0);
+    opacity: 1;
   }
   .export #export .sidebar {
-    transform: translate3d(250px, 0, 0);
+    transform: translate3d(80vw, 0, 0);
   }
   .export #export .sidebar-open {
     transform: translate3d(0, 0, 0);
@@ -1186,6 +1207,9 @@ input[type="number"] {
   .edit stitle,
   .edit #songbook_header {
     position: initial;
+  }
+  #pdf {
+    height: calc(100vh - 7rem)
   }
 }
 /** Phone in portrait and landscape**/
@@ -1380,10 +1404,7 @@ only screen and (max-height: 31.25rem) {
     flex-shrink: 2;
   }
   body.export #export .sidebar {
-    flex: 0 0 22.5rem;
-  }
-  body.export #export .sidebar-open {
-    flex: 0 0 22.5rem;
+    flex: 2 0 22.5rem;
   }
   body.export #export {
     flex: 0 0.05 50rem;
