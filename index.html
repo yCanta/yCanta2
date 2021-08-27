@@ -837,8 +837,14 @@
           console.log('Created: ', dbName);
         });
 
-        $('input.deletable').wrap('<span class="deleteicon" />').after($('<span/>').click(function() {
-          $(this).prev('input').val('').trigger('change').focus()[0].dispatchEvent(new KeyboardEvent("keyup"));
+        $('input.deletable').wrap('<span class="deleteicon" />').after($('<span/>').on('mouseup touchend',function(e){
+          e.preventDefault();
+          $(this).prev('input').val('').trigger('change')[0].dispatchEvent(new KeyboardEvent("keyup"));
+          if(e.type=='mouseup') {
+            $(this).prev('input').focus();
+          }else {
+            $(this).prev('input').blur();
+          }
         }));
         // URL navigation implementing
         window.addEventListener("hashchange", hashchanged, false);
