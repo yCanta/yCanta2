@@ -712,7 +712,7 @@
                     <button onclick="toggleFullscreen(this)" class="icon-rotate2x icon-fl-right emoji" style="  border-radius: 2rem;">↔</button>
                   </h3>
                 </div>
-                <iframe src="pdfjs-2.8.335-dist/web/viewer.html?file=" id="pdf"></iframe>
+                <iframe id="pdf"></iframe>
               </div>
             </div>
           </div>
@@ -727,7 +727,9 @@
       <h5 style="margin: 0; color: darkgray;" class="handle">Song</h5>
       <b class="title" style="overflow-wrap: break-word;"></b>
       <div class="content"></div>
-      <button class="close btn" onclick="$('#dialog').hide(); pauseVideo();">X</button>
+      <div class="center_contents">
+        <button class="close btn" onclick="$('#dialog').hide(); pauseVideo();">X</button>
+      </div>
     </dialog>
     <footer>
     </footer>
@@ -835,8 +837,14 @@
           console.log('Created: ', dbName);
         });
 
-        $('input.deletable').wrap('<span class="deleteicon" />').after($('<span/>').click(function() {
-          $(this).prev('input').val('').trigger('change').focus()[0].dispatchEvent(new KeyboardEvent("keyup"));
+        $('input.deletable').wrap('<span class="deleteicon" />').after($('<span/>').on('mouseup touchend',function(e){
+          e.preventDefault();
+          $(this).prev('input').val('').trigger('change')[0].dispatchEvent(new KeyboardEvent("keyup"));
+          if(e.type=='mouseup') {
+            $(this).prev('input').focus();
+          }else {
+            $(this).prev('input').blur();
+          }
         }));
         // URL navigation implementing
         window.addEventListener("hashchange", hashchanged, false);

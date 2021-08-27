@@ -1129,6 +1129,8 @@ function prepExport(){
   document.getElementById('pdf_progress_text').innerHTML = '0%';
 
   $('#display_chords').trigger('change');
+
+  $('#pdf')[0].src = "pdfjs-2.8.335-dist/web/viewer.html?file=";
  
   //webworker stuff
   if(typeof(window.pdfFormatter) == 'undefined') {
