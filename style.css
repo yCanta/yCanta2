@@ -266,6 +266,10 @@ legend {
   user-select: none;
   color: var(--text-color);
 }
+.center_contents {
+  display:flex;
+  justify-content:center;
+}
 #dialog[data-use="player"]{
   width: 18.75rem;
   width: min(18.75rem, 60vh);
@@ -292,11 +296,7 @@ legend {
   position: absolute;
   bottom: 0;
   padding: 5px .5rem 5px .5rem;
-  left: 0;
-  right: 0;
   cursor: pointer;
-  margin-left: auto;
-  margin-right: auto;
 }
 #dialog small {
   font-size: .65rem;
