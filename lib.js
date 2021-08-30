@@ -1418,7 +1418,7 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
         else {
           dragEl.style.transform = 'translate3d(0,'+ parseInt(disty) + 'px, 0)';
           if(active){
-            active.style.transform = 'translate3d(0,'+ parseInt((disty+60)) + 'px, 0)';
+            active.style.transform = 'translate3d(0, calc('+ parseInt(disty) + 'px + 4rem), 0)';
           }
           e.preventDefault();   
         }
