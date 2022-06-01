@@ -631,7 +631,7 @@ async function updateUser(){
       console.log(err);
     }
     for(sb of result.rows.sort((a, b) => a.doc.title.localeCompare(b.doc.title))){
-      html += `<li><a href="#${sb.doc._id}">${sb.doc.title}</a></li>`;
+      html += `<li><a class="link" href="#${sb.doc._id}">${sb.doc.title}</a></li>`;
     }
   } else {html+='<li>None yet!</li>';}
   html += '</ul>';
@@ -644,7 +644,7 @@ async function updateUser(){
       console.log(err);
     }
     for(fav_song of result.rows.sort((a, b) => a.doc.title.localeCompare(b.doc.title))){
-      html += `<li><a href="#sb-favoriteSongs&${fav_song.doc._id}">${fav_song.doc.title}</a></li>`;
+      html += `<li><a class="link" href="#sb-favoriteSongs&${fav_song.doc._id}">${fav_song.doc.title}</a></li>`;
     }
   } else {html+='<li>None yet!</li>';}
   html += '</ul>';
