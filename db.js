@@ -9,7 +9,8 @@ function updateOnlineStatus(event) {
     event.type = 'windowLoad';
   }
   var condition = navigator.onLine ? "online" : "offline";
-  document.documentElement.className = condition;
+  document.documentElement.classList.add(condition);
+  document.documentElement.classList.remove(['offline','online'].filter(word => word != condition));
   online = navigator.onLine;
   console.log("beforeend", "Event: " + event.type + "; Status: " + condition);
 }
