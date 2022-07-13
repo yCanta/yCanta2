@@ -9,11 +9,10 @@ function updateOnlineStatus(event) {
     event.type = 'windowLoad';
   }
   var condition = navigator.onLine ? "online" : "offline";
-  document.documentElement.classList.remove("online");
-  document.documentElement.classList.remove("offline");
   document.documentElement.classList.add(condition);
+  document.documentElement.classList.remove(['offline','online'].filter(word => word != condition));
   online = navigator.onLine;
-  console.log("Event: " + event.type + "; Status: " + condition);
+  console.log("beforeend", "Event: " + event.type + "; Status: " + condition);
 }
 //Update Online status
 window.addEventListener('load', function() {
