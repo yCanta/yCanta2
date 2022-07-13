@@ -180,6 +180,11 @@ fieldset.closed legend {
   content: 'Hi, ';
   left: -2rem;
 }
+fieldset .content:not(:last-child) {
+  border-bottom: 1px solid var(--background-color);
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+}
 fieldset.closed .content {
   max-height: 0;
   max-width: 0;
