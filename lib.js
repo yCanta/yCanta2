@@ -676,7 +676,7 @@ async function updateUser(){
       console.log(err);
     }
     for(sb of result.rows.sort((a, b) => a.doc.title.localeCompare(b.doc.title))){
-      html += `<li><a href="#${sb.doc._id}">${sb.doc.title}</a></li>`;
+      html += `<li><a class="link" href="#${sb.doc._id}">${sb.doc.title}</a></li>`;
     }
   } else {html+='<li>None yet!</li>';}
   html += '</ul>';
@@ -689,7 +689,7 @@ async function updateUser(){
       console.log(err);
     }
     for(fav_song of result.rows.sort((a, b) => a.doc.title.localeCompare(b.doc.title))){
-      html += `<li><a href="#sb-favoriteSongs&${fav_song.doc._id}">${fav_song.doc.title}</a></li>`;
+      html += `<li><a class="link" href="#sb-favoriteSongs&${fav_song.doc._id}">${fav_song.doc.title}</a></li>`;
     }
   } else {html+='<li>None yet!</li>';}
   html += '</ul>';
@@ -1170,6 +1170,8 @@ function prepExport(){
   document.getElementById('pdf_progress_text').innerHTML = '0%';
 
   $('#display_chords').trigger('change');
+
+  $('#pdf')[0].src = "pdfjs-2.8.335-dist/web/viewer.html?file=";
  
   //webworker stuff
   if(typeof(window.pdfFormatter) == 'undefined') {
@@ -1457,7 +1459,7 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
         else {
           dragEl.style.transform = 'translate3d(0,'+ parseInt(disty) + 'px, 0)';
           if(active){
-            active.style.transform = 'translate3d(0,'+ parseInt((disty+60)) + 'px, 0)';
+            active.style.transform = 'translate3d(0, calc('+ parseInt(disty) + 'px + 4rem), 0)';
           }
           e.preventDefault();   
         }

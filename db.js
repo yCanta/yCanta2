@@ -138,6 +138,10 @@ function dbChanges() {
       window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
       $('#song song').attr('data-user-fav', (window.user.fav_songs.indexOf($('#song song').attr('data-id'))> -1 ? 'true': 'false'))
     }
+    //New default config saved
+    else if(change.doc._id.startsWith('cfg-')){
+      notyf.inf('Default config saved');
+    }
     //else... let it go! for now
     else {
       console.log('changed:',change.doc._id);
@@ -501,7 +505,7 @@ function loadRecentSongs(days=1000, number=15){
       if(date_hour != old_date_hour){
         ul_list += `<div style="margin-top: 1rem; font-weight: bold;">${date_hour}</div>`
       }
-      ul_list += `<li><a href="#sb-allSongs&${rec_song.doc._id}">${rec_song.doc.title}</a></li>`
+      ul_list += `<li><a class="link" href="#sb-allSongs&${rec_song.doc._id}">${rec_song.doc.title}</a></li>`
     }
     $('.updatedSongs .list').html(ul_list);
   }).catch(function(err){
