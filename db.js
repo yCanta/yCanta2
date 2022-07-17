@@ -188,7 +188,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     pin = $('#pin').val().trim();
   }
   if(!pwd){
-    pwd = $('#pwd').val();
+    pwd = $('#pwd').val().trim();
   }
   if(!remote_url && type == 'connect_remote'){
     remote_url = $('#remote_url').val();
@@ -387,12 +387,11 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
 
   async function takeNextStep(username, dbName) {  //after login
     //Store logged in status: pin for local, for remote we store pwd.
-    console.log(username, dbName)
     if(dbName.endsWith('(local)')){
-      localStorage.setItem('loggedin',JSON.stringify({dbName: dbName, username: username, pin:pin}));
+      localStorage.setItem('loggedin',JSON.stringify({dbName: dbName, username: username, pin: pin}));
     }
     else if(!public_computer && dbName.endsWith('(remote)')){
-      localStorage.setItem('loggedin',JSON.stringify({dbName: dbName, username: username, pwd:pwd}));
+      localStorage.setItem('loggedin',JSON.stringify({dbName: dbName, username: username, pwd: pwd}));
       //store username/pwd/url
       db.put({_id: '_local/u-'+username, pwd: pwd, remote_url: remote_url}, function callback(err, result) {
         if(!err) {
@@ -426,7 +425,6 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     //Update ui when db changes]s
     dbChanges();
 
-    localStorage.setItem('loggedin',JSON.stringify([dbName, username, pin]));
     //check dark mode and set for app
     let darkMode = localStorage.getItem(window.user._id+'darkMode');
     if(darkMode){
