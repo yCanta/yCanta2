@@ -110,7 +110,7 @@ function dbChanges() {
                    'var(--songList-color)');
       }
     }
-    else if(change.doc._id.startsWith('u-')){
+    else if(change.doc._id === window.user._id){
       let fav_sbs = change.doc.fav_sbs;
       //jquery remove all favs
       $('#songbooks .list li').each(function(){
@@ -203,35 +203,9 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     //initialize local database;
     db = new PouchDB(dbName);
     
-    //create User doc
-    let user = {
-      _id: 'u-'+username,
-      name: username,
-      fav_sbs: [],
-      fav_songs: []
-    }
-    window.user = user;
-    
     //UPDATE LOCAL STORAGE DATABASES
     addDBtoLocalStorage(dbName, 'local');
 
-    db.put(user, function callback(err, result) {
-      if(!err) {
-        console.log('added user: ', username);
-      }
-      else {
-        console.log(err);
-      }
-    });
-    //store user pin in a local doc
-    db.put({_id: '_local/u-'+username, pin: pin}, function callback(err, result) {
-      if(!err) {
-        console.log("added user's pin");
-      }
-      else {
-        console.log(err);
-      }
-    });
     //initialize list of categories
     var categories = {
       _id: 'categories',
@@ -255,10 +229,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     db.get('_local/u-'+username).then(function(localUser){
       if(localUser.pin == pin) {
         console.log('Pin is correct!');
-        db.get('u-'+username).then(function(response) {
-          window.user = response;
-          takeNextStep(username,dbName);
-        });
+        takeNextStep(username,dbName);
       }
       else { //if not then close the db
         console.log('Username or pin was incorrect');
@@ -273,15 +244,6 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
   }
   else if(type=="connect_remote"){
     console.log('Connecting to remote db');
-    //create User doc for window var.
-    let user = {
-      _id: 'u-'+username,
-      name: username,
-      fav_sbs: [],
-      fav_songs: []
-    }
-    window.user = user;
- 
     remote_url = parseUrl(remote_url, username, pwd);
     remoteDb = new PouchDB(remote_url, {skip_setup: true});
     var ajaxOpts = {
@@ -291,7 +253,6 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
         }
       }
     };
-
     try {
       let batman = await remoteDb.logIn(username, pwd, ajaxOpts);
       
@@ -315,6 +276,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
         alert('Username or Password are incorrect');
       }
       else {
+        alert('there was an error, please check your login information');
         console.log('Log in error:', error);
       }
     }
@@ -332,19 +294,6 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       if(localUser.pwd == pwd) {
         console.log('Pwd is correct!');
         remote_url = localUser.remote_url;
-        db.get('u-'+username).then(function(response) {
-          window.user = response;
-        }).catch(function(error){
-          console.log('username does not exist in database at this time, creating temporary for window object');
-          let user = {
-            _id: 'u-'+username,
-            name: username,
-            fav_sbs: [],
-            fav_songs: []
-          }
-          window.user = user;
-        });
-
         remote_url = parseUrl(remote_url, username, pwd);
         remoteDb = new PouchDB(remote_url, {skip_setup: true});
         var ajaxOpts = {
@@ -389,23 +338,59 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     //Store logged in status: pin for local, for remote we store pwd.
     if(dbName.endsWith('(local)')){
       localStorage.setItem('loggedin',JSON.stringify({dbName: dbName, username: username, pin: pin}));
+      //store user pin in a local doc
+      db.upsert('_local/u-'+username, function (doc) {
+        doc.pin = pin;
+        return doc;
+      }).then(function () {
+        console.log("updated user's pin");
+      }).catch(function (err) {
+        console.log(err);
+      });
     }
     else if(!public_computer && dbName.endsWith('(remote)')){
       localStorage.setItem('loggedin',JSON.stringify({dbName: dbName, username: username, pwd: pwd}));
       //store username/pwd/url
-      db.put({_id: '_local/u-'+username, pwd: pwd, remote_url: remote_url}, function callback(err, result) {
+      db.upsert('_local/u-'+username, function (doc) {
+        doc.pwd = pwd;
+        doc.remote_url = remote_url;
+        return doc;
+      }).then(function () {
+        console.log("updated user's pwd");
+      }).catch(function (err) {
+        console.log(err);
+      });
+    }
+    //Setup sync for remote database connections
+    if(db.name.endsWith('(remote)')){
+      let info = await remoteDb.info();
+      let localInfo = await db.info();
+      
+      console.log('doing a onetime sync...');
+      firstSync = await db.sync(remoteDb, {
+        retry: true
+      }).on('change', function (change) {
+        console.log('Synced some stuff', parseInt(parseInt(change.change.last_seq.split('-')[0].replace('-',''))/parseInt(info.update_seq.replace('-',''))*100)+'%');
+        // !!!!============ Need some kind of loading dialog/indication
+      }).on('error', function (err) {
+        // totally unhandled error (shouldn't happen)
+      });
+
+      console.log('sync complete');
+      let categories = {
+        _id: 'categories',
+        categories: ["Adoration", "Aspiration/Desire", "Assurance", "Atonement", "Awe", "Bereavement", "Brokenness", "Calvary", "Christ as Bridegroom", "Christ as King", "Christ as Lamb", "Christ as Redeemer", "Christ as Savior", "Christ as Shepherd", "Christ as Son", "Christ's Blood", "Christ's Return", "Church as Christ's Body", "Church as Christ's Bride", "Church as God's House", "Cleansing", "Comfort", "Commitment", "Compassion", "Condemnation", "Consecration", "Conviction of Sin", "Courage", "Creation", "Cross", "Dedication/Devotion", "Dependence on God", "Encouragement", "Endurance", "Eternal Life", "Evangelism", "Faith", "Faithfulness", "Fear", "Fear of God", "Fellowship", "Forgiveness", "Freedom", "God as Creator", "God as Father", "God as Refuge", "God's Creation", "God's Faithfulness", "God's Glory", "God's Goodness", "God's Guidance", "God's Harvest", "God's Holiness", "God's Love", "God's Mercy", "God's Power", "God's Presence", "God's Strength", "God's Sufficiency", "God's Timelessness", "God's Victory", "God's Wisdom", "God's Word", "Godly Family", "Grace", "Gratefulness", "Healing", "Heaven", "Holiness", "Holy Spirit", "Hope", "Humility", "Hunger/Thirst for God", "Incarnation", "Invitation", "Jesus as Messiah", "Joy", "Kingdom of God", "Knowing Jesus", "Lordship of Christ", "Love for God", "Love for Jesus", "Love for Others", "Majesty", "Meditation", "Mercy", "Missions", "Mortality", "Neediness", "New Birth", "Obedience", "Oneness in Christ", "Overcoming Sin", "Patience", "Peace", "Persecution", "Praise", "Prayer", "Proclamation", "Provision", "Purity", "Purpose", "Quietness", "Redemption", "Refreshing", "Repentance", "Rest", "Resurrection", "Revival", "Righteousness", "Salvation", "Sanctification", "Security", "Seeking God", "Service", "Servanthood", "Sorrow", "Spiritual Warfare", "Submission to God", "Suffering for Christ", "Surrender", "Temptation", "Trials", "Trust", "Victorious Living", "Waiting on God", "Worship", "-----", "Christmas", "Easter", "Good Friday", "Thanksgiving", "-----", "Baptism", "Birth", "Closing Worship", "Communion", "Death", "Engagement", "Opening Worship", "Wedding", "-----", "Children's Songs", "Rounds", "Scripture Reading", "Scripture Songs", "-----", "Needs Work", "Needs Chord Work", "Needs Categorical Work", "Duplicate", "-----", "Norway", "Secular", "Delete", "Spanish words", "Celebration"]
+      }
+      db.put(categories, function callback(err, result) {
         if(!err) {
-          console.log("added user's pwd");
+          console.log('added categories');
         }
         else {
           console.log(err);
         }
       });
-    }
 
-    //Setup sync for remote database connections
-    if(db.name.endsWith('(remote)')){
-      let info = await remoteDb.info();
+      //now set up the live sync
       syncHandler = db.sync(remoteDb, {
         live: true,
         retry: true
@@ -414,17 +399,48 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
         // yo, something changed!
       }).on('paused', function (info) {
         // replication was paused, usually because of a lost connection
+        //notyf.info('Connection to server interupted', 'yellow');
       }).on('active', function (info) {
+        //notyf.info('Connection to server resumed', 'yellow');
         // replication was resumed
+      }).on('complete', function (err) {
+        console.log('complete');
+        // totally unhandled error (shouldn't happen)
       }).on('error', function (err) {
         // totally unhandled error (shouldn't happen)
       });
     }
+    
+    //Get user document or set it up
+    try {
+      let response = await db.get('u-'+username);
+      window.user = response;
+    }
+    catch (error){
+      console.log('username does not exist in database at this time, creating one for this user');
+      let user = {
+        _id: 'u-'+username,
+        name: username,
+        fav_sbs: [],
+        fav_songs: []
+      }
+      window.user = user;
+      db.put(user, function callback(err, result) {
+        if(!err) {
+          console.log('added user to database: ', username);
+        }
+        else {
+          console.log(err);
+        }
+      });
+    };
 
     //layout the welcome?  maybe this goes in set login state?
     //Update ui when db changes]s
     dbChanges();
-
+    loadRecentSongs();
+    initializeSongbooksList();
+    
     //check dark mode and set for app
     let darkMode = localStorage.getItem(window.user._id+'darkMode');
     if(darkMode){
@@ -442,8 +458,6 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     }
 
     window.yCantaName = dbName;
-    loadRecentSongs();
-    initializeSongbooksList();
     setLoginState();
     //initialized
     window.songbook = {};

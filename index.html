@@ -122,8 +122,8 @@
               </div>
               <div class="content">
                 <b>Import</b>
-                <div>Choose a zip of V1 songs or a json file of V2 and upload it below.</div>
-                <span style="margin: 1rem;"><input type="file" id="file" name="file" accept=".json,.zip" style="max-width: 200px; background: var(--edit-color);"/><button class="btn" onclick="startHandlingFiles();">Upload</button></span>
+                <div>Choose a zip of V1 songs or a json file of V2 and import it below.</div>
+                <span style="margin: 1rem;"><input type="file" id="file" name="file" accept=".json,.zip" style="max-width: 200px; background: var(--edit-color);"/><button class="btn" onclick="startHandlingFiles();">Import</button></span>
                 <div id="result">
                 </div>
               </div>
@@ -752,6 +752,7 @@
     <script src="pouchdb.min.js"></script>
     <script src="pouchdb.memory.min.js"></script>
     <script src="pouchdb.authentication.min.js"></script>
+    <script src="pouchdb.upsert.min.js"></script>
     <script src="notyf.min.js"></script>
 
     <script src="db.js"></script>

@@ -2,6 +2,7 @@ var CACHE = 'cache-and-update';
 var prefetchedURLs = [
   'jquery-3.5.1.min.js',
   'pouchdb.min.js',
+  'pouchdb.upsert.min.js',
   'pdfkit.standalone.js',
   'blob-stream.js',
   'db.js',
