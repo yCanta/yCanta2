@@ -54,11 +54,13 @@ function dbChanges() {
       //only load song if it's the one that's up.
       if(window.song._id === change.doc._id && document.body.classList.contains('song')){
         loadSong(change.doc._id);
-        notyf.info('Song updated', 'var(--song-color)');
+        if(!window.silent){ notyf.info('Song updated', 'var(--song-color)') };
       } else {
-        notyf.info(`Song "${change.doc.title}" updated by ${change.doc.editedBy}`,
+        if(!window.silent){ 
+          notyf.info(`Song "${change.doc.title}" updated by ${change.doc.editedBy}`,
                    'var(--song-color)',
                    `#${window.songbook._id}&${change.doc._id}`);
+        }
       }
       //update all songs in songbooks
       if(window.songbook_list != undefined ){
@@ -83,11 +85,13 @@ function dbChanges() {
       if(window.songbook._id === change.doc._id && (document.body.classList.contains('songList') || document.body.classList.contains('song'))){
         window.songbook = '';
         loadSongbook(change.doc._id);
-        notyf.info('Songbook updated', 'var(--songList-color)');
+        if(!window.silent){ notyf.info('Songbook updated', 'var(--songList-color)'); }
       } else {
-        notyf.info(`Songbook "${change.doc.title}" updated by ${change.doc.editedBy}`,
+        if(!window.silent){ 
+          notyf.info(`Songbook "${change.doc.title}" updated by ${change.doc.editedBy}`,
                    'var(--songList-color)',
                    `#${change.doc._id}`);
+        }
       }
       //update the songbook entry in songbooks_list
       if(window.songbooks_list != undefined){
@@ -106,8 +110,10 @@ function dbChanges() {
           comments += `<div><b>${comment.user} </b>${new Date(comment.date).toLocaleTimeString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})}<pre>${comment.comment}</pre></div>`;
         }
         $('li[data-song-id="'+song_id+'"] .comments').html(comments);
-        notyf.info(`Comment added to "${song_id}" by ${change.doc.comments[change.doc.comments.length - 1].user}`,
+        if(!window.silent){ 
+          notyf.info(`Comment added to "${song_id}" by ${change.doc.comments[change.doc.comments.length - 1].user}`,
                    'var(--songList-color)');
+        }
       }
     }
     else if(change.doc._id === window.user._id){
@@ -132,15 +138,14 @@ function dbChanges() {
         loadSongbook('sb-favoriteSongs');
       }
       updateUser();
-      notyf.info(`User Updated "${change.doc.name}"`,
-                   'var(--edit-color)');
+      if(!window.silent){ notyf.info(`User Updated "${change.doc.name}"`, 'var(--edit-color)'); }
       window.songbooks_list.reIndex();
       window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
       $('#song song').attr('data-user-fav', (window.user.fav_songs.indexOf($('#song song').attr('data-id'))> -1 ? 'true': 'false'))
     }
     //New default config saved
     else if(change.doc._id.startsWith('cfg-')){
-      notyf.inf('Default config saved');
+      if(!window.silent){ notyf.inf('Default config saved'); }
     }
     //else... let it go! for now
     else {
@@ -335,6 +340,20 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
   }
 
   async function takeNextStep(username, dbName) {  //after login
+    window.silent = true;
+    //initialized
+    window.songbook = {};
+    window.song = {};
+    dbChanges();
+    window.user = {
+      _id: 'u-'+username,
+      name: username,
+      fav_sbs: [],
+      fav_songs: []
+    }
+    window.yCantaName = dbName;
+    setLoginState();
+
     //Store logged in status: pin for local, for remote we store pwd.
     if(dbName.endsWith('(local)')){
       localStorage.setItem('loggedin',JSON.stringify({dbName: dbName, username: username, pin: pin}));
@@ -370,12 +389,16 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       firstSync = await db.sync(remoteDb, {
         retry: true
       }).on('change', function (change) {
-        console.log('Synced some stuff', parseInt(parseInt(change.change.last_seq.split('-')[0].replace('-',''))/parseInt(info.update_seq.replace('-',''))*100)+'%');
+        let percentage = parseInt(parseInt(change.change.last_seq.split('-')[0].replace('-',''))/parseInt(info.update_seq.replace('-',''))*100);
+        console.log('Synced some stuff', percentage+'%');
+        document.documentElement.style.setProperty('--status-text',`"loading . . . ${percentage}%"`);
+        document.documentElement.style.setProperty('--animation',`3s loading infinite`);
         // !!!!============ Need some kind of loading dialog/indication
       }).on('error', function (err) {
         // totally unhandled error (shouldn't happen)
       });
-
+      document.documentElement.style.setProperty('--status-text',`""`);
+      document.documentElement.style.setProperty('--animation',`"unset"`);
       console.log('sync complete');
       let categories = {
         _id: 'categories',
@@ -411,10 +434,12 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       });
     }
     
+    delete window.silent;
     //Get user document or set it up
     try {
       let response = await db.get('u-'+username);
       window.user = response;
+      updateUser();
     }
     catch (error){
       console.log('username does not exist in database at this time, creating one for this user');
@@ -437,7 +462,6 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
 
     //layout the welcome?  maybe this goes in set login state?
     //Update ui when db changes]s
-    dbChanges();
     loadRecentSongs();
     initializeSongbooksList();
     
@@ -457,11 +481,6 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       document.getElementById('fontSizeOutput').value = fontSize + 'px';
     }
 
-    window.yCantaName = dbName;
-    setLoginState();
-    //initialized
-    window.songbook = {};
-    window.song = {};
     //wipe login cause we were successfull!
     $('#login :input').each(function(){$(this).val('')});
     return true;

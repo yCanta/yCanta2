@@ -161,6 +161,19 @@ html::after {
   display: block;
   position: fixed;
   bottom: 0;
+  content: var(--status-text);
+  background: var(--song-color);
+  text-align: center;
+  animation: var(--animation);
+
+}
+@keyframes loading { 
+  from { 
+    filter: drop-shadow(-99vw 4px 6px black);
+  } 
+  to { 
+    filter: drop-shadow(99vw 4px 6px black);
+  } 
 }
 html, body, main{
   height: 100%; 
