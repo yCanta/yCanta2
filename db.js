@@ -259,7 +259,11 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       }
     };
     try {
-      let batman = await remoteDb.logIn(username, pwd, ajaxOpts);
+      let batman = await remoteDb.logIn(username, pwd, ajaxOpts).catch(function (error){
+        console.log(error);
+        alert("There was an error on logging in - check your internet")
+        dbLogout();
+      });;
       
       console.log("I'm Batman.", batman);
       let info = await remoteDb.info();
@@ -296,37 +300,37 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     }
     try { //change to check first if online, if so try logging in there first then log in to local once success, otherwise log in like we have here with locally saved pwd.
       let localUser = await db.get('_local/u-'+username);
-      if(localUser.pwd == pwd) {
-        console.log('Pwd is correct!');
-        remote_url = localUser.remote_url;
-        remote_url = parseUrl(remote_url, username, pwd);
-        remoteDb = new PouchDB(remote_url, {skip_setup: true});
-        var ajaxOpts = {
-          ajax: {
-            headers: {
-              Authorization: 'Basic ' + window.btoa(username+':'+pwd)
-            }
+      remote_url = localUser.remote_url;
+      remote_url = parseUrl(remote_url, username, pwd);
+      remoteDb = new PouchDB(remote_url, {skip_setup: true});
+      var ajaxOpts = {
+        ajax: {
+          headers: {
+            Authorization: 'Basic ' + window.btoa(username+':'+pwd)
           }
-        };
-
-        remoteDb.logIn(username, pwd, ajaxOpts).then(async function (batman) {
-          console.log("I'm Batman.", batman);
-          takeNextStep(username,dbName);
-          
-        }).catch(function(error){
-          dbLogout();
-          if(error.name == 'unauthorized' || error.name == 'forbidden'){
-            alert('Username or Password are incorrect');
+        }
+      };
+      remoteDb.logIn(username, pwd, ajaxOpts).then(async function (batman) {
+        console.log("I'm Batman.", batman);
+        takeNextStep(username,dbName);
+        
+      }).catch(function(error){
+        if(error.name == 'unauthorized' || error.name == 'forbidden'){
+          alert('Username or Password are incorrect');
+        }
+        else {
+          console.log('Log in error:', error);
+          console.log('attempting offline login');
+          if(localUser.pwd == pwd) {
+            console.log('offline login successful');
+            takeNextStep(username, dbName);
           }
           else {
-            console.log('Log in error:', error);
+            dbLogout();
+            alert('you are offline and pwd or username are incorrect');
           }
-        });
-      }
-      else {
-        dbLogout();
-        alert('pwd or username are incorrect');
-      }
+        }
+      });
     } 
     catch(err) {
       console.log(err);
@@ -382,20 +386,19 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     }
     //Setup sync for remote database connections
     if(db.name.endsWith('(remote)')){
-      let info = await remoteDb.info();
+      let info = await remoteDb.info().catch(function(error){
+        console.log(error)
+      });
       let localInfo = await db.info();
-      
       console.log('doing a onetime sync...');
-      firstSync = await db.sync(remoteDb, {
-        retry: true
-      }).on('change', function (change) {
+      firstSync = await db.sync(remoteDb).on('change', function (change) {
         let percentage = parseInt(parseInt(change.change.last_seq.split('-')[0].replace('-',''))/parseInt(info.update_seq.replace('-',''))*100);
         console.log('Synced some stuff', percentage+'%');
         document.documentElement.style.setProperty('--status-text',`"loading . . . ${percentage}%"`);
         document.documentElement.style.setProperty('--animation',`3s loading infinite`);
         // !!!!============ Need some kind of loading dialog/indication
-      }).on('error', function (err) {
-        // totally unhandled error (shouldn't happen)
+      }).catch(function (error) {
+        console.log(error);
       });
       document.documentElement.style.setProperty('--status-text',`""`);
       document.documentElement.style.setProperty('--animation',`"unset"`);
@@ -428,8 +431,8 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
         // replication was resumed
       }).on('complete', function (err) {
         console.log('complete');
-        // totally unhandled error (shouldn't happen)
-      }).on('error', function (err) {
+      }).catch(function (err) {
+        console.log(err);
         // totally unhandled error (shouldn't happen)
       });
     }
