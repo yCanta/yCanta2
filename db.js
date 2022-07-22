@@ -145,7 +145,7 @@ function dbChanges() {
     }
     //New default config saved
     else if(change.doc._id.startsWith('cfg-')){
-      if(!window.silent){ notyf.inf('Default config saved'); }
+      if(!window.silent){ notyf.info('Default config saved'); }
     }
     //else... let it go! for now
     else {
@@ -263,9 +263,11 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
         console.log(error);
         alert("There was an error on logging in - check your internet")
         dbLogout();
-      });;
+      });
       
       console.log("I'm Batman.", batman);
+      window.roles = batman.roles.reduce((a, v) => ({ ...a, [v]: true}), {})
+      document.documentElement.classList.add(...batman.roles); 
       let info = await remoteDb.info();
       dbName = info.db_name + '(remote)';
 
@@ -299,8 +301,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       db = new PouchDB(dbName);
     }
     try { //change to check first if online, if so try logging in there first then log in to local once success, otherwise log in like we have here with locally saved pwd.
-      let localUser = await db.get('_local/u-'+username);
-      remote_url = localUser.remote_url;
+      remote_url = JSON.parse(localStorage.getItem('databases')).filter(el => el.name == dbName)[0].url;
       remote_url = parseUrl(remote_url, username, pwd);
       remoteDb = new PouchDB(remote_url, {skip_setup: true});
       var ajaxOpts = {
@@ -312,15 +313,18 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       };
       remoteDb.logIn(username, pwd, ajaxOpts).then(async function (batman) {
         console.log("I'm Batman.", batman);
+        window.roles = batman.roles.reduce((a, v) => ({ ...a, [v]: true}), {}) 
+        document.documentElement.classList.add(...batman.roles); 
         takeNextStep(username,dbName);
         
-      }).catch(function(error){
+      }).catch(async function(error){
         if(error.name == 'unauthorized' || error.name == 'forbidden'){
           alert('Username or Password are incorrect');
         }
         else {
           console.log('Log in error:', error);
           console.log('attempting offline login');
+          let localUser = await db.get('_local/u-'+username);
           if(localUser.pwd == pwd) {
             console.log('offline login successful');
             takeNextStep(username, dbName);

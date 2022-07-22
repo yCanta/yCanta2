@@ -693,11 +693,11 @@ async function updateUser(){
     }
   } else {html+='<li>None yet!</li>';}
   html += '</ul>';
-  html += '<h4>Permissions</h4><ul>Edit View Admin</ul>'
+  html += `<h4>Permissions</h4><ul>${Object.keys(window.roles).join(', ').toUpperCase()}</ul>`;
   document.getElementById('user_content').innerHTML = html;
 }
 async function loadCategories(){
-  let html = `<h3>Ordered List <a href="#" onclick="loadRawDbObject('categories',$('#category_content'),'loadCategories();');" class="mirror">&#9998;</a></h3>`;
+  let html = `<h3>Ordered List <a href="#" onclick="loadRawDbObject('categories',$('#category_content'),'loadCategories();');" class="mirror admin">&#9998;</a></h3>`;
 
   try {
     var result = await db.get('categories');
@@ -710,6 +710,58 @@ async function loadCategories(){
   }
   html += '</ul>';
   document.getElementById('category_content').innerHTML = html;
+}
+
+async function getAllUsers(){
+  let loggedIn = JSON.parse(localStorage.getItem('loggedin'));
+  let username = 'admuser';
+  let password = '3883cac49eb95bab11ffe92a87c5ccfb';
+  var myHeaders = new Headers();
+  myHeaders.append("Accept", "application/json");
+  myHeaders.append("Content-Type", "application/json");
+  myHeaders.append('Authorization', 'Basic ' + btoa(username + ':' + password));
+
+  var requestOptions = {
+    method: 'GET',
+    headers: myHeaders,
+    redirect: 'follow'
+  };
+  try { 
+    let admin_response = await fetch("http://72.10.217.136:25984/_node/nonode@nohost/_config", requestOptions)
+    let admin = await admin_response.text();
+    admin = JSON.parse(admin);
+    console.log(admin.admins);
+    let response = await fetch("http://72.10.217.136:25984/_users/_all_docs?include_docs=true&startkey=\"org.couchdb.user:\"", requestOptions)
+    let non_admin = await response.text();
+    non_admin = JSON.parse(non_admin);
+    console.log(non_admin.rows);
+    return {"admins": admin.admins, "users": non_admin.rows};// data;
+  }
+  catch(error) {
+    console.log(error);
+    return error;
+  }
+}
+
+async function loadAllUsers(){
+  //let html = `<h3>Ordered List <a href="#" onclick="loadRawDbObject('categories',$('#category_content'),'loadCategories();');" class="mirror admin">&#9998;</a></h3>`;
+  
+  let users = await getAllUsers();
+
+  if(users instanceof Error) {
+    alert('you are offline perhaps!');
+    return
+  }
+  let html = '<h3>Admins</h3><ul>'
+  html += Object.keys(users.admins).map(admin => `<li>${admin}</li>`);
+  html += '</ul><h3>Editors</h3><ul>'
+  html += users.users.filter(user => user.doc.roles.indexOf('editor') > -1)
+                     .map(user => `<li>${user.doc.name} <label><input type="checkbox" checked> Editor?</label><button>🔐 Change</button><button>🗑 Delete<button></li>`);
+  html += '</ul><h3>Viewer</h3><ul>'
+  html += users.users.filter(user => user.doc.roles.indexOf('editor') == -1)
+                     .map(user => `<li>${user.doc.name} <label><input type="checkbox"> Editor?</label><button>🔐 Change</button><button>🗑 Delete<button></li>`);
+  html += '</ul><button class="btn" style="margin-left: 0;">Add User</button>';
+  document.getElementById('all_users').innerHTML = html;
 }
 function searchSBfor(text){
   $('#songbook_header .search').val('c:'+text)[0].dispatchEvent(new KeyboardEvent('keyup'));
@@ -757,6 +809,7 @@ function setLogoutState() {
   $('html').removeClass('loggedin');
   location.hash = '#login';
   window.user = '';
+  window.roles = '';
   localStorage.removeItem('loggedin');
   $('#title a').html('yCanta');
   $('#dialog').hide();

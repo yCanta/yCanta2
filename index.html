@@ -82,16 +82,10 @@
                 <div id="user_content"></div>
               </div>
             </fieldset>
-            <fieldset id="allUsers" class="closed align-right">
-              <legend onclick="this.parentElement.classList.toggle('closed');">All users</legend>
-              <div class="content">
-                <div id="all_users"></div>
-              </div>
-            </fieldset>
             <fieldset class="closed align-right">
               <legend onclick="this.parentElement.classList.toggle('closed'); loadCategories();">Categories</legend>
               <div class="content">
-                <div id="category_content"></div>
+                <div id="all_users_content"></div>
               </div>
             </fieldset>
             <fieldset class="closed align-right" id="appSettings">
@@ -127,8 +121,16 @@
                 <div id="result">
                 </div>
               </div>
-              <div class="content">
-                <b>Admin</b><br>
+              <div class="content admin">
+                <b>Admin</b>
+                <br>
+                <br>
+                <fieldset id="allUsers" class="closed" style="width:100%">
+                  <legend onclick="this.parentElement.classList.toggle('closed'); loadAllUsers();">View all users</legend>
+                  <div class="content">
+                    <div id="all_users"></div>
+                  </div>
+                </fieldset>
                 <a href="#" class="btn" style="background-color: crimson; color: white;" onclick="if(confirm('Are you sure you want to delete this database?')){ db.destroy().then(function () {
                   dbLogout();
                 }).catch(function (err) {
@@ -145,7 +147,7 @@
       <div class="column active" id="songbookList">
         <div class="float-menu">
           <div>
-            <a data-songbook-edit="new" class="float-menu-item"><span class="float-menu-icon">+</span> Add SB</a>
+            <a data-songbook-edit="new" class="float-menu-item editor"><span class="float-menu-icon">+</span> Add SB</a>
             <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>
           </div>
         </div>
@@ -172,11 +174,11 @@
       </div>
       <div class="column" id="songList">
         <div class="float-menu">
-          <a data-song-edit="new" class="float-menu-item"><span class="float-menu-icon">+</span> Add Song</a>
-          <button data-home onclick="deleteSongbook(window.songbook._id)" class="float-menu-item delete"><span class="float-menu-icon">&#128465;</span> Delete</button>
+          <a data-song-edit="new" class="float-menu-item editor"><span class="float-menu-icon">+</span> Add Song</a>
+          <button data-home onclick="deleteSongbook(window.songbook._id)" class="float-menu-item delete editor"><span class="float-menu-icon">&#128465;</span> Delete</button>
           <button data-songbook-present class="float-menu-item" id="present"><span class="float-menu-icon">&#128253;</span> Present</button>
           <a data-songbook-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</a>
-          <a data-songbook-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>
+          <a data-songbook-edit class="float-menu-item editor"><span class="float-menu-icon">&#9998;</span> Edit</a>
           <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>
         </div>
         <div class="row">
@@ -233,9 +235,9 @@
       </div>
       <div class="column nochords" id="song">
         <div class="float-menu">
-          <button data-songbook onclick="deleteSong(window.song._id)" class="float-menu-item"><span class="float-menu-icon">&#128465;</span> Delete</button>
+          <button data-songbook onclick="deleteSong(window.song._id)" class="float-menu-item editor"><span class="float-menu-icon">&#128465;</span> Delete</button>
           <a data-song-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</a>
-          <a data-song-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>
+          <a data-song-edit class="float-menu-item editor"><span class="float-menu-icon">&#9998;</span> Edit</a>
           <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>
         </div>
         <div class="row">

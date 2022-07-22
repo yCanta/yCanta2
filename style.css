@@ -180,6 +180,9 @@ html, body, main{
   margin: 0;
   color: var(--text-color);
 }
+html .editor, html .admin {display: none;}
+html.editor .editor,
+html.admin .admin {display: initial;}
 
 main, header {
   margin: 0 .5em 0 .5em;
@@ -247,6 +250,10 @@ legend {
   border-radius: 1rem;
   padding: 0 1rem 0 1rem;
   box-shadow: var(--btn-shadow-var);
+}
+#all_users li {
+  display: flex;
+  justify-content: space-between;
 }
 .left {
   text-align: left;
@@ -1299,7 +1306,7 @@ only screen and (max-height: 31.25rem) {
   .loggedin #logged_in {
     display: flex;
   }
-  .align-right legend {
+  .align-right > legend {
     margin-left: auto;
   }
   fieldset.align-right {
