@@ -714,8 +714,6 @@ async function loadCategories(){
 
 async function getAllUsers(){
   let loggedIn = JSON.parse(localStorage.getItem('loggedin'));
-  let username = 'admuser';
-  let password = '3883cac49eb95bab11ffe92a87c5ccfb';
   var myHeaders = new Headers();
   myHeaders.append("Accept", "application/json");
   myHeaders.append("Content-Type", "application/json");
