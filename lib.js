@@ -714,6 +714,8 @@ async function loadCategories(){
 
 async function getAllUsers(){
   let loggedIn = JSON.parse(localStorage.getItem('loggedin'));
+  let username = loggedIn.username;
+  let password = loggedIn.pwd;
   var myHeaders = new Headers();
   myHeaders.append("Accept", "application/json");
   myHeaders.append("Content-Type", "application/json");
@@ -728,11 +730,9 @@ async function getAllUsers(){
     let admin_response = await fetch("http://72.10.217.136:25984/_node/nonode@nohost/_config", requestOptions)
     let admin = await admin_response.text();
     admin = JSON.parse(admin);
-    console.log(admin.admins);
     let response = await fetch("http://72.10.217.136:25984/_users/_all_docs?include_docs=true&startkey=\"org.couchdb.user:\"", requestOptions)
     let non_admin = await response.text();
     non_admin = JSON.parse(non_admin);
-    console.log(non_admin.rows);
     return {"admins": admin.admins, "users": non_admin.rows};// data;
   }
   catch(error) {
@@ -750,15 +750,19 @@ async function loadAllUsers(){
     alert('you are offline perhaps!');
     return
   }
-  let html = '<h3>Admins</h3><ul>'
-  html += Object.keys(users.admins).map(admin => `<li>${admin}</li>`);
-  html += '</ul><h3>Editors</h3><ul>'
+  let html = '<h3>Admins <button class="circle btn" onclick="addAdminUser();">+</button></h3><ul>'
+  html += Object.keys(users.admins).map(admin => `<li><span style="width: 30%; display:inline-block;">${admin}</span>${'u-'+admin != user._id ? `<button onclick="changeAdminPassword('${admin}')">🔐 Change</button>
+                               <button onclick="deleteAdminUser('${admin}')">🗑 Delete<button>` : ''}</li>`).join('');
+  html += '</ul><h3>Users <button class="circle btn" onclick="addUser();">+</button></h3><ul>'
   html += users.users.filter(user => user.doc.roles.indexOf('editor') > -1)
-                     .map(user => `<li>${user.doc.name} <label><input type="checkbox" checked> Editor?</label><button>🔐 Change</button><button>🗑 Delete<button></li>`);
-  html += '</ul><h3>Viewer</h3><ul>'
+                     .map(user => `<li><span style="width: 30%; display:inline-block;">${user.doc.name}</span>
+                      <label><input type="checkbox" checked onclick="toggleUserEditor('${user.doc.name}')"> Editor</label><button onclick="changeUserPassword('${user.doc.name}')">🔐 Change</button>
+                      <button onclick="deleteUser('${user.doc.name}')">🗑 Delete<button></li>`).join('');
   html += users.users.filter(user => user.doc.roles.indexOf('editor') == -1)
-                     .map(user => `<li>${user.doc.name} <label><input type="checkbox"> Editor?</label><button>🔐 Change</button><button>🗑 Delete<button></li>`);
-  html += '</ul><button class="btn" style="margin-left: 0;">Add User</button>';
+                     .map(user => `<li><span style="width: 30%; display:inline-block;">${user.doc.name}</span>
+                      <label><input type="checkbox" onclick="toggleUserEditor('${user.doc.name}', true)"> Editor</label><button onclick="changeUserPassword('${user.doc.name}')">🔐 Change</button>
+                      <button onclick="deleteUser('${user.doc.name}')">🗑 Delete<button></li>`).join('');
+  html += '</ul>'
   document.getElementById('all_users').innerHTML = html;
 }
 function searchSBfor(text){

@@ -623,6 +623,170 @@ function initializeSongbooksList(){
     console.log(err);
   });
 }
+
+async function addAdminUser(){
+  if(remoteDb){
+    let users = await getAllUsers();
+
+    const username = prompt('What Admin username do you want to add?');
+    if(!username){return}
+
+    if(Object.keys(users.admins).indexOf(username) > -1 || users.users.map(usr => usr.doc.name).indexOf(username) > -1){
+      alert(`${username} is already taken`);
+      return;
+    }
+
+    const password = prompt('What password?');
+    const passwordAgain = prompt('Please enter it again.');
+    if(password != passwordAgain){
+      alert('Passwords did not match, please try again');
+      return
+    }
+    if(!password) {return}
+
+    remoteDb.signUpAdmin(username, password, function (err, response) {
+      if (err) {
+        handleError(err);
+      } else {
+        loadAllUsers();
+        notyf.info(`added ${username}`,'green');
+      }
+    });
+  }
+  else {
+    console.log('there is no remoteDb');
+  }
+}
+function changeAdminPassword(username){
+  if('u-'+username == user._id){
+    alert('You can not change your own password - try logging in as a different admin');
+    return
+  }
+  const password = prompt(`What do you want to change the password for ${username} to?`);
+  if(!password){return}
+  const passwordAgain = prompt('Please enter it again.');
+  if(password != passwordAgain){
+    alert('Passwords did not match, please try again');
+    return
+  }
+  remoteDb.deleteAdmin(username, function (err, response) {
+    if (err) {
+      handleError(err);
+    } else {
+      remoteDb.signUpAdmin(username, password, function (err, response) {
+        if (err) {
+          handleError(err);
+        } else {
+          loadAllUsers();
+          notyf.info(`Password changed for ${username}`,'red');
+        }  
+      });
+    }
+  }); 
+}
+function deleteAdminUser(username){
+  //check to be sure that username != current username
+  if('u-'+username == user._id){
+    alert('You can not delete your own admin account - try logging in as a different admin');
+    return
+  }
+
+  //then delete the admin, after checking that they want to do so.
+  if(confirm(`Are you sure you want to delete Admin: ${username}?`)){
+    remoteDb.deleteAdmin(username, function (err, response) {
+      if (err) {
+        handleError(err);
+      } else {
+        loadAllUsers();
+        notyf.info(`deleted ${username}`,'red');
+      }
+    });  
+  }
+  else {
+    console.log('decided not to delete them');
+  }
+}
+
+async function addUser(){
+  let users = await getAllUsers();
+  const username = prompt('What username do you want to add?');
+  if(!username){return}
+
+  if(Object.keys(users.admins).indexOf(username) > -1 || users.users.map(usr => usr.doc.name).indexOf(username) > -1){
+    alert(`${username} is already taken`);
+    return;
+  }
+
+  const password = prompt('What password?');
+  const passwordAgain = prompt('Please enter it again.');
+  if(password != passwordAgain){
+    alert('Passwords did not match, please try again');
+    return
+  }
+  if(!password) {return}
+
+  remoteDb.signUp(username, password, {}, function (err, response) {
+    if (err) {
+      handleError(err);
+    } else {
+      loadAllUsers();
+      notyf.info(`added ${username}`,'green');
+    }
+  });
+}
+function toggleUserEditor(username, editor){
+  remoteDb.putUser(username, {
+   roles: [(editor ? 'editor' : '')]
+  }, function (err, response) {
+    if (err) {
+      handleError(err);
+    } else {
+      loadAllUsers();
+      notyf.info(`updated ${username}`,'green');
+    }
+  });
+}
+function changeUserPassword(username){
+  const password = prompt(`What do you want to change the password for ${username} to?`);
+  if(!password){return}
+  const passwordAgain = prompt('Please enter it again.');
+  if(password != passwordAgain){
+    alert('Passwords did not match, please try again');
+    return
+  }
+
+  remoteDb.changePassword(username, password, function(err, response) {
+    if (err) {
+      handleError(err);
+    } else {
+      notyf.info(`Password changed for ${username}`,'red');
+    }
+  });
+}
+function deleteUser(username){
+  const response = confirm(`Are you sure you want to delete ${username}?`);
+  if(!response){return}
+  remoteDb.deleteUser(username, function (err, response) {
+    if (err) {
+      handleError(err);
+    } else {
+      loadAllUsers();
+      notyf.info(`User: ${username} deleted`,'red');
+    }
+  });
+}
+function handleError(err){
+  if (err.name === 'not_found') {
+    // typo, or you don't have the privileges to see this user
+    alert('You do not have permission to see this user');
+  } else if(err.name ==='conflict') {
+    alert('That already exists');
+  } else {
+    // some other error
+    console.log(err);
+  }
+}
+
 function saveSong(song_id, song_html=$('#song song'), change_url=true) {
   return new Promise(function(resolve, reject) {
     var new_song = false;

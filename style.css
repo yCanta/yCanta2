@@ -132,6 +132,15 @@ button {
   border: none;
   text-align: left;
 }
+button.circle {
+  border-radius: 100%;
+  filter: brightness(1.6);
+  background-color: var(--edit-color);
+  width: 1.4rem;
+  text-align: center;
+  margin-left: 0.5rem;
+  padding: 0;
+}
 .btn {
   box-shadow: var(--btn-shadow-var);
   font-weight: bold;
@@ -182,7 +191,7 @@ html, body, main{
 }
 html .editor, html .admin {display: none;}
 html.editor .editor,
-html.admin .admin {display: initial;}
+html._admin .admin {display: initial;}
 
 main, header {
   margin: 0 .5em 0 .5em;
@@ -254,6 +263,7 @@ legend {
 #all_users li {
   display: flex;
   justify-content: space-between;
+  margin-bottom: 1rem;
 }
 .left {
   text-align: left;
