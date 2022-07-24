@@ -88,7 +88,7 @@
               <legend onclick="this.parentElement.classList.toggle('closed');">Import</legend>
               <div class="content">
                 <div>To import more songs, choose a zip of V1 songs or a json file of V2 and upload it below.</div>
-                <span style="margin: 1rem;"><input type="file" id="file" name="file" accept=".json,.zip" style="max-width: 200px; background: var(--edit-color);"/><button class="btn" onclick="try{ alert('yo!'); startHandlingFiles();}catch(error){alert(JSON.stringify(error))}">Upload</button></span>
+                <span style="margin: 1rem;"><input type="file" id="file" name="file" accept=".json,.zip" style="max-width: 200px; background: var(--edit-color);"/><button class="btn" onclick="alert('yo!'); startHandlingFiles();">Upload</button></span>
                 <div id="result">
                 </div>
               </div>  
