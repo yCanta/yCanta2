@@ -1,31 +1,25 @@
 function startHandlingFiles(){
   try {
-    alert('hi');
     async function handleFile(f) {
       let result = '';
 
       if(f.name.endsWith('zip')) {
-        alert('name ends with zip');
         result = await importSongV1(f);
       }
       else if(f.name.endsWith('json')){
-        alert('name ends with json');
         result = await importSongV2(f);
       }
       else {
-        alert('not recognized file');
         console.log('not a recognized file');
       }
       return result;
     }
     var files = document.getElementById('file').files;  // we can have multiple files selected.
-    alert('got files list')
     for (var i = 0; i < files.length; i++) {
-      alert('each file')
       handleFile(files[i]);
     }
   } catch(err) {
-    alert(JSON.stringify(err));
+    alert(err);
   }
 }
 function updateProgress(){
@@ -44,9 +38,7 @@ function updateProgress(){
   window.import = i;
 }
 async function importSongV1(f){
-  alert("we're in the V1 import function")
   changeHandler.cancel();
-  alert("canceled changeHandler");
   var $result = $("#result");
   // remove content
   $result.html("");
@@ -59,7 +51,6 @@ async function importSongV1(f){
 
   JSZip.loadAsync(f)
   .then(function(zip) {
-    alert("inside JSZIP");
     var dateAfter = new Date();
     window.import= {};
     window.import.file_count = Object.keys(zip.files).length;
