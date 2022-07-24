@@ -132,8 +132,8 @@ async function importSongV1(f){
                   resolve('done');
                 });
               }
-              //Comments
-              else if(zipEntry.name.endsWith('.comment') && songbook != ""){
+              //Comments THIS CRASHES IN IOS/SAFARI.
+              /*else if(zipEntry.name.endsWith('.comment') && songbook != ""){
                 comments_list = [];
                 let songs = songbook.split('\n');
                 for(song of songs){
@@ -151,7 +151,7 @@ async function importSongV1(f){
                 db.bulkDocs(comments_list);
                 songbook_with_comments.push('sb-i'+CRC32.str(zipEntry.name.replace('songbooks/','').replace('.comment','.xml'),0));
                 resolve('done');
-              }
+              }*/
               else {
                 window.import.n_other++;
                 updateProgress();
