@@ -144,7 +144,7 @@ async function importSongV1(f){
                 });
               }
               //Comments
-              /*else if(zipEntry.name.endsWith('.comment') && songbook != ""){
+              else if(zipEntry.name.endsWith('.comment') && songbook != ""){
                 comments_list = [];
                 let songs = songbook.split('\n');
                 for(song of songs){
@@ -155,7 +155,6 @@ async function importSongV1(f){
                   //{id: c_songbook.song , comments: [{date: , user: , comment: }]}
                   let id = 'c_'+'sb-i'+CRC32.str(zipEntry.name.replace('songbooks/','').replace('.comment','.xml'),0)+'_s-i'+CRC32.str(song_path,0)
                   let comments = song.match(/<div\b(?:|(?:(?!<\/?div).))*<\/div>/g).map(function(comment) {
-                    console.log(comment);
                     return {date: new Date(comment.match(/(?<=\()(.*?)(?=\):)/g)[0]).getTime(), user: $(comment).find('b').text(), comment: $(comment).find('pre').text()}
                   });
                   comments_list.push({_id: id, comments: comments});
@@ -163,7 +162,7 @@ async function importSongV1(f){
                 db.bulkDocs(comments_list);
                 songbook_with_comments.push('sb-i'+CRC32.str(zipEntry.name.replace('songbooks/','').replace('.comment','.xml'),0));
                 resolve('done');
-              }*/
+              }
               else {
                 window.import.n_other++;
                 updateProgress();
