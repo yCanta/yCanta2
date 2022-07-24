@@ -19,6 +19,7 @@ function startHandlingFiles(){
       }
       return result;
     }
+    alert('hi3');
     var files = document.getElementById('file').files;  // we can have multiple files selected.
     alert('got files list')
     for (var i = 0; i < files.length; i++) {
