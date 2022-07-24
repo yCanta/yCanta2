@@ -1,5 +1,4 @@
 function startHandlingFiles(){
-  alert('hi2');
   try {
     alert('hi');
     async function handleFile(f) {
