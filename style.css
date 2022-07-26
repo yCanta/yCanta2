@@ -136,10 +136,11 @@ button.circle {
   border-radius: 100%;
   filter: brightness(1.6);
   background-color: var(--edit-color);
-  width: 1.4rem;
+  width: 1.2em;
   text-align: center;
   margin-left: 0.5rem;
   padding: 0;
+  vertical-align: middle;
 }
 .btn {
   box-shadow: var(--btn-shadow-var);

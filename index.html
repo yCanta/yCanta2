@@ -85,7 +85,7 @@
             <fieldset class="closed align-right">
               <legend onclick="this.parentElement.classList.toggle('closed'); loadCategories();">Categories</legend>
               <div class="content">
-                <div id="all_users_content"></div>
+                <div id="category_content"></div>
               </div>
             </fieldset>
             <fieldset class="closed align-right" id="appSettings">
@@ -110,7 +110,6 @@
                     <option value="16" label="16px"></option>
                     <option value="20" label="20px"></option>
                   </datalist>
-
                 </label>
                 <br>
               </div>
@@ -121,22 +120,17 @@
                 <div id="result">
                 </div>
               </div>
-              <div class="content admin">
-                <b>Admin</b>
-                <br>
-                <br>
-                <fieldset id="allUsers" class="closed" style="width:100%">
-                  <legend onclick="this.parentElement.classList.toggle('closed'); loadAllUsers();">View all users</legend>
-                  <div class="content">
-                    <div id="all_users"></div>
-                  </div>
-                </fieldset>
-                <a href="#" class="btn" style="background-color: crimson; color: white;" onclick="if(confirm('Are you sure you want to delete this database?')){ db.destroy().then(function () {
+            </fieldset>
+            <fieldset id="adminSettings" class="closed align-right">
+              <legend onclick="this.parentElement.classList.toggle('closed'); loadAllUsers();">Admin</legend>
+              <div class="content">
+                <div id="all_users"></div>
+              </div>
+              <button class="btn" style="background-color: crimson; color: white;" onclick="if(confirm('Are you sure you want to delete this database?')){ db.destroy().then(function () {
                   dbLogout();
                 }).catch(function (err) {
                   console.log(err);
-              });}">Delete DB</a>
-              </div>
+              });}">Delete DB</button>
             </fieldset>
           </div>
         </div>
