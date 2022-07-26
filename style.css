@@ -192,7 +192,7 @@ html, body, main{
 }
 html .editor, html .admin {display: none;}
 html.editor .editor,
-html._admin .admin {display: initial;}
+html._admin .admin {display: revert;}
 
 main, header {
   margin: 0 .5em 0 .5em;

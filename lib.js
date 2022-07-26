@@ -743,27 +743,31 @@ async function getAllUsers(){
 
 async function loadAllUsers(){
   //let html = `<h3>Ordered List <a href="#" onclick="loadRawDbObject('categories',$('#category_content'),'loadCategories();');" class="mirror admin">&#9998;</a></h3>`;
-  
-  let users = await getAllUsers();
+  if(remoteDb){
+    let users = await getAllUsers();
 
-  if(users instanceof Error) {
-    alert('you are offline perhaps!');
-    return
+    if(users instanceof Error) {
+      alert('you are offline perhaps!');
+      return
+    }
+    let html = '<h3>Users</h3><h4>Admins <button class="circle btn" onclick="addAdminUser();">+</button></h4><ul>'
+    html += Object.keys(users.admins).map(admin => `<li><span style="width: 30%; display:inline-block;">${admin}</span>${'u-'+admin != user._id ? `<button onclick="changeAdminPassword('${admin}')">🔐 Change</button>
+                                 <button onclick="deleteAdminUser('${admin}')">🗑 Delete<button>` : ''}</li>`).join('');
+    html += '</ul><h4>Users <button class="circle btn" onclick="addUser();">+</button></h4><ul>'
+    html += users.users.filter(user => user.doc.roles.indexOf('editor') > -1)
+                       .map(user => `<li><span style="width: 30%; display:inline-block;">${user.doc.name}</span>
+                        <label><input type="checkbox" checked onclick="toggleUserEditor('${user.doc.name}')"> Editor</label><button onclick="changeUserPassword('${user.doc.name}')">🔐 Change</button>
+                        <button onclick="deleteUser('${user.doc.name}')">🗑 Delete<button></li>`).join('');
+    html += users.users.filter(user => user.doc.roles.indexOf('editor') == -1)
+                       .map(user => `<li><span style="width: 30%; display:inline-block;">${user.doc.name}</span>
+                        <label><input type="checkbox" onclick="toggleUserEditor('${user.doc.name}', true)"> Editor</label><button onclick="changeUserPassword('${user.doc.name}')">🔐 Change</button>
+                        <button onclick="deleteUser('${user.doc.name}')">🗑 Delete<button></li>`).join('');
+    html += '</ul>'
+    document.getElementById('all_users').innerHTML = html;
   }
-  let html = '<h3>Users</h3><h4>Admins <button class="circle btn" onclick="addAdminUser();">+</button></h4><ul>'
-  html += Object.keys(users.admins).map(admin => `<li><span style="width: 30%; display:inline-block;">${admin}</span>${'u-'+admin != user._id ? `<button onclick="changeAdminPassword('${admin}')">🔐 Change</button>
-                               <button onclick="deleteAdminUser('${admin}')">🗑 Delete<button>` : ''}</li>`).join('');
-  html += '</ul><h4>Users <button class="circle btn" onclick="addUser();">+</button></h4><ul>'
-  html += users.users.filter(user => user.doc.roles.indexOf('editor') > -1)
-                     .map(user => `<li><span style="width: 30%; display:inline-block;">${user.doc.name}</span>
-                      <label><input type="checkbox" checked onclick="toggleUserEditor('${user.doc.name}')"> Editor</label><button onclick="changeUserPassword('${user.doc.name}')">🔐 Change</button>
-                      <button onclick="deleteUser('${user.doc.name}')">🗑 Delete<button></li>`).join('');
-  html += users.users.filter(user => user.doc.roles.indexOf('editor') == -1)
-                     .map(user => `<li><span style="width: 30%; display:inline-block;">${user.doc.name}</span>
-                      <label><input type="checkbox" onclick="toggleUserEditor('${user.doc.name}', true)"> Editor</label><button onclick="changeUserPassword('${user.doc.name}')">🔐 Change</button>
-                      <button onclick="deleteUser('${user.doc.name}')">🗑 Delete<button></li>`).join('');
-  html += '</ul>'
-  document.getElementById('all_users').innerHTML = html;
+  else {
+    console.log('RemoteDB does not exist');
+  }
 }
 function searchSBfor(text){
   $('#songbook_header .search').val('c:'+text)[0].dispatchEvent(new KeyboardEvent('keyup'));

@@ -210,6 +210,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     
     //UPDATE LOCAL STORAGE DATABASES
     addDBtoLocalStorage(dbName, 'local');
+    window.roles = {'_admin':true,'editor':true};
 
     //initialize list of categories
     var categories = {
@@ -234,6 +235,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     db.get('_local/u-'+username).then(function(localUser){
       if(localUser.pin == pin) {
         console.log('Pin is correct!');
+        window.roles = {'_admin':true,'editor':true};
         takeNextStep(username,dbName);
       }
       else { //if not then close the db
@@ -267,7 +269,6 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       
       console.log("I'm Batman.", batman);
       window.roles = batman.roles.reduce((a, v) => ({ ...a, [v]: true}), {})
-      document.documentElement.classList.add(...batman.roles); 
       let info = await remoteDb.info();
       dbName = info.db_name + '(remote)';
 
@@ -314,7 +315,6 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       remoteDb.logIn(username, pwd, ajaxOpts).then(async function (batman) {
         console.log("I'm Batman.", batman);
         window.roles = batman.roles.reduce((a, v) => ({ ...a, [v]: true}), {}) 
-        document.documentElement.classList.add(...batman.roles); 
         takeNextStep(username,dbName);
         
       }).catch(async function(error){
@@ -353,13 +353,14 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     window.songbook = {};
     window.song = {};
     dbChanges();
-    window.user = {
+    window.user = { //temp user document
       _id: 'u-'+username,
       name: username,
       fav_sbs: [],
       fav_songs: []
     }
     window.yCantaName = dbName;
+    document.documentElement.classList.add(...Object.keys(window.roles)); 
     setLoginState();
 
     //Store logged in status: pin for local, for remote we store pwd.
