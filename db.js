@@ -327,6 +327,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
           let localUser = await db.get('_local/u-'+username);
           if(localUser.pwd == pwd) {
             console.log('offline login successful');
+            window.roles = JSON.parse(localStorage.getItem('loggedin')).roles;
             takeNextStep(username, dbName);
           }
           else {
@@ -365,7 +366,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
 
     //Store logged in status: pin for local, for remote we store pwd.
     if(dbName.endsWith('(local)')){
-      localStorage.setItem('loggedin',JSON.stringify({dbName: dbName, username: username, pin: pin}));
+      localStorage.setItem('loggedin',JSON.stringify({dbName: dbName, username: username, pin: pin, roles: window.roles}));
       //store user pin in a local doc
       db.upsert('_local/u-'+username, function (doc) {
         doc.pin = pin;
@@ -377,7 +378,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       });
     }
     else if(!public_computer && dbName.endsWith('(remote)')){
-      localStorage.setItem('loggedin',JSON.stringify({dbName: dbName, username: username, pwd: pwd}));
+      localStorage.setItem('loggedin',JSON.stringify({dbName: dbName, username: username, pwd: pwd, roles: window.roles}));
       //store username/pwd/url
       db.upsert('_local/u-'+username, function (doc) {
         doc.pwd = pwd;
@@ -628,6 +629,10 @@ function initializeSongbooksList(){
 async function addAdminUser(){
   if(remoteDb){
     let users = await getAllUsers();
+    if(users instanceof Error) {
+      alert('you are offline perhaps!');
+      return;
+    }
 
     const username = prompt('What Admin username do you want to add?');
     if(!username){return}
@@ -710,6 +715,10 @@ function deleteAdminUser(username){
 
 async function addUser(){
   let users = await getAllUsers();
+  if(users instanceof Error) {
+    alert('you are offline perhaps!');
+    return;
+  }
   const username = prompt('What username do you want to add?');
   if(!username){return}
 
@@ -782,6 +791,8 @@ function handleError(err){
     alert('You do not have permission to see this user');
   } else if(err.name ==='conflict') {
     alert('That already exists');
+  } else if(!window.online){
+    alert('you are offline, try again when you are reconnected');
   } else {
     // some other error
     console.log(err);
