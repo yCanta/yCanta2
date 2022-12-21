@@ -190,8 +190,7 @@ html, body, main{
   margin: 0;
   color: var(--text-color);
 }
-html .editor, html .admin {display: none;}
-html.editor .editor,
+html .admin {display: none;}
 html._admin .admin {display: revert;}
 
 main, header {
@@ -867,10 +866,6 @@ body.present.songList #presentation {
   transform: translateY(0);
 }
 
-.float-menu.special [data-songbook-edit],
-.float-menu.special .delete {
-  display: none !important;
-}
 .edit .active .float-menu .float-menu-item {
   width: 0;
   visibility: collapse;

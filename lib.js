@@ -453,24 +453,26 @@ function sortFavSongbooks(a,b){
   }
 }
 function updateAllLinks(whatChanged='all') {
-  $('[data-song-edit]').attr('href','#'+window.songbook._id+'&'+window.song._id+'&edit');
-  $('[data-song-edit="new"]').attr('href','#'+window.songbook._id+'&s-new-song&edit');
-  $('[data-song]').attr('href','#'+window.songbook._id+'&'+window.song._id);
-  $('[data-song-export]').attr('href','#'+window.songbook._id+'&'+window.song._id+'&export');
-  $('[data-songbook-edit]').attr('href','#'+window.songbook._id+'&edit');
+  let songbook_id = window.songbook._id || 'sb-allSongs';
+  let song_id = window.song._id;
+  $('[data-song-edit]').attr('href','#'+songbook_id+'&'+song_id+'&edit');
+  $('[data-song-edit="new"]').attr('href','#'+songbook_id+'&s-new-song&edit');
+  $('[data-song]').attr('href','#'+songbook_id+'&'+song_id);
+  $('[data-song-export]').attr('href','#'+songbook_id+'&'+song_id+'&export');
+  $('[data-songbook-edit]').attr('href','#'+songbook_id+'&edit');
   $('[data-songbook-edit="new"]').attr('href','#sb-new-songbook&edit');
-  $('[data-songbook-present]').attr('href', '#'+window.songbook._id+'&present');
-  $('[data-songbook]').attr('href','#'+window.songbook._id);
-  $('[data-songbook-export]').attr('href','#'+window.songbook._id+'&export');
+  $('[data-songbook-present]').attr('href', '#'+songbook_id+'&present');
+  $('[data-songbook]').attr('href','#'+songbook_id);
+  $('[data-songbook-export]').attr('href','#'+songbook_id+'&export');
   $('[data-home]').attr('href','#');
 
   //add highlighting
   //doesn't happen after it's done rendering the list.js on initial page load
   //Also not working in info click views.
   $('.song-highlight').removeClass('song-highlight');
-  $("[data-song-id='"+window.song._id+"']").addClass("song-highlight");
+  $("[data-song-id='"+song_id+"']").addClass("song-highlight");
   $('.songbook-highlight').removeClass('songbook-highlight');
-  $("[data-songbook-id='"+window.songbook._id+"']").addClass("songbook-highlight");
+  $("[data-songbook-id='"+songbook_id+"']").addClass("songbook-highlight");
 }
 
 $(function () {
@@ -727,10 +729,10 @@ async function getAllUsers(){
     redirect: 'follow'
   };
   try { 
-    let admin_response = await fetch("http://72.10.217.136:25984/_node/nonode@nohost/_config", requestOptions)
+    let admin_response = await fetch("http://64.246.151.157:25984/_node/nonode@nohost/_config", requestOptions)
     let admin = await admin_response.text();
     admin = JSON.parse(admin);
-    let response = await fetch("http://72.10.217.136:25984/_users/_all_docs?include_docs=true&startkey=\"org.couchdb.user:\"", requestOptions)
+    let response = await fetch("http://64.246.151.157:25984/_users/_all_docs?include_docs=true&startkey=\"org.couchdb.user:\"", requestOptions)
     let non_admin = await response.text();
     non_admin = JSON.parse(non_admin);
     return {"admins": admin.admins, "users": non_admin.rows};// data;
@@ -739,6 +741,24 @@ async function getAllUsers(){
     console.log(error);
     return error;
   }
+}
+
+function canEdit(doc){
+  try {
+    if(doc._id == 'sb-allSongs' || doc._id == 'sb-favoriteSongs'){
+      return false;
+    }
+    if(window.roles.editor){
+      return true;
+    }
+    else if(doc.addedBy.trim() == window.user._id.trim()){
+      return true;
+    }
+  }
+  catch(error) {
+    console.log(error);
+  }
+  return false;
 }
 
 async function loadAllUsers(){
@@ -872,6 +892,36 @@ function mapSongRowToValue(row) {
     'link': '#'+window.songbook._id+'&'+id,
     'name': title
   };
+}
+
+function setSongbookInfo(songbook){
+  $('#songbook_title').removeAttr('contenteditable');
+  $('#songbook_content .search').parent().removeAttr('disabled');
+  (songbook.showStatus ? $('#songbook_content').addClass('showStatus') : $('#songbook_content').removeClass('showStatus'));
+  $('#songbook_content').removeClass('showStatus'); 
+  $('#songbook_content').removeClass('showComments'); 
+  (songbook.showComments ? $('#songbook_content').addClass('showComments') : $('#songbook_content').removeClass('showComments'));
+  $('.disabled-hidden').removeClass('disabled-hidden');
+  let title_text = (songbook._id == 'sb-allSongs' || songbook._id == 'sb-favoriteSongs' ? `<i>${songbook.title}</i>` : songbook.title);
+  $('#songbook_title').html(title_text).attr('data-rev',songbook._rev).attr('data-songbook-id', songbook._id).nextAll().remove();
+  if(songbook._id != 'sb-allSongs' && songbook._id != 'sb-favoriteSongs'){
+    $('#songbook_title').parent().append('<span onclick="event.stopPropagation(); toggleFavSongbook(\''+songbook._id+'\')"></span>'+
+      '<info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo(false);"></info>');
+  }
+  if(document.getElementById('dialog').style.display=="block" && !parseHash('s-') && document.getElementById('dialog').getAttribute('data-use')=="info"){  //prevents info view flicker when you click on songbooks in song info view.
+    loadInfo(false);
+  }
+
+  //Float menu
+  let editable = canEdit(songbook);
+  let float_menu = `<a data-song-edit="new" class="float-menu-item"><span class="float-menu-icon">+</span> Add Song</a>
+  ${(editable ? '<button data-home onclick="deleteSongbook(window.songbook._id)" class="float-menu-item delete"><span class="float-menu-icon">&#128465;</span> Delete</button>' : '')}
+  <button data-songbook-present class="float-menu-item" id="present"><span class="float-menu-icon">&#128253;</span> Present</button>
+  <a data-songbook-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</a>
+  ${(editable ? '<a data-songbook-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>' : '')}
+  <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>`;
+
+  $('#songList .float-menu').html(float_menu);
 }
 
 function buildSongbookList(songs, target_class='songbook_content', 
@@ -1252,13 +1302,13 @@ function prepExport(){
     endkey: 'cfg-'+window.exportObject._id+'\ufff0',
   }).then(function(result){
     let innerhtml = '';
-    let user_id_cfg = 'cfg-'+window.exportObject._id+'USER'; //must keep in sync with db.js
+    let user_id_cfg = 'cfg-'+window.exportObject._id+window.user._id; //must keep in sync with db.js
     result.rows.map(function (row) {
       if(row.doc._id == user_id_cfg) {
-        innerhtml = "<option id='user_export_pref' value='"+JSON.stringify(row.doc.cfg)+"'>"+row.doc.title+"</option>" + innerhtml;
+        innerhtml = `<option id='user_export_pref' value='${JSON.stringify(row.doc.cfg)}'>${"Your default"}</option>` + innerhtml;
       }
       else {
-        innerhtml += "<option value='"+JSON.stringify(row.doc.cfg)+"'>"+row.doc.title+"</option>";
+        innerhtml += `<option value='${JSON.stringify(row.doc.cfg)}'>${window.users[row.doc._id]}</option>`;
       }
     });
 
@@ -1656,9 +1706,9 @@ async function loadInfo(song=true) {
   if(song){
     $('#dialog h5').text('Song');
     let song_id = window.song._id;
-    let content = '<small>Added: '+window.song.addedBy+', '+new Date(window.song.added).toLocaleTimeString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})+'</small><br />'+
-      '<small>Edited: '+window.song.editedBy+', '+new Date(window.song.edited).toLocaleTimeString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})+'</small><br />'+
-      '<small>'+(window.song._rev.split('-')[0] - 1)+' previous edits</small>';
+    let content = `<small>Added: ${window.users[window.song.addedBy] || window.song.addedBy}, ${new Date(window.song.added).toLocaleTimeString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</small><br />
+      <small>Edited: ${window.users[window.song.editedBy] || window.song.editedBy}, ${new Date(window.song.edited).toLocaleTimeString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</small><br />
+      <small>${(window.song._rev.split('-')[0] - 1)} previous edits</small>`;
   
     let sbs = await songInSongbooks(song_id);
     if(sbs.length > 0){
@@ -1673,8 +1723,8 @@ async function loadInfo(song=true) {
   }
   else{
     $('#dialog h5').text('Songbook');
-    let content = '<small>Added: '+window.songbook.addedBy+', '+new Date(window.songbook.added).toLocaleTimeString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})+'</small><br />'+
-      '<small>Edited: '+window.songbook.editedBy+', '+new Date(window.songbook.edited).toLocaleTimeString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})+'</small><br />'+
+    let content = '<small>Added: '+window.users[window.songbook.addedBy]+', '+new Date(window.songbook.added).toLocaleTimeString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'})+'</small><br />'+
+      '<small>Edited: '+window.users[window.songbook.editedBy]+', '+new Date(window.songbook.edited).toLocaleTimeString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'})+'</small><br />'+
       '<small>'+(window.songbook._rev.split('-')[0] - 1)+' previous edits</small>';
     document.querySelector('#dialog .content').innerHTML = content;
     document.querySelector('#dialog .title').innerHTML = window.songbook.title;

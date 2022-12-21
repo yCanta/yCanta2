@@ -116,32 +116,35 @@ function dbChanges() {
         }
       }
     }
-    else if(change.doc._id === window.user._id){
-      let fav_sbs = change.doc.fav_sbs;
-      //jquery remove all favs
-      $('#songbooks .list li').each(function(){
-        let fav = false;
-        if(fav_sbs.indexOf($(this).attr('data-songbook-id')) > -1) {
-          fav = true;
+    else if(change.doc._id.startsWith('u-')){
+      window.users[change.doc._id] = change.doc.name;
+      if(change.doc._id === window.user._id){
+        let fav_sbs = change.doc.fav_sbs;
+        //jquery remove all favs
+        $('#songbooks .list li').each(function(){
+          let fav = false;
+          if(fav_sbs.indexOf($(this).attr('data-songbook-id')) > -1) {
+            fav = true;
+          }
+          $(this).attr('data-user-fav', fav);
+        })
+        if(fav_sbs.indexOf(window.songbook._id) > -1) {
+          $('#songbook_title').attr('data-user-fav', 'true');
         }
-        $(this).attr('data-user-fav', fav);
-      })
-      if(fav_sbs.indexOf(window.songbook._id) > -1) {
-        $('#songbook_title').attr('data-user-fav', 'true');
+        else {
+          $('#songbook_title').attr('data-user-fav', 'false'); 
+        }
+        window.user = change.doc;
+        if(window.songbook._id == 'sb-favoriteSongs') {
+          window.songbook._id = '';
+          loadSongbook('sb-favoriteSongs');
+        }
+        updateUser();
+        if(!window.silent){ notyf.info(`User Updated "${change.doc.name}"`, 'var(--edit-color)'); }
+        window.songbooks_list.reIndex();
+        window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
+        $('#song song').attr('data-user-fav', (window.user.fav_songs.indexOf($('#song song').attr('data-id'))> -1 ? 'true': 'false'))
       }
-      else {
-        $('#songbook_title').attr('data-user-fav', 'false'); 
-      }
-      window.user = change.doc;
-      if(window.songbook._id == 'sb-favoriteSongs') {
-        window.songbook._id = '';
-        loadSongbook('sb-favoriteSongs');
-      }
-      updateUser();
-      if(!window.silent){ notyf.info(`User Updated "${change.doc.name}"`, 'var(--edit-color)'); }
-      window.songbooks_list.reIndex();
-      window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
-      $('#song song').attr('data-user-fav', (window.user.fav_songs.indexOf($('#song song').attr('data-id'))> -1 ? 'true': 'false'))
     }
     //New default config saved
     else if(change.doc._id.startsWith('cfg-')){
@@ -263,7 +266,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     try {
       let batman = await remoteDb.logIn(username, pwd, ajaxOpts).catch(function (error){
         console.log(error);
-        alert("There was an error on logging in - check your internet")
+        alert(error.message)
         dbLogout();
       });
       
@@ -361,7 +364,11 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       fav_songs: []
     }
     window.yCantaName = dbName;
-    document.documentElement.classList.add(...Object.keys(window.roles)); 
+    try {  //REVISIT THIS!!!!!  Does it need to be in a try, catch?
+      document.documentElement.classList.add(...Object.keys(window.roles)); 
+    } catch(error) {
+      console.log(error);
+    }
     setLoginState();
 
     //Store logged in status: pin for local, for remote we store pwd.
@@ -473,6 +480,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     //Update ui when db changes]s
     loadRecentSongs();
     initializeSongbooksList();
+    loadUsersObject(); //list of all users stored for reference;
     
     //check dark mode and set for app
     let darkMode = localStorage.getItem(window.user._id+'darkMode');
@@ -515,6 +523,24 @@ function dbLogout(){
   });
   */
   }
+}
+
+function loadUsersObject() {
+  db.allDocs({
+    include_docs: true,
+    startkey: 'u-',
+    endkey: 'u-\ufff0',
+  }).then(function(result){
+    let usersOb = result.rows.reduce((previousObject, currentObject) => {
+        return Object.assign(previousObject, {
+          [currentObject.doc._id]: currentObject.doc.name
+        })
+      },
+    {});
+    window.users = usersOb;
+  }).catch(function(err){
+    console.log(err);
+  });
 }
 
 function loadRecentSongs(days=1000, number=15){
@@ -917,7 +943,7 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
       new_song = true;
       let time = new Date().getTime();
       song_id = 's-' + time;
-      let song = {_id: song_id, added: time, addedBy: window.user.name, edited: time, editedBy: window.user.name};
+      let song = {_id: song_id, added: time, addedBy: window.user._id, edited: time, editedBy: window.user._id};
       loadSongContent(song);
       addSongToSongbook(song._id);
     }
@@ -925,13 +951,13 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
     else if(!song_id.startsWith('s-')){
       let time = new Date().getTime();
       song_id = 's-' + song_id;
-      let song = {_id: song_id, added: time, addedBy: window.user.name, edited: time, editedBy: window.user.name};
+      let song = {_id: song_id, added: time, addedBy: window.user._id, edited: time, editedBy: window.user._id};
       loadSongContent(song);
     }
     else {  //existing song hopefully - need to make robust
       db.get(song_id).then(function(song){
         song.edited = new Date().getTime();
-        song.editedBy = window.user.name;
+        song.editedBy = window.user._id;
         loadSongContent(song);
       }).catch(function (err) {
         console.log(err);
@@ -951,6 +977,14 @@ function loadSong(song_id) {
       else {
         $('#song').removeClass('deleted');
       }
+
+      let editable = canEdit(song);
+      let float_menu = `${(editable ? '<button data-songbook onclick="deleteSong(window.song._id)" class="float-menu-item"><span class="float-menu-icon">&#128465;</span> Delete</button>' : '')}
+      <a data-song-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</a>
+      ${(editable ? '<a data-song-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>' : '')}
+      <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>`;
+      $('#song .float-menu').html(float_menu);
+
       var song_html = '<song data-rev="' + song._rev + '" data-id="' + song._id + '" data-user-fav="'+(window.user.fav_songs.indexOf(song._id) > -1 ? 'true' : 'false')+'">' + 
         '<stitle><a data-song class="title_link">' + song.title + '</a><span onclick="event.stopPropagation(); toggleFavSong($(this).closest(\'song\').attr(\'data-id\'))"></span><info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo();"></info></stitle>' +  
         '<authors><author>' + song.authors.join('</author>, <author>') + '</author></authors>' + 
@@ -969,11 +1003,13 @@ function loadSong(song_id) {
       song_html +=  '<copyright>' + song.copyright + '</copyright>' +
                   '</song>'
       $('#song .content').html(song_html);
-      let regex = /(https?:\/\/)?(?:www\.)?(youtu(?:\.be\/([-\w]+)|be\.com\/watch\?v=([-\w]+)))\w/g;
+      
       //add hrefs to comments
+      let regex = /(https?:\/\/)?(?:www\.)?(youtu(?:\.be\/([-\w]+)|be\.com\/watch\?v=([-\w]+)))\w/g;
       $('song chunk[type="comment"]').each(function(){
         $(this).html($(this).html().replace(/(((http|https|ftp):\/\/)*[\w?=&.\/-;#~%-]+\.[\w?=&.\/-;#~%-]+(?![\w\s?&.\/;#~%"=-]*>))/g, '<a href="$1" target="_blank">$1</a> '));
       });
+      
       //set youtube_links
       ($("song line").text().match(regex) != null ? window.youtube_links = [...$("song line").text().match(regex)] : window.youtube_links = []);
       if(window.youtube_links.length > 0) {
@@ -1142,20 +1178,20 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
       new_songbook = true;
       let time = new Date().getTime();
       songbook_id = 'sb-' + time;
-      var songbook = {_id: songbook_id, added: time, addedBy: window.user.name, edited: time, editedBy: window.user.name};
+      var songbook = {_id: songbook_id, added: time, addedBy: window.user._id, edited: time, editedBy: window.user._id};
       loadSongbookContent(songbook);
     }
     //we've got a non-standard songbook_id
     else if(!songbook_id.startsWith('sb-')){
       let time = new Date().getTime();
       songbook_id = 'sb-' + songbook_id;
-      var songbook = {_id: songbook_id, added: time, addedBy: window.user.name, edited: time, editedBy: window.user.name};
+      var songbook = {_id: songbook_id, added: time, addedBy: window.user._id, edited: time, editedBy: window.user._id};
       loadSongbookContent(songbook); 
     }
     else {  //existing songbook hopefully - need to make robust 
       db.get(songbook_id).then(function(songbook){
         songbook.edited = new Date().getTime();
-        songbook.editedBy = window.user.name;
+        songbook.editedBy = window.user._id;
         loadSongbookContent(songbook);
       }).catch(function (err) {
         console.log(err);
@@ -1222,14 +1258,8 @@ function loadSongbook(songbook_id) {
         window.songbook.songrefs = result.rows.map(function (row) {
           return {id: row.id, status: 'n'};
         });
-        buildSongbookList(result.rows);
-        $('#songbook_title').removeAttr('contenteditable');
-        $('#songbook_content .search').parent().removeAttr('disabled');
-        $('#songbook_content').removeClass('showStatus'); 
-        $('#songbook_content').removeClass('showComments'); 
-        $('.disabled-hidden').removeClass('disabled-hidden');
-        $('#songbook_title').html('<i>'+window.songbook.title+'</i>').removeAttr('data-rev').attr('data-songbook-id', songbook_id);
-        $('#songList .float-menu').addClass('special');
+        buildSongbookList(result.rows);        
+        setSongbookInfo(window.songbook);
         var dateAfter = new Date();
         console.log(dateAfter-dateBefore);
         resolve('loaded songbook');
@@ -1241,13 +1271,8 @@ function loadSongbook(songbook_id) {
       if(window.songbook_list != undefined) {
         window.songbook_list.clear();
       }
-      $('#songbook_title').removeAttr('contenteditable');
-      $('#songbook_content .search').parent().removeAttr('disabled');
-      $('#songbook_content').removeClass('showStatus'); 
-      $('#songbook_content').removeClass('showComments'); 
-      $('.disabled-hidden').removeClass('disabled-hidden');
-      $('#songbook_title').text('').removeAttr('data-rev');
-      resolve('loaded songbook');
+      setSongbookInfo({title: '', _id: 'sb-new-songbook'});
+      resolve('loaded blank new songbook');
     }
     else {
       db.get(songbook_id).then(function(result){
@@ -1281,17 +1306,8 @@ function loadSongbook(songbook_id) {
           console.log(err);
         });
         window.songbook = result;
-        $('#songbook_title').removeAttr('contenteditable');
-        $('#songbook_content .search').parent().removeAttr('disabled');
-        $('.disabled-hidden').removeClass('disabled-hidden');
-        (window.songbook.showStatus ? $('#songbook_content').addClass('showStatus') : $('#songbook_content').removeClass('showStatus'));
-        (window.songbook.showComments ? $('#songbook_content').addClass('showComments') : $('#songbook_content').removeClass('showComments'));
-        $('#songbook_title').html(result.title).attr('data-rev',result._rev).attr('data-songbook-id',result._id).nextAll().remove();
-        $('#songbook_title').parent().append('<span onclick="event.stopPropagation(); toggleFavSongbook(\''+result._id+'\')"></span>'+
-          '<info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo(false);"></info>');
-        if(document.getElementById('dialog').style.display=="block" && !parseHash('s-') && document.getElementById('dialog').getAttribute('data-use')=="info"){  //prevents info view flicker when you click on songbooks in song info view.
-          loadInfo(false);
-        }
+        setSongbookInfo(result);
+
         var dateAfter = new Date();
         console.log(dateAfter-dateBefore);
         if(window.user.fav_sbs.indexOf(window.songbook._id) > -1) {
@@ -1304,9 +1320,6 @@ function loadSongbook(songbook_id) {
       }).catch(function(err){
         console.log(err);
       });
-    }
-    if((songbook_id != 'sb-allSongs') && (songbook_id != 'sb-favoriteSongs')){
-      $('#songList .float-menu').removeClass('special');
     }
   });
 }
@@ -1473,7 +1486,6 @@ function saveExportDefault() {
   $('#format').trigger('change');
   let cfg = {
     _id: 'cfg-'+window.exportObject._id+window.user._id, //must keep in sync with lib.js
-    title: 'Default: '+window.user.name,
     cfg: opts
   }
   db.get(cfg._id).then(function(_doc) {
@@ -1482,7 +1494,7 @@ function saveExportDefault() {
     return db.put(cfg);
   }).catch( function (error) {
     console.log('adding');
-    $('#format').html("<option id='user_export_pref' value='"+JSON.stringify(cfg.cfg)+"'>"+cfg.title+"</option>" + $('#format').html());
+    $('#format').html("<option id='user_export_pref' value='"+JSON.stringify(cfg.cfg)+"'>Your Default</option>" + $('#format').html());
     return db.put(cfg);
   }).then(function(info){
     console.log("id of record: " + info.id);
