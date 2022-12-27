@@ -729,21 +729,25 @@ async function getAllUsers(){
     redirect: 'follow'
   };
   try { 
-    let admin_response = await fetch("http://64.246.151.157:25984/_node/nonode@nohost/_config", requestOptions)
+    let url = remoteDb.getUsersDatabaseUrl().replace('_users','');
+    let admin_response = await fetch(url+"_node/nonode@nohost/_config", requestOptions);
     let admin = await admin_response.text();
     admin = JSON.parse(admin);
-    let response = await fetch("http://64.246.151.157:25984/_users/_all_docs?include_docs=true&startkey=\"org.couchdb.user:\"", requestOptions)
+    let response = await fetch(url+"/_users/_all_docs?include_docs=true&startkey=\"org.couchdb.user:\"", requestOptions)
     let non_admin = await response.text();
     non_admin = JSON.parse(non_admin);
     return {"admins": admin.admins, "users": non_admin.rows};// data;
   }
   catch(error) {
-    console.log(error);
+    console.log(error.message);
     return error;
   }
 }
 
 function canEdit(doc){
+  if(window.roles._admin){
+    return true;
+  }
   try {
     if(doc._id == 'sb-allSongs' || doc._id == 'sb-favoriteSongs'){
       return false;
@@ -756,7 +760,7 @@ function canEdit(doc){
     }
   }
   catch(error) {
-    console.log(error);
+    console.log(error.message);
   }
   return false;
 }
@@ -767,12 +771,13 @@ async function loadAllUsers(){
     let users = await getAllUsers();
 
     if(users instanceof Error) {
-      alert('you are offline perhaps!');
+      alert(users.message);
       return;
     }
     let html = '<h3>Users</h3><h4>Admins <button class="circle btn" onclick="addAdminUser();">+</button></h4><ul>'
-    html += Object.keys(users.admins).map(admin => `<li><span style="width: 30%; display:inline-block;">${admin}</span>${'u-'+admin != user._id ? `<button onclick="changeAdminPassword('${admin}')">🔐 Change</button>
-                                 <button onclick="deleteAdminUser('${admin}')">🗑 Delete<button>` : ''}</li>`).join('');
+    html += Object.keys(users.admins).map(admin => `<li><span style="width: 30%; display:inline-block;">${admin}</span>
+                         ${'u-'+admin != user._id ? `<label title="All admins are editors"><input type="checkbox" checked disabled> Editor</label><button onclick="changeAdminPassword('${admin}')">🔐 Change</button>
+                         <button onclick="deleteAdminUser('${admin}')">🗑 Delete<button>` : `<i style="color:gray;"><- You can't modify yourself</i>`}</li>`).join('');
     html += '</ul><h4>Users <button class="circle btn" onclick="addUser();">+</button></h4><ul>'
     html += users.users.filter(user => user.doc.roles.indexOf('editor') > -1)
                        .map(user => `<li><span style="width: 30%; display:inline-block;">${user.doc.name}</span>

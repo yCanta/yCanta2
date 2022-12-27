@@ -193,6 +193,11 @@ html, body, main{
 html .admin {display: none;}
 html._admin .admin {display: revert;}
 
+button[disabled] {
+  filter: saturate(0) contrast(0.5);
+  cursor: revert;
+}
+
 main, header {
   margin: 0 .5em 0 .5em;
 }
