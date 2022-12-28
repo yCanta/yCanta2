@@ -25,14 +25,23 @@ window.addEventListener('load', function() {
 updateOnlineStatus();
 
 function clearAllData() { 
-  //This doesn't work on FF or safari - they don't have .databases() implemented.
-  //Move this to look up database names from local storage index that was just added for non Chrome browsers.
-  window.indexedDB.databases().then((r) => {
-      for (var i = 0; i < r.length; i++) window.indexedDB.deleteDatabase(r[i].name);
-      localStorage.clear();
-  }).then(() => {
-      location.reload();
-  });
+  try { //This doesn't work on FF or safari - they don't have .databases() implemented.
+    window.indexedDB.databases().then((r) => {
+        for (var i = 0; i < r.length; i++) window.indexedDB.deleteDatabase(r[i].name);
+    }).then(() => {
+        localStorage.clear();
+        location.reload();
+    });
+  }
+  catch (error) { //If there's an error, we fall back to our local storage list of databases, and do our best to clear.
+    console.log(error.message);
+    let databases = JSON.parse(localStorage.getItem('databases'));
+    for (db of databases) { //iterate through our listed databases and remove all we know of.
+      removeDbfromLocalStorage(db.name);
+    }
+    localStorage.clear();
+    location.reload();
+  }
 }
 function dbChanges() {
   window.changeHandler = db.changes({
@@ -515,7 +524,7 @@ function dbLogout(){
     remoteDb.close().then(function() {
       console.log('closed remote db');
     }).catch(function(error){
-      console.log('remote db already closed');
+      console.log(error.message);
     });
     syncHandler.cancel(); // <-- this cancels it
   /*
