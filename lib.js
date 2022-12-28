@@ -1330,7 +1330,6 @@ function prepExport(){
       $('#export').removeClass('showStatus'); 
     }
   });
-
 }
 function export_form_summary_update() {
   document.getElementById('format').value = JSON.stringify([]);
@@ -1728,9 +1727,9 @@ async function loadInfo(song=true) {
   }
   else{
     $('#dialog h5').text('Songbook');
-    let content = '<small>Added: '+window.users[window.songbook.addedBy]+', '+new Date(window.songbook.added).toLocaleTimeString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'})+'</small><br />'+
-      '<small>Edited: '+window.users[window.songbook.editedBy]+', '+new Date(window.songbook.edited).toLocaleTimeString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'})+'</small><br />'+
-      '<small>'+(window.songbook._rev.split('-')[0] - 1)+' previous edits</small>';
+    let content = `<small>Added: ${window.users[window.songbook.addedBy] || window.songbook.addedBy}, ${new Date(window.songbook.added).toLocaleTimeString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</small><br />
+      <small>Edited: ${window.users[window.songbook.editedBy] || window.songbook.editedBy}, ${new Date(window.songbook.edited).toLocaleTimeString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</small><br />
+      <small>${(window.songbook._rev.split('-')[0] - 1)} previous edits</small>`;
     document.querySelector('#dialog .content').innerHTML = content;
     document.querySelector('#dialog .title').innerHTML = window.songbook.title;
     $('#dialog').slideDown('fast');

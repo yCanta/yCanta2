@@ -117,6 +117,7 @@ function dbChanges() {
       }
     }
     else if(change.doc._id.startsWith('u-')){
+      if(!window.users){window.users={};} //doesn't always exist.
       window.users[change.doc._id] = change.doc.name;
       if(change.doc._id === window.user._id){
         let fav_sbs = change.doc.fav_sbs;
