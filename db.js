@@ -157,7 +157,7 @@ function dbChanges() {
       }
     }
     //New default config saved
-    else if(change.doc._id.startsWith('cfg-')){
+    else if(change.doc._id.startsWith('cfg-')){ //Change to be more specific.
       if(!window.silent){ notyf.info('Default config saved'); }
     }
     //else... let it go! for now
