@@ -1176,7 +1176,7 @@ function editSong() {
 
   $('#song authors').html($('#song author').map(function(){return $(this).text();}).get().join(', '));
   $('#song categories').html($('#song cat').map(function(){return $(this).text();}).get().join(', '));
-  $('#song scripture_ref').html($('#song cat').map(function(){return $(this).text();}).get().join(', '));
+  $('#song scripture_ref').html($('#song scrip_ref').map(function(){return $(this).text();}).get().join(', '));
   $('#song').first('.subcolumn').find('stitle .title_link,authors,scripture_ref,introduction,key,chunk,copyright,cclis').toTextarea({
     allowHTML: false,//allow HTML formatting with CTRL+b, CTRL+i, etc.
     allowImg: false,//allow drag and drop images
