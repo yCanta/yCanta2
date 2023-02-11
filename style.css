@@ -460,10 +460,12 @@ stitle, cat, author, scrip_ref, key, copyright {
 #keyToggleContainer.active .transpose-keys {
   max-height: 6.5rem;
   padding: 1rem;
+  margin-bottom: 1rem;
 }
 #keyToggleContainer .transpose-keys {
   max-height: 0;
   padding: 0 1rem;
+  margin-bottom: 0;
   border-radius: 1rem;
   overflow: hidden;
   max-width: 25rem;
@@ -471,8 +473,13 @@ stitle, cat, author, scrip_ref, key, copyright {
 #keyToggleFilter {
   display: inline-block;
   padding: .5rem;
+  padding-bottom: 0;
+  margin-top: -.5rem;
   border-top-right-radius: 1rem;
   border-top-left-radius: 1rem;
+}
+.active > #keyToggleFilter {
+  padding-bottom: 1rem;
 }
 
 .song.edit .wrap {
