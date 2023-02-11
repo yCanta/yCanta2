@@ -408,9 +408,6 @@ legend {
 }
 
 /*CSS FOR Song Display*/
-#song song * {
-  transition: none !important;
-}
 .deleted button,
 .deleted a,
 .deleted {
@@ -452,6 +449,32 @@ li[data-song-id="section"] a {
 stitle, cat, author, scrip_ref, key, copyright {
   cursor: pointer;
 }
+#keyToggleContainer.active {
+  filter: drop-shadow(2px 2px 4px lightgray);
+}
+#keyToggleContainer > * {
+  background: var(--background-color);
+  margin: 0;
+  transition: all .2s !important;
+}
+#keyToggleContainer.active .transpose-keys {
+  max-height: 6.5rem;
+  padding: 1rem;
+}
+#keyToggleContainer .transpose-keys {
+  max-height: 0;
+  padding: 0 1rem;
+  border-radius: 1rem;
+  overflow: hidden;
+  max-width: 25rem;
+}
+#keyToggleFilter {
+  display: inline-block;
+  padding: .5rem;
+  border-top-right-radius: 1rem;
+  border-top-left-radius: 1rem;
+}
+
 .song.edit .wrap {
   cursor: move;
 }

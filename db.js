@@ -995,14 +995,16 @@ function loadSong(song_id) {
       <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>`;
       $('#song .float-menu').html(float_menu);
 
-      var song_html = '<song data-rev="' + song._rev + '" data-id="' + song._id + '" data-user-fav="'+(window.user.fav_songs.indexOf(song._id) > -1 ? 'true' : 'false')+'">' + 
-        '<stitle><a data-song class="title_link">' + song.title + '</a><span onclick="event.stopPropagation(); toggleFavSong($(this).closest(\'song\').attr(\'data-id\'))"></span><info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo();"></info></stitle>' +  
-        '<authors><author>' + song.authors.join('</author>, <author>') + '</author></authors>' + 
-        '<scripture_ref><scrip_ref>' + song.scripture_ref.join('</scrip_ref>, <scrip_ref>') + '</scrip_ref></scripture_ref>' + 
-        '<introduction>' + song.introduction + '</introduction>' + 
-        '<key>' + song.key + '</key>' + 
-        '<categories><cat>' + song.categories.sort().join('</cat>, <cat>') + '</cat></categories>' + 
-        '<cclis>' + (song.cclis != false ? 'CCLIS' + (!isNaN(song.cclis) ? ': '+song.cclis: '') : '') + '</cclis>';
+      var song_html = `<song data-rev="${song._rev}" data-id="${song._id}" data-user-fav="${(window.user.fav_songs.indexOf(song._id) > -1 ? 'true' : 'false')}">
+        <stitle><a data-song class="title_link">${song.title}</a><span onclick="event.stopPropagation(); toggleFavSong($(this).closest('song').attr('data-id'))"></span>
+          <info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo();"></info>
+        </stitle>  
+        <authors><author>${song.authors.join('</author>, <author>')}</author></authors>
+        <scripture_ref><scrip_ref>${song.scripture_ref.join('</scrip_ref>, <scrip_ref>')}</scrip_ref></scripture_ref>
+        <span id="keyToggleContainer"><span id="keyToggleFilter"><key>${song.key}</key>${(song.key ? '<button id="keyToggle" onclick="this.parentElement.parentElement.classList.toggle(\'active\')">↑↓</button></span>' : '')}</span>
+        <categories><cat>${song.categories.sort().join('</cat>, <cat>')}</cat></categories>
+        <cclis>${(song.cclis != false ? 'CCLIS' + (!isNaN(song.cclis) ? ': '+song.cclis: '') : '')}</cclis>
+        <introduction>${song.introduction}</introduction>`;
       song.content.forEach(function(chunk){
         song_html += '<chunk type="' + chunk[0].type + '">';
         chunk[1].forEach(function(line){
@@ -1027,7 +1029,7 @@ function loadSong(song_id) {
       }
       resolve("song_loaded");
 
-      $('#song key').transpose();
+      $('#keyToggle').transpose();
       if(document.getElementById('dialog').style.display=="block" && document.getElementById('dialog').getAttribute('data-use')=="info") {loadInfo()}
     }
     if(song_id === 's-new-song'){

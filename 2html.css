@@ -1,7 +1,10 @@
 stitle, categories, cclis, authors, key {
   margin-bottom: 1em;
 }
-authors, introduction, scripture_ref, key {
+key {
+  margin-right: .5em; 
+}
+authors, introduction, scripture_ref {
   margin-right: 1em; 
   display: inline-block;
 }
@@ -19,11 +22,12 @@ stitle {
   column-span: all;
 }
 chunk {
-  break-inside: avoid;
   position: relative;
   display: block;
+  white-space: pre-wrap;
+  break-inside: avoid;
   margin-left: 2em;
-  margin-bottom: 1em;
+  margin-bottom: 2em;
 }
 line {
   display: block;
@@ -34,18 +38,18 @@ line {
   padding-top: 0;
 }
 c {
- position: relative;
- top: -1em;
- display: inline-block;
- width: 0;
+  position: relative;
+  top: -1em;
+  display: inline-block;
+  width: 0;
+  font-weight: 500;
 }
 .nochords c {
- display: none;
+  display: none;
 }
 /*counter stuff  */
 song {
   display: block;
-  white-space: pre-wrap;
   counter-reset: verse_n; 
   column-width: 18.75rem;
   column-fill: auto;
@@ -54,12 +58,15 @@ song {
   margin-bottom: 1rem;
 }
 .nochords [type=verse]:before {
-  top: 1.2em;
+  top: 0rem;
 }
 [type=verse]:before {
-  top: 2.1em;
+  position: absolute;
+  top: 1rem;
+  left: -2rem;
   content: counter(verse_n) ")";
   counter-increment: verse_n;
+  transition: top .2s;
 }
 /*end of counter stuff */
 chunk:before {
@@ -131,6 +138,12 @@ copyright:before {
 }
 copyright {
  margin-top: 1em;
+}
+introduction:empty {
+  display: none;
+}
+.edit introduction {
+  display: initial;
 }
 introduction:before {
  content: ''; 
