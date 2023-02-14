@@ -4,6 +4,9 @@ stitle, categories, cclis, authors, #keyToggleContainer {
 key {
   margin-right: .5em; 
 }
+key:empty + #keyToggle {
+    display: none;
+}
 authors, introduction, scripture_ref {
   margin-right: 1em; 
   display: inline-block;

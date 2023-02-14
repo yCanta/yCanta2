@@ -1001,7 +1001,7 @@ function loadSong(song_id) {
         </stitle>  
         <authors><author>${song.authors.join('</author>, <author>')}</author></authors>
         <scripture_ref><scrip_ref>${song.scripture_ref.join('</scrip_ref>, <scrip_ref>')}</scrip_ref></scripture_ref>
-        <span id="keyToggleContainer"><span id="keyToggleFilter"><key>${song.key}</key>${(song.key ? '<button id="keyToggle" onclick="this.parentElement.parentElement.classList.toggle(\'active\')">↑↓</button></span>' : '')}</span>
+        <span id="keyToggleContainer"><span id="keyToggleFilter"><key>${song.key}</key><button id="keyToggle" onclick="this.parentElement.parentElement.classList.toggle(\'active\')">↑↓</button></span></span>
         <categories><cat>${song.categories.sort().join('</cat>, <cat>')}</cat></categories>
         <cclis>${(song.cclis != false ? 'CCLIS' + (!isNaN(song.cclis) ? ': '+song.cclis: '') : '')}</cclis>
         <introduction>${song.introduction}</introduction>`;
