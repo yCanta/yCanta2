@@ -1,16 +1,14 @@
 var selected;
 
 function dragOver( e ) {
-    if (e.preventDefault) {
-      e.preventDefault(); // Allows us to drop.
-    }
-    if (e.target.contentEditable=='true') {
-      e.dataTransfer.dropEffect = 'none';
-    }
-    else {
-      e.dataTransfer.dropEffect = 'move';
-    }
-    return false;
+  e.preventDefault(); // Allows us to drop.
+  if (e.target.contentEditable=='true') {
+    e.dataTransfer.dropEffect = 'none';
+  }
+  else {
+    e.dataTransfer.dropEffect = 'move';
+  }
+  return false;
 }
 
 function dragEnd( e, selector='ul li' ) {
@@ -18,9 +16,19 @@ function dragEnd( e, selector='ul li' ) {
     song.classList.remove('moving');
     song.classList.remove('overt');  
     song.classList.remove('overb');
-    song.parentNode.classList.remove('sorting');  
+    song.parentNode.classList.remove('sorting');
   });
-  selected = null
+  if(e.target.closest('song')) {
+    e.target.closest('song').querySelectorAll('.wrap .contenteditable-disabled').forEach(function(el) {el.classList.remove('contenteditable-disabled'); el.setAttribute('contentEditable','true')});
+  }
+  e.target.scrollIntoView({behavior: "smooth", block: "center"});
+  selected = null;
+  setTimeout(() => {
+    e.target.classList.add('highlightBg');
+  },200);
+  setTimeout(() => {
+    e.target.classList.remove('highlightBg');
+  },3200);
 }
 
 function dragStart( e, selector='li' ) {
@@ -28,11 +36,17 @@ function dragStart( e, selector='li' ) {
   e.dataTransfer.setData( "text/plain", '' )
   selected = e.target.closest(selector);
   selected.classList.add('moving');
-  selected.parentNode.classList.add('sorting');
+  setTimeout(() => { //helps avoid premature dragEnd trigger;
+    selected.parentNode.classList.add('sorting');
+  }, 100);
+  if(e.target.closest('song')) {
+    e.target.closest('song').querySelectorAll('.wrap [contentEditable="true"]').forEach(function(el) {el.classList.add('contenteditable-disabled'); el.removeAttribute('contenteditable')});
+  }
 }
 function dragEnter( e, selector='li' ) {
+  e.preventDefault(); // Allows us to drop.
   var li = e.target.closest(selector);
-  if(isVerboten(li)){ return }
+  if(isVerboten(li)){return}
   [].forEach.call(document.querySelectorAll(selector), function (song) {
     song.classList.remove('overt');  
     song.classList.remove('overb');  
@@ -97,6 +111,7 @@ function dragDrop( e, selector='li' ) {
       li.parentNode.insertBefore(selected, li.nextSibling);
     }
   }
+  e.dataTransfer.clearData();
 }
 function isVerboten(target) {
   if (target.closest('#songListEdit') == null) {

@@ -1029,10 +1029,6 @@ function bind_chunk_edit(chunk){
   chunk.addEventListener('dragleave', function(event){dragLeave(event,'.wrap');}, false);
   chunk.addEventListener('drop', function(event){dragDrop(event,'.wrap');}, false);
   chunk.addEventListener('dragend', function(event){dragEnd(event,'.wrap');}, false);
-  $(chunk).children().hover(
-    function(){chunk.setAttribute('draggable', 'false');},
-    function(){chunk.setAttribute('draggable', 'true');}
-  );
 }
 function add_edit_pencil(song){
   $(song).find('a').after('<button class="edit_pencil">✏️</button>');
