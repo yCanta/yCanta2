@@ -448,7 +448,7 @@ li[data-song-id="section"] a {
   margin-right: 1.5rem;
   font-size: .7rem;
 }
-stitle, cat, author, scrip_ref, key, copyright {
+stitle, cat, author, scrip_ref, key, copyright, cclis {
   cursor: pointer;
 }
 #keyToggleContainer.active {
@@ -475,7 +475,7 @@ stitle, cat, author, scrip_ref, key, copyright {
 #keyToggleFilter {
   display: inline-block;
   padding: .5rem;
-  padding-bottom: 0;
+  padding-bottom: 1rem;
   margin-top: -.5rem;
   border-top-right-radius: 1rem;
   border-top-left-radius: 1rem;

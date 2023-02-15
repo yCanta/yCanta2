@@ -9,6 +9,7 @@ key:empty + #keyToggle {
 }
 authors, introduction, scripture_ref {
   margin-right: 1em; 
+  margin-bottom: 1em;
   display: inline-block;
 }
 stitle, categories, cclis, copyright {
@@ -143,7 +144,9 @@ chunk:before {
 [type='indented no label'] line {
   margin-left: 2em;
 }
-key:not(:empty):before {content: 'Key: '}
+key:not(:empty):before {
+  content: 'Key: '
+}
 copyright:before {
  content: '';
 }
