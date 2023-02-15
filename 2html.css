@@ -62,7 +62,7 @@ song {
 }
 .edit [type=verse]:before {
   top: -3.5rem !important;
-  left: 8rem !important;
+  left: 6rem !important;
   pointer-events: none;
 }
 .nochords [type=verse]:before {
@@ -122,7 +122,6 @@ chunk:before {
 }
 .edit chunk {
   margin-bottom: 1em;
-  margin-left: 0;
 }
 .edit chunk:before {
   position: absolute;

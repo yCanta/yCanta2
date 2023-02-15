@@ -1338,6 +1338,12 @@ only screen and (max-height: 31.25rem) {
   .edit .active .subcolumn:first-child > div {
     padding: 0 3rem 0 1rem;
   }
+  .edit chunk {
+    margin-left: 0;
+  }
+  .edit song [type=verse]:before {
+    left: 8rem !important;
+  }
 }
 /*larger screen and landscape phone */
 @media only screen and (min-width: 40rem){
