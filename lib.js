@@ -745,24 +745,25 @@ async function getAllUsers(){
 }
 
 function canEdit(doc){
-  if(window.roles._admin){
-    return true;
-  }
+  let result = false;
   try {
-    if(doc._id == 'sb-allSongs' || doc._id == 'sb-favoriteSongs'){
-      return false;
+    if(window.roles._admin){
+      result = true;
     }
-    if(window.roles.editor){
-      return true;
+    else if(window.roles.editor){
+      result = true;
     }
     else if(doc.addedBy.trim() == window.user._id.trim()){
-      return true;
+      result = true;
+    }
+    if(doc._id == 'sb-allSongs' || doc._id == 'sb-favoriteSongs'){ //docs that are just not editable.
+      result = false;
     }
   }
   catch(error) {
     console.log(error.message);
   }
-  return false;
+  return result;
 }
 
 async function loadAllUsers(){
