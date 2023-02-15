@@ -61,8 +61,11 @@ function dbChanges() {
     if(change.doc._id.startsWith('s-')){
       loadRecentSongs();  
       //only load song if it's the one that's up.
-      if(window.song._id === change.doc._id && document.body.classList.contains('song')){
-        loadSong(change.doc._id);
+      if(window.song._id === change.doc._id && document.body.classList.contains('song')){ //if we're viewing this song.
+        Promise.all([loadSong(change.doc._id)]) //little bit of a hack - had an issue where the url update reloads the songbook and song, then this triggers causing the edit buttons to not work... 
+          .then(function(values) {
+            updateAllLinks();
+          });         
         if(!window.silent){ notyf.info('Song updated', 'var(--song-color)') };
       } else {
         if(!window.silent){ 
