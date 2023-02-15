@@ -1025,7 +1025,7 @@ function loadSong(song_id) {
       //set youtube_links
       ($("song line").text().match(regex) != null ? window.youtube_links = [...$("song line").text().match(regex)] : window.youtube_links = []);
       if(window.youtube_links.length > 0) {
-        $('#song key').before('<button class="btn" style="padding: 5px 8px; margin-top: 0; background-color:var(--highlight-color);" onclick="loadSongPlayer();">▶</button>')
+        $('#song key').before('<button class="btn" style="padding: 5px 8px; margin-top: 0; margin-bottom: 0; background-color:var(--highlight-color);" onclick="loadSongPlayer();">▶</button>')
       }
       resolve("song_loaded");
 

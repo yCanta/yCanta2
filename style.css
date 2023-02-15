@@ -1335,6 +1335,9 @@ only screen and (max-height: 31.25rem) {
     left: 1em;
     right: auto;
   }
+  .edit .active .subcolumn:first-child > div {
+    padding: 0 3rem 0 1rem;
+  }
 }
 /*larger screen and landscape phone */
 @media only screen and (min-width: 40rem){
