@@ -108,6 +108,9 @@ chunk:before {
   margin-top: 0;
   margin-bottom: 0;
 }
+.sorting .wrap * {
+  pointer-events: none;
+}
 .edit cclis {
   display: inline-block;
   width: 5rem;
