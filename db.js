@@ -1030,6 +1030,12 @@ function loadSong(song_id) {
       if(window.youtube_links.length > 0) {
         $('#song key').before('<button class="btn" style="padding: 5px 8px; margin-top: 0; margin-bottom: 0; background-color:var(--highlight-color);" onclick="loadSongPlayer();">▶</button>')
       }
+      //Update songplacement
+      setTimeout(function(){ //needed as we don't know when the songbook will get loaded...
+        let songPlacement = window.songbook_list.visibleItems.findIndex(el => el._values['song-id'] == window.song._id) + 1;
+        $('#songbook_content .search + span').attr('data-number-visible',`${songPlacement ? songPlacement+'/' : ''}${window.songbook_list.visibleItems.length}`);
+      },300);
+
       resolve("song_loaded");
 
       $('#keyToggle').transpose();

@@ -534,10 +534,21 @@ function toggleFullscreen(el){
 }
 
 function bindSearchToList(list, id){
-  list.on('searchComplete', function(){
-    $(id + ' .search + span').attr('data-number-visible',list.visibleItems.length);
-  });
-  $(id + ' .search+span').attr('data-number-visible', $(id + ' .list li').length);
+  if(list == window.songbook_list){
+    list.on('searchComplete', function(){
+      let songPlacement = window.songbook_list.visibleItems.findIndex(el => el._values['song-id'] == window.song._id) + 1;
+ ;
+      $(id + ' .search + span').attr('data-number-visible',`${songPlacement ? songPlacement+'/' : ''}${list.visibleItems.length}`);
+    });  
+    let songPlacement = window.songbook_list.visibleItems.findIndex(el => el._values['song-id'] == window.song._id) + 1;
+    $(id + ' .search + span').attr('data-number-visible', `${songPlacement ? songPlacement+'/' : ''}${$(id + ' .list li').length}`);
+  }
+  else {
+    list.on('searchComplete', function(){
+      $(id + ' .search + span').attr('data-number-visible',list.visibleItems.length);
+    });  
+    $(id + ' .search + span').attr('data-number-visible', $(id + ' .list li').length);
+  }
 }
 
 function bindToSongEdit() {

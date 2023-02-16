@@ -558,6 +558,9 @@ info:after {
   background-color: var(--background-color);
   z-index: 1;
   margin: 0 -1rem 0 -1rem;
+  padding: 0.1px 1rem 0.5rem 1rem;
+}
+#song .column_header {
   padding: 0.1px 6rem 0.5rem 1rem;
 }
 .column_header > * > * {
@@ -1220,17 +1223,19 @@ input[type="number"] {
   }
   /*move search into header  */
   .songList #songbookList .deleteicon,
-  .song #songList .deleteicon {
+  .song #songbookList .deleteicon,
+  .song #songList:not(.slidout) .deleteicon {
     position: absolute;
     top: 2.5rem;
     right: 3rem;
     transform: scale(.75);
   }
   .songList #songbookList .search,
-  .song #songList .search {
+  .song #songbookList .search,
+  .song #songList:not(.slidout) .search {
     width: calc(100%);
   }
-  .song #songList #category_filter_container {
+  .song #songList:not(.slidout) #category_filter_container {
     display: none;
   }
 
@@ -1278,6 +1283,9 @@ input[type="number"] {
     transform-origin: bottom;
     z-index: 7 !important;
     width: min(80%, 300px) !important;
+  }
+  .slidout .column_header {
+    padding-right: 1rem;
   }
 }
 /** Phone in landscape **/
