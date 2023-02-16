@@ -21,7 +21,7 @@ stitle {
   margin-top: 1em;
   top: 0;
 }
-.fullscreen #song .column_header {
+#song .column_header {
   column-span: all;
 }
 chunk {
