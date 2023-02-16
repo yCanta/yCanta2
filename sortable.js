@@ -21,7 +21,7 @@ function dragEnd( e, selector='ul li' ) {
   if(e.target.closest('song')) {
     e.target.closest('song').querySelectorAll('.wrap .contenteditable-disabled').forEach(function(el) {el.classList.remove('contenteditable-disabled'); el.setAttribute('contentEditable','true')});
   }
-  e.target.scrollIntoView({behavior: "smooth", block: "center"});
+  scrollIntoViewIfNeed(e.target);
   selected = null;
   setTimeout(() => {
     e.target.classList.add('highlightBg');
@@ -102,6 +102,8 @@ function dragDrop( e, selector='li' ) {
     else {
       li.parentNode.insertBefore(song, li.nextSibling);
     }
+    song.classList.add('highlightBg');
+    setTimeout(function(){song.classList.remove('highlightBg')},3000);
   }
   else {
     if (isBefore(selected, li)) {

@@ -988,7 +988,7 @@
               updateAllLinks();
               window.document.title = "yCanta2: "+window.songbook.title + " > " + window.song.title;
               setTimeout(function(){  
-                document.querySelector('[data-song-id="'+window.song._id+'"]').scrollIntoView({behavior: "smooth", block: "center"});
+                scrollIntoViewIfNeed(document.querySelector('[data-song-id="'+window.song._id+'"]'));
               },200);
           });          
         }

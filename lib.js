@@ -832,7 +832,7 @@ function handleDarkMode(){
 }
 function goToSettings(){
   document.getElementById('appSettings').classList.remove('closed');
-  document.getElementById('appSettings').scrollIntoView();
+  scrollIntoViewIfNeed(document.getElementById('appSettings'));
 }
 function setLoginState() {
   window.loggedin = true;
@@ -1138,7 +1138,9 @@ function editSongbook() {
           }
         });
         $('#songbook_content .list').append(copySong);
-        $('#songbook_content .list li:last-child')[0].scrollIntoView();
+        scrollIntoViewIfNeed(copySong);
+        copySong.classList.add('highlightBg');
+        setTimeout(function(){copySong.classList.remove('highlightBg')},3000);
       });
     });
     $('#songList ul.list').each(function(){
@@ -2118,3 +2120,20 @@ $(function() {
     tooltip.bind( 'click', remove_tooltip );
   });
 });
+
+function scrollIntoViewIfNeed(el) {
+  function isScrolledIntoView(el) {
+    var rect = el.getBoundingClientRect();
+    var elemTop = rect.top;
+    var elemBottom = rect.bottom;
+
+    // Only completely visible elements return true:
+    var isVisible = (elemTop >= 0) && (elemBottom <= window.innerHeight);
+    // Partially visible elements return true:
+    //isVisible = elemTop < window.innerHeight && elemBottom >= 0;
+    return isVisible;
+  }
+  if(!isScrolledIntoView(el)){
+    el.scrollIntoView({behavior: "smooth", block: "center"});
+  }
+}
