@@ -410,13 +410,12 @@ function combine(chord, text) {
   return line;
 }
 function parseHash(part) {
-  var parts = location.hash.substr(1).split('&');
   //this is not failsafe
   if(part == 's-') {
-    return parts[1];
+    return location.hash.match(/(s-.*?)(\?|\&|$)/)[1];
   }
   else if (part == 'sb-') {
-    return parts[0];
+    return location.hash.match(/(sb-.*?)(\?|\&|$)/)[1];
   }
   else {
     return parts;
@@ -455,15 +454,15 @@ function sortFavSongbooks(a,b){
 function updateAllLinks(whatChanged='all') {
   let songbook_id = window.songbook._id || 'sb-allSongs';
   let song_id = window.song._id;
-  $('[data-song-edit]').attr('href','#'+songbook_id+'&'+song_id+'&edit');
-  $('[data-song-edit="new"]').attr('href','#'+songbook_id+'&s-new-song&edit');
+  $('[data-song-edit]').attr('href','#'+songbook_id+'&'+song_id+'?edit');
+  $('[data-song-edit="new"]').attr('href','#'+songbook_id+'&s-new-song?edit');
   $('[data-song]').attr('href','#'+songbook_id+'&'+song_id);
-  $('[data-song-export]').attr('href','#'+songbook_id+'&'+song_id+'&export');
-  $('[data-songbook-edit]').attr('href','#'+songbook_id+'&edit');
-  $('[data-songbook-edit="new"]').attr('href','#sb-new-songbook&edit');
-  $('[data-songbook-present]').attr('href', '#'+songbook_id+'&present');
+  $('[data-song-export]').attr('href','#'+songbook_id+'&'+song_id+'?export');
+  $('[data-songbook-edit]').attr('href','#'+songbook_id+'?edit');
+  $('[data-songbook-edit="new"]').attr('href','#sb-new-songbook?edit');
+  $('[data-songbook-present]').attr('href', '#'+songbook_id+'?present');
   $('[data-songbook]').attr('href','#'+songbook_id);
-  $('[data-songbook-export]').attr('href','#'+songbook_id+'&export');
+  $('[data-songbook-export]').attr('href','#'+songbook_id+'?export');
   $('[data-home]').attr('href','#');
 
   //add highlighting
@@ -491,19 +490,19 @@ $(function () {
     switch (event.which) {
       case 1:
         //alert('Left mouse button pressed');
-        window.location = '#'+window.songbook._id+'&present';
+        window.location = '#'+window.songbook._id+'?present';
         break;
       case 2:
         //alert('Middle mouse button pressed');
-        window.location = '#'+window.songbook._id+'&present+new';
+        window.location = '#'+window.songbook._id+'?present+new';
         break;
       case 3:
         //alert('Right mouse button pressed');
-        window.location = '#'+window.songbook._id+'&present+new';
+        window.location = '#'+window.songbook._id+'?present+new';
         break;
       default:
         //alert('You have a strange mouse');
-        window.location = '#'+window.songbook._id+'&present';
+        window.location = '#'+window.songbook._id+'?present';
     }
   });
 });
@@ -1669,7 +1668,7 @@ window.addEventListener('load', function(){
   makeDraggable(document.getElementById('song'),
     function(){if(!confirmWhenEditing()) {window.location.hash = '#'+window.songbook._id;}}, 'top');
   makeDraggable(document.getElementById('export'),
-    function(){if(!confirmWhenEditing()) {window.location.hash = window.location.hash.replace('&export','');}}, 'top');
+    function(){if(!confirmWhenEditing()) {window.location.hash = window.location.hash.replace('?export','');}}, 'top');
 }, false);
 
 

@@ -251,7 +251,7 @@
       </div>
       <div class="column" id="export">
         <div class="float-menu">
-          <button class="float-menu-item" onclick="window.location.hash=window.location.hash.replace('&export','');"><span class="float-menu-icon">&#128465;</span> Cancel</button>
+          <button class="float-menu-item" onclick="window.location.hash=window.location.hash.replace('?export','');"><span class="float-menu-icon">&#128465;</span> Cancel</button>
           <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>
         </div>
         <div class="row">
@@ -929,7 +929,7 @@
           window.document.title = "yCanta2";
         }
         //if song edit
-        else if((hash.search('&s-') != -1) && (hash.search('&edit') != -1)) {
+        else if((hash.search(/&s-.*?\?edit/) != -1)) {
           $('body').attr('class', 'song edit');
           $('.active').removeClass('active');
           $('#song').addClass('active');
@@ -943,7 +943,7 @@
           });
         }
 //if song export
-        else if((hash.search('&s-') != -1) && (hash.search('&export') != -1)) {
+        else if((hash.search(/&s-.*?\?export/) != -1)) {
           //Initiate song export
           $('body').attr('class', 'song export');
           $('.active').removeClass('active');
@@ -993,7 +993,7 @@
           });          
         }
 //if songbook edit
-        else if((hash.search('#sb-') != -1) && (hash.search('&edit') != -1)) {
+        else if((hash.search(/#sb-.*?\?edit/) != -1)) {
           //Initiate songbook edit
           $('body').attr('class', 'songList edit');
           $('.active').removeClass('active');
@@ -1006,7 +1006,7 @@
           });
         }
 //if songbook export
-        else if((hash.search('#sb-') != -1) && (hash.search('&export') != -1)) {
+        else if((hash.search(/#sb-.*?\?export/) != -1)) {
           //Initiate songbook export
           $('body').attr('class', 'songList export');
           $('.active').removeClass('active');
@@ -1052,7 +1052,7 @@
           });
         }
 //if songbook present
-        else if((hash.search('#sb-') != -1) && (hash.search('&present') != -1)) {
+        else if((hash.search(/#sb-.*?\?present/) != -1)) {
           //Initiate songbook export
           Promise.resolve(loadSongbook(parseHash('sb-')))
             .then(function(){
