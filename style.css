@@ -560,7 +560,7 @@ info:after {
   margin: 0 -1rem 0 -1rem;
   padding: 0.1px 1rem 0.5rem 1rem;
 }
-#song .column_header {
+#song .subcolumn:first-child .column_header {
   padding: 0.1px 6rem 0.5rem 1rem;
 }
 .column_header > * > * {
