@@ -516,52 +516,60 @@ stitle, cat, author, scrip_ref, key, copyright, cclis {
 #songbookList li {
   position: relative;
 }
-#song song stitle span:after,
-#songbook_title + span:after {
-  margin-left: .7rem;
+.star:after {
+  margin-left: .5rem;
   text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.15);
   font-size: 1.7rem;
   color: var(--edit-color);
   content: '☆';
   cursor: pointer;
+  position: absolute;
+  line-height: 1.17rem;
 }
 info:after {
   content: 'ⓘ';
   color: darkblue;
+  font-family: monospace;
   cursor: pointer;
+  position: absolute;
+  left: 2.5rem;
+  top: .2rem;
 }
 #songbookList li span:after {
   text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.15);
   position: absolute;
   right: 1rem;
   font-size: 1.7rem;
+  line-height: 1.4em;
   color: lightgray;
   display: none;
   cursor: pointer;
 }
-#song song[data-user-fav="true"] stitle span:after,
-#songbookList li[data-user-fav="true"] span:after,
-#songbook_title[data-user-fav="true"] + span:after {
+#song song[data-user-fav="true"] stitle .star:after,
+#songbookList li[data-user-fav="true"] .star:after,
+#songbook_title[data-user-fav="true"] + span > .star:after {
   content: '★';
   color: black;
   display: inline-block;
 }
-stitle,
 .column_header {
   position: sticky;
   top: 0;
   background-color: var(--background-color);
   z-index: 1;
   margin: 0 -1rem 0 -1rem;
-  padding: 0.1px 1rem 0.5rem 1rem;
+  padding: 0.1px 6rem 0.5rem 1rem;
 }
-stitle,
+.column_header > * > * {
+  position: relative;
+}
 .subcolumn:first-child .column_header {
   background: linear-gradient(180deg, var(--highlight-color) 0%, var(--background-color) 90%, rgba(255,255,255,0) 100%);
 }
-.edit.song stitle,
+.edit.song #song #song_header,
 .edit.songList #songbook_header {
   top: 3.75rem;
+  padding-right: 1rem;
 }
 .edit_buttons:first-child {
   position: sticky;
@@ -1557,13 +1565,13 @@ only screen and (max-height: 31.25rem) {
   .column:not(:last-child):hover {
     z-index: 6 !important;
   }
-  #songbook_title[data-user-fav="true"] + span:hover:after,
-  #song song[data-user-fav="true"] stitle span:hover:after {
+  #songbook_title[data-user-fav="true"] .star:hover:after,
+  #song song[data-user-fav="true"] stitle .star:hover:after {
     content: '☆';
     color: black;
   }
-  #songbook_title + span:hover:after,
-  #song stitle span:hover:after {
+  #songbook_title .star:hover:after,
+  #song stitle .star:hover:after {
     content: '★';
     cursor: pointer;
     color: black;

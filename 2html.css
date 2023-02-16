@@ -18,11 +18,10 @@ stitle, categories, cclis, copyright {
 stitle {
   font-size: 1.17em;/*h3 STYLING*/
   font-weight: bold;
-  position: sticky;
-  padding-top: 1em;
-  padding-right: 2.75em;
+  margin-top: 1em;
   top: 0;
-  z-index: 1;
+}
+.fullscreen #song .column_header {
   column-span: all;
 }
 chunk {

@@ -911,8 +911,8 @@ function setSongbookInfo(songbook){
   let title_text = (songbook._id == 'sb-allSongs' || songbook._id == 'sb-favoriteSongs' ? `<i>${songbook.title}</i>` : songbook.title);
   $('#songbook_title').html(title_text).attr('data-rev',songbook._rev).attr('data-songbook-id', songbook._id).nextAll().remove();
   if(songbook._id != 'sb-allSongs' && songbook._id != 'sb-favoriteSongs'){
-    $('#songbook_title').parent().append('<span onclick="event.stopPropagation(); toggleFavSongbook(\''+songbook._id+'\')"></span>'+
-      '<info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo(false);"></info>');
+    $('#songbook_title').parent().append('<span><span class="star" onclick="event.stopPropagation(); toggleFavSongbook(\''+songbook._id+'\')"></span>'+
+      '<info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo(false);"></info></span>');
   }
   if(document.getElementById('dialog').style.display=="block" && !parseHash('s-') && document.getElementById('dialog').getAttribute('data-use')=="info"){  //prevents info view flicker when you click on songbooks in song info view.
     loadInfo(false);
@@ -1152,7 +1152,7 @@ function editSong() {
   let buttons = '<div class="edit_buttons"><button data-song class="btn" style="background-color: var(--edit-color);" onclick="prepSaveSong($(this))">Save</button>';
   buttons += '<button data-song class="btn" style="background-color: var(--edit-color);" onclick="window.editing=false; window.location.hash=$(this).attr(\'href\');">Cancel</button>';
   buttons += '<button data-song class="btn" style="background-color: var(--edit-color);" onclick="window.editing=false; location.reload()">Reset</button></div>';
-  $('song').before(buttons).append(buttons);
+  $('song').prepend(buttons).append(buttons);
 
   $('chunk').each(function(index){
     var content = [];

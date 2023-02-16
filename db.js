@@ -999,9 +999,9 @@ function loadSong(song_id) {
       $('#song .float-menu').html(float_menu);
 
       var song_html = `<song data-rev="${song._rev}" data-id="${song._id}" data-user-fav="${(window.user.fav_songs.indexOf(song._id) > -1 ? 'true' : 'false')}">
-        <stitle><a data-song class="title_link">${song.title}</a><span onclick="event.stopPropagation(); toggleFavSong($(this).closest('song').attr('data-id'))"></span>
-          <info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo();"></info>
-        </stitle>  
+        <div class="column_header" id="song_header"><stitle><a data-song class="title_link">${song.title}</a><span><span class="star" onclick="event.stopPropagation(); toggleFavSong($(this).closest('song').attr('data-id'))"></span>
+          <info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo();"></info></span>
+        </stitle></div>
         <authors><author>${song.authors.join('</author>, <author>')}</author></authors>
         <scripture_ref><scrip_ref>${song.scripture_ref.join('</scrip_ref>, <scrip_ref>')}</scrip_ref></scripture_ref>
         <span id="keyToggleContainer"><span id="keyToggleFilter"><key>${song.key}</key><button id="keyToggle" onclick="this.parentElement.parentElement.classList.toggle(\'active\')">↑↓</button></span></span>
