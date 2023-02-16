@@ -1568,7 +1568,11 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
             dragEl.style.transform = 'translate3d('+ (parseInt(dist)+25)*4 + 'px, 8rem, 0)';
             dragEl.style.width = 'min(80%, 300px)';
             dragEl.style.height = 'calc(100vh - 8rem)'
-            dragEl.style['z-index'] = '7';
+            if(dist < -100) {
+              dragEl.style['z-index'] = '2';
+            } else {
+              dragEl.style['z-index'] = '7';
+            }
           }
         }
         else if(navigate){
