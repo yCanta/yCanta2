@@ -1512,10 +1512,10 @@ only screen and (max-height: 31.25rem) {
     flex-shrink: 2;
   }
   body.export #export .sidebar {
-    flex: 2 0 22.5rem;
+    flex: 3 0 22.5rem;
   }
   body.export #export {
-    flex: 0 0.05 50rem;
+    flex: 5 0 50rem;
   }
 /*--From below */
   #songbookList li span:after {
