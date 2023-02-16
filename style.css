@@ -1145,7 +1145,7 @@ input[type="number"] {
   padding-left: .45rem;
 }
 
-/*For phone in portrait*/
+/*For phone in portrait only*/
 @media only screen and (max-width: 39.99rem) {
   body .sidebar,
   body.edit .sidebar {
@@ -1217,6 +1217,21 @@ input[type="number"] {
   .song #song {
     transform: translate3d(0, 4rem, 0);
     opacity: 1;
+  }
+  /*move search into header  */
+  .songList #songbookList .deleteicon,
+  .song #songList .deleteicon {
+    position: absolute;
+    top: 2.5rem;
+    right: 3rem;
+    transform: scale(.75);
+  }
+  .songList #songbookList .search,
+  .song #songList .search {
+    width: calc(100%);
+  }
+  .song #songList #category_filter_container {
+    display: none;
   }
 
   .sidebar {
