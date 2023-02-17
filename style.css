@@ -1530,6 +1530,21 @@ only screen and (max-height: 31.25rem) {
   #column-filler {
     flex: 1 1 auto;
   }
+  #column-filler.dropHere:after {
+    content: 'drop here to view the song';
+    position: absolute;
+    top: 2rem;
+    left: 2rem;
+    right: 2rem;
+    bottom: 2rem;
+    border-radius: 3rem;
+    border: 3px gray dashed;
+    padding: 5rem;
+    padding-top: 40vh;
+    font-size: 2rem;
+    color: gray;
+    text-align: center;
+  }
   .close-icon {
     display: none;
   }

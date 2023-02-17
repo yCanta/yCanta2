@@ -29,6 +29,7 @@ function dragEnd( e, selector='ul li' ) {
   setTimeout(() => {
     e.target.classList.remove('highlightBg');
   },3200);
+  document.getElementById('column-filler').classList.remove('dropHere');
 }
 
 function dragStart( e, selector='li' ) {
@@ -41,6 +42,9 @@ function dragStart( e, selector='li' ) {
   }, 100);
   if(e.target.closest('song')) {
     e.target.closest('song').querySelectorAll('.wrap [contentEditable="true"]').forEach(function(el) {el.classList.add('contenteditable-disabled'); el.removeAttribute('contenteditable')});
+  }
+  else {
+    document.getElementById('column-filler').classList.add('dropHere');
   }
 }
 function dragEnter( e, selector='li' ) {
@@ -132,6 +136,18 @@ function isBefore( el1, el2 ) {
     }
   } else return false;
 }
+
+const target = document.getElementById("column-filler");
+target.addEventListener("dragover", (e) => {
+  e.preventDefault(); // prevent default to allow drop
+});
+
+target.addEventListener("drop", (e) => {
+  e.preventDefault();
+  // navigate to that song.
+  console.log(location.hash)
+  location.hash += '&'+selected.getAttribute('data-song-id');
+});
 
 function dragDialog() {
   function AnimationLoop(){
