@@ -867,37 +867,49 @@
           }
         });
       });   
-      function hashchanged(){
+      function hashchanged(e){
+        let oldHash = false;
+        let newHash;
+        if(e) {
+          let oldURL = e.oldURL.match(/#.*$/);
+          let newURL = e.newURL.match(/#.*$/);
+          oldHash = (oldURL ? oldURL[0] : '');
+          newHash = (newURL ? newURL[0] : '');
+        }
+        else {
+          newHash = location.hash;
+        }
+        console.log(oldHash,newHash);
         $('.fullscreen').removeClass('fullscreen');
         let pres_iframe = document.getElementById('presentation');
         if(pres_iframe){setTimeout(function(){pres_iframe.remove()},300);}
 
-        var hash = location.hash;
-        if(window.old_hash == hash){
+        if(window.dontChangeURL){
+          delete window.dontChangeURL;
           return
         }
         if(confirmWhenEditing()) {
-          window.location.hash = window.old_hash;
+          window.location.hash = oldHash;
+          window.dontChangeURL = true;
           return
         }
-        if(!(hash.startsWith('#login')) && !window.loggedin){
-          location.hash = '#login?'+hash;
+        if(!(newHash.startsWith('#login')) && !window.loggedin){
+          location.hash = '#login?' + newHash;
           console.log("Hi, let's login first");
-          hashchanged();
           return
         }
 
         $('.edit_buttons').remove();
         $('.deleted').removeClass('deleted');
         //if blank - should have to do nothing  
-        if(hash == ''){
+        if(newHash == '#' || newHash == ''){
           $('body').attr('class','header');
           $('.active').removeClass('active');
           window.document.title = "yCanta2";
           updateAllLinks();
         }
 //Login
-        else if(hash.startsWith('#login')) {
+        else if(newHash.startsWith('#login')) {
           let loggedIn = JSON.parse(localStorage.getItem('loggedin'));
           try {
             dbLogin('login', loggedIn.dbName, loggedIn.username, loggedIn.pin, loggedIn.pwd);
@@ -922,14 +934,14 @@
           window.document.title = "yCanta2 - Login";
         }
 //Songbooks
-        else if(hash == '#songbooks'){
+        else if(newHash == '#songbooks'){
           $('body').attr('class','songbookList');
           $('.active').removeClass('active');
           $('#songbookList').addClass('active');
           window.document.title = "yCanta2";
         }
-        //if song edit
-        else if((hash.search(/&s-.*?\?edit/) != -1)) {
+//if song edit
+        else if((newHash.search(/&s-.*?\?edit/) != -1)) {
           $('body').attr('class', 'song edit');
           $('.active').removeClass('active');
           $('#song').addClass('active');
@@ -943,7 +955,7 @@
           });
         }
 //if song export
-        else if((hash.search(/&s-.*?\?export/) != -1)) {
+        else if((newHash.search(/&s-.*?\?export/) != -1)) {
           //Initiate song export
           $('body').attr('class', 'song export');
           $('.active').removeClass('active');
@@ -975,8 +987,9 @@
           });
         }
 //if song
-        else if(hash.search('&s-') != -1) {
-          if(hash.search('s-new-song') != -1){
+        else if(newHash.search('&s-') != -1) {
+          if(newHash.search('s-new-song') != -1){
+            console.log('hs')
             window.location.hash = '#' + window.songbook._id;
             return
           }
@@ -993,7 +1006,7 @@
           });          
         }
 //if songbook edit
-        else if((hash.search(/#sb-.*?\?edit/) != -1)) {
+        else if((newHash.search(/#sb-.*?\?edit/) != -1)) {
           //Initiate songbook edit
           $('body').attr('class', 'songList edit');
           $('.active').removeClass('active');
@@ -1006,7 +1019,7 @@
           });
         }
 //if songbook export
-        else if((hash.search(/#sb-.*?\?export/) != -1)) {
+        else if((newHash.search(/#sb-.*?\?export/) != -1)) {
           //Initiate songbook export
           $('body').attr('class', 'songList export');
           $('.active').removeClass('active');
@@ -1052,7 +1065,7 @@
           });
         }
 //if songbook present
-        else if((hash.search(/#sb-.*?\?present/) != -1)) {
+        else if((newHash.search(/#sb-.*?\?present/) != -1)) {
           //Initiate songbook export
           Promise.resolve(loadSongbook(parseHash('sb-')))
             .then(function(){
@@ -1081,7 +1094,7 @@
                           $.ajax({url: "presentation.js", dataType: 'text',
                             success: function (data){
                               presHtml = presHtml.replace('presentation_embed', data);
-                              if(hash.indexOf('new') > -1){                          //New window/tab
+                              if(newHash.indexOf('new') > -1){                          //New window/tab
                                 window.location = '#'+window.songbook._id;
                                 window.presentationFrame = window.open('','_blank', height="200", width="200");
                               }
@@ -1108,7 +1121,7 @@
                 });
               });
             }).then(function(values){
-            if(hash.indexOf('new') == -1){
+            if(newHash.indexOf('new') == -1){
               $('body').attr('class', 'songList present');
               $('.active').removeClass('active');
               updateAllLinks();
@@ -1117,7 +1130,7 @@
           });
         }
 //if songbook
-        else if(hash.search('#sb-') != -1) {
+        else if(newHash.search('#sb-') != -1) {
           $('body').attr('class', 'songList');
           $('.active').removeClass('active');
           $('#songList').addClass('active');
@@ -1127,7 +1140,6 @@
               window.document.title = "yCanta2: " + window.songbook.title;
           });
         }
-        window.old_hash = window.location.hash;
         $('.column').removeAttr('style');
       }
     </script>
