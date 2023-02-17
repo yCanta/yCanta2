@@ -867,7 +867,7 @@
           }
         });
       });   
-      function hashchanged(e){
+      async function hashchanged(e){
         let oldHash = false;
         let newHash;
         if(e) {
@@ -879,7 +879,6 @@
         else {
           newHash = location.hash;
         }
-        console.log(oldHash,newHash);
         $('.fullscreen').removeClass('fullscreen');
         let pres_iframe = document.getElementById('presentation');
         if(pres_iframe){setTimeout(function(){pres_iframe.remove()},300);}
@@ -899,246 +898,208 @@
           return
         }
 
-        $('.edit_buttons').remove();
         $('.deleted').removeClass('deleted');
-        //if blank - should have to do nothing  
-        if(newHash == '#' || newHash == ''){
-          $('body').attr('class','header');
-          $('.active').removeClass('active');
-          window.document.title = "yCanta2";
-          updateAllLinks();
+
+        let oldHashOb = {};
+        for(el of oldHash.replace('#','').split('&')){
+          let pieces = el.split('?');
+          oldHashOb[pieces[0]] = pieces[1];
         }
-//Login
-        else if(newHash.startsWith('#login')) {
-          let loggedIn = JSON.parse(localStorage.getItem('loggedin'));
-          try {
-            dbLogin('login', loggedIn.dbName, loggedIn.username, loggedIn.pin, loggedIn.pwd);
-            console.log("still logged in!");
-          }
-          catch {
-            console.log("Not logged in yet");
-          }
 
-          $('body').attr('class', 'login header');
+        for(piece of newHash.replace('#','').split('&')){
+          piece = piece.split('?');
 
-          let db_opts = '';
-          let databases = JSON.parse(localStorage.getItem('databases'));
-          if(databases) {
-            for(const db of databases) {
-              db_opts += `<option value="${db.name}" data-url="${db.url}">${db.name}</option>`
+  //if blank - should have to do nothing  
+          if(piece[0] == '#' || piece[0] == ''){
+            $('body').attr('class','header');
+            $('.active').removeClass('active');
+            window.document.title = "yCanta2";
+            updateAllLinks();
+          }
+  //Login
+          else if(piece[0] == 'login') {
+            let loggedIn = JSON.parse(localStorage.getItem('loggedin'));
+            try {
+              dbLogin('login', loggedIn.dbName, loggedIn.username, loggedIn.pin, loggedIn.pwd);
+              console.log("still logged in!");
             }
+            catch {
+              console.log("Not logged in yet");
+            }
+
+            $('body').attr('class', 'login header');
+
+            let db_opts = '';
+            let databases = JSON.parse(localStorage.getItem('databases'));
+            if(databases) {
+              for(const db of databases) {
+                db_opts += `<option value="${db.name}" data-url="${db.url}">${db.name}</option>`
+              }
+            }
+            db_opts += '<option value="connect_remote">Connect Remote</option>';
+            db_opts += '<option value="create_local">Create Local</option>';
+            setTimeout(function(){$('#db_select').html(db_opts).trigger('change');},0);
+            window.document.title = "yCanta2 - Login";
           }
-          db_opts += '<option value="connect_remote">Connect Remote</option>';
-          db_opts += '<option value="create_local">Create Local</option>';
-          setTimeout(function(){$('#db_select').html(db_opts).trigger('change');},0);
-          window.document.title = "yCanta2 - Login";
-        }
-//Songbooks
-        else if(newHash == '#songbooks'){
-          $('body').attr('class','songbookList');
-          $('.active').removeClass('active');
-          $('#songbookList').addClass('active');
-          window.document.title = "yCanta2";
-        }
-//if song edit
-        else if((newHash.search(/&s-.*?\?edit/) != -1)) {
-          $('body').attr('class', 'song edit');
-          $('.active').removeClass('active');
-          $('#song').addClass('active');
-          //check if songbook is loaded
-          Promise.all([loadSongbook(parseHash('sb-')), loadSong(parseHash('s-'))])
-            .then(function(values){
-              //Initiate song edit
-              editSong();
-              updateAllLinks();
-              window.document.title = "yCanta2: Editing " + window.song.title;
-          });
-        }
-//if song export
-        else if((newHash.search(/&s-.*?\?export/) != -1)) {
-          //Initiate song export
-          $('body').attr('class', 'song export');
-          $('.active').removeClass('active');
-          $('#export').addClass('active');
-          $('#export').removeClass('showStatus');
-          Promise.all([loadSongbook(parseHash('sb-')), loadSong(parseHash('s-'))])
-            .then(function(){
-              window.exportObject = window.song;
-              console.log(exportObject);
-              //PREPROCESS THE SONG OBJECT
-              // -- REMOVE ALL COMMENTS
-              let chunks = [];
-              for(var i = 0; i < window.song.content.length; i++) {
-                if(window.song.content[i][0].type != 'comment') {
-                  chunks.push(window.song.content[i]);
+  //Songbooks List
+          else if(piece[0] == 'songbooks'){
+            $('body').attr('class','songbookList');
+            $('.active').removeClass('active');
+            $('#songbookList').addClass('active');
+            window.document.title = "yCanta2";
+          }
+  //Song
+          else if(piece[0].startsWith('s-')) {
+            if(piece[0] == 's-new-song'){
+              console.log('hs')
+              window.location.hash = '#' + window.songbook._id;
+              return
+            }
+            $('body').attr('class','song');
+            $('.active').removeClass('active');
+            $('#song').addClass('active');
+            Promise.all([loadSong(piece[0])])
+              .then(function(values) {
+        //Initiate song edit
+                if(piece[1] == 'edit') { 
+                  document.body.classList.add('edit');
+                  editSong();
+                  window.document.title = "yCanta2: Editing " + window.song.title;  
                 }
-              }
-              if(chunks.length == 0) {
-                alert("You can't export a song with no verses, chorus, or other text");
-                window.location = '#'+window.songbook._id+'&'+window.song._id;
-              }
-              window.exportObject.content = chunks;
+        //initiate song export 
+                else if (piece[1] == 'export') { 
+                  document.body.classList.add('export');
+                  $('#export').addClass('active');
+                  $('#export').removeClass('showStatus');
 
-              return 
-            }).then(function(values){
-              prepExport();
-              updateAllLinks();
-              window.document.title = "yCanta2: Exporting " + window.song.title;
-          });
-        }
-//if song
-        else if(newHash.search('&s-') != -1) {
-          if(newHash.search('s-new-song') != -1){
-            console.log('hs')
-            window.location.hash = '#' + window.songbook._id;
-            return
-          }
-          $('body').attr('class','song');
-          $('.active').removeClass('active');
-          $('#song').addClass('active');
-          Promise.all([loadSongbook(parseHash('sb-')), loadSong(parseHash('s-'))])
-            .then(function(values) {
-              updateAllLinks();
-              window.document.title = "yCanta2: "+window.songbook.title + " > " + window.song.title;
-              setTimeout(function(){  
-                scrollIntoViewIfNeed(document.querySelector('[data-song-id="'+window.song._id+'"]'));
-              },200);
-          });          
-        }
-//if songbook edit
-        else if((newHash.search(/#sb-.*?\?edit/) != -1)) {
-          //Initiate songbook edit
-          $('body').attr('class', 'songList edit');
-          $('.active').removeClass('active');
-          $('#songList').addClass('active');
-          Promise.resolve(loadSongbook(parseHash('sb-')))
-            .then(function() {
-              editSongbook();
-              updateAllLinks();
-              window.document.title = "yCanta2: Editing " + window.songbook.title;
-          });
-        }
-//if songbook export
-        else if((newHash.search(/#sb-.*?\?export/) != -1)) {
-          //Initiate songbook export
-          $('body').attr('class', 'songList export');
-          $('.active').removeClass('active');
-          $('#export').addClass('active');
-          Promise.resolve(loadSongbook(parseHash('sb-')))
-            .then(function(){
-              //get the songbook object and all songs and save them to window.exportObject
-              return new Promise(function(resolve, reject){
-                //Songbooks are already loaded into the window.songbook object
-                window.exportObject = window.songbook;
-                var sb_song_ids = window.songbook.songrefs.map(function (row) {
-                    return row.id
-                  });
-                db.allDocs({
-                  include_docs: true,
-                  keys: sb_song_ids, //we need error handling for missing ids
-                }).then(function (result) {
-                  window.exportObject.songs = result.rows;
-                  //PREPROCESS THE SONGBOOK OBJECT
-                  let procesed_song = [];
-                  for(song of window.exportObject.songs) {
-                    // -- REMOVE ALL COMMENTS
-                    if(song.key != "section"){
-                      for(var i = song.doc.content.length - 1; i >= 0; i--) {
-                        if(song.doc.content[i][0].type === 'comment') {
-                          song.doc.content.splice(i, 1);
-                        }
-                      }
+                  window.exportObject = window.song;
+                  console.log(exportObject);
+                  //PREPROCESS THE SONG OBJECT
+                  // -- REMOVE ALL COMMENTS
+                  let chunks = [];
+                  for(var i = 0; i < window.song.content.length; i++) {
+                    if(window.song.content[i][0].type != 'comment') {
+                      chunks.push(window.song.content[i]);
                     }
-                    procesed_song.push(song);        
                   }
-                  window.exportObject.songs = procesed_song;
-
+                  if(chunks.length == 0) {
+                    alert("You can't export a song with no verses, chorus, or other text");
+                    window.location = '#'+window.songbook._id+'&'+window.song._id;
+                  }
+                  window.exportObject.content = chunks;
                   prepExport();
-                  resolve('Its done');
-                }).catch(function (err) {
-                  console.log(err);
-                });
-              });
-            }).then(function(values){
-              updateAllLinks();
-              window.document.title = "yCanta2: Exporting " + window.songbook.title;
-          });
-        }
-//if songbook present
-        else if((newHash.search(/#sb-.*?\?present/) != -1)) {
-          //Initiate songbook export
-          Promise.resolve(loadSongbook(parseHash('sb-')))
-            .then(function(){
-              //get the songbook object and all songs and save them to window.exportObject
-              return new Promise(function(resolve, reject){
-                //Songbooks are already loaded into the window.songbook object
-                window.exportObject = window.songbook;
-                var sb_song_ids = window.songbook.songrefs.map(function (row) {
-                    return row.id
-                  });
-                db.allDocs({
-                  include_docs: true,
-                  keys: sb_song_ids, //we need error handling for missing ids
-                }).then(function (result) {
-                  //Save json object to data id'd element
-                  let myString = JSON.stringify({songs: result.rows.filter(song => song.key != "section"), title: window.songbook.title});
-                  let presHtml = '';
-
-                  //load the presentation.html, jquery and presentation.js file into their spots.
-                  $.ajax({url: "presentation.html",
-                    success: function (data){
-                      presHtml = data;
-                      $.ajax({url: "jquery-3.5.1.min.js", dataType: 'text',
-                        success: function (data){
-                          presHtml = presHtml.replace('jQuery_embed', data);
-                          $.ajax({url: "presentation.js", dataType: 'text',
-                            success: function (data){
-                              presHtml = presHtml.replace('presentation_embed', data);
-                              if(newHash.indexOf('new') > -1){                          //New window/tab
-                                window.location = '#'+window.songbook._id;
-                                window.presentationFrame = window.open('','_blank', height="200", width="200");
-                              }
-                              else {                                                 //Iframe
-                                var ifrm = document.createElement('iframe');
-                                ifrm.id = "presentation";
-                                document.body.appendChild(ifrm);
-                                ifrm.contentWindow.focus();
-                                window.presentationFrame = ifrm.contentWindow || ifrm.contentDocument.document || ifrm. contentDocument;
-                              }
-                              window.presentationFrame.document.write(presHtml);
-                              window.presentationFrame.document.close();
-                              window.presentationFrame.document.getElementById('data').setAttribute('data', myString);
-                              window.presentationFrame.location = "#";
-                              resolve('Its done');
-                            }
-                          });
-                        }
+                  window.document.title = "yCanta2: Exporting " + window.song.title;  
+                }
+                else {
+                  window.document.title = "yCanta2: "+window.songbook.title + " > " + window.song.title;
+                }
+                updateAllLinks();
+                setTimeout(function(){  
+                  scrollIntoViewIfNeed(document.querySelector('[data-song-id="'+window.song._id+'"]'));
+                },200);
+            });
+          }
+  //if songbook
+          else if(piece[0].startsWith('sb-')) {
+            $('body').attr('class', 'songList');
+            $('.active').removeClass('active');
+            $('#songList').addClass('active');
+            await Promise.resolve(loadSongbook(piece[0]))
+              .then(async function() {
+        //initiate songbook edit
+        console.log(piece[1], oldHashOb[piece[0]])
+                if((piece[1] == 'edit') && (piece[1] != oldHashOb[piece[0]])) {
+                  document.body.classList.add('edit');
+                  editSongbook();
+                  window.document.title = "yCanta2: Editing " + window.songbook.title;
+                }
+        //initiate songbook export/present
+                else if(piece[1] == 'export' || piece[1] == 'present+new' || piece[1] == 'present') {
+                  $('#export').addClass('active');
+                  window.document.title = `yCanta2: ${piece[1][0].toUpperCase()+piece[1].substring(1,piece[1].length)}ing ${window.songbook.title}`;
+                //Load all the songs
+                  await Promise.resolve(new Promise(function(resolve, reject){
+                    //Songbooks are already loaded into the window.songbook object
+                    window.exportObject = window.songbook;
+                    var sb_song_ids = window.songbook.songrefs.map(function (row) {
+                        return row.id
                       });
-                    }
-                  });
-                }).catch(function (err) {
-                  console.log(err);
-                });
-              });
-            }).then(function(values){
-            if(newHash.indexOf('new') == -1){
-              $('body').attr('class', 'songList present');
-              $('.active').removeClass('active');
-              updateAllLinks();
-              window.document.title = "yCanta2: Presenting " + window.songbook.title;
-            }
-          });
-        }
-//if songbook
-        else if(newHash.search('#sb-') != -1) {
-          $('body').attr('class', 'songList');
-          $('.active').removeClass('active');
-          $('#songList').addClass('active');
-          Promise.resolve(loadSongbook(parseHash('sb-')))
-            .then(function() {
-              updateAllLinks();
-              window.document.title = "yCanta2: " + window.songbook.title;
-          });
+                    db.allDocs({
+                      include_docs: true,
+                      keys: sb_song_ids, //we need error handling for missing ids
+                    }).then(function (result) {
+                      //EXPORT PROCESS
+                      if(piece[1] == 'export'){
+                        document.body.classList.add(piece[1]);
+                        window.exportObject.songs = result.rows;
+                        //PREPROCESS THE SONGBOOK OBJECT
+                        let procesed_song = [];
+                        for(song of window.exportObject.songs) {
+                          // -- REMOVE ALL COMMENTS
+                          if(song.key != "section"){
+                            for(var i = song.doc.content.length - 1; i >= 0; i--) {
+                              if(song.doc.content[i][0].type === 'comment') {
+                                song.doc.content.splice(i, 1);
+                              }
+                            }
+                          }
+                          procesed_song.push(song);        
+                        }
+                        window.exportObject.songs = procesed_song;
+                        prepExport();
+                        resolve('Its done');
+                      }
+                      //PRESENT PROCESS
+                      else {
+                        //Save json object to data id'd element
+                        let myString = JSON.stringify({songs: result.rows.filter(song => song.key != "section"), title: window.songbook.title});
+                        let presHtml = '';
+
+                        //load the presentation.html, jquery and presentation.js file into their spots.
+                        $.ajax({url: "presentation.html",
+                          success: function (data){
+                            presHtml = data;
+                            $.ajax({url: "jquery-3.5.1.min.js", dataType: 'text',
+                              success: function (data){
+                                presHtml = presHtml.replace('jQuery_embed', data);
+                                $.ajax({url: "presentation.js", dataType: 'text',
+                                  success: function (data){
+                                    presHtml = presHtml.replace('presentation_embed', data);
+                                    if(piece[1].indexOf('new') > -1){                          //New window/tab
+                                      window.location = '#'+window.songbook._id;
+                                      window.presentationFrame = window.open('','_blank', height="200", width="200");
+                                    }
+                                    else {                                                 //Iframe
+                                      var ifrm = document.createElement('iframe');
+                                      ifrm.id = "presentation";
+                                      document.body.appendChild(ifrm);
+                                      ifrm.contentWindow.focus();
+                                      window.presentationFrame = ifrm.contentWindow || ifrm.contentDocument.document || ifrm. contentDocument;
+                                    }
+                                    window.presentationFrame.document.write(presHtml);
+                                    window.presentationFrame.document.close();
+                                    window.presentationFrame.document.getElementById('data').setAttribute('data', myString);
+                                    window.presentationFrame.location = "#";
+                                    resolve('Its done');
+                                    document.body.classList.add(piece[1]);
+                                  }
+                                });
+                              }
+                            });
+                          }
+                        });
+                      }
+                    }).catch(function (err) {
+                      console.log(err);
+                    });
+                  }));
+                }
+                else {
+                  window.document.title = "yCanta2: " + window.songbook.title;
+                }
+                updateAllLinks();
+            });
+          }
         }
         $('.column').removeAttr('style');
       }

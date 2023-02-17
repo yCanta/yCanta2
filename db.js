@@ -1037,11 +1037,15 @@ function loadSong(song_id) {
       },300);
 
       resolve("song_loaded");
+      $('#song .edit_buttons').remove();
 
       $('#keyToggle').transpose();
       if(document.getElementById('dialog').style.display=="block" && document.getElementById('dialog').getAttribute('data-use')=="info") {loadInfo()}
     }
-    if(song_id === 's-new-song'){
+    if(song_id == window.song._id){
+      resolve('song already loaded');
+    }
+    else if(song_id === 's-new-song'){
       var song = {
         _id: 's-new-song',
         title: '',
@@ -1338,6 +1342,7 @@ function loadSongbook(songbook_id) {
           $('#songbook_title').attr('data-user-fav', 'false'); 
         }
         resolve('loaded songbook');
+        $('#songList .edit_buttons').remove();
       }).catch(function(err){
         console.log(err);
       });
