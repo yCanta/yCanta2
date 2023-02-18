@@ -906,16 +906,17 @@
           oldHashOb[pieces[0]] = pieces[1];
         }
 
-        document.body.classList = '';
+        let bodyClassList = [];
         $('.edit').removeClass('edit');
         $('.active').removeClass('active');
-        
+
         for(piece of newHash.replace('#','').split('&')){
           piece = piece.split('?');
 
   //if blank - should have to do nothing  
           if(piece[0] == '#' || piece[0] == ''){
             document.body.classList.add('header');
+            bodyClassList.push('header');
             window.document.title = "yCanta2";
             updateAllLinks();
           }
@@ -932,6 +933,8 @@
 
             document.body.classList.add('login');
             document.body.classList.add('header');
+            bodyClassList.push('login');
+            bodyClassList.push('header');
 
             let db_opts = '';
             let databases = JSON.parse(localStorage.getItem('databases'));
@@ -948,6 +951,7 @@
   //Songbooks List
           else if(piece[0] == 'songbooks'){
             document.body.classList.add('songbookList');
+            bodyClassList.push('songbookList');
             $('#songbookList').addClass('active');
             window.document.title = "yCanta2";
           }
@@ -959,6 +963,7 @@
               return
             }
             document.body.classList.add('song');
+            bodyClassList.push('song');
             $('#song').addClass('active');
             Promise.all([loadSong(piece[0])])
               .then(function(values) {
@@ -971,6 +976,7 @@
         //initiate song export 
                 else if (piece[1] == 'export') { 
                   document.body.classList.add('export');
+                  bodyClassList.push('export');
                   $('#export').addClass('active');
                   $('#export').removeClass('showStatus');
 
@@ -1004,6 +1010,7 @@
   //if songbook
           else if(piece[0].startsWith('sb-')) {
             document.body.classList.add('songList');
+            bodyClassList.push('songList');
             $('#songList').addClass('active');
             await Promise.resolve(loadSongbook(piece[0]))
               .then(async function() {
@@ -1033,6 +1040,7 @@
                       //EXPORT PROCESS
                       if(piece[1] == 'export'){
                         document.body.classList.add(piece[1]);
+                        bodyClassList.push(piece[1]);
                         window.exportObject.songs = result.rows;
                         //PREPROCESS THE SONGBOOK OBJECT
                         let procesed_song = [];
@@ -1084,6 +1092,7 @@
                                     window.presentationFrame.location = "#";
                                     resolve('Its done');
                                     document.body.classList.add(piece[1]);
+                                    bodyClassList.push(piece[1]);
                                   }
                                 });
                               }
@@ -1099,10 +1108,12 @@
                 else {
                   window.document.title = "yCanta2: " + window.songbook.title;
                 }
-                updateAllLinks();
             });
           }
         }
+        updateAllLinks();
+        document.body.classList = bodyClassList.join(' ');
+        bodyClassList = [];
         $('.column').removeAttr('style');
       }
     </script>
