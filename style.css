@@ -484,28 +484,28 @@ stitle, cat, author, scrip_ref, key, copyright, cclis {
   padding-bottom: 1rem;
 }
 
-.song.edit .wrap {
+.song .edit .wrap {
   cursor: move;
 }
-.song.edit .wrap:hover {
+.song .edit .wrap:hover {
   box-shadow: 0 0 0 1px var(--song-color);
   border-radius: 2px;
 }
-.song.edit .toTextarea {
+.song .edit .toTextarea {
   cursor: text;
 }
-.song.edit song select {
+.song .edit song select {
   margin-bottom: 1rem;
   margin-top: 1rem;
   background-color: var(--edit-color);
   border: 1px gray dashed;
 }
-.edit .active #songbook_header h3 *:not(a),
-.edit .active stitle *:not(a) {
+.edit.active #songbook_header h3 *:not(a),
+.edit.active stitle *:not(a) {
   display: none;
 }
-.edit .active #songbook_header a,
-.edit .active song stitle a {
+.edit.active #songbook_header a,
+.edit.active song stitle a {
   display: block;
 }
 #songbookList a[href="#sb-allSongs"],
@@ -569,8 +569,8 @@ info:after {
 .subcolumn:first-child .column_header {
   background: linear-gradient(180deg, var(--highlight-color) 0%, var(--background-color) 90%, rgba(255,255,255,0) 100%);
 }
-.edit.song #song #song_header,
-.edit.songList #songbook_header {
+.song #song.edit #song_header,
+.songList #songList.edit #songbook_header {
   top: 3.75rem;
   padding-right: 1rem;
 }
@@ -590,11 +590,11 @@ info:after {
   background-color: var(--songList-color);
   border-color: darksalmon;
 }
-.songList.edit #songbook_content ul {
+.songList .edit #songbook_content ul {
   background-color: var(--edit-color);
   border: 1px gray dashed;
 }
-.songList.edit #songbook_content ul li{
+.songList .edit #songbook_content ul li{
   border: 1px #EEE dashed;
 }
 /*Overt,overb, moving are for sortable*/
@@ -844,7 +844,7 @@ span.deleteicon input {
 .subcolumn > div {
   padding: 0 1rem 0 1rem;
 }
-.column, body.edit .sidebar, body.export .sidebar {
+.column, body .edit .sidebar, body.export .sidebar {
   box-shadow: var(--box-shadow-var);
   overflow-y: auto;
   overflow-x: hidden;
@@ -914,7 +914,7 @@ body.present.songList #presentation {
   transform: translateY(0);
 }
 
-.edit .active .float-menu .float-menu-item {
+.edit.active .float-menu .float-menu-item {
   width: 0;
   visibility: collapse;
   opacity: 0;
@@ -1151,10 +1151,10 @@ input[type="number"] {
 /*For phone in portrait only*/
 @media only screen and (max-width: 39.99rem) {
   body .sidebar,
-  body.edit .sidebar {
+  .edit .sidebar {
     overflow: hidden;
   }
-  body.edit .sidebar-open {
+  .edit .sidebar-open {
     overflow: auto;
   }
   ul li a{
@@ -1249,13 +1249,13 @@ input[type="number"] {
   }
 
   /*Focus edit*/
-  .edit.songList #songList .sidebar,
-  .edit.song #song .sidebar {
+  .songList #songList.edit .sidebar,
+  .song #song.edit .sidebar {
     transform: translate3d(15.6rem, 0, 0);
     width: 17.5rem;
   }
-  .edit.songList #songList .sidebar-open,
-  .edit.song #song .sidebar-open {
+  .songList #songList.edit .sidebar-open,
+  .song #song.edit .sidebar-open {
     transform: translate3d(0, 0, 0);
   }
 
@@ -1359,14 +1359,14 @@ only screen and (max-height: 31.25rem) {
     border-radius: 50%;
     box-shadow: var(--btn-shadow-var);
   }
-  .edit .active .float-menu .float-menu-item {
+  .edit.active .float-menu .float-menu-item {
     display: none;
   }
-  .edit .active .float-menu {
+  .edit.active .float-menu {
     left: 1em;
     right: auto;
   }
-  .edit .active .subcolumn:first-child > div {
+  .edit.active .subcolumn:first-child > div {
     padding: 0 3rem 0 1rem;
   }
   .edit chunk {
@@ -1491,15 +1491,15 @@ only screen and (max-height: 31.25rem) {
   body.song #songbookList .subcolumn {
     overflow: hidden;
   }
-  body.edit.song #songList #songListEdit {
+  body.song #songList.edit #songListEdit {
     flex: 0 0 0 !important;
   }
 
   /*Focus edit*/
-  body.edit .sidebar {
+  body .edit .sidebar {
     flex: 0 0 17.5rem;
   }
-  body.edit .sidebar-open {
+  body .edit .sidebar-open {
     flex: 0 0 17.5rem;
   }
   /*Focus export*/
@@ -1548,8 +1548,8 @@ only screen and (max-height: 31.25rem) {
   .close-icon {
     display: none;
   }
-  body.edit.song #song, 
-  body.edit.songList #songList {
+  body.song #song.edit, 
+  body.songList #songList.edit {
     flex: 0 .2 46.25rem;
   }
   body.song #songbookList #songbooks_header h3 {

@@ -145,8 +145,7 @@ target.addEventListener("dragover", (e) => {
 target.addEventListener("drop", (e) => {
   e.preventDefault();
   // navigate to that song.
-  console.log(location.hash)
-  location.hash += '&'+selected.getAttribute('data-song-id');
+  location.hash = `${location.hash.replace('#','').split('&')[0]}&${selected.getAttribute('data-song-id')}`;
 });
 
 function dragDialog() {

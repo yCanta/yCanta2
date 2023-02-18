@@ -1283,7 +1283,9 @@ function prepSaveSong(element) {
     }
     resolve('song is prepped for saving');
   }).then(function() {
-    return saveSong(window.song._id);
+    let id = window.song._id;
+    delete window.song;
+    return saveSong(id);
   }).catch(function (err) {
     console.log(err);
   });

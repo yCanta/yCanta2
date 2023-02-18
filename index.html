@@ -906,13 +906,16 @@
           oldHashOb[pieces[0]] = pieces[1];
         }
 
+        document.body.classList = '';
+        $('.edit').removeClass('edit');
+        $('.active').removeClass('active');
+        
         for(piece of newHash.replace('#','').split('&')){
           piece = piece.split('?');
 
   //if blank - should have to do nothing  
           if(piece[0] == '#' || piece[0] == ''){
-            $('body').attr('class','header');
-            $('.active').removeClass('active');
+            document.body.classList.add('header');
             window.document.title = "yCanta2";
             updateAllLinks();
           }
@@ -927,7 +930,8 @@
               console.log("Not logged in yet");
             }
 
-            $('body').attr('class', 'login header');
+            document.body.classList.add('login');
+            document.body.classList.add('header');
 
             let db_opts = '';
             let databases = JSON.parse(localStorage.getItem('databases'));
@@ -943,8 +947,7 @@
           }
   //Songbooks List
           else if(piece[0] == 'songbooks'){
-            $('body').attr('class','songbookList');
-            $('.active').removeClass('active');
+            document.body.classList.add('songbookList');
             $('#songbookList').addClass('active');
             window.document.title = "yCanta2";
           }
@@ -955,14 +958,13 @@
               window.location.hash = '#' + window.songbook._id;
               return
             }
-            $('body').attr('class','song');
-            $('.active').removeClass('active');
+            document.body.classList.add('song');
             $('#song').addClass('active');
             Promise.all([loadSong(piece[0])])
               .then(function(values) {
         //Initiate song edit
                 if(piece[1] == 'edit') { 
-                  document.body.classList.add('edit');
+                  document.getElementById('song').classList.add('edit');
                   editSong();
                   window.document.title = "yCanta2: Editing " + window.song.title;  
                 }
@@ -1001,17 +1003,17 @@
           }
   //if songbook
           else if(piece[0].startsWith('sb-')) {
-            $('body').attr('class', 'songList');
-            $('.active').removeClass('active');
+            document.body.classList.add('songList');
             $('#songList').addClass('active');
             await Promise.resolve(loadSongbook(piece[0]))
               .then(async function() {
         //initiate songbook edit
-        console.log(piece[1], oldHashOb[piece[0]])
-                if((piece[1] == 'edit') && (piece[1] != oldHashOb[piece[0]])) {
-                  document.body.classList.add('edit');
-                  editSongbook();
-                  window.document.title = "yCanta2: Editing " + window.songbook.title;
+                if(piece[1] == 'edit') {
+                  document.getElementById('songList').classList.add('edit');
+                  if(piece[1] != oldHashOb[piece[0]]) {
+                    editSongbook();
+                    window.document.title = "yCanta2: Editing " + window.songbook.title;
+                  }
                 }
         //initiate songbook export/present
                 else if(piece[1] == 'export' || piece[1] == 'present+new' || piece[1] == 'present') {

@@ -62,6 +62,7 @@ function dbChanges() {
       loadRecentSongs();  
       //only load song if it's the one that's up.
       if(window.song._id === change.doc._id && document.body.classList.contains('song')){ //if we're viewing this song.
+        delete window.song;
         Promise.all([loadSong(change.doc._id)]) //little bit of a hack - had an issue where the url update reloads the songbook and song, then this triggers causing the edit buttons to not work... 
           .then(function(values) {
             updateAllLinks();
