@@ -500,12 +500,12 @@ stitle, cat, author, scrip_ref, key, copyright, cclis {
   background-color: var(--edit-color);
   border: 1px gray dashed;
 }
-.edit.active #songbook_header h3 *:not(a),
-.edit.active stitle *:not(a) {
+.edit #songbook_header h3 *:not(a),
+.edit stitle *:not(a) {
   display: none;
 }
-.edit.active #songbook_header a,
-.edit.active song stitle a {
+.edit #songbook_header a,
+.edit song stitle a {
   display: block;
 }
 #songbookList a[href="#sb-allSongs"],
@@ -558,10 +558,12 @@ info:after {
   background-color: var(--background-color);
   z-index: 1;
   margin: 0 -1rem 0 -1rem;
-  padding: 0.1px 1rem 0.5rem 1rem;
+  padding: 0px 1rem 0.5rem 1rem;
+  overflow: hidden;
 }
 #song .subcolumn:first-child .column_header {
-  padding: 0.1px 6rem 0.5rem 1rem;
+  padding: 0px 6rem 0.5rem 1rem;
+  overflow: hidden;
 }
 .column_header > * > * {
   position: relative;
@@ -571,7 +573,7 @@ info:after {
 }
 .song #song.edit #song_header,
 .songList #songList.edit #songbook_header {
-  top: 3.75rem;
+  top: 3.8rem;
   padding-right: 1rem;
 }
 .edit_buttons:first-child {
@@ -914,7 +916,7 @@ body.present.songList #presentation {
   transform: translateY(0);
 }
 
-.edit.active .float-menu .float-menu-item {
+.edit .float-menu .float-menu-item {
   width: 0;
   visibility: collapse;
   opacity: 0;
@@ -1359,14 +1361,14 @@ only screen and (max-height: 31.25rem) {
     border-radius: 50%;
     box-shadow: var(--btn-shadow-var);
   }
-  .edit.active .float-menu .float-menu-item {
+  .edit .float-menu .float-menu-item {
     display: none;
   }
-  .edit.active .float-menu {
+  .edit .float-menu {
     left: 1em;
     right: auto;
   }
-  .edit.active .subcolumn:first-child > div {
+  .edit .subcolumn:first-child > div {
     padding: 0 3rem 0 1rem;
   }
   .edit chunk {
@@ -1491,9 +1493,6 @@ only screen and (max-height: 31.25rem) {
   body.song #songbookList .subcolumn {
     overflow: hidden;
   }
-  body.song #songList.edit #songListEdit {
-    flex: 0 0 0 !important;
-  }
 
   /*Focus edit*/
   body .edit .sidebar {
@@ -1530,20 +1529,22 @@ only screen and (max-height: 31.25rem) {
   #column-filler {
     flex: 1 1 auto;
   }
-  #column-filler.dropHere:after {
+  .dropHere:after {
     content: 'drop here to view the song';
+    background-color: var(--edit-color);
+    opacity: .8;
     position: absolute;
-    top: 2rem;
+    top: 4rem;
     left: 2rem;
     right: 2rem;
     bottom: 2rem;
     border-radius: 3rem;
     border: 3px gray dashed;
-    padding: 5rem;
     padding-top: 40vh;
     font-size: 2rem;
     color: gray;
     text-align: center;
+    z-index: 10;
   }
   .close-icon {
     display: none;

@@ -383,8 +383,6 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     } catch(error) {
       console.log(error);
     }
-    setLoginState();
-
     //Store logged in status: pin for local, for remote we store pwd.
     if(dbName.endsWith('(local)')){
       localStorage.setItem('loggedin',JSON.stringify({dbName: dbName, username: username, pin: pin, roles: window.roles}));
@@ -490,6 +488,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       });
     };
 
+    setLoginState();
     //layout the welcome?  maybe this goes in set login state?
     //Update ui when db changes]s
     loadRecentSongs();
@@ -934,7 +933,7 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
         }
       }).then(function(){
         if(change_url){
-          window.location.hash = '#'+window.songbook._id+'&'+song._id;
+          window.location.hash = '#'+formatSbID(window.songbook._id)+'&'+song._id;
         }
         resolve(song._id);
       }).catch(function (err) {
@@ -1092,7 +1091,7 @@ async function deleteSong(song_id) {
     db.get(window.song._id).then(function (doc) {
       return db.remove(doc);
     }).then(function(){
-      window.location.hash='#'+window.songbook._id;
+      window.location.hash='#'+formatSbID(window.songbook._id);
     });
     console.log('deleted: '+window.song.title);
     return false
@@ -1122,7 +1121,7 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
     return
   }
   else{
-    window.editing=false;
+    window.songbookEditing=false;
   }
   var new_songbook = false;
   return new Promise(function(resolve, reject) {
@@ -1180,7 +1179,7 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
         }
       }).then(function(){
         if(change_url){
-          window.location.hash = '#'+window.songbook._id;
+          window.location.hash = '#'+formatSbID(window.songbook._id);
           $('.edit_buttons').remove();
           initializeSongbooksList();
         }
@@ -1256,6 +1255,7 @@ function loadSongbook(songbook_id) {
       window.songbook._rev = '';
        
       db.allDocs(options).then(function(result){
+        result.rows = result.rows.filter(row => row.key !== ''); //remove missing ids.
         var sb_song_ids = result.rows.map(function (row) {
           return row.id
         });

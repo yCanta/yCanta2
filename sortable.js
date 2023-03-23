@@ -29,7 +29,7 @@ function dragEnd( e, selector='ul li' ) {
   setTimeout(() => {
     e.target.classList.remove('highlightBg');
   },3200);
-  document.getElementById('column-filler').classList.remove('dropHere');
+  document.getElementsByClassName('dropHere')[0].classList.remove('dropHere');
 }
 
 function dragStart( e, selector='li' ) {
@@ -44,7 +44,11 @@ function dragStart( e, selector='li' ) {
     e.target.closest('song').querySelectorAll('.wrap [contentEditable="true"]').forEach(function(el) {el.classList.add('contenteditable-disabled'); el.removeAttribute('contenteditable')});
   }
   else {
-    document.getElementById('column-filler').classList.add('dropHere');
+    if(document.body.classList.contains('song')){
+      document.getElementById('song').classList.add('dropHere');
+    } else {
+      document.getElementById('column-filler').classList.add('dropHere');
+    }
   }
 }
 function dragEnter( e, selector='li' ) {
@@ -80,34 +84,37 @@ function dragDrop( e, selector='li' ) {
   }
   else if(li.parentNode != selected.parentNode){
     dataxInBookUpdate(selected);
-    song = selected.cloneNode(true);
-    bind_songbook_edit(song);
-    if($(song).attr('data-song-id')=="section"){
-      add_edit_pencil(song);
+    let songEl = selected.cloneNode(true);
+    bind_songbook_edit(songEl);
+    if($(songEl).attr('data-song-id')=="section"){
+      add_edit_pencil(songEl);
     }
 
-    $(song).find('a').after('<button>&#128465;</button>');
-    $(song).find('button')[0].addEventListener('click', function( e ) {
-      dataxInBookUpdate(song, true);
-      scaleRemove(song);
+    $(songEl).find('a').after('<button>&#128465;</button>');
+    $(songEl).find('button')[0].addEventListener('click', function( e ) {
+      dataxInBookUpdate(songEl, true);
+      scaleRemove(songEl);
     });
-    $(song).attr('data-song-status','n')[0].addEventListener('click', function(e) {
-      if(window.editing && window.songbook.showStatus && e.offsetX < 20){
+    $(songEl).attr('data-song-status','n')[0].addEventListener('click', function(e) {
+      if(window.songbookEditing && window.songbook.showStatus && e.offsetX < 20){
         e.preventDefault();
         cycleStatus(this);
       }
     });
     if(li.nodeName === 'UL'){  //This catches empty lists
-      li.append(song);
+      li.append(songEl);
     }
     else if(isBefore(selected, li)) {
-      li.parentNode.insertBefore(song, li);
+      li.parentNode.insertBefore(songEl, li);
     } 
     else {
-      li.parentNode.insertBefore(song, li.nextSibling);
+      li.parentNode.insertBefore(songEl, li.nextSibling);
     }
-    song.classList.add('highlightBg');
-    setTimeout(function(){song.classList.remove('highlightBg')},3000);
+    if(window.innerWidth > 1150 || location.hash.indexOf('s-') > -1) {
+      location.hash = $(songEl).find('a')[0].href.replace(/^.*#/,'#');
+    }
+    songEl.classList.add('highlightBg');
+    setTimeout(function(){songEl.classList.remove('highlightBg')},3000);
   }
   else {
     if (isBefore(selected, li)) {
@@ -116,7 +123,11 @@ function dragDrop( e, selector='li' ) {
     else {
       li.parentNode.insertBefore(selected, li.nextSibling);
     }
+    if(window.innerWidth > 1150 || location.hash.indexOf('s-') > -1) {
+      location.hash = $(selected).find('a')[0].href.replace(/^.*#/,'#');
+    }
   }
+  window.songbook_list.reIndex();
   e.dataTransfer.clearData();
 }
 function isVerboten(target) {
@@ -137,9 +148,11 @@ function isBefore( el1, el2 ) {
   } else return false;
 }
 
-const target = document.getElementById("column-filler");
+const target = document.documentElement;
 target.addEventListener("dragover", (e) => {
-  e.preventDefault(); // prevent default to allow drop
+  if(e.target.classList.contains('dropHere')){
+    e.preventDefault(); // prevent default to allow drop
+  }
 });
 
 target.addEventListener("drop", (e) => {

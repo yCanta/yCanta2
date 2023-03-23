@@ -454,10 +454,10 @@ function sortFavSongbooks(a,b){
 function updateAllLinks(whatChanged='all') {
   let songbook_id = window.songbook._id || 'sb-allSongs';
   let song_id = window.song._id;
-  $('[data-song-edit]').attr('href','#'+songbook_id+'&'+song_id+'?edit');
-  $('[data-song-edit="new"]').attr('href','#'+songbook_id+'&s-new-song?edit');
-  $('[data-song]').attr('href','#'+songbook_id+'&'+song_id);
-  $('[data-song-export]').attr('href','#'+songbook_id+'&'+song_id+'?export');
+  $('[data-song-edit]').attr('href',`#${formatSbID(songbook_id)}&${song_id}?edit`);
+  $('[data-song-edit="new"]').attr('href',`#${formatSbID(songbook_id)}&s-new-song?edit`);
+  $('[data-song]').attr('href','#'+formatSbID(songbook_id)+'&'+song_id);
+  $('[data-song-export]').attr('href','#'+formatSbID(songbook_id)+'&'+song_id+'?export');
   $('[data-songbook-edit]').attr('href','#'+songbook_id+'?edit');
   $('[data-songbook-edit="new"]').attr('href','#sb-new-songbook?edit');
   $('[data-songbook-present]').attr('href', '#'+songbook_id+'?present');
@@ -472,6 +472,10 @@ function updateAllLinks(whatChanged='all') {
   $("[data-song-id='"+song_id+"']").addClass("song-highlight");
   $('.songbook-highlight').removeClass('songbook-highlight');
   $("[data-songbook-id='"+songbook_id+"']").addClass("songbook-highlight");
+}
+
+function formatSbID(songbook_id) {
+  return songbook_id + (window.songbookEditing ? '?edit' : '');
 }
 
 $(function () {
@@ -1023,7 +1027,12 @@ function dataxInBookUpdate(song, remove=false){
   }
 }
 function bind_songbook_edit(song){
-  $(song).children().removeAttr('href');
+  $(song).children().each(function( index ) {
+    if(!this.href.includes(window.songbook._id+'?edit')){  //updates links.
+      this.href = this.href.replace(window.songbook._id, window.songbook._id+'?edit');
+    }
+  });
+
   song.setAttribute('draggable', 'true');  // Enable columns to be draggable.
   song.addEventListener('dragstart', dragStart, false);
   song.addEventListener('dragenter', dragEnter, false);
@@ -1063,10 +1072,34 @@ function cycleStatus(e) {
   }
 }
 
+function cancelSongbook(el) {
+  window.songbookEditing = false; 
+  let t = confirmWhenEditing();
+  if(!t) {
+    window.songbook._id= ''; 
+    window.location.hash=$(el).attr('href');
+    window.songEditing = false; 
+  }
+  else {
+    window.songbookEditing = true;
+  }
+}
+function resetSongbook() {
+  window.songbookEditing = false; 
+  let t = confirmWhenEditing();
+  if(!t) {
+    window.songEditing = false; 
+    location.reload();
+  }
+  else {
+    window.songbookEditing = true;
+  }
+}
+
 function editSongbook() {
   let buttons = '<div class="edit_buttons"><button data-songbook class="btn" style="background-color: var(--edit-color);" onclick="saveSongbook(parseHash(\'sb-\'));">Save</button>';
-  buttons += '<button data-songbook class="btn" style="background-color: var(--edit-color);" onclick="window.editing=false; window.songbook._id=\'\'; window.location.hash=$(this).attr(\'href\');">Cancel</button>';
-  buttons += '<button data-songbook class="btn" style="background-color: var(--edit-color);" onclick="window.editing=false; location.reload()">Reset</button></div>';
+  buttons += '<button data-songbook class="btn" style="background-color: var(--edit-color);" onclick="cancelSongbook(this);">Cancel</button>';
+  buttons += '<button data-songbook class="btn" style="background-color: var(--edit-color);" onclick="resetSongbook();">Reset</button></div>';
   $('#songbook_content').prepend(buttons).append(buttons);
   $('#songbook_content .search').val('')[0].dispatchEvent(new KeyboardEvent('keyup'));
   updateAllLinks();
@@ -1083,7 +1116,7 @@ function editSongbook() {
     startkey: 's-',
     endkey: 's-\ufff0',
   }).then(function(result){
-    window.editing = true;
+    window.songbookEditing = true;
     //this cleanwipe might not be performant!
     if(window.songbook_edit_togglesongs_list != undefined){
       window.songbook_edit_togglesongs_list.clear();
@@ -1119,6 +1152,10 @@ function editSongbook() {
     [].forEach.call(document.querySelectorAll('#songList #songbook_edit_togglesongs ul li'), function (song) {
       bind_songbook_edit(song);
       song.addEventListener('click', function( e ) {
+        if(window.innerWidth <= 1150 && location.hash.indexOf('s-') < 0) {
+          e.preventDefault(); //don't load the song while editing if it isnt' already loaded.
+        }
+
         var copySong = $(e.target).closest('li')[0].cloneNode(true);
         bind_songbook_edit(copySong);
         dataxInBookUpdate(copySong);
@@ -1131,7 +1168,7 @@ function editSongbook() {
           scaleRemove(copySong);
         });
         $(copySong).attr('data-song-status','n')[0].addEventListener('click', function(e) {
-          if(window.editing && window.songbook.showStatus && e.offsetX < 20){
+          if(window.songbookEditing && window.songbook.showStatus && e.offsetX < 20){
             e.preventDefault();
             cycleStatus(this);
           }
@@ -1148,7 +1185,7 @@ function editSongbook() {
     });
     $('#songbook_content li').each(function(){
       this.addEventListener('click', function(e) {
-        if(window.editing && window.songbook.showStatus && e.offsetX < 20){
+        if(window.songbookEditing && window.songbook.showStatus && e.offsetX < 20){
           e.preventDefault();
           cycleStatus(this);
         }
@@ -1162,8 +1199,8 @@ function editSongbook() {
 
 function editSong() {
   let buttons = '<div class="edit_buttons"><button data-song class="btn" style="background-color: var(--edit-color);" onclick="prepSaveSong($(this))">Save</button>';
-  buttons += '<button data-song class="btn" style="background-color: var(--edit-color);" onclick="window.editing=false; delete window.song; window.location.hash=$(this).attr(\'href\');">Cancel</button>';
-  buttons += '<button data-song class="btn" style="background-color: var(--edit-color);" onclick="window.editing=false; location.reload()">Reset</button></div>';
+  buttons += '<button data-song class="btn" style="background-color: var(--edit-color);" onclick="window.songEditing=false; delete window.song; window.location.hash=$(this).attr(\'href\');">Cancel</button>';
+  buttons += '<button data-song class="btn" style="background-color: var(--edit-color);" onclick="window.songEditing=false; location.reload()">Reset</button></div>';
   $('song').prepend(buttons).append(buttons);
 
   $('chunk').each(function(index){
@@ -1212,7 +1249,7 @@ function editSong() {
     $('cclis').hide();
   }
 
-  window.editing = true;
+  window.songEditing = true;
 
   //load categories
   db.get('categories').then(function(categories) {
@@ -1247,10 +1284,10 @@ function editSong() {
 function prepSaveSong(element) {
   if($('stitle').text().trim() == ''){
     alert('Please add a title before you save');
-    return
+    return;
   }
   else{
-    window.editing=false;
+    window.songEditing=false;
   }
   return new Promise(function(resolve, reject) {
     $('#song song').hide();
@@ -1497,13 +1534,13 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
     active = document.getElementsByClassName('active')[0];
     dragTop = false;
     slideout = false;
-    slideoutEl = (document.body.classList.contains('songList') && document.body.classList.contains('export') ? dragEl.previousElementSibling.previousElementSibling : dragEl.previousElementSibling);
+    slideoutEl = (!document.body.classList.contains('song') && document.body.classList.contains('export') ? dragEl.previousElementSibling.previousElementSibling : dragEl.previousElementSibling);
     slideback = false;
     navigate = false;
 
     // only do stuff if in right place
     if(dragSide == 'right' && screen.width < 640){
-      if(window.editing || e.target.closest('#export')) { 
+      if((window.songEditing && e.target.closest('#song')) || (window.songbookEditing && e.target.closest('#songList')) || e.target.closest('#export')) { 
         dragEl.style.transition = 'all 0s';
         //e.preventDefault();
       }
@@ -1512,7 +1549,7 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
       }
     }
     else if(dragSide == 'top' && screen.width < 640){
-      if(starty < 120) { 
+      if(starty < remToPx(7.5)) { 
         if(active == dragEl){
           active = 0;
         }
@@ -1523,7 +1560,7 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
         dragTop = true;
         //e.preventDefault();
       }
-      else if(!window.editing) {
+      else if(!window.songEditing && !window.songbookEditing) {
         if(dragEl.classList.contains('slidout')){
           slideback = true;
           dragEl.style.transition = 'all 0s';
@@ -1626,12 +1663,12 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
           let currentSong = document.querySelector("#songbook_content [data-song-id='"+window.song._id+"']");
           if(dist > 0 && currentSong.previousElementSibling) {
             dragEl.getElementsByClassName('row')[0].style.transform = 'translate3d(-100%, 0, 0)';
-            location.hash = '#'+window.songbook._id+'&'+
+            location.hash = '#'+formatSbID(window.songbook._id)+'&'+
                                 currentSong.previousElementSibling.getAttribute('data-song-id'); 
           }
           else if(currentSong.nextElementSibling) {
             dragEl.getElementsByClassName('row')[0].style.transform = 'translate3d(100%, 0, 0)';
-            location.hash = '#'+window.songbook._id+'&'+
+            location.hash = '#'+formatSbID(window.songbook._id)+'&'+
                                 currentSong.nextElementSibling.getAttribute('data-song-id'); 
           }
         }
@@ -1664,19 +1701,19 @@ window.addEventListener('load', function(){
   makeDraggable(document.getElementById('exportPreview'), dragToggleClass);
 
   makeDraggable(document.getElementById('songbookList'), 
-    function(){if(!confirmWhenEditing()) {window.location.hash = '';}}, 'top');
+    function(){window.location.hash = '';}, 'top');
   makeDraggable(document.getElementById('songList'),
-    function(){if(!confirmWhenEditing()) {window.location.hash = '#songbooks';}}, 'top');
+    function(){window.location.hash = '#songbooks';}, 'top');
   makeDraggable(document.getElementById('song'),
-    function(){if(!confirmWhenEditing()) {window.location.hash = '#'+window.songbook._id;}}, 'top');
+    function(){window.location.hash = '#'+formatSbID(window.songbook._id);}, 'top');
   makeDraggable(document.getElementById('export'),
-    function(){if(!confirmWhenEditing()) {window.location.hash = window.location.hash.replace('?export','');}}, 'top');
+    function(){window.location.hash = window.location.hash.replace('?export','');}, 'top');
 }, false);
 
 
 function bindSearch(element, search_prefix) {
   $('body').on('click', element, function() {
-    if(window.editing || $('body').hasClass('export')) {
+    if(window.songEditing ||window.songbookEditing || $('body').hasClass('export')) {
       return;
     }
     $('#songbook_content .search').val(search_prefix+$(this).text())[0]
@@ -1684,10 +1721,51 @@ function bindSearch(element, search_prefix) {
   });
 }
 
-function confirmWhenEditing() {
-  if(window.editing){
-    if(confirm("If you leave this page you will lose your unsaved changes!")) {
-      window.editing=false; //It's ok to lose changes
+function confirmWhenEditing(oldHashList, newHashList) {
+  let confirmEditing = []; //length 0 = false;
+  if(!window.songEditing && !window.songbookEditing) {
+    return false;
+  }
+  if(window.songEditing){
+    //check to be sure that oldHashList[1] and newHashList[1] are the same.
+    if(oldHashList){ //on fresh page load there is no oldhashlist
+      if(oldHashList[1]){ //did we have a song before?
+        if(oldHashList[1][1] == 'edit'){ //yes? ok, were we editing it?
+          confirmEditing.push(`songEditing`);
+        }
+      }
+    }
+    else {
+      confirmEditing.push('songEditing');
+    }
+  }
+  if(window.songbookEditing){
+    //check to be sure that oldHashList[0] and newHashList[0] are the same.
+    if(oldHashList){ //on fresh page load there is no oldhashlist
+      if(oldHashList[0]){ //did we have a songbook before?
+        if(oldHashList[0][1] == 'edit'){ //yes? were we editing it?
+          if(oldHashList[0].join() != newHashList[0].join()) {//is this a different songbook/edit config?
+            confirmEditing.push(`songbookEditing`);
+          }
+        }
+      }
+    }
+    else {
+      confirmEditing.push('songbookEditing');
+    }
+  }
+  if(confirmEditing.length) {
+    let queryList = [];
+    if(confirmEditing.indexOf('songEditing') > -1){
+      queryList.push('Song: '+$('stitle a').text());
+    }
+    if(confirmEditing.indexOf('songbookEditing') > -1){
+      queryList.push('Songbook: '+$('#songbook_title').text());
+    }
+    if(confirm("If you leave this page you may lose changes to \n - "+queryList.join('\n- '))) {
+      for(con of confirmEditing) {
+        window[con] = false;
+      }
       return false;
     } else { //we aren't leaving 
       //reset the style elements on all columns
@@ -2138,3 +2216,8 @@ function scrollIntoViewIfNeed(el) {
     el.scrollIntoView({behavior: "smooth", block: "center"});
   }
 }
+
+function remToPx(rem) {    
+    return rem * parseFloat(getComputedStyle(document.documentElement).fontSize);
+}
+

@@ -213,7 +213,7 @@
                   data-song-search=""
                   data-song-status=""
                   data-song-deleted="">
-                  <a href="" class="name" tabindex="0" ></a>
+                  <a href="" class="link name" tabindex="0" ></a>
                 </li>
               </ul>
             </div>
@@ -789,7 +789,6 @@
         if((h <= 100 && h > 0) || ( w <= 60 && w > 0)) {
           e.preventDefault();
           e.stopPropagation();
-          if (confirmWhenEditing()) { return };
           location.hash = $(this).find('.title_link').attr('href');
         }
       });
@@ -847,7 +846,7 @@
         hashchanged();
         // keep page from reloading if editing
         window.onbeforeunload = function() {
-          return window.editing ? "If you leave this page you will lose your unsaved changes." : null;
+          return ((window.songEditing || window.songbookEditing) ? "If you leave this page you will lose your unsaved changes." : null);
         }
 
         $('#db_select').on('change', function() {
@@ -868,7 +867,7 @@
         });
       });   
       async function hashchanged(e){
-        let oldHash = false;
+        let oldHash = '';
         let newHash;
         if(e) {
           let oldURL = e.oldURL.match(/#.*$/);
@@ -879,6 +878,14 @@
         else {
           newHash = location.hash;
         }
+        let newHashList = newHash.replace('#','').split('&').map(itm => itm.split('?'));
+        let oldHashList = oldHash.replace('#','').split('&').map(itm => itm.split('?'));
+        let oldHashOb = {};
+        for(el of oldHash.replace('#','').split('&')){
+          let pieces = el.split('?');
+          oldHashOb[pieces[0]] = pieces[1];
+        }
+
         $('.fullscreen').removeClass('fullscreen');
         let pres_iframe = document.getElementById('presentation');
         if(pres_iframe){setTimeout(function(){pres_iframe.remove()},300);}
@@ -887,7 +894,7 @@
           delete window.dontChangeURL;
           return
         }
-        if(confirmWhenEditing()) {
+        if(confirmWhenEditing(oldHashList, newHashList)) { //need to know if we are navigating away from an in progress edit.
           window.location.hash = oldHash;
           window.dontChangeURL = true;
           return
@@ -900,21 +907,22 @@
 
         $('.deleted').removeClass('deleted');
 
-        let oldHashOb = {};
-        for(el of oldHash.replace('#','').split('&')){
-          let pieces = el.split('?');
-          oldHashOb[pieces[0]] = pieces[1];
-        }
-
         let bodyClassList = [];
         $('.edit').removeClass('edit');
         $('.active').removeClass('active');
+        if(!newHash.includes('export')) {
+          if(newHash.includes('s-')) {
+            $('#song').addClass('active');
+          }
+          else if(newHash.includes('sb-')) {
+            $('#songList').addClass('active');
+          }
+        }
 
-        for(piece of newHash.replace('#','').split('&')){
-          piece = piece.split('?');
+        for(piece of newHashList){
 
   //if blank - should have to do nothing  
-          if(piece[0] == '#' || piece[0] == ''){
+          if(piece[0] == ''){
             document.body.classList.add('header');
             bodyClassList.push('header');
             window.document.title = "yCanta2";
@@ -947,6 +955,7 @@
             db_opts += '<option value="create_local">Create Local</option>';
             setTimeout(function(){$('#db_select').html(db_opts).trigger('change');},0);
             window.document.title = "yCanta2 - Login";
+            return; //otherwise we load the song and other pieces weirdly
           }
   //Songbooks List
           else if(piece[0] == 'songbooks'){
@@ -958,13 +967,11 @@
   //Song
           else if(piece[0].startsWith('s-')) {
             if(piece[0] == 's-new-song'){
-              console.log('hs')
-              window.location.hash = '#' + window.songbook._id;
+              window.location.hash = '#' + formatSbID(window.songbook._id);
               return
             }
             document.body.classList.add('song');
             bodyClassList.push('song');
-            $('#song').addClass('active');
             Promise.all([loadSong(piece[0])])
               .then(function(values) {
         //Initiate song edit
@@ -1011,7 +1018,6 @@
           else if(piece[0].startsWith('sb-')) {
             document.body.classList.add('songList');
             bodyClassList.push('songList');
-            $('#songList').addClass('active');
             await Promise.resolve(loadSongbook(piece[0]))
               .then(async function() {
         //initiate songbook edit
