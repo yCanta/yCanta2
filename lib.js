@@ -1765,6 +1765,12 @@ function confirmWhenEditing(oldHashList, newHashList) {
     if(confirm("If you leave this page you may lose changes to \n - "+queryList.join('\n- '))) {
       for(con of confirmEditing) {
         window[con] = false;
+        if(con == 'songEditing'){
+          window.song._id = '';
+        }
+        else if(con == 'songbookEditing') {
+          window.songbook._id = '';
+        }
       }
       return false;
     } else { //we aren't leaving 

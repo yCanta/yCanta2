@@ -573,7 +573,7 @@ info:after {
 }
 .song #song.edit #song_header,
 .songList #songList.edit #songbook_header {
-  top: 3.8rem;
+  top: 4rem;
   padding-right: 1rem;
 }
 .edit_buttons:first-child {
@@ -583,6 +583,7 @@ info:after {
   margin: 0 -1rem;
   padding: 0 1rem;
   z-index: 1;
+  height: 4rem;
 }
 .song-highlight a {
   background-color: var(--song-color);
@@ -1253,7 +1254,7 @@ input[type="number"] {
   /*Focus edit*/
   .songList #songList.edit .sidebar,
   .song #song.edit .sidebar {
-    transform: translate3d(15.6rem, 0, 0);
+    transform: translate3d(15.5rem, 0, 0);
     width: 17.5rem;
   }
   .songList #songList.edit .sidebar-open,
@@ -1368,8 +1369,12 @@ only screen and (max-height: 31.25rem) {
     left: 1em;
     right: auto;
   }
+  #export .subcolumn:first-child > div,
   .edit .subcolumn:first-child > div {
     padding: 0 3rem 0 1rem;
+  }
+  #export .float-menu {
+    right: 3.5rem;
   }
   .edit chunk {
     margin-left: 0;
