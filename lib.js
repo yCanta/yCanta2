@@ -1026,12 +1026,12 @@ function dataxInBookUpdate(song, remove=false){
     songA.attr('data-xInBook',  number);
   }
 }
+function editHash(e) {
+  e.preventDefault();
+  location.hash = e.target.href.replace(/^.*#/,'').replace(window.songbook._id, window.songbook._id+'?edit');
+}
 function bind_songbook_edit(song){
-  $(song).children().each(function( index ) {
-    if(!this.href.includes(window.songbook._id+'?edit')){  //updates links.
-      this.href = this.href.replace(window.songbook._id, window.songbook._id+'?edit');
-    }
-  });
+  song.addEventListener('click', editHash, false);
 
   song.setAttribute('draggable', 'true');  // Enable columns to be draggable.
   song.addEventListener('dragstart', dragStart, false);
