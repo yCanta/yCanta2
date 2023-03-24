@@ -1289,6 +1289,7 @@ function loadSongbook(songbook_id) {
         var dateAfter = new Date();
         console.log(dateAfter-dateBefore);
         resolve('loaded songbook');
+        $('#songList .edit_buttons').remove();
       }).catch(function(err){
         console.log(err);
       });
@@ -1299,6 +1300,7 @@ function loadSongbook(songbook_id) {
       }
       setSongbookInfo({title: '', _id: 'sb-new-songbook'});
       resolve('loaded blank new songbook');
+      $('#songList .edit_buttons').remove();
     }
     else {
       db.get(songbook_id).then(function(result){

@@ -44,6 +44,9 @@ function dragStart( e, selector='li' ) {
     e.target.closest('song').querySelectorAll('.wrap [contentEditable="true"]').forEach(function(el) {el.classList.add('contenteditable-disabled'); el.removeAttribute('contenteditable')});
   }
   else {
+    if(e.target.href.indexOf('s-') < 0) {
+      return;
+    }
     if(document.body.classList.contains('song')){
       document.getElementById('song').classList.add('dropHere');
     } else {
@@ -110,8 +113,11 @@ function dragDrop( e, selector='li' ) {
     else {
       li.parentNode.insertBefore(songEl, li.nextSibling);
     }
-    if(window.innerWidth > 1150 || location.hash.indexOf('s-') > -1) {
-      location.hash = $(songEl).find('a')[0].href.replace(/^.*#/,'#');
+    if(location.hash.indexOf('s-') > -1) {
+      let newHash = $(selected).find('a')[0].href.replace(window.songbook._id,window.songbook._id + '?edit').replace(/^.*#/,'#');
+      if(newHash.indexOf('s-') > -1) {
+        location.hash = newHash;
+      }
     }
     songEl.classList.add('highlightBg');
     setTimeout(function(){songEl.classList.remove('highlightBg')},3000);
@@ -123,8 +129,11 @@ function dragDrop( e, selector='li' ) {
     else {
       li.parentNode.insertBefore(selected, li.nextSibling);
     }
-    if(window.innerWidth > 1150 || location.hash.indexOf('s-') > -1) {
-      location.hash = $(selected).find('a')[0].href.replace(/^.*#/,'#');
+    if(location.hash.indexOf('s-') > -1) {
+      let newHash = $(selected).find('a')[0].href.replace(window.songbook._id,window.songbook._id + '?edit').replace(/^.*#/,'#');
+      if(newHash.indexOf('s-') > -1) {
+        location.hash = newHash;
+      }
     }
   }
   window.songbook_list.reIndex();
