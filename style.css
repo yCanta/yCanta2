@@ -1348,6 +1348,13 @@ only screen and (max-height: 31.25rem) {
     margin-right: -1rem;
     backdrop-filter: blur(3px);
   }
+  .float-menu-item:last-child {
+    display: flex;
+    flex-direction: row-reverse;
+    line-height: 3rem;
+    background: rgba(var(--edit-color-rgb), 0.75);
+    border-radius: 2rem;
+  }
   .float-menu-item {
     display: block;
     margin-left: auto;
