@@ -144,6 +144,10 @@ button.circle {
   padding: 0;
   vertical-align: middle;
 }
+.loading {
+    opacity: 0;
+    transform: scale3d(.8, .8, .8);
+}
 .btn {
   box-shadow: var(--btn-shadow-var);
   font-weight: bold;

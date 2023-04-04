@@ -835,7 +835,7 @@ function handleDarkMode(){
 }
 function goToSettings(){
   document.getElementById('appSettings').classList.remove('closed');
-  scrollIntoViewIfNeed(document.getElementById('appSettings'));
+  setTimeout(function() {scrollIntoViewIfNeed(document.getElementById('appSettings'))},300);
 }
 function setLoginState() {
   window.loggedin = true;

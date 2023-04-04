@@ -22,7 +22,7 @@
     <script async src="//static.getclicky.com/js"></script-->
 
   </head>
-  <body class="header login">
+  <body class="header login loading">
     <fieldset class="loggedin_display closed align-right" style="position: absolute; top:1.5rem;right:1rem; z-index:7; margin-right: 0;">
       <legend onclick="this.parentElement.classList.toggle('closed');" style="margin-right: 0; padding: 0 .4rem; margin-left: auto;" id="username_legend"><span id="username_d"></span></legend>
       <div class="content">
@@ -906,7 +906,7 @@
 
         $('.deleted').removeClass('deleted');
 
-        let bodyClassList = [];
+        let bodyClassList = (document.body.classList.contains('loading') ? ['loading'] : []);
         $('.edit').removeClass('edit');
         $('.active').removeClass('active');
         if(!newHash.includes('export')) {
@@ -919,7 +919,6 @@
         }
 
         for(piece of newHashList){
-
   //if blank - should have to do nothing  
           if(piece[0] == ''){
             document.body.classList.add('header');
@@ -954,6 +953,9 @@
             db_opts += '<option value="create_local">Create Local</option>';
             setTimeout(function(){$('#db_select').html(db_opts).trigger('change');},0);
             window.document.title = "yCanta2 - Login";
+            setTimeout(function(){
+              document.body.classList.remove('loading');
+            },300);
             return; //otherwise we load the song and other pieces weirdly
           }
   //Songbooks List
@@ -1118,6 +1120,9 @@
         }
         updateAllLinks();
         document.body.classList = bodyClassList.join(' ');
+        setTimeout(function() {
+          document.body.classList.remove('loading');
+        }, 300);
         bodyClassList = [];
         $('.column').removeAttr('style');
       }
