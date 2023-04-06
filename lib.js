@@ -1028,6 +1028,9 @@ function dataxInBookUpdate(song, remove=false){
 }
 function editHash(e) {
   e.preventDefault();
+  if(window.innerWidth <= 1150 && !document.body.classList.contains('song') && e.target.closest('#songbook_edit_togglesongs')) {
+    return;  //we're not popping open edit song from the add song window.
+  }
   location.hash = e.target.href.replace(/^.*#/,'').replace(window.songbook._id, window.songbook._id+'?edit');
 }
 function bind_songbook_edit(song){
@@ -1152,10 +1155,6 @@ function editSongbook() {
     [].forEach.call(document.querySelectorAll('#songList #songbook_edit_togglesongs ul li'), function (song) {
       bind_songbook_edit(song);
       song.addEventListener('click', function( e ) {
-        if(window.innerWidth <= 1150 && location.hash.indexOf('s-') < 0) {
-          e.preventDefault(); //don't load the song while editing if it isnt' already loaded.
-        }
-
         var copySong = $(e.target).closest('li')[0].cloneNode(true);
         bind_songbook_edit(copySong);
         dataxInBookUpdate(copySong);

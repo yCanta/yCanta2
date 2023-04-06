@@ -1264,6 +1264,10 @@ input[type="number"] {
   .song #song.edit .sidebar-open {
     transform: translate3d(0, 0, 0);
   }
+  #export .subcolumn:first-child > div,
+  .edit .subcolumn:first-child > div {
+    padding: 0 3rem 0 1rem;
+  }
 
   /*Export */
   .export main,
@@ -1378,10 +1382,6 @@ only screen and (max-height: 31.25rem) {
   .edit .float-menu {
     left: 1em;
     right: auto;
-  }
-  #export .subcolumn:first-child > div,
-  .edit .subcolumn:first-child > div {
-    padding: 0 3rem 0 1rem;
   }
   #export .float-menu {
     right: 3.5rem;
@@ -1590,7 +1590,7 @@ only screen and (max-height: 31.25rem) {
   }
   #song .subcolumn:first-child > div,
   #songbook_content {
-    min-width: 15rem;
+    min-width: 18rem;
   }
 }
 /**larger than phone landscape or otherwise**/
