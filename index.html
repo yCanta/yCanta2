@@ -47,8 +47,8 @@
           <input id="remote_url" class="d_none connect_remote" placeholder="Remote URL" type="url"></input>
           <input id="username" placeholder="Username" type="text"></input>
           <input id="pwd" class="d_none connect_remote login_remote" placeholder="Password" type="password"></input>
-          <label class="d_none connect_remote login_remote" for="public_computer">This is a public computer</label>
-          <input name="public_computer" class="d_none connect_remote login_remote" type="checkbox" id="public_computer" style="width: initial; margin: 0;">
+          <label class="d_none connect_remote login_remote" for="keep_logged_in">Keep me logged in</label>
+          <input name="keep_logged_in" class="d_none connect_remote login_remote" type="checkbox" id="keep_logged_in" style="width: initial; margin: 0;">
           <div class="pin d_none create_local login_local">
             <input id="pin" placeholder="Pin" type="password"></input>
             <input id="pin2" class="d_none create_local" placeholder="Renter Pin" type="password"></input>
@@ -929,7 +929,7 @@
           else if(piece[0] == 'login') {
             let loggedIn = JSON.parse(localStorage.getItem('loggedin'));
             try {
-              dbLogin('login', loggedIn.dbName, loggedIn.username, loggedIn.pin, loggedIn.pwd);
+              dbLogin('login', loggedIn.dbName, loggedIn.username, loggedIn.pin, loggedIn.pwd, loggedIn.url);
               console.log("still logged in!");
             }
             catch {
@@ -948,6 +948,7 @@
                 db_opts += `<option value="${db.name}" data-url="${db.url}">${db.name}</option>`
               }
             }
+            //db_opts += '<option value="CanaanF(remote)" data-url="url-to-db.com">Canaan Fellowship(remote)</option>';
             db_opts += '<option value="connect_remote">Connect Remote</option>';
             db_opts += '<option value="create_local">Create Local</option>';
             setTimeout(function(){$('#db_select').html(db_opts).trigger('change');},0);

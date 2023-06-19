@@ -195,7 +195,7 @@ async function dbExists(dbName) {
 }
 
 async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false, remote_url=false) {
-  let public_computer = document.getElementById('public_computer').checked;
+  let keep_logged_in = document.getElementById('keep_logged_in').checked;
   if(!dbName){
     dbName = $('#db_select :selected').val();
   }
@@ -292,7 +292,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       //UPDATE LOCAL STORAGE DATABASES
       addDBtoLocalStorage(dbName, 'remote', remote_url);
 
-      if(public_computer){
+      if(!keep_logged_in){
         db = new PouchDB(dbName, {adapter: 'memory'});
       } else {
         db = new PouchDB(dbName);
@@ -313,13 +313,12 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
   else if(type=="login_remote"){
     console.log('Logging in to remote db');
     
-    if(public_computer){
+    if(!keep_logged_in){
       db = new PouchDB(dbName, {adapter: 'memory'});
     } else {
       db = new PouchDB(dbName);
     }
     try { //change to check first if online, if so try logging in there first then log in to local once success, otherwise log in like we have here with locally saved pwd.
-      remote_url = JSON.parse(localStorage.getItem('databases')).filter(el => el.name == dbName)[0].url;
       remote_url = parseUrl(remote_url, username, pwd);
       remoteDb = new PouchDB(remote_url, {skip_setup: true});
       var ajaxOpts = {
@@ -396,8 +395,8 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
         console.log(err);
       });
     }
-    else if(!public_computer && dbName.endsWith('(remote)')){
-      localStorage.setItem('loggedin',JSON.stringify({dbName: dbName, username: username, pwd: pwd, roles: window.roles}));
+    else if(!keep_logged_in && dbName.endsWith('(remote)')){
+      localStorage.setItem('loggedin',JSON.stringify({dbName: dbName, username: username, pwd: pwd, roles: window.roles, url: remote_url}));
       //store username/pwd/url
       db.upsert('_local/u-'+username, function (doc) {
         doc.pwd = pwd;
