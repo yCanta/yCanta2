@@ -140,6 +140,35 @@ notyf.info = function(message, color='var(--songbookList-color)', url=false){
   }
 }
 
+var dysmyssable = new Notyf({
+  duration: 0,
+  position: {x: 'center', y: 'top'},
+  types: [{
+      type: 'info',
+      background: 'var(--songbookList-color)',
+      icon: true
+    }],
+  dismissible: true
+});
+
+dysmyssable.info = function(message, color='var(--songbookList-color)', url=false){
+  if(url){
+    dysmyssable.open({
+      type: 'info',
+      message: message,
+      background: color
+    }).on('click', ({target, event}) => {
+      window.location.hash = url;
+    });
+  } else {
+    dysmyssable.open({
+      type: 'info',
+      message: message,
+      background: color
+    });
+  }
+}
+
 window.addEventListener("resize", function(){
   window.setTimeout(function(){
     document.activeElement.scrollIntoView({block: 'start'});
@@ -1139,6 +1168,7 @@ function prepExport(){
       if(e.data[0] == 'pdf'){
         document.getElementById('pdf').contentWindow.yourMethod(e.data[1]);
         console.log('Message received from worker');
+        logData('exported', window.exportObject._id + ": " + JSON.stringify(read_config_form()));
       }
       else if(e.data[0] == 'progress'){
         window.document.getElementById('pdf_progress').style.width = e.data[1];
@@ -1298,7 +1328,7 @@ function export_form_summary_update() {
 }
 function read_config_form(){
   let opts = $('#export_form').serializeArray();
-  let new_opts = [];
+  let new_opts = {};
   for(let opt of opts) {
     new_opts[opt.name] = opt.value;
   }
