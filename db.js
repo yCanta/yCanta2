@@ -272,6 +272,8 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
       logData('platform', getOS()); 
       logData('screenSize', getScreenSize());
       logData('touch', isTouchCapable());
+      logData('darkMode', localStorage.getItem(window.user._id+'darkMode') || 'def');
+      logData('fontSize', localStorage.getItem(window.user._id+'fontSize') || 'def');
       dysmyssable.info('yCanta has been updated to send information to help improve how it works.  You can toggle this in settings.', 'var(--song-color)', '#');
     }
     else {
