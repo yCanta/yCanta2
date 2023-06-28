@@ -84,15 +84,6 @@
                 <div id="category_content"></div>
               </div>
             </fieldset>
-            <fieldset class="closed align-right">
-              <legend onclick="this.parentElement.classList.toggle('closed');">Import</legend>
-              <div class="content">
-                <div>To import more songs, choose a zip of V1 songs or a json file of V2 and upload it below.</div>
-                <span style="margin: 1rem;"><input type="file" id="file" name="file" accept=".json,.zip" style="max-width: 200px; background: var(--edit-color);"/><button class="btn" onclick="startHandlingFiles();">Upload</button></span>
-                <div id="result">
-                </div>
-              </div>  
-            </fieldset>
             <fieldset class="closed align-right" id="appSettings">
               <legend onclick="this.parentElement.classList.toggle('closed');">Settings</legend>
               <div class="content">
@@ -104,7 +95,9 @@
                   <label for="autoRadio">System</label>
                   <input type="radio" name="darkmode" id="lightRadio" value="light" onchange="handleDarkMode(); logData('darkMode', this.value);">
                   <label for="lightRadio">Light</label>
-                </div><br><br>
+                </div><br>
+              </div>
+              <div class="content">
                 <label>
                   <b>Font Size:</b> <output id="fontSizeOutput">16px</output><br><br>
                   <input type="range" min="12" max="20" value="16" id="fontSize" name="fontSize" list="tickmarks" onchange="document.getElementById('fontSizeOutput').value=this.value+'px'; document.documentElement.style.fontSize = this.value+'px'; localStorage.setItem(window.user._id+'fontSize', this.value); logData('fontSize', this.value);" style="width:100%; display: block;">
@@ -114,22 +107,28 @@
                     <option value="20" label="20px"></option>
                   </datalist>
                 </label>
-                <label>
-                  <br>
-                  <b>Send Analytics</b><br><br>
-                  <label class="switch switch-wide">
-                    <input type="checkbox" id="analytics" name="analytics" checked onclick="logData('analytics', this.checked); localStorage.setItem(window.user._id+'analytics', this.checked); logData('analytics', this.checked);">
-                    <div class="slider" data-text=" "></div>
-                  </label>
+              </div>
+              <div class="content">
+                <b>Send Analytics</b><br><br>
+                <label class="switch switch-wide">
+                  <input type="checkbox" id="analytics" name="analytics" checked onclick="logData('analytics', this.checked); localStorage.setItem(window.user._id+'analytics', this.checked); logData('analytics', this.checked);">
+                  <div class="slider" data-text=" "></div>
                 </label>
-                <br><br>
-                <hr>
-                <b>Clear All Data?</b><br>
-                <a href="#" class="btn" style="background-color: crimson; color: white; width: calc(100% - 2rem); text-align:center; margin-left: 1rem;" onclick="if(confirm('Are you sure you want to delete this database?')){ db.destroy().then(function () {
+              </div>
+              <div class="content">
+                <b>Import</b>
+                <div>Choose a zip of V1 songs or a json file of V2 and upload it below.</div>
+                <span style="margin: 1rem;"><input type="file" id="file" name="file" accept=".json,.zip" style="max-width: 200px; background: var(--edit-color);"/><button class="btn" onclick="startHandlingFiles();">Upload</button></span>
+                <div id="result">
+                </div>
+              </div>
+              <div class="content">
+                <b>Admin</b><br>
+                <a href="#" class="btn" style="background-color: crimson; color: white;" onclick="if(confirm('Are you sure you want to delete this database?')){ db.destroy().then(function () {
                   dbLogout();
                 }).catch(function (err) {
                   console.log(err);
-              });}">OK</a>
+              });}">Delete DB</a>
               </div>
             </fieldset>
           </div>
