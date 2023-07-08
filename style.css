@@ -1079,6 +1079,9 @@ input[type="number"] {
 }
 
 /*Switch*/
+.switch.switch-wide {
+  width: 300px;
+}
 .switch {
   position: relative;
   display: inline-block;
@@ -1097,6 +1100,7 @@ input[type="number"] {
   transition: .4s;
   border-radius: 34px;
   background-color: var(--edit-color);
+  filter: brightness(0.9);
 }
 .slider:before {
   position: absolute;
@@ -1105,7 +1109,8 @@ input[type="number"] {
   height: 20px;
   width: 17px;
   left: 4px;
-  bottom: 15%;
+  bottom: 50%;
+  transform: translateY(50%);
   background-color: var(--highlight-color);
   transition: .4s;
   border-radius: 50%;
@@ -1113,10 +1118,11 @@ input[type="number"] {
 .slider.background:before {
   background-color: var(--edit-color);
 }
+.switch.switch-wide input:checked + .slider:before {
+  transform: translate(270px, 50%);
+}
 .switch input:checked + .slider:before {
-  -webkit-transform: translateX(26px);
-  -ms-transform: translateX(26px);
-  transform: translateX(50px);
+  transform: translate(50px, 50%);
 }
 .slider:after {
  content: 'Off';
@@ -1125,7 +1131,7 @@ input[type="number"] {
  transform: translate(-50%,-50%);
  top: 50%;
  left: 50%;
- font-size: 12px;
+ font-size: .75rem;
  font-family: Verdana, sans-serif;
  font-weight: bold;
 }

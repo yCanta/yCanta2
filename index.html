@@ -93,25 +93,31 @@
               <div class="content">
                 <b>Darkmode</b><br><br>
                 <div id="darkmode">
-                  <input type="radio" name="darkmode" id="darkRadio" value="dark" onchange="handleDarkMode();">
+                  <input type="radio" name="darkmode" id="darkRadio" value="dark" onchange="handleDarkMode(); logData('darkMode', this.value);">
                   <label for="darkRadio">Dark</label>
-                  <input type="radio" name="darkmode" id="autoRadio" value="auto" onchange="handleDarkMode();">
+                  <input type="radio" name="darkmode" id="autoRadio" value="auto" onchange="handleDarkMode(); logData('darkMode', this.value);">
                   <label for="autoRadio">System</label>
-                  <input type="radio" name="darkmode" id="lightRadio" value="light" onchange="handleDarkMode();">
+                  <input type="radio" name="darkmode" id="lightRadio" value="light" onchange="handleDarkMode(); logData('darkMode', this.value);">
                   <label for="lightRadio">Light</label>
                 </div><br>
               </div>
               <div class="content">
                 <label>
                   <b>Font Size:</b> <output id="fontSizeOutput">16px</output><br><br>
-                  <input type="range" min="12" max="20" value="16" id="fontSize" name="fontSize" list="tickmarks" onchange="document.getElementById('fontSizeOutput').value=this.value+'px'; document.documentElement.style.fontSize = this.value+'px'; localStorage.setItem(window.user._id+'fontSize', this.value);" style="width:100%; display: block;">
+                  <input type="range" min="12" max="20" value="16" id="fontSize" name="fontSize" list="tickmarks" onchange="document.getElementById('fontSizeOutput').value=this.value+'px'; document.documentElement.style.fontSize = this.value+'px'; localStorage.setItem(window.user._id+'fontSize', this.value); logData('fontSize', this.value);" style="width:100%; display: block;">
                   <datalist id="tickmarks">
                     <option value="12" label="12px"></option>
                     <option value="16" label="16px"></option>
                     <option value="20" label="20px"></option>
                   </datalist>
                 </label>
-                <br>
+              </div>
+              <div class="content">
+                <b>Send Analytics</b><br><br>
+                <label class="switch switch-wide">
+                  <input type="checkbox" id="analytics" name="analytics" checked onclick="logData('analytics', this.checked); localStorage.setItem(window.user._id+'analytics', this.checked); logData('analytics', this.checked);">
+                  <div class="slider" data-text=" "></div>
+                </label>
               </div>
               <div class="content">
                 <b>Import</b>
@@ -743,6 +749,8 @@
     <script src="sortable.js"></script>
     <script async src="jszip.min.js"></script>
     <script async src="import.js"></script>
+    <script async src="analytics.js" id="analyticsScript"></script>
+
     <script>
       window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
         if(document.getElementById('autoRadio').checked == true) {
@@ -903,6 +911,9 @@
           return
         }
 
+        logData('hashchanged', hash);
+
+        $('.edit_buttons').remove();
         $('.deleted').removeClass('deleted');
 
         let bodyClassList = (document.body.classList.contains('loading') ? ['loading'] : []);

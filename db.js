@@ -13,6 +13,7 @@ function updateOnlineStatus(event) {
   document.documentElement.classList.remove(['offline','online'].filter(word => word != condition));
   online = navigator.onLine;
   console.log("beforeend", "Event: " + event.type + "; Status: " + condition);
+  try {logData('connection', condition); } catch(err) {console.log(err.message)} //ERROR when first loads - I'm ok with it...
 }
 //Update Online status
 window.addEventListener('load', function() {
@@ -509,9 +510,47 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       document.getElementById('fontSize').value = fontSize;
       document.getElementById('fontSizeOutput').value = fontSize + 'px';
     }
+    let analytics = localStorage.getItem(window.user._id+'analytics');
+    if(analytics == 'false'){
+      document.getElementById('analytics').checked = false;
+    }
 
     //wipe login cause we were successfull!
     $('#login :input').each(function(){$(this).val('')});
+
+    //DeviceInfo(deviceID, os, screen dimensions, touch capable, )
+    if(!localStorage.getItem('analyticID')){
+      localStorage.setItem('analyticID',self.crypto.randomUUID()); //random anyonymous id
+      logData('platform', getOS()); 
+      logData('screenSize', getScreenSize());
+      logData('touch', isTouchCapable());
+      logData('darkMode', localStorage.getItem(window.user._id+'darkMode') || 'def');
+      logData('fontSize', localStorage.getItem(window.user._id+'fontSize') || 'def');
+      dysmyssable.info('yCanta has been updated to send information to help improve how it works.  You can toggle this in settings.', 'var(--song-color)', '#');
+    }
+    else {
+      console.log(localStorage.getItem('analyticID'));
+    }
+    logData('username', window.user._id);
+    let condition = navigator.onLine ? "online" : "offline";
+    logData('connection', condition); //Condition?
+    if(window.loadData){
+      logData('loadTime', window.performance.timing.domContentLoadedEventEnd - window.performance.timing.navigationStart);
+      logData('installed', isInstalled());
+      
+      let analytics = localStorage.getItem(window.user._id+'analytics');
+      console.log(analytics);
+      if(analytics != 'false') {
+        fetch('https://ipapi.co/json/')
+          .then(function(response) {
+            return response.json();
+          })
+          .then(function(data) {
+            logData('location', data.country_name + ', ' + data.city);
+          });
+      }
+      delete window.loadData;
+    }
     return true;
   }
   return false;
@@ -976,6 +1015,9 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
         resolve(song._id);
       });  
     }
+  }).then(function(song_id) {
+    console.log(song_id);
+    logData('edited', song_id);
   });
 }
 
@@ -1182,7 +1224,7 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
           $('.edit_buttons').remove();
           initializeSongbooksList();
         }
-        resolve('all good!');
+        resolve(window.songbook._id);
       }).catch(function (err) {
         console.log(err);
         if(new_songbook){
@@ -1222,6 +1264,9 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
         resolve('not all good!');
       });  
     }
+  }).then(function(songbook_id) {
+    console.log(songbook_id);
+    logData('edited', songbook_id);
   });
 }
 
