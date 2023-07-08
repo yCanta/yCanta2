@@ -1,8 +1,15 @@
-stitle, categories, cclis, authors, key {
+stitle, categories, cclis, authors, #keyToggleContainer {
   margin-bottom: 1em;
 }
-authors, introduction, scripture_ref, key {
+key {
+  margin-right: .5em; 
+}
+key:empty + #keyToggle {
+    display: none;
+}
+authors, introduction, scripture_ref {
   margin-right: 1em; 
+  margin-bottom: 1em;
   display: inline-block;
 }
 stitle, categories, cclis, copyright {
@@ -11,19 +18,19 @@ stitle, categories, cclis, copyright {
 stitle {
   font-size: 1.17em;/*h3 STYLING*/
   font-weight: bold;
-  position: sticky;
-  padding-top: 1em;
-  padding-right: 2.75em;
+  margin-top: 1em;
   top: 0;
-  z-index: 1;
+}
+#song .column_header {
   column-span: all;
 }
 chunk {
-  break-inside: avoid;
   position: relative;
   display: block;
+  white-space: pre-wrap;
+  break-inside: avoid;
   margin-left: 2em;
-  margin-bottom: 1em;
+  margin-bottom: 2em;
 }
 line {
   display: block;
@@ -34,18 +41,18 @@ line {
   padding-top: 0;
 }
 c {
- position: relative;
- top: -1em;
- display: inline-block;
- width: 0;
+  position: relative;
+  top: -1em;
+  display: inline-block;
+  width: 0;
+  font-weight: 500;
 }
 .nochords c {
- display: none;
+  display: none;
 }
 /*counter stuff  */
 song {
   display: block;
-  white-space: pre-wrap;
   counter-reset: verse_n; 
   column-width: 18.75rem;
   column-fill: auto;
@@ -53,13 +60,21 @@ song {
   column-gap: 4rem;
   margin-bottom: 1rem;
 }
+.edit [type=verse]:before {
+  top: -3.5rem !important;
+  left: 6rem !important;
+  pointer-events: none;
+}
 .nochords [type=verse]:before {
-  top: 1.2em;
+  top: 0rem;
 }
 [type=verse]:before {
-  top: 2.1em;
+  position: absolute;
+  top: 1rem;
+  left: -2rem;
   content: counter(verse_n) ")";
   counter-increment: verse_n;
+  transition: top .2s;
 }
 /*end of counter stuff */
 chunk:before {
@@ -98,6 +113,9 @@ chunk:before {
   margin-top: 0;
   margin-bottom: 0;
 }
+.sorting .wrap * {
+  pointer-events: none;
+}
 .edit cclis {
   display: inline-block;
   width: 5rem;
@@ -125,12 +143,20 @@ chunk:before {
 [type='indented no label'] line {
   margin-left: 2em;
 }
-key:not(:empty):before {content: 'Key: '}
+key:not(:empty):before {
+  content: 'Key: '
+}
 copyright:before {
  content: '';
 }
 copyright {
  margin-top: 1em;
+}
+introduction:empty {
+  display: none;
+}
+.edit introduction {
+  display: initial;
 }
 introduction:before {
  content: ''; 

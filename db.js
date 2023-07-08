@@ -61,8 +61,12 @@ function dbChanges() {
     if(change.doc._id.startsWith('s-')){
       loadRecentSongs();  
       //only load song if it's the one that's up.
-      if(window.song._id === change.doc._id && document.body.classList.contains('song')){
-        loadSong(change.doc._id);
+      if(window.song._id === change.doc._id && document.body.classList.contains('song')){ //if we're viewing this song.
+        delete window.song;
+        Promise.all([loadSong(change.doc._id)]) //little bit of a hack - had an issue where the url update reloads the songbook and song, then this triggers causing the edit buttons to not work... 
+          .then(function(values) {
+            updateAllLinks();
+          });         
         if(!window.silent){ notyf.info('Song updated', 'var(--song-color)') };
       } else {
         if(!window.silent){ 
@@ -191,7 +195,7 @@ async function dbExists(dbName) {
 }
 
 async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false, remote_url=false) {
-  let public_computer = document.getElementById('public_computer').checked;
+  let keep_logged_in = document.getElementById('keep_logged_in').checked;
   if(!dbName){
     dbName = $('#db_select :selected').val();
   }
@@ -288,7 +292,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       //UPDATE LOCAL STORAGE DATABASES
       addDBtoLocalStorage(dbName, 'remote', remote_url);
 
-      if(public_computer){
+      if(!keep_logged_in){
         db = new PouchDB(dbName, {adapter: 'memory'});
       } else {
         db = new PouchDB(dbName);
@@ -309,13 +313,12 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
   else if(type=="login_remote"){
     console.log('Logging in to remote db');
     
-    if(public_computer){
+    if(!keep_logged_in){
       db = new PouchDB(dbName, {adapter: 'memory'});
     } else {
       db = new PouchDB(dbName);
     }
     try { //change to check first if online, if so try logging in there first then log in to local once success, otherwise log in like we have here with locally saved pwd.
-      remote_url = JSON.parse(localStorage.getItem('databases')).filter(el => el.name == dbName)[0].url;
       remote_url = parseUrl(remote_url, username, pwd);
       remoteDb = new PouchDB(remote_url, {skip_setup: true});
       var ajaxOpts = {
@@ -379,8 +382,6 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     } catch(error) {
       console.log(error);
     }
-    setLoginState();
-
     //Store logged in status: pin for local, for remote we store pwd.
     if(dbName.endsWith('(local)')){
       localStorage.setItem('loggedin',JSON.stringify({dbName: dbName, username: username, pin: pin, roles: window.roles}));
@@ -394,8 +395,8 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
         console.log(err);
       });
     }
-    else if(!public_computer && dbName.endsWith('(remote)')){
-      localStorage.setItem('loggedin',JSON.stringify({dbName: dbName, username: username, pwd: pwd, roles: window.roles}));
+    else if(!keep_logged_in && dbName.endsWith('(remote)')){
+      localStorage.setItem('loggedin',JSON.stringify({dbName: dbName, username: username, pwd: pwd, roles: window.roles, url: remote_url}));
       //store username/pwd/url
       db.upsert('_local/u-'+username, function (doc) {
         doc.pwd = pwd;
@@ -486,6 +487,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       });
     };
 
+    setLoginState();
     //layout the welcome?  maybe this goes in set login state?
     //Update ui when db changes]s
     loadRecentSongs();
@@ -930,7 +932,7 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
         }
       }).then(function(){
         if(change_url){
-          window.location.hash = '#'+window.songbook._id+'&'+song._id;
+          window.location.hash = '#'+formatSbID(window.songbook._id)+'&'+song._id;
         }
         resolve(song._id);
       }).catch(function (err) {
@@ -995,14 +997,16 @@ function loadSong(song_id) {
       <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>`;
       $('#song .float-menu').html(float_menu);
 
-      var song_html = '<song data-rev="' + song._rev + '" data-id="' + song._id + '" data-user-fav="'+(window.user.fav_songs.indexOf(song._id) > -1 ? 'true' : 'false')+'">' + 
-        '<stitle><a data-song class="title_link">' + song.title + '</a><span onclick="event.stopPropagation(); toggleFavSong($(this).closest(\'song\').attr(\'data-id\'))"></span><info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo();"></info></stitle>' +  
-        '<authors><author>' + song.authors.join('</author>, <author>') + '</author></authors>' + 
-        '<scripture_ref><scrip_ref>' + song.scripture_ref.join('</scrip_ref>, <scrip_ref>') + '</scrip_ref></scripture_ref>' + 
-        '<introduction>' + song.introduction + '</introduction>' + 
-        '<key>' + song.key + '</key>' + 
-        '<categories><cat>' + song.categories.sort().join('</cat>, <cat>') + '</cat></categories>' + 
-        '<cclis>' + (song.cclis != false ? 'CCLIS' + (!isNaN(song.cclis) ? ': '+song.cclis: '') : '') + '</cclis>';
+      var song_html = `<song data-rev="${song._rev}" data-id="${song._id}" data-user-fav="${(window.user.fav_songs.indexOf(song._id) > -1 ? 'true' : 'false')}">
+        <div class="column_header" id="song_header"><stitle><a data-song class="title_link">${song.title}</a><span><span class="star" onclick="event.stopPropagation(); toggleFavSong($(this).closest('song').attr('data-id'))"></span>
+          <info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo();"></info></span>
+        </stitle></div>
+        <authors><author>${song.authors.join('</author>, <author>')}</author></authors>
+        <scripture_ref><scrip_ref>${song.scripture_ref.join('</scrip_ref>, <scrip_ref>')}</scrip_ref></scripture_ref>
+        <span id="keyToggleContainer"><span id="keyToggleFilter"><key>${song.key}</key><button id="keyToggle" onclick="this.parentElement.parentElement.classList.toggle(\'active\')">↑↓</button></span></span>
+        <categories><cat>${song.categories.sort().join('</cat>, <cat>')}</cat></categories>
+        <cclis>${(song.cclis != false ? 'CCLIS' + (!isNaN(song.cclis) ? ': '+song.cclis: '') : '')}</cclis>
+        <introduction>${song.introduction}</introduction>`;
       song.content.forEach(function(chunk){
         song_html += '<chunk type="' + chunk[0].type + '">';
         chunk[1].forEach(function(line){
@@ -1023,14 +1027,24 @@ function loadSong(song_id) {
       //set youtube_links
       ($("song line").text().match(regex) != null ? window.youtube_links = [...$("song line").text().match(regex)] : window.youtube_links = []);
       if(window.youtube_links.length > 0) {
-        $('#song key').before('<button class="btn" style="padding: 5px 8px; margin-top: 0; background-color:var(--highlight-color);" onclick="loadSongPlayer();">▶</button>')
+        $('#song key').before('<button class="btn" style="padding: 5px 8px; margin-top: 0; margin-bottom: 0; background-color:var(--highlight-color);" onclick="loadSongPlayer();">▶</button>')
       }
-      resolve("song_loaded");
+      //Update songplacement
+      setTimeout(function(){ //needed as we don't know when the songbook will get loaded...
+        let songPlacement = window.songbook_list.visibleItems.findIndex(el => el._values['song-id'] == window.song._id) + 1;
+        $('#songbook_content .search + span').attr('data-number-visible',`${songPlacement ? songPlacement+'/' : ''}${window.songbook_list.visibleItems.length}`);
+      },300);
 
-      $('#song key').transpose();
+      resolve("song_loaded");
+      $('#song .edit_buttons').remove();
+
+      $('#keyToggle').transpose();
       if(document.getElementById('dialog').style.display=="block" && document.getElementById('dialog').getAttribute('data-use')=="info") {loadInfo()}
     }
-    if(song_id === 's-new-song'){
+    if(song_id == window.song._id){
+      resolve('song already loaded');
+    }
+    else if(song_id === 's-new-song'){
       var song = {
         _id: 's-new-song',
         title: '',
@@ -1076,7 +1090,7 @@ async function deleteSong(song_id) {
     db.get(window.song._id).then(function (doc) {
       return db.remove(doc);
     }).then(function(){
-      window.location.hash='#'+window.songbook._id;
+      window.location.hash='#'+formatSbID(window.songbook._id);
     });
     console.log('deleted: '+window.song.title);
     return false
@@ -1106,7 +1120,7 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
     return
   }
   else{
-    window.editing=false;
+    window.songbookEditing=false;
   }
   var new_songbook = false;
   return new Promise(function(resolve, reject) {
@@ -1164,7 +1178,7 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
         }
       }).then(function(){
         if(change_url){
-          window.location.hash = '#'+window.songbook._id;
+          window.location.hash = '#'+formatSbID(window.songbook._id);
           $('.edit_buttons').remove();
           initializeSongbooksList();
         }
@@ -1240,6 +1254,7 @@ function loadSongbook(songbook_id) {
       window.songbook._rev = '';
        
       db.allDocs(options).then(function(result){
+        result.rows = result.rows.filter(row => row.key !== ''); //remove missing ids.
         var sb_song_ids = result.rows.map(function (row) {
           return row.id
         });
@@ -1273,6 +1288,7 @@ function loadSongbook(songbook_id) {
         var dateAfter = new Date();
         console.log(dateAfter-dateBefore);
         resolve('loaded songbook');
+        $('#songList .edit_buttons').remove();
       }).catch(function(err){
         console.log(err);
       });
@@ -1283,6 +1299,7 @@ function loadSongbook(songbook_id) {
       }
       setSongbookInfo({title: '', _id: 'sb-new-songbook'});
       resolve('loaded blank new songbook');
+      $('#songList .edit_buttons').remove();
     }
     else {
       db.get(songbook_id).then(function(result){
@@ -1327,6 +1344,7 @@ function loadSongbook(songbook_id) {
           $('#songbook_title').attr('data-user-fav', 'false'); 
         }
         resolve('loaded songbook');
+        $('#songList .edit_buttons').remove();
       }).catch(function(err){
         console.log(err);
       });

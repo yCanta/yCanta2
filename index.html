@@ -22,7 +22,7 @@
     <script async src="//static.getclicky.com/js"></script-->
 
   </head>
-  <body class="header login">
+  <body class="header login loading">
     <fieldset class="loggedin_display closed align-right" style="position: absolute; top:1.5rem;right:1rem; z-index:7; margin-right: 0;">
       <legend onclick="this.parentElement.classList.toggle('closed');" style="margin-right: 0; padding: 0 .4rem; margin-left: auto;" id="username_legend"><span id="username_d"></span></legend>
       <div class="content">
@@ -47,8 +47,8 @@
           <input id="remote_url" class="d_none connect_remote" placeholder="Remote URL" type="url"></input>
           <input id="username" placeholder="Username" type="text"></input>
           <input id="pwd" class="d_none connect_remote login_remote" placeholder="Password" type="password"></input>
-          <label class="d_none connect_remote login_remote" for="public_computer">This is a public computer</label>
-          <input name="public_computer" class="d_none connect_remote login_remote" type="checkbox" id="public_computer" style="width: initial; margin: 0;">
+          <label class="d_none connect_remote login_remote" for="keep_logged_in">Keep me logged in</label>
+          <input name="keep_logged_in" class="d_none connect_remote login_remote" type="checkbox" id="keep_logged_in" style="width: initial; margin: 0;">
           <div class="pin d_none create_local login_local">
             <input id="pin" placeholder="Pin" type="password"></input>
             <input id="pin2" class="d_none create_local" placeholder="Renter Pin" type="password"></input>
@@ -142,7 +142,6 @@
         <div class="float-menu">
           <div>
             <a data-songbook-edit="new" class="float-menu-item"><span class="float-menu-icon">+</span> Add SB</a>
-            <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>
           </div>
         </div>
         <div class="row">
@@ -160,7 +159,7 @@
                   data-songbook-rev=""
                   data-songbook-title=""
                   data-user-fav="">
-                <a href="" tabindex="0" class="link name" ></a><span></span>
+                <a href="" tabindex="0" class="link name" ></a><span class="star"></span>
               </li>
             </ul>
           </div>
@@ -213,7 +212,7 @@
                   data-song-search=""
                   data-song-status=""
                   data-song-deleted="">
-                  <a href="" class="name" tabindex="0" ></a>
+                  <a href="" class="link name" tabindex="0" ></a>
                 </li>
               </ul>
             </div>
@@ -251,8 +250,7 @@
       </div>
       <div class="column" id="export">
         <div class="float-menu">
-          <button class="float-menu-item" onclick="window.location.hash=window.location.hash.replace('&export','');"><span class="float-menu-icon">&#128465;</span> Cancel</button>
-          <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>
+          <button class="float-menu-item" onclick="window.location.hash=window.location.hash.replace('?export','');"><span class="float-menu-icon">&#128465;</span> Cancel</button>
         </div>
         <div class="row">
           <div class="subcolumn">
@@ -773,6 +771,8 @@
       bindSearch('author', 'a:');
       bindSearch('scrip_ref', 's:');
       bindSearch('key', 'k:');
+      bindSearch('cclis', 'cclis:');
+      bindSearch('copyright', 'cp:');
       
       $("#export_form > label").click(function(e){
         if(this.previousElementSibling.checked){
@@ -787,7 +787,6 @@
         if((h <= 100 && h > 0) || ( w <= 60 && w > 0)) {
           e.preventDefault();
           e.stopPropagation();
-          if (confirmWhenEditing()) { return };
           location.hash = $(this).find('.title_link').attr('href');
         }
       });
@@ -845,7 +844,7 @@
         hashchanged();
         // keep page from reloading if editing
         window.onbeforeunload = function() {
-          return window.editing ? "If you leave this page you will lose your unsaved changes." : null;
+          return ((window.songEditing || window.songbookEditing) ? "If you leave this page you will lose your unsaved changes." : null);
         }
 
         $('#db_select').on('change', function() {
@@ -865,264 +864,266 @@
           }
         });
       });   
-      function hashchanged(){
+      async function hashchanged(e){
+        let oldHash = '';
+        let newHash;
+        if(e) {
+          let oldURL = e.oldURL.match(/#.*$/);
+          let newURL = e.newURL.match(/#.*$/);
+          oldHash = (oldURL ? oldURL[0] : '');
+          newHash = (newURL ? newURL[0] : '');
+        }
+        else {
+          newHash = location.hash;
+        }
+        let newHashList = newHash.replace('#','').split('&').map(itm => itm.split('?'));
+        let oldHashList = oldHash.replace('#','').split('&').map(itm => itm.split('?'));
+        let oldHashOb = {};
+        for(el of oldHash.replace('#','').split('&')){
+          let pieces = el.split('?');
+          oldHashOb[pieces[0]] = pieces[1];
+        }
+
         $('.fullscreen').removeClass('fullscreen');
         let pres_iframe = document.getElementById('presentation');
         if(pres_iframe){setTimeout(function(){pres_iframe.remove()},300);}
 
-        var hash = location.hash;
-        if(window.old_hash == hash){
+        if(window.dontChangeURL){
+          delete window.dontChangeURL;
           return
         }
-        if(confirmWhenEditing()) {
-          window.location.hash = window.old_hash;
+        if(confirmWhenEditing(oldHashList, newHashList)) { //need to know if we are navigating away from an in progress edit.
+          window.location.hash = oldHash;
+          window.dontChangeURL = true;
           return
         }
-        if(!(hash.startsWith('#login')) && !window.loggedin){
-          location.hash = '#login?'+hash;
+        if(!(newHash.startsWith('#login')) && !window.loggedin){
+          location.hash = '#login?' + newHash;
           console.log("Hi, let's login first");
-          hashchanged();
           return
         }
 
-        $('.edit_buttons').remove();
         $('.deleted').removeClass('deleted');
-        //if blank - should have to do nothing  
-        if(hash == ''){
-          $('body').attr('class','header');
-          $('.active').removeClass('active');
-          window.document.title = "yCanta2";
-          updateAllLinks();
+
+        let bodyClassList = (document.body.classList.contains('loading') ? ['loading'] : []);
+        $('.edit').removeClass('edit');
+        $('.active').removeClass('active');
+        if(!newHash.includes('export')) {
+          if(newHash.includes('s-')) {
+            $('#song').addClass('active');
+          }
+          else if(newHash.includes('sb-')) {
+            $('#songList').addClass('active');
+          }
         }
-//Login
-        else if(hash.startsWith('#login')) {
-          let loggedIn = JSON.parse(localStorage.getItem('loggedin'));
-          try {
-            dbLogin('login', loggedIn.dbName, loggedIn.username, loggedIn.pin, loggedIn.pwd);
-            console.log("still logged in!");
-          }
-          catch {
-            console.log("Not logged in yet");
-          }
 
-          $('body').attr('class', 'login header');
-
-          let db_opts = '';
-          let databases = JSON.parse(localStorage.getItem('databases'));
-          if(databases) {
-            for(const db of databases) {
-              db_opts += `<option value="${db.name}" data-url="${db.url}">${db.name}</option>`
+        for(piece of newHashList){
+  //if blank - should have to do nothing  
+          if(piece[0] == ''){
+            document.body.classList.add('header');
+            bodyClassList.push('header');
+            window.document.title = "yCanta2";
+            updateAllLinks();
+          }
+  //Login
+          else if(piece[0] == 'login') {
+            let loggedIn = JSON.parse(localStorage.getItem('loggedin'));
+            try {
+              dbLogin('login', loggedIn.dbName, loggedIn.username, loggedIn.pin, loggedIn.pwd, loggedIn.url);
+              console.log("still logged in!");
             }
+            catch {
+              console.log("Not logged in yet");
+            }
+
+            document.body.classList.add('login');
+            document.body.classList.add('header');
+            bodyClassList.push('login');
+            bodyClassList.push('header');
+
+            let db_opts = '';
+            let databases = JSON.parse(localStorage.getItem('databases'));
+            if(databases) {
+              for(const db of databases) {
+                db_opts += `<option value="${db.name}" data-url="${db.url}">${db.name}</option>`
+              }
+            }
+            //db_opts += '<option value="CanaanF(remote)" data-url="url-to-db.com">Canaan Fellowship(remote)</option>';
+            db_opts += '<option value="connect_remote">Connect Remote</option>';
+            db_opts += '<option value="create_local">Create Local</option>';
+            setTimeout(function(){$('#db_select').html(db_opts).trigger('change');},0);
+            window.document.title = "yCanta2 - Login";
+            setTimeout(function(){
+              document.body.classList.remove('loading');
+            },300);
+            return; //otherwise we load the song and other pieces weirdly
           }
-          db_opts += '<option value="connect_remote">Connect Remote</option>';
-          db_opts += '<option value="create_local">Create Local</option>';
-          setTimeout(function(){$('#db_select').html(db_opts).trigger('change');},0);
-          window.document.title = "yCanta2 - Login";
-        }
-//Songbooks
-        else if(hash == '#songbooks'){
-          $('body').attr('class','songbookList');
-          $('.active').removeClass('active');
-          $('#songbookList').addClass('active');
-          window.document.title = "yCanta2";
-        }
-        //if song edit
-        else if((hash.search('&s-') != -1) && (hash.search('&edit') != -1)) {
-          $('body').attr('class', 'song edit');
-          $('.active').removeClass('active');
-          $('#song').addClass('active');
-          //check if songbook is loaded
-          Promise.all([loadSongbook(parseHash('sb-')), loadSong(parseHash('s-'))])
-            .then(function(values){
-              //Initiate song edit
-              editSong();
-              updateAllLinks();
-              window.document.title = "yCanta2: Editing " + window.song.title;
-          });
-        }
-//if song export
-        else if((hash.search('&s-') != -1) && (hash.search('&export') != -1)) {
-          //Initiate song export
-          $('body').attr('class', 'song export');
-          $('.active').removeClass('active');
-          $('#export').addClass('active');
-          $('#export').removeClass('showStatus');
-          Promise.all([loadSongbook(parseHash('sb-')), loadSong(parseHash('s-'))])
-            .then(function(){
-              window.exportObject = window.song;
-              console.log(exportObject);
-              //PREPROCESS THE SONG OBJECT
-              // -- REMOVE ALL COMMENTS
-              let chunks = [];
-              for(var i = 0; i < window.song.content.length; i++) {
-                if(window.song.content[i][0].type != 'comment') {
-                  chunks.push(window.song.content[i]);
+  //Songbooks List
+          else if(piece[0] == 'songbooks'){
+            document.body.classList.add('songbookList');
+            bodyClassList.push('songbookList');
+            $('#songbookList').addClass('active');
+            window.document.title = "yCanta2";
+          }
+  //Song
+          else if(piece[0].startsWith('s-')) {
+            if(piece[0] == 's-new-song'){
+              window.location.hash = '#' + formatSbID(window.songbook._id);
+              return
+            }
+            document.body.classList.add('song');
+            bodyClassList.push('song');
+            Promise.all([loadSong(piece[0])])
+              .then(function(values) {
+        //Initiate song edit
+                if(piece[1] == 'edit') { 
+                  document.getElementById('song').classList.add('edit');
+                  editSong();
+                  window.document.title = "yCanta2: Editing " + window.song.title;  
                 }
-              }
-              if(chunks.length == 0) {
-                alert("You can't export a song with no verses, chorus, or other text");
-                window.location = '#'+window.songbook._id+'&'+window.song._id;
-              }
-              window.exportObject.content = chunks;
+        //initiate song export 
+                else if (piece[1] == 'export') { 
+                  document.body.classList.add('export');
+                  bodyClassList.push('export');
+                  $('#export').addClass('active');
+                  $('#export').removeClass('showStatus');
 
-              return 
-            }).then(function(values){
-              prepExport();
-              updateAllLinks();
-              window.document.title = "yCanta2: Exporting " + window.song.title;
-          });
-        }
-//if song
-        else if(hash.search('&s-') != -1) {
-          if(hash.search('s-new-song') != -1){
-            window.location.hash = '#' + window.songbook._id;
-            return
-          }
-          $('body').attr('class','song');
-          $('.active').removeClass('active');
-          $('#song').addClass('active');
-          Promise.all([loadSongbook(parseHash('sb-')), loadSong(parseHash('s-'))])
-            .then(function(values) {
-              updateAllLinks();
-              window.document.title = "yCanta2: "+window.songbook.title + " > " + window.song.title;
-          });          
-        }
-//if songbook edit
-        else if((hash.search('#sb-') != -1) && (hash.search('&edit') != -1)) {
-          //Initiate songbook edit
-          $('body').attr('class', 'songList edit');
-          $('.active').removeClass('active');
-          $('#songList').addClass('active');
-          Promise.resolve(loadSongbook(parseHash('sb-')))
-            .then(function() {
-              editSongbook();
-              updateAllLinks();
-              window.document.title = "yCanta2: Editing " + window.songbook.title;
-          });
-        }
-//if songbook export
-        else if((hash.search('#sb-') != -1) && (hash.search('&export') != -1)) {
-          //Initiate songbook export
-          $('body').attr('class', 'songList export');
-          $('.active').removeClass('active');
-          $('#export').addClass('active');
-          Promise.resolve(loadSongbook(parseHash('sb-')))
-            .then(function(){
-              //get the songbook object and all songs and save them to window.exportObject
-              return new Promise(function(resolve, reject){
-                //Songbooks are already loaded into the window.songbook object
-                window.exportObject = window.songbook;
-                var sb_song_ids = window.songbook.songrefs.map(function (row) {
-                    return row.id
-                  });
-                db.allDocs({
-                  include_docs: true,
-                  keys: sb_song_ids, //we need error handling for missing ids
-                }).then(function (result) {
-                  window.exportObject.songs = result.rows;
-                  //PREPROCESS THE SONGBOOK OBJECT
-                  let procesed_song = [];
-                  for(song of window.exportObject.songs) {
-                    // -- REMOVE ALL COMMENTS
-                    if(song.key != "section"){
-                      for(var i = song.doc.content.length - 1; i >= 0; i--) {
-                        if(song.doc.content[i][0].type === 'comment') {
-                          song.doc.content.splice(i, 1);
-                        }
-                      }
+                  window.exportObject = window.song;
+                  console.log(exportObject);
+                  //PREPROCESS THE SONG OBJECT
+                  // -- REMOVE ALL COMMENTS
+                  let chunks = [];
+                  for(var i = 0; i < window.song.content.length; i++) {
+                    if(window.song.content[i][0].type != 'comment') {
+                      chunks.push(window.song.content[i]);
                     }
-                    procesed_song.push(song);        
                   }
-                  window.exportObject.songs = procesed_song;
-
+                  if(chunks.length == 0) {
+                    alert("You can't export a song with no verses, chorus, or other text");
+                    window.location = '#'+window.songbook._id+'&'+window.song._id;
+                  }
+                  window.exportObject.content = chunks;
                   prepExport();
-                  resolve('Its done');
-                }).catch(function (err) {
-                  console.log(err);
-                });
-              });
-            }).then(function(values){
-              updateAllLinks();
-              window.document.title = "yCanta2: Exporting " + window.songbook.title;
-          });
-        }
-//if songbook present
-        else if((hash.search('#sb-') != -1) && (hash.search('&present') != -1)) {
-          //Initiate songbook export
-          Promise.resolve(loadSongbook(parseHash('sb-')))
-            .then(function(){
-              //get the songbook object and all songs and save them to window.exportObject
-              return new Promise(function(resolve, reject){
-                //Songbooks are already loaded into the window.songbook object
-                window.exportObject = window.songbook;
-                var sb_song_ids = window.songbook.songrefs.map(function (row) {
-                    return row.id
-                  });
-                db.allDocs({
-                  include_docs: true,
-                  keys: sb_song_ids, //we need error handling for missing ids
-                }).then(function (result) {
-                  //Save json object to data id'd element
-                  let myString = JSON.stringify({songs: result.rows.filter(song => song.key != "section"), title: window.songbook.title});
-                  let presHtml = '';
-
-                  //load the presentation.html, jquery and presentation.js file into their spots.
-                  $.ajax({url: "presentation.html",
-                    success: function (data){
-                      presHtml = data;
-                      $.ajax({url: "jquery-3.5.1.min.js", dataType: 'text',
-                        success: function (data){
-                          presHtml = presHtml.replace('jQuery_embed', data);
-                          $.ajax({url: "presentation.js", dataType: 'text',
-                            success: function (data){
-                              presHtml = presHtml.replace('presentation_embed', data);
-                              if(hash.indexOf('new') > -1){                          //New window/tab
-                                window.location = '#'+window.songbook._id;
-                                window.presentationFrame = window.open('','_blank', height="200", width="200");
-                              }
-                              else {                                                 //Iframe
-                                var ifrm = document.createElement('iframe');
-                                ifrm.id = "presentation";
-                                document.body.appendChild(ifrm);
-                                ifrm.contentWindow.focus();
-                                window.presentationFrame = ifrm.contentWindow || ifrm.contentDocument.document || ifrm. contentDocument;
-                              }
-                              window.presentationFrame.document.write(presHtml);
-                              window.presentationFrame.document.close();
-                              window.presentationFrame.document.getElementById('data').setAttribute('data', myString);
-                              window.presentationFrame.location = "#";
-                              resolve('Its done');
-                            }
-                          });
-                        }
+                  window.document.title = "yCanta2: Exporting " + window.song.title;  
+                }
+                else {
+                  window.document.title = "yCanta2: "+window.songbook.title + " > " + window.song.title;
+                }
+                updateAllLinks();
+                setTimeout(function(){  
+                  scrollIntoViewIfNeed(document.querySelector('[data-song-id="'+window.song._id+'"]'));
+                },200);
+            });
+          }
+  //if songbook
+          else if(piece[0].startsWith('sb-')) {
+            document.body.classList.add('songList');
+            bodyClassList.push('songList');
+            await Promise.resolve(loadSongbook(piece[0]))
+              .then(async function() {
+        //initiate songbook edit
+                if(piece[1] == 'edit') {
+                  document.getElementById('songList').classList.add('edit');
+                  if(piece[1] != oldHashOb[piece[0]]) {
+                    editSongbook();
+                    window.document.title = "yCanta2: Editing " + window.songbook.title;
+                  }
+                }
+        //initiate songbook export/present
+                else if(piece[1] == 'export' || piece[1] == 'present+new' || piece[1] == 'present') {
+                  $('#export').addClass('active');
+                  window.document.title = `yCanta2: ${piece[1][0].toUpperCase()+piece[1].substring(1,piece[1].length)}ing ${window.songbook.title}`;
+                //Load all the songs
+                  await Promise.resolve(new Promise(function(resolve, reject){
+                    //Songbooks are already loaded into the window.songbook object
+                    window.exportObject = window.songbook;
+                    var sb_song_ids = window.songbook.songrefs.map(function (row) {
+                        return row.id
                       });
-                    }
-                  });
-                }).catch(function (err) {
-                  console.log(err);
-                });
-              });
-            }).then(function(values){
-            if(hash.indexOf('new') == -1){
-              $('body').attr('class', 'songList present');
-              $('.active').removeClass('active');
-              updateAllLinks();
-              window.document.title = "yCanta2: Presenting " + window.songbook.title;
-            }
-          });
+                    db.allDocs({
+                      include_docs: true,
+                      keys: sb_song_ids, //we need error handling for missing ids
+                    }).then(function (result) {
+                      //EXPORT PROCESS
+                      if(piece[1] == 'export'){
+                        document.body.classList.add(piece[1]);
+                        bodyClassList.push(piece[1]);
+                        window.exportObject.songs = result.rows;
+                        //PREPROCESS THE SONGBOOK OBJECT
+                        let procesed_song = [];
+                        for(song of window.exportObject.songs) {
+                          // -- REMOVE ALL COMMENTS
+                          if(song.key != "section"){
+                            for(var i = song.doc.content.length - 1; i >= 0; i--) {
+                              if(song.doc.content[i][0].type === 'comment') {
+                                song.doc.content.splice(i, 1);
+                              }
+                            }
+                          }
+                          procesed_song.push(song);        
+                        }
+                        window.exportObject.songs = procesed_song;
+                        prepExport();
+                        resolve('Its done');
+                      }
+                      //PRESENT PROCESS
+                      else {
+                        //Save json object to data id'd element
+                        let myString = JSON.stringify({songs: result.rows.filter(song => song.key != "section"), title: window.songbook.title});
+                        let presHtml = '';
+
+                        //load the presentation.html, jquery and presentation.js file into their spots.
+                        $.ajax({url: "presentation.html",
+                          success: function (data){
+                            presHtml = data;
+                            $.ajax({url: "jquery-3.5.1.min.js", dataType: 'text',
+                              success: function (data){
+                                presHtml = presHtml.replace('jQuery_embed', data);
+                                $.ajax({url: "presentation.js", dataType: 'text',
+                                  success: function (data){
+                                    presHtml = presHtml.replace('presentation_embed', data);
+                                    if(piece[1].indexOf('new') > -1){                          //New window/tab
+                                      window.location = '#'+window.songbook._id;
+                                      window.presentationFrame = window.open('','_blank', height="200", width="200");
+                                    }
+                                    else {                                                 //Iframe
+                                      var ifrm = document.createElement('iframe');
+                                      ifrm.id = "presentation";
+                                      document.body.appendChild(ifrm);
+                                      ifrm.contentWindow.focus();
+                                      window.presentationFrame = ifrm.contentWindow || ifrm.contentDocument.document || ifrm. contentDocument;
+                                    }
+                                    window.presentationFrame.document.write(presHtml);
+                                    window.presentationFrame.document.close();
+                                    window.presentationFrame.document.getElementById('data').setAttribute('data', myString);
+                                    window.presentationFrame.location = "#";
+                                    resolve('Its done');
+                                    document.body.classList.add(piece[1]);
+                                    bodyClassList.push(piece[1]);
+                                  }
+                                });
+                              }
+                            });
+                          }
+                        });
+                      }
+                    }).catch(function (err) {
+                      console.log(err);
+                    });
+                  }));
+                }
+                else {
+                  window.document.title = "yCanta2: " + window.songbook.title;
+                }
+            });
+          }
         }
-//if songbook
-        else if(hash.search('#sb-') != -1) {
-          $('body').attr('class', 'songList');
-          $('.active').removeClass('active');
-          $('#songList').addClass('active');
-          Promise.resolve(loadSongbook(parseHash('sb-')))
-            .then(function() {
-              updateAllLinks();
-              window.document.title = "yCanta2: " + window.songbook.title;
-          });
-        }
-        window.old_hash = window.location.hash;
+        updateAllLinks();
+        document.body.classList = bodyClassList.join(' ');
+        setTimeout(function() {
+          document.body.classList.remove('loading');
+        }, 300);
+        bodyClassList = [];
         $('.column').removeAttr('style');
       }
     </script>

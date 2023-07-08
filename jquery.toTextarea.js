@@ -354,8 +354,8 @@
 		                  doubleEnter: true,//make a single line so it will only expand horizontally
 		                  pastePlainText: false,//paste text without styling as source
 		                  placeholder: true//a placeholder when no text is entered. This can also be set by a placeholder="..." or data-placeholder="..." attribute
-					          });;
-					          new_chunk[0].scrollIntoView({block: 'start'});
+					          });
+					          scrollIntoViewIfNeed(new_chunk[0]);
 					          //put the cursor positioned at the end of the new chunk
 										var range = document.createRange();
 										var sel = window.getSelection();
