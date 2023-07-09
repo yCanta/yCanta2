@@ -71,7 +71,7 @@ function dbChanges() {
         if(!window.silent){ notyf.info('Song updated', 'var(--song-color)') };
       } else {
         if(!window.silent){ 
-          notyf.info(`Song "${change.doc.title}" updated by ${change.doc.editedBy}`,
+          notyf.info(`Song "${change.doc.title}" updated by ${window.users[change.doc.editedBy]}`,
                    'var(--song-color)',
                    `#${window.songbook._id}&${change.doc._id}`);
         }
@@ -102,7 +102,7 @@ function dbChanges() {
         if(!window.silent){ notyf.info('Songbook updated', 'var(--songList-color)'); }
       } else {
         if(!window.silent){ 
-          notyf.info(`Songbook "${change.doc.title}" updated by ${change.doc.editedBy}`,
+          notyf.info(`Songbook "${change.doc.title}" updated by ${window.users[change.doc.editedBy]}`,
                    'var(--songList-color)',
                    `#${change.doc._id}`);
         }
