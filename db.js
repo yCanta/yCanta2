@@ -974,6 +974,8 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
           window.location.hash = '#'+formatSbID(window.songbook._id)+'&'+song._id;
         }
         resolve(song._id);
+        console.log(song_id);
+        logData('edited', song_id);
       }).catch(function (err) {
         //I think we can get rid of this import hack now that we're not changing song_id
         if(new_song){
@@ -1015,10 +1017,7 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
         resolve(song._id);
       });  
     }
-  }).then(function(song_id) {
-    console.log(song_id);
-    logData('edited', song_id);
-  });
+  })
 }
 
 function loadSong(song_id) {
