@@ -233,7 +233,7 @@
         return false;
       });
       
-      $(this).after(keysHtml);
+      $(this).parent().after(keysHtml);
     });
   };
 

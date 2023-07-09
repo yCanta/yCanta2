@@ -1,16 +1,14 @@
 var selected;
 
 function dragOver( e ) {
-    if (e.preventDefault) {
-      e.preventDefault(); // Allows us to drop.
-    }
-    if (e.target.contentEditable=='true') {
-      e.dataTransfer.dropEffect = 'none';
-    }
-    else {
-      e.dataTransfer.dropEffect = 'move';
-    }
-    return false;
+  e.preventDefault(); // Allows us to drop.
+  if (e.target.contentEditable=='true') {
+    e.dataTransfer.dropEffect = 'none';
+  }
+  else {
+    e.dataTransfer.dropEffect = 'move';
+  }
+  return false;
 }
 
 function dragEnd( e, selector='ul li' ) {
@@ -18,9 +16,20 @@ function dragEnd( e, selector='ul li' ) {
     song.classList.remove('moving');
     song.classList.remove('overt');  
     song.classList.remove('overb');
-    song.parentNode.classList.remove('sorting');  
+    song.parentNode.classList.remove('sorting');
   });
-  selected = null
+  if(e.target.closest('song')) {
+    e.target.closest('song').querySelectorAll('.wrap .contenteditable-disabled').forEach(function(el) {el.classList.remove('contenteditable-disabled'); el.setAttribute('contentEditable','true')});
+  }
+  scrollIntoViewIfNeed(e.target);
+  selected = null;
+  setTimeout(() => {
+    e.target.classList.add('highlightBg');
+  },200);
+  setTimeout(() => {
+    e.target.classList.remove('highlightBg');
+  },3200);
+  document.getElementsByClassName('dropHere')[0].classList.remove('dropHere');
 }
 
 function dragStart( e, selector='li' ) {
@@ -28,11 +37,27 @@ function dragStart( e, selector='li' ) {
   e.dataTransfer.setData( "text/plain", '' )
   selected = e.target.closest(selector);
   selected.classList.add('moving');
-  selected.parentNode.classList.add('sorting');
+  setTimeout(() => { //helps avoid premature dragEnd trigger;
+    selected.parentNode.classList.add('sorting');
+  }, 100);
+  if(e.target.closest('song')) {
+    e.target.closest('song').querySelectorAll('.wrap [contentEditable="true"]').forEach(function(el) {el.classList.add('contenteditable-disabled'); el.removeAttribute('contenteditable')});
+  }
+  else {
+    if(e.target.href.indexOf('s-') < 0) {
+      return;
+    }
+    if(document.body.classList.contains('song')){
+      document.getElementById('song').classList.add('dropHere');
+    } else {
+      document.getElementById('column-filler').classList.add('dropHere');
+    }
+  }
 }
 function dragEnter( e, selector='li' ) {
+  e.preventDefault(); // Allows us to drop.
   var li = e.target.closest(selector);
-  if(isVerboten(li)){ return }
+  if(isVerboten(li)){return}
   [].forEach.call(document.querySelectorAll(selector), function (song) {
     song.classList.remove('overt');  
     song.classList.remove('overb');  
@@ -62,32 +87,40 @@ function dragDrop( e, selector='li' ) {
   }
   else if(li.parentNode != selected.parentNode){
     dataxInBookUpdate(selected);
-    song = selected.cloneNode(true);
-    bind_songbook_edit(song);
-    if($(song).attr('data-song-id')=="section"){
-      add_edit_pencil(song);
+    let songEl = selected.cloneNode(true);
+    bind_songbook_edit(songEl);
+    if($(songEl).attr('data-song-id')=="section"){
+      add_edit_pencil(songEl);
     }
 
-    $(song).find('a').after('<button>&#128465;</button>');
-    $(song).find('button')[0].addEventListener('click', function( e ) {
-      dataxInBookUpdate(song, true);
-      scaleRemove(song);
+    $(songEl).find('a').after('<button>&#128465;</button>');
+    $(songEl).find('button')[0].addEventListener('click', function( e ) {
+      dataxInBookUpdate(songEl, true);
+      scaleRemove(songEl);
     });
-    $(song).attr('data-song-status','n')[0].addEventListener('click', function(e) {
-      if(window.editing && window.songbook.showStatus && e.offsetX < 20){
+    $(songEl).attr('data-song-status','n')[0].addEventListener('click', function(e) {
+      if(window.songbookEditing && window.songbook.showStatus && e.offsetX < 20){
         e.preventDefault();
         cycleStatus(this);
       }
     });
     if(li.nodeName === 'UL'){  //This catches empty lists
-      li.append(song);
+      li.append(songEl);
     }
     else if(isBefore(selected, li)) {
-      li.parentNode.insertBefore(song, li);
+      li.parentNode.insertBefore(songEl, li);
     } 
     else {
-      li.parentNode.insertBefore(song, li.nextSibling);
+      li.parentNode.insertBefore(songEl, li.nextSibling);
     }
+    if(location.hash.indexOf('s-') > -1) {
+      let newHash = $(selected).find('a')[0].href.replace(window.songbook._id,window.songbook._id + '?edit').replace(/^.*#/,'#');
+      if(newHash.indexOf('s-') > -1) {
+        location.hash = newHash;
+      }
+    }
+    songEl.classList.add('highlightBg');
+    setTimeout(function(){songEl.classList.remove('highlightBg')},3000);
   }
   else {
     if (isBefore(selected, li)) {
@@ -96,7 +129,15 @@ function dragDrop( e, selector='li' ) {
     else {
       li.parentNode.insertBefore(selected, li.nextSibling);
     }
+    if(location.hash.indexOf('s-') > -1) {
+      let newHash = $(selected).find('a')[0].href.replace(window.songbook._id,window.songbook._id + '?edit').replace(/^.*#/,'#');
+      if(newHash.indexOf('s-') > -1) {
+        location.hash = newHash;
+      }
+    }
   }
+  window.songbook_list.reIndex();
+  e.dataTransfer.clearData();
 }
 function isVerboten(target) {
   if (target.closest('#songListEdit') == null) {
@@ -115,6 +156,19 @@ function isBefore( el1, el2 ) {
     }
   } else return false;
 }
+
+const target = document.documentElement;
+target.addEventListener("dragover", (e) => {
+  if(e.target.classList.contains('dropHere')){
+    e.preventDefault(); // prevent default to allow drop
+  }
+});
+
+target.addEventListener("drop", (e) => {
+  e.preventDefault();
+  // navigate to that song.
+  location.hash = `${location.hash.replace('#','').split('&')[0]}&${selected.getAttribute('data-song-id')}`;
+});
 
 function dragDialog() {
   function AnimationLoop(){

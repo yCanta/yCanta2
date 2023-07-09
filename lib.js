@@ -439,13 +439,12 @@ function combine(chord, text) {
   return line;
 }
 function parseHash(part) {
-  var parts = location.hash.substr(1).split('&');
   //this is not failsafe
   if(part == 's-') {
-    return parts[1];
+    return location.hash.match(/(s-.*?)(\?|\&|$)/)[1];
   }
   else if (part == 'sb-') {
-    return parts[0];
+    return location.hash.match(/(sb-.*?)(\?|\&|$)/)[1];
   }
   else {
     return parts;
@@ -482,24 +481,30 @@ function sortFavSongbooks(a,b){
   }
 }
 function updateAllLinks(whatChanged='all') {
-  $('[data-song-edit]').attr('href','#'+window.songbook._id+'&'+window.song._id+'&edit');
-  $('[data-song-edit="new"]').attr('href','#'+window.songbook._id+'&s-new-song&edit');
-  $('[data-song]').attr('href','#'+window.songbook._id+'&'+window.song._id);
-  $('[data-song-export]').attr('href','#'+window.songbook._id+'&'+window.song._id+'&export');
-  $('[data-songbook-edit]').attr('href','#'+window.songbook._id+'&edit');
-  $('[data-songbook-edit="new"]').attr('href','#sb-new-songbook&edit');
-  $('[data-songbook-present]').attr('href', '#'+window.songbook._id+'&present');
-  $('[data-songbook]').attr('href','#'+window.songbook._id);
-  $('[data-songbook-export]').attr('href','#'+window.songbook._id+'&export');
+  let songbook_id = window.songbook._id || 'sb-allSongs';
+  let song_id = window.song._id;
+  $('[data-song-edit]').attr('href',`#${formatSbID(songbook_id)}&${song_id}?edit`);
+  $('[data-song-edit="new"]').attr('href',`#${formatSbID(songbook_id)}&s-new-song?edit`);
+  $('[data-song]').attr('href','#'+formatSbID(songbook_id)+'&'+song_id);
+  $('[data-song-export]').attr('href','#'+formatSbID(songbook_id)+'&'+song_id+'?export');
+  $('[data-songbook-edit]').attr('href','#'+songbook_id+'?edit');
+  $('[data-songbook-edit="new"]').attr('href','#sb-new-songbook?edit');
+  $('[data-songbook-present]').attr('href', '#'+songbook_id+'?present');
+  $('[data-songbook]').attr('href','#'+songbook_id);
+  $('[data-songbook-export]').attr('href','#'+songbook_id+'?export');
   $('[data-home]').attr('href','#');
 
   //add highlighting
   //doesn't happen after it's done rendering the list.js on initial page load
   //Also not working in info click views.
   $('.song-highlight').removeClass('song-highlight');
-  $("[data-song-id='"+window.song._id+"']").addClass("song-highlight");
+  $("[data-song-id='"+song_id+"']").addClass("song-highlight");
   $('.songbook-highlight').removeClass('songbook-highlight');
-  $("[data-songbook-id='"+window.songbook._id+"']").addClass("songbook-highlight");
+  $("[data-songbook-id='"+songbook_id+"']").addClass("songbook-highlight");
+}
+
+function formatSbID(songbook_id) {
+  return songbook_id + (window.songbookEditing ? '?edit' : '');
 }
 
 $(function () {
@@ -514,23 +519,23 @@ $(function () {
     $('#song').toggleClass('nochords');
   });
 
-  $('#present').mousedown(function(event) {
+  $('#songList').on('mousedown','#present', function() {
     switch (event.which) {
       case 1:
         //alert('Left mouse button pressed');
-        window.location = '#'+window.songbook._id+'&present';
+        window.location = '#'+window.songbook._id+'?present';
         break;
       case 2:
         //alert('Middle mouse button pressed');
-        window.location = '#'+window.songbook._id+'&present+new';
+        window.location = '#'+window.songbook._id+'?present+new';
         break;
       case 3:
         //alert('Right mouse button pressed');
-        window.location = '#'+window.songbook._id+'&present+new';
+        window.location = '#'+window.songbook._id+'?present+new';
         break;
       default:
         //alert('You have a strange mouse');
-        window.location = '#'+window.songbook._id+'&present';
+        window.location = '#'+window.songbook._id+'?present';
     }
   });
 });
@@ -561,10 +566,21 @@ function toggleFullscreen(el){
 }
 
 function bindSearchToList(list, id){
-  list.on('searchComplete', function(){
-    $(id + ' .search + span').attr('data-number-visible',list.visibleItems.length);
-  });
-  $(id + ' .search+span').attr('data-number-visible', $(id + ' .list li').length);
+  if(list == window.songbook_list){
+    list.on('searchComplete', function(){
+      let songPlacement = window.songbook_list.visibleItems.findIndex(el => el._values['song-id'] == window.song._id) + 1;
+ ;
+      $(id + ' .search + span').attr('data-number-visible',`${songPlacement ? songPlacement+'/' : ''}${list.visibleItems.length}`);
+    });  
+    let songPlacement = window.songbook_list.visibleItems.findIndex(el => el._values['song-id'] == window.song._id) + 1;
+    $(id + ' .search + span').attr('data-number-visible', `${songPlacement ? songPlacement+'/' : ''}${$(id + ' .list li').length}`);
+  }
+  else {
+    list.on('searchComplete', function(){
+      $(id + ' .search + span').attr('data-number-visible',list.visibleItems.length);
+    });  
+    $(id + ' .search + span').attr('data-number-visible', $(id + ' .list li').length);
+  }
 }
 
 function bindToSongEdit() {
@@ -590,13 +606,19 @@ function bindToSongEdit() {
 }
 
 function checkLogin(){
+  let db_name = $('#db_select :selected').val();
   let good = true;
   let pin = $('#pin').val();
+  let pwd = $('#pwd').val();
   let username = $('#username').val();
 
-  if(pin.trim() == '' || username.trim() == ''){
+  if(db_name.endsWith('(local)') && (pin.trim() == '' || username.trim() == '')){
     good = false;
-    alert('Username or password not entered');
+    alert('Username or pin not entered');
+  }
+  else if(db_name.endsWith('(remote)') && (pwd.trim() == '' || username.trim() == '')){
+    good = false;
+    alert('Username or pwd not entered');
   }
 
   return good;
@@ -615,31 +637,70 @@ function checkCreateNew() {
   let pin2 = $('#pin2').val().trim();
   let username = $('#username').val();
 
-  return PouchDB.allDbs().then(function (all_dbs) {
-    let response = true;
+  let response = true;
 
-    //checks against existing databases
-    if(all_dbs.indexOf(dbName) > -1){
-      alert('Database name already taken - try another!');
-      response = false;
-    }
-    else if(pin == '' || username == ''){
-      response = false;
-      alert('Username or pin are not entered');
-    }
-    else if(pin != pin2) {
-      response = false;
-      alert('Pin and confirmation pin are not equal');
-    }
-    //Go ahead and log in.
-    if(response) {
-      dbLogin(true);
-    }
-    else {
-      return;
-    }
-  });
+  let databases = JSON.parse(localStorage.getItem('databases'));
+  if(databases && databases.find(db => db.name === dbName)){
+    alert('Database name already taken - try another!');
+    response = false;
+  }
+  else if(pin == '' || username == ''){
+    response = false;
+    alert('Username or pin are not entered');
+  }
+  else if(pin != pin2) {
+    response = false;
+    alert('Pin and confirmation pin are not equal');
+  }
+  //Go ahead and log in.
+  if(response) {
+    dbLogin('create_local');
+  }
+  else {
+    return;
+  }
 }
+function parseUrl(url, username=false, pwd=false){
+  //browser parts of an a element ['href','protocol','host','hostname','port','pathname','search','hash']
+  let a = document.createElement('a');
+  a.href = url;
+
+  if(username){ //we want to add username/pwd
+    if(a['host']!=''){
+      url = `${a['protocol']}//${username}:${pwd}@${a['host']}${a['pathname']}`;
+    } else { //no protocol included
+      url = `http://${username}:${pwd}@${remote_url}`;
+    }
+  }
+  else {  //we want to strip out the username/pwd
+    if(a['host']!=''){
+      url = `${a['protocol']}//${a['host']}${a['pathname']}`;
+    } else { //no protocol included
+      url = `http://${remote_url}`;
+    }
+  }
+  return url;
+}
+
+function addDBtoLocalStorage(dbName, type, remote_url=false){
+  //UPDATE LOCAL STORAGE DATABASES
+  let new_db = {};
+  new_db.name = dbName;
+  new_db.type = type;
+  if(remote_url){
+    new_db.url = parseUrl(remote_url);
+  }
+  let databases = JSON.parse(localStorage.getItem('databases'));
+  if(!databases){databases = [];}
+  databases.push(new_db);
+  localStorage.setItem('databases',JSON.stringify(databases));
+}
+function removeDbfromLocalStorage(dbName){
+  let databases = JSON.parse(localStorage.getItem('databases'));
+  databases = databases.filter(el => el.name !== dbName );
+  localStorage.setItem('databases',JSON.stringify(databases)); 
+}
+
 async function updateUser(){
   let name = window.user.name.trim();
   //Username in header area
@@ -649,7 +710,7 @@ async function updateUser(){
   }
   $('#username_d').html(html);
   //User Profile information in Settings.
-  html = `<h3>${name} <a href="#" onclick="loadRawDbObject(window.user._id,$('#user_content'),'updateUser();');">🖉</a></h3>`;
+  html = `<h3>${name} <a href="#" onclick="loadRawDbObject(window.user._id,$('#user_content'),'updateUser();');" class="mirror">&#9998;</a></h3>`;
 
   let sbs = window.user.fav_sbs.filter(sb => sb.length != 0);
   html += '<h4>Favorite Songbooks</h4><ul>';
@@ -677,11 +738,11 @@ async function updateUser(){
     }
   } else {html+='<li>None yet!</li>';}
   html += '</ul>';
-  html += '<h4>Permissions</h4><ul>Edit View Admin</ul>'
+  html += `<h4>Permissions</h4><ul>${Object.keys(window.roles).join(', ').toUpperCase()}</ul>`;
   document.getElementById('user_content').innerHTML = html;
 }
 async function loadCategories(){
-  let html = `<h3>Ordered List <a href="#" onclick="loadRawDbObject('categories',$('#category_content'),'loadCategories();');">🖉</a></h3>`;
+  let html = `<h3>Ordered List <a href="#" onclick="loadRawDbObject('categories',$('#category_content'),'loadCategories();');" class="mirror admin">&#9998;</a></h3>`;
 
   try {
     var result = await db.get('categories');
@@ -695,6 +756,88 @@ async function loadCategories(){
   html += '</ul>';
   document.getElementById('category_content').innerHTML = html;
 }
+
+async function getAllUsers(){
+  let loggedIn = JSON.parse(localStorage.getItem('loggedin'));
+  let username = loggedIn.username;
+  let password = loggedIn.pwd;
+  var myHeaders = new Headers();
+  myHeaders.append("Accept", "application/json");
+  myHeaders.append("Content-Type", "application/json");
+  myHeaders.append('Authorization', 'Basic ' + btoa(username + ':' + password));
+
+  var requestOptions = {
+    method: 'GET',
+    headers: myHeaders,
+    redirect: 'follow'
+  };
+  try { 
+    let url = remoteDb.getUsersDatabaseUrl().replace('_users','');
+    let admin_response = await fetch(url+"_node/nonode@nohost/_config", requestOptions);
+    let admin = await admin_response.text();
+    admin = JSON.parse(admin);
+    let response = await fetch(url+"/_users/_all_docs?include_docs=true&startkey=\"org.couchdb.user:\"", requestOptions)
+    let non_admin = await response.text();
+    non_admin = JSON.parse(non_admin);
+    return {"admins": admin.admins, "users": non_admin.rows};// data;
+  }
+  catch(error) {
+    console.log(error.message);
+    return error;
+  }
+}
+
+function canEdit(doc){
+  let result = false;
+  try {
+    if(window.roles._admin){
+      result = true;
+    }
+    else if(window.roles.editor){
+      result = true;
+    }
+    else if(doc.addedBy.trim() == window.user._id.trim()){
+      result = true;
+    }
+    if(doc._id == 'sb-allSongs' || doc._id == 'sb-favoriteSongs'){ //docs that are just not editable.
+      result = false;
+    }
+  }
+  catch(error) {
+    console.log(error.message);
+  }
+  return result;
+}
+
+async function loadAllUsers(){
+  //let html = `<h3>Ordered List <a href="#" onclick="loadRawDbObject('categories',$('#category_content'),'loadCategories();');" class="mirror admin">&#9998;</a></h3>`;
+  if(remoteDb){
+    let users = await getAllUsers();
+
+    if(users instanceof Error) {
+      alert(users.message);
+      return;
+    }
+    let html = '<h3>Users</h3><h4>Admins <button class="circle btn" onclick="addAdminUser();">+</button></h4><ul>'
+    html += Object.keys(users.admins).map(admin => `<li><span style="width: 30%; display:inline-block;">${admin}</span>
+                         ${'u-'+admin != user._id ? `<label title="All admins are editors"><input type="checkbox" checked disabled> Editor</label><button onclick="changeAdminPassword('${admin}')">🔐 Change</button>
+                         <button onclick="deleteAdminUser('${admin}')">🗑 Delete<button>` : `<i style="color:gray;"><- You can't modify yourself</i>`}</li>`).join('');
+    html += '</ul><h4>Users <button class="circle btn" onclick="addUser();">+</button></h4><ul>'
+    html += users.users.filter(user => user.doc.roles.indexOf('editor') > -1)
+                       .map(user => `<li><span style="width: 30%; display:inline-block;">${user.doc.name}</span>
+                        <label><input type="checkbox" checked onclick="event.preventDefault(); toggleUserEditor('${user.doc.name}')"> Editor</label><button onclick="changeUserPassword('${user.doc.name}')">🔐 Change</button>
+                        <button onclick="deleteUser('${user.doc.name}')">🗑 Delete<button></li>`).join('');
+    html += users.users.filter(user => user.doc.roles.indexOf('editor') == -1)
+                       .map(user => `<li><span style="width: 30%; display:inline-block;">${user.doc.name}</span>
+                        <label><input type="checkbox" onclick="event.preventDefault(); toggleUserEditor('${user.doc.name}', true)"> Editor</label><button onclick="changeUserPassword('${user.doc.name}')">🔐 Change</button>
+                        <button onclick="deleteUser('${user.doc.name}')">🗑 Delete<button></li>`).join('');
+    html += '</ul>'
+    document.getElementById('all_users').innerHTML = html;
+  }
+  else {
+    console.log('RemoteDB does not exist');
+  }
+}
 function searchSBfor(text){
   $('#songbook_header .search').val('c:'+text)[0].dispatchEvent(new KeyboardEvent('keyup'));
 }
@@ -704,20 +847,16 @@ function handleDarkMode(){
   switch(value) {
     case 'dark':
       document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
       break;
     case 'light':
       document.documentElement.classList.remove('dark');
+      document.documentElement.classList.add('light');
       break;
     case 'auto':
       document.getElementById('autoRadio').checked = true;
-      if (window.matchMedia && 
-        window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        document.documentElement.classList.add('dark');
-        console.log('🎉 Dark mode is desired');
-      }
-      else {
-        document.documentElement.classList.remove('dark');
-      }
+      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.remove('light');
       break;
   }
   //save value to system/user prefs.  
@@ -725,13 +864,13 @@ function handleDarkMode(){
 }
 function goToSettings(){
   document.getElementById('appSettings').classList.remove('closed');
-  document.getElementById('appSettings').scrollIntoView();
+  setTimeout(function() {scrollIntoViewIfNeed(document.getElementById('appSettings'))},300);
 }
 function setLoginState() {
   window.loggedin = true;
   updateUser();
   $('html').addClass('loggedin');
-  $('#title a').html('yCanta: ' + window.yCantaName);
+  $('#title a').html(`yCanta: ${window.yCantaName.split('(')[0]}<sup style="font-size: .8rem; font-weight: normal; color: var(--songList-color);"> ${window.yCantaName.match(/\((.*?)\)/)[1].toUpperCase()}</sup>`);
   if(location.hash.indexOf('?')>-1){
     location.hash = location.hash.split('?').slice(1).join('?');
   }
@@ -742,9 +881,10 @@ function setLoginState() {
 
 function setLogoutState() {
   window.loggedin = false;
-  $('html').removeClass('loggedin');
+  document.documentElement.className = '';
   location.hash = '#login';
   window.user = '';
+  window.roles = '';
   localStorage.removeItem('loggedin');
   $('#title a').html('yCanta');
   $('#dialog').hide();
@@ -801,6 +941,36 @@ function mapSongRowToValue(row) {
     'link': '#'+window.songbook._id+'&'+id,
     'name': title
   };
+}
+
+function setSongbookInfo(songbook){
+  $('#songbook_title').removeAttr('contenteditable');
+  $('#songbook_content .search').parent().removeAttr('disabled');
+  (songbook.showStatus ? $('#songbook_content').addClass('showStatus') : $('#songbook_content').removeClass('showStatus'));
+  $('#songbook_content').removeClass('showStatus'); 
+  $('#songbook_content').removeClass('showComments'); 
+  (songbook.showComments ? $('#songbook_content').addClass('showComments') : $('#songbook_content').removeClass('showComments'));
+  $('.disabled-hidden').removeClass('disabled-hidden');
+  let title_text = (songbook._id == 'sb-allSongs' || songbook._id == 'sb-favoriteSongs' ? `<i>${songbook.title}</i>` : songbook.title);
+  $('#songbook_title').html(title_text).attr('data-rev',songbook._rev).attr('data-songbook-id', songbook._id).nextAll().remove();
+  if(songbook._id != 'sb-allSongs' && songbook._id != 'sb-favoriteSongs'){
+    $('#songbook_title').parent().append('<span><span class="star" onclick="event.stopPropagation(); toggleFavSongbook(\''+songbook._id+'\')"></span>'+
+      '<info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo(false);"></info></span>');
+  }
+  if(document.getElementById('dialog').style.display=="block" && !parseHash('s-') && document.getElementById('dialog').getAttribute('data-use')=="info"){  //prevents info view flicker when you click on songbooks in song info view.
+    loadInfo(false);
+  }
+
+  //Float menu
+  let editable = canEdit(songbook);
+  let float_menu = `<a data-song-edit="new" class="float-menu-item"><span class="float-menu-icon">+</span> Add Song</a>
+  ${(editable ? '<button data-home onclick="deleteSongbook(window.songbook._id)" class="float-menu-item delete"><span class="float-menu-icon">&#128465;</span> Delete</button>' : '')}
+  <button data-songbook-present class="float-menu-item" id="present"><span class="float-menu-icon">&#128253;</span> Present</button>
+  <a data-songbook-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</a>
+  ${(editable ? '<a data-songbook-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>' : '')}
+  <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>`;
+
+  $('#songList .float-menu').html(float_menu);
 }
 
 function buildSongbookList(songs, target_class='songbook_content', 
@@ -885,8 +1055,16 @@ function dataxInBookUpdate(song, remove=false){
     songA.attr('data-xInBook',  number);
   }
 }
+function editHash(e) {
+  e.preventDefault();
+  if(window.innerWidth <= 1150 && !document.body.classList.contains('song') && e.target.closest('#songbook_edit_togglesongs')) {
+    return;  //we're not popping open edit song from the add song window.
+  }
+  location.hash = e.target.href.replace(/^.*#/,'').replace(window.songbook._id, window.songbook._id+'?edit');
+}
 function bind_songbook_edit(song){
-  $(song).children().removeAttr('href');
+  song.addEventListener('click', editHash, false);
+
   song.setAttribute('draggable', 'true');  // Enable columns to be draggable.
   song.addEventListener('dragstart', dragStart, false);
   song.addEventListener('dragenter', dragEnter, false);
@@ -903,10 +1081,6 @@ function bind_chunk_edit(chunk){
   chunk.addEventListener('dragleave', function(event){dragLeave(event,'.wrap');}, false);
   chunk.addEventListener('drop', function(event){dragDrop(event,'.wrap');}, false);
   chunk.addEventListener('dragend', function(event){dragEnd(event,'.wrap');}, false);
-  $(chunk).children().hover(
-    function(){chunk.setAttribute('draggable', 'false');},
-    function(){chunk.setAttribute('draggable', 'true');}
-  );
 }
 function add_edit_pencil(song){
   $(song).find('a').after('<button class="edit_pencil">✏️</button>');
@@ -930,10 +1104,34 @@ function cycleStatus(e) {
   }
 }
 
+function cancelSongbook(el) {
+  window.songbookEditing = false; 
+  let t = confirmWhenEditing();
+  if(!t) {
+    window.songbook._id= ''; 
+    window.location.hash=$(el).attr('href');
+    window.songEditing = false; 
+  }
+  else {
+    window.songbookEditing = true;
+  }
+}
+function resetSongbook() {
+  window.songbookEditing = false; 
+  let t = confirmWhenEditing();
+  if(!t) {
+    window.songEditing = false; 
+    location.reload();
+  }
+  else {
+    window.songbookEditing = true;
+  }
+}
+
 function editSongbook() {
   let buttons = '<div class="edit_buttons"><button data-songbook class="btn" style="background-color: var(--edit-color);" onclick="saveSongbook(parseHash(\'sb-\'));">Save</button>';
-  buttons += '<button data-songbook class="btn" style="background-color: var(--edit-color);" onclick="window.editing=false; window.songbook._id=\'\'; window.location.hash=$(this).attr(\'href\'); $(\'.edit_buttons\').remove();">Cancel</button>';
-  buttons += '<button data-songbook class="btn" style="background-color: var(--edit-color);" onclick="window.editing=false; location.reload()">Reset</button></div>';
+  buttons += '<button data-songbook class="btn" style="background-color: var(--edit-color);" onclick="cancelSongbook(this);">Cancel</button>';
+  buttons += '<button data-songbook class="btn" style="background-color: var(--edit-color);" onclick="resetSongbook();">Reset</button></div>';
   $('#songbook_content').prepend(buttons).append(buttons);
   $('#songbook_content .search').val('')[0].dispatchEvent(new KeyboardEvent('keyup'));
   updateAllLinks();
@@ -950,7 +1148,7 @@ function editSongbook() {
     startkey: 's-',
     endkey: 's-\ufff0',
   }).then(function(result){
-    window.editing = true;
+    window.songbookEditing = true;
     //this cleanwipe might not be performant!
     if(window.songbook_edit_togglesongs_list != undefined){
       window.songbook_edit_togglesongs_list.clear();
@@ -998,13 +1196,15 @@ function editSongbook() {
           scaleRemove(copySong);
         });
         $(copySong).attr('data-song-status','n')[0].addEventListener('click', function(e) {
-          if(window.editing && window.songbook.showStatus && e.offsetX < 20){
+          if(window.songbookEditing && window.songbook.showStatus && e.offsetX < 20){
             e.preventDefault();
             cycleStatus(this);
           }
         });
         $('#songbook_content .list').append(copySong);
-        $('#songbook_content .list li:last-child')[0].scrollIntoView();
+        scrollIntoViewIfNeed(copySong);
+        copySong.classList.add('highlightBg');
+        setTimeout(function(){copySong.classList.remove('highlightBg')},3000);
       });
     });
     $('#songList ul.list').each(function(){
@@ -1013,7 +1213,7 @@ function editSongbook() {
     });
     $('#songbook_content li').each(function(){
       this.addEventListener('click', function(e) {
-        if(window.editing && window.songbook.showStatus && e.offsetX < 20){
+        if(window.songbookEditing && window.songbook.showStatus && e.offsetX < 20){
           e.preventDefault();
           cycleStatus(this);
         }
@@ -1027,9 +1227,9 @@ function editSongbook() {
 
 function editSong() {
   let buttons = '<div class="edit_buttons"><button data-song class="btn" style="background-color: var(--edit-color);" onclick="prepSaveSong($(this))">Save</button>';
-  buttons += '<button data-song class="btn" style="background-color: var(--edit-color);" onclick="window.editing=false; window.location.hash=$(this).attr(\'href\');">Cancel</button>';
-  buttons += '<button data-song class="btn" style="background-color: var(--edit-color);" onclick="window.editing=false; location.reload()">Reset</button></div>';
-  $('song').before(buttons).append(buttons);
+  buttons += '<button data-song class="btn" style="background-color: var(--edit-color);" onclick="window.songEditing=false; delete window.song; window.location.hash=$(this).attr(\'href\');">Cancel</button>';
+  buttons += '<button data-song class="btn" style="background-color: var(--edit-color);" onclick="window.songEditing=false; location.reload()">Reset</button></div>';
+  $('song').prepend(buttons).append(buttons);
 
   $('chunk').each(function(index){
     var content = [];
@@ -1050,7 +1250,7 @@ function editSong() {
 
   $('#song authors').html($('#song author').map(function(){return $(this).text();}).get().join(', '));
   $('#song categories').html($('#song cat').map(function(){return $(this).text();}).get().join(', '));
-  $('#song scripture_ref').html($('#song cat').map(function(){return $(this).text();}).get().join(', '));
+  $('#song scripture_ref').html($('#song scrip_ref').map(function(){return $(this).text();}).get().join(', '));
   $('#song').first('.subcolumn').find('stitle .title_link,authors,scripture_ref,introduction,key,chunk,copyright,cclis').toTextarea({
     allowHTML: false,//allow HTML formatting with CTRL+b, CTRL+i, etc.
     allowImg: false,//allow drag and drop images
@@ -1077,7 +1277,7 @@ function editSong() {
     $('cclis').hide();
   }
 
-  window.editing = true;
+  window.songEditing = true;
 
   //load categories
   db.get('categories').then(function(categories) {
@@ -1112,10 +1312,10 @@ function editSong() {
 function prepSaveSong(element) {
   if($('stitle').text().trim() == ''){
     alert('Please add a title before you save');
-    return
+    return;
   }
   else{
-    window.editing=false;
+    window.songEditing=false;
   }
   return new Promise(function(resolve, reject) {
     $('#song song').hide();
@@ -1148,7 +1348,9 @@ function prepSaveSong(element) {
     }
     resolve('song is prepped for saving');
   }).then(function() {
-    return saveSong(window.song._id);
+    let id = window.song._id;
+    delete window.song;
+    return saveSong(id);
   }).catch(function (err) {
     console.log(err);
   });
@@ -1182,13 +1384,13 @@ function prepExport(){
     endkey: 'cfg-'+window.exportObject._id+'\ufff0',
   }).then(function(result){
     let innerhtml = '';
-    let user_id_cfg = 'cfg-'+window.exportObject._id+'USER'; //must keep in sync with db.js
+    let user_id_cfg = 'cfg-'+window.exportObject._id+window.user._id; //must keep in sync with db.js
     result.rows.map(function (row) {
       if(row.doc._id == user_id_cfg) {
-        innerhtml = "<option id='user_export_pref' value='"+JSON.stringify(row.doc.cfg)+"'>"+row.doc.title+"</option>" + innerhtml;
+        innerhtml = `<option id='user_export_pref' value='${JSON.stringify(row.doc.cfg)}'>${"Your default"}</option>` + innerhtml;
       }
       else {
-        innerhtml += "<option value='"+JSON.stringify(row.doc.cfg)+"'>"+row.doc.title+"</option>";
+        innerhtml += `<option value='${JSON.stringify(row.doc.cfg)}'>${window.users[row.doc._id]}</option>`;
       }
     });
 
@@ -1205,7 +1407,6 @@ function prepExport(){
       $('#export').removeClass('showStatus'); 
     }
   });
-
 }
 function export_form_summary_update() {
   document.getElementById('format').value = JSON.stringify([]);
@@ -1362,13 +1563,13 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
     active = document.getElementsByClassName('active')[0];
     dragTop = false;
     slideout = false;
-    slideoutEl = (document.body.classList.contains('songList') && document.body.classList.contains('export') ? dragEl.previousElementSibling.previousElementSibling : dragEl.previousElementSibling);
+    slideoutEl = (!document.body.classList.contains('song') && document.body.classList.contains('export') ? dragEl.previousElementSibling.previousElementSibling : dragEl.previousElementSibling);
     slideback = false;
     navigate = false;
 
     // only do stuff if in right place
     if(dragSide == 'right' && screen.width < 640){
-      if(window.editing || e.target.closest('#export')) { 
+      if((window.songEditing && e.target.closest('#song')) || (window.songbookEditing && e.target.closest('#songList')) || e.target.closest('#export')) { 
         dragEl.style.transition = 'all 0s';
         //e.preventDefault();
       }
@@ -1377,7 +1578,7 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
       }
     }
     else if(dragSide == 'top' && screen.width < 640){
-      if(starty < 120) { 
+      if(starty < remToPx(7.5)) { 
         if(active == dragEl){
           active = 0;
         }
@@ -1388,7 +1589,7 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
         dragTop = true;
         //e.preventDefault();
       }
-      else if(!window.editing) {
+      else if(!window.songEditing && !window.songbookEditing) {
         if(dragEl.classList.contains('slidout')){
           slideback = true;
           dragEl.style.transition = 'all 0s';
@@ -1436,7 +1637,11 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
             dragEl.style.transform = 'translate3d('+ (parseInt(dist)+25)*4 + 'px, 8rem, 0)';
             dragEl.style.width = 'min(80%, 300px)';
             dragEl.style.height = 'calc(100vh - 8rem)'
-            dragEl.style['z-index'] = '7';
+            if(dist < -100) {
+              dragEl.style['z-index'] = '2';
+            } else {
+              dragEl.style['z-index'] = '7';
+            }
           }
         }
         else if(navigate){
@@ -1487,12 +1692,12 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
           let currentSong = document.querySelector("#songbook_content [data-song-id='"+window.song._id+"']");
           if(dist > 0 && currentSong.previousElementSibling) {
             dragEl.getElementsByClassName('row')[0].style.transform = 'translate3d(-100%, 0, 0)';
-            location.hash = '#'+window.songbook._id+'&'+
+            location.hash = '#'+formatSbID(window.songbook._id)+'&'+
                                 currentSong.previousElementSibling.getAttribute('data-song-id'); 
           }
           else if(currentSong.nextElementSibling) {
             dragEl.getElementsByClassName('row')[0].style.transform = 'translate3d(100%, 0, 0)';
-            location.hash = '#'+window.songbook._id+'&'+
+            location.hash = '#'+formatSbID(window.songbook._id)+'&'+
                                 currentSong.nextElementSibling.getAttribute('data-song-id'); 
           }
         }
@@ -1525,19 +1730,19 @@ window.addEventListener('load', function(){
   makeDraggable(document.getElementById('exportPreview'), dragToggleClass);
 
   makeDraggable(document.getElementById('songbookList'), 
-    function(){if(!confirmWhenEditing()) {window.location.hash = '';}}, 'top');
+    function(){window.location.hash = '';}, 'top');
   makeDraggable(document.getElementById('songList'),
-    function(){if(!confirmWhenEditing()) {window.location.hash = '#songbooks';}}, 'top');
+    function(){window.location.hash = '#songbooks';}, 'top');
   makeDraggable(document.getElementById('song'),
-    function(){if(!confirmWhenEditing()) {window.location.hash = '#'+window.songbook._id;}}, 'top');
+    function(){window.location.hash = '#'+formatSbID(window.songbook._id);}, 'top');
   makeDraggable(document.getElementById('export'),
-    function(){if(!confirmWhenEditing()) {window.location.hash = window.location.hash.replace('&export','');}}, 'top');
+    function(){window.location.hash = window.location.hash.replace('?export','');}, 'top');
 }, false);
 
 
 function bindSearch(element, search_prefix) {
   $('body').on('click', element, function() {
-    if(window.editing || $('body').hasClass('export')) {
+    if(window.songEditing ||window.songbookEditing || $('body').hasClass('export')) {
       return;
     }
     $('#songbook_content .search').val(search_prefix+$(this).text())[0]
@@ -1545,10 +1750,57 @@ function bindSearch(element, search_prefix) {
   });
 }
 
-function confirmWhenEditing() {
-  if(window.editing){
-    if(confirm("If you leave this page you will lose your unsaved changes!")) {
-      window.editing=false; //It's ok to lose changes
+function confirmWhenEditing(oldHashList, newHashList) {
+  let confirmEditing = []; //length 0 = false;
+  if(!window.songEditing && !window.songbookEditing) {
+    return false;
+  }
+  if(window.songEditing){
+    //check to be sure that oldHashList[1] and newHashList[1] are the same.
+    if(oldHashList){ //on fresh page load there is no oldhashlist
+      if(oldHashList[1]){ //did we have a song before?
+        if(oldHashList[1][1] == 'edit'){ //yes? ok, were we editing it?
+          confirmEditing.push(`songEditing`);
+        }
+      }
+    }
+    else {
+      confirmEditing.push('songEditing');
+    }
+  }
+  if(window.songbookEditing){
+    //check to be sure that oldHashList[0] and newHashList[0] are the same.
+    if(oldHashList){ //on fresh page load there is no oldhashlist
+      if(oldHashList[0]){ //did we have a songbook before?
+        if(oldHashList[0][1] == 'edit'){ //yes? were we editing it?
+          if(oldHashList[0].join() != newHashList[0].join()) {//is this a different songbook/edit config?
+            confirmEditing.push(`songbookEditing`);
+          }
+        }
+      }
+    }
+    else {
+      confirmEditing.push('songbookEditing');
+    }
+  }
+  if(confirmEditing.length) {
+    let queryList = [];
+    if(confirmEditing.indexOf('songEditing') > -1){
+      queryList.push('Song: '+$('stitle a').text());
+    }
+    if(confirmEditing.indexOf('songbookEditing') > -1){
+      queryList.push('Songbook: '+$('#songbook_title').text());
+    }
+    if(confirm("If you leave this page you may lose changes to \n - "+queryList.join('\n- '))) {
+      for(con of confirmEditing) {
+        window[con] = false;
+        if(con == 'songEditing'){
+          window.song._id = '';
+        }
+        else if(con == 'songbookEditing') {
+          window.songbook._id = '';
+        }
+      }
       return false;
     } else { //we aren't leaving 
       //reset the style elements on all columns
@@ -1586,9 +1838,9 @@ async function loadInfo(song=true) {
   if(song){
     $('#dialog h5').text('Song');
     let song_id = window.song._id;
-    let content = '<small>Added: '+window.song.addedBy+', '+new Date(window.song.added).toLocaleTimeString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})+'</small><br />'+
-      '<small>Edited: '+window.song.editedBy+', '+new Date(window.song.edited).toLocaleTimeString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})+'</small><br />'+
-      '<small>'+(window.song._rev.split('-')[0] - 1)+' previous edits</small>';
+    let content = `<small>Added: ${window.users[window.song.addedBy] || window.song.addedBy}, ${new Date(window.song.added).toLocaleTimeString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</small><br />
+      <small>Edited: ${window.users[window.song.editedBy] || window.song.editedBy}, ${new Date(window.song.edited).toLocaleTimeString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</small><br />
+      <small>${(window.song._rev.split('-')[0] - 1)} previous edits</small>`;
   
     let sbs = await songInSongbooks(song_id);
     if(sbs.length > 0){
@@ -1603,9 +1855,9 @@ async function loadInfo(song=true) {
   }
   else{
     $('#dialog h5').text('Songbook');
-    let content = '<small>Added: '+window.songbook.addedBy+', '+new Date(window.songbook.added).toLocaleTimeString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})+'</small><br />'+
-      '<small>Edited: '+window.songbook.editedBy+', '+new Date(window.songbook.edited).toLocaleTimeString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})+'</small><br />'+
-      '<small>'+(window.songbook._rev.split('-')[0] - 1)+' previous edits</small>';
+    let content = `<small>Added: ${window.users[window.songbook.addedBy] || window.songbook.addedBy}, ${new Date(window.songbook.added).toLocaleTimeString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</small><br />
+      <small>Edited: ${window.users[window.songbook.editedBy] || window.songbook.editedBy}, ${new Date(window.songbook.edited).toLocaleTimeString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</small><br />
+      <small>${(window.songbook._rev.split('-')[0] - 1)} previous edits</small>`;
     document.querySelector('#dialog .content').innerHTML = content;
     document.querySelector('#dialog .title').innerHTML = window.songbook.title;
     $('#dialog').slideDown('fast');
@@ -1982,3 +2234,25 @@ $(function() {
     tooltip.bind( 'click', remove_tooltip );
   });
 });
+
+function scrollIntoViewIfNeed(el) {
+  function isScrolledIntoView(el) {
+    var rect = el.getBoundingClientRect();
+    var elemTop = rect.top;
+    var elemBottom = rect.bottom;
+
+    // Only completely visible elements return true:
+    var isVisible = (elemTop >= 0) && (elemBottom <= window.innerHeight);
+    // Partially visible elements return true:
+    //isVisible = elemTop < window.innerHeight && elemBottom >= 0;
+    return isVisible;
+  }
+  if(!isScrolledIntoView(el)){
+    el.scrollIntoView({behavior: "smooth", block: "center"});
+  }
+}
+
+function remToPx(rem) {    
+    return rem * parseFloat(getComputedStyle(document.documentElement).fontSize);
+}
+

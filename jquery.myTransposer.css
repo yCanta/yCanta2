@@ -14,8 +14,6 @@ span.c {
 }
 
 .transpose-keys {
-  width: max-content;
-  margin: 10px 0;
   overflow: auto;
   font: normal 0.6875rem sans-serif;
   display: grid;
