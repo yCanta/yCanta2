@@ -877,6 +877,9 @@ function setLoginState() {
   else {
     location.hash = '#';
   }
+  setTimeout(function(){
+    document.body.classList.remove('loading');
+  }, 300)
 }
 
 function setLogoutState() {

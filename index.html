@@ -913,7 +913,6 @@
 
         logData('hashchanged', location.hash);
 
-        $('.edit_buttons').remove();
         $('.deleted').removeClass('deleted');
 
         let bodyClassList = (document.body.classList.contains('loading') ? ['loading'] : []);
@@ -945,10 +944,13 @@
             try {
               dbLogin('login', loggedIn.dbName, loggedIn.username, loggedIn.pin, loggedIn.pwd, loggedIn.url);
               console.log("still logged in!");
+              return
             }
             catch {
               console.log("Not logged in yet");
             }
+
+            document.body.classList.remove('loading');
 
             document.body.classList.add('login');
             document.body.classList.add('header');
@@ -967,9 +969,6 @@
             db_opts += '<option value="create_local">Create Local</option>';
             setTimeout(function(){$('#db_select').html(db_opts).trigger('change');},0);
             window.document.title = "yCanta2 - Login";
-            setTimeout(function(){
-              document.body.classList.remove('loading');
-            },300);
             return; //otherwise we load the song and other pieces weirdly
           }
   //Songbooks List
@@ -1134,9 +1133,6 @@
         }
         updateAllLinks();
         document.body.classList = bodyClassList.join(' ');
-        setTimeout(function() {
-          document.body.classList.remove('loading');
-        }, 300);
         bodyClassList = [];
         $('.column').removeAttr('style');
       }

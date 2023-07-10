@@ -145,8 +145,8 @@ button.circle {
   vertical-align: middle;
 }
 .loading {
-    opacity: 0;
-    transform: scale3d(.8, .8, .8);
+  opacity: 0;
+  transform: scale3d(.8, .8, .8);
 }
 .btn {
   box-shadow: var(--btn-shadow-var);
