@@ -123,7 +123,7 @@
                 <b>Import</b>
                 <div>Choose a zip of V1 songs or a json file of V2 and import it below.</div>
                 <span style="margin: 1rem;"><input type="file" id="file" name="file" accept=".json,.zip" style="max-width: 200px; background: var(--edit-color);"/><button class="btn" onclick="startHandlingFiles();">Import</button></span>
-                <div id="result">
+                <div id="result" style="max-width: 400px;">
                 </div>
               </div>
             </fieldset>
@@ -939,6 +939,9 @@
   //Login
           else if(piece[0] == 'login') {
             let loggedIn = JSON.parse(localStorage.getItem('loggedin'));
+            if(loggedIn instanceof Array) {  //needed for upgrade, remove in future
+              loggedIn = {"dbName":loggedIn[0],"username":loggedIn[1],"pin":loggedIn[2],"roles":{"_admin":true,"editor":true}}
+            }
             try {
               dbLogin('login', loggedIn.dbName, loggedIn.username, loggedIn.pin, loggedIn.pwd, loggedIn.url);
               console.log("still logged in!");
