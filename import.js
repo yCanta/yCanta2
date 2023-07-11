@@ -132,7 +132,7 @@ async function importSongV1(f){
                   resolve('done');
                 });
               }
-              //Comments THIS CRASHES IN IOS/SAFARI.
+              //Comments -- CRASHES iOS / SAFARI due to positive look behind.
               /*else if(zipEntry.name.endsWith('.comment') && songbook != ""){
                 comments_list = [];
                 let songs = songbook.split('\n');

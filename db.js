@@ -1,5 +1,5 @@
 //initialize global variable.
-var db, syncHandler;
+var db, syncHandler, remoteDb;
 
 var online = false;
 
@@ -25,12 +25,24 @@ window.addEventListener('load', function() {
 });
 updateOnlineStatus();
 
-function clearAllDbs() { 
-  window.indexedDB.databases().then((r) => {
-      for (var i = 0; i < r.length; i++) window.indexedDB.deleteDatabase(r[i].name);
-  }).then(() => {
-      location.reload();
-  });
+function clearAllData() { 
+  try { //This doesn't work on FF or safari - they don't have .databases() implemented.
+    window.indexedDB.databases().then((r) => {
+        for (var i = 0; i < r.length; i++) window.indexedDB.deleteDatabase(r[i].name);
+    }).then(() => {
+        localStorage.clear();
+        location.reload();
+    });
+  }
+  catch (error) { //If there's an error, we fall back to our local storage list of databases, and do our best to clear.
+    console.log(error.message);
+    let databases = JSON.parse(localStorage.getItem('databases'));
+    for (db of databases) { //iterate through our listed databases and remove all we know of.
+      removeDbfromLocalStorage(db.name);
+    }
+    localStorage.clear();
+    location.reload();
+  }
 }
 function dbChanges() {
   window.changeHandler = db.changes({
@@ -50,13 +62,19 @@ function dbChanges() {
     if(change.doc._id.startsWith('s-')){
       loadRecentSongs();  
       //only load song if it's the one that's up.
-      if(window.song._id === change.doc._id && document.body.classList.contains('song')){
-        loadSong(change.doc._id);
-        notyf.info('Song updated', 'var(--song-color)');
+      if(window.song._id === change.doc._id && document.body.classList.contains('song')){ //if we're viewing this song.
+        delete window.song;
+        Promise.all([loadSong(change.doc._id)]) //little bit of a hack - had an issue where the url update reloads the songbook and song, then this triggers causing the edit buttons to not work... 
+          .then(function(values) {
+            updateAllLinks();
+          });         
+        if(!window.silent){ notyf.info('Song updated', 'var(--song-color)') };
       } else {
-        notyf.info(`Song "${change.doc.title}" updated by ${change.doc.editedBy}`,
+        if(!window.silent){ 
+          notyf.info(`Song "${change.doc.title}" updated by ${window.users[change.doc.editedBy]}`,
                    'var(--song-color)',
                    `#${window.songbook._id}&${change.doc._id}`);
+        }
       }
       //update all songs in songbooks
       if(window.songbook_list != undefined ){
@@ -81,11 +99,13 @@ function dbChanges() {
       if(window.songbook._id === change.doc._id && (document.body.classList.contains('songList') || document.body.classList.contains('song'))){
         window.songbook = '';
         loadSongbook(change.doc._id);
-        notyf.info('Songbook updated', 'var(--songList-color)');
+        if(!window.silent){ notyf.info('Songbook updated', 'var(--songList-color)'); }
       } else {
-        notyf.info(`Songbook "${change.doc.title}" updated by ${change.doc.editedBy}`,
+        if(!window.silent){ 
+          notyf.info(`Songbook "${change.doc.title}" updated by ${window.users[change.doc.editedBy]}`,
                    'var(--songList-color)',
                    `#${change.doc._id}`);
+        }
       }
       //update the songbook entry in songbooks_list
       if(window.songbooks_list != undefined){
@@ -104,41 +124,46 @@ function dbChanges() {
           comments += `<div><b>${comment.user} </b>${new Date(comment.date).toLocaleTimeString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})}<pre>${comment.comment}</pre></div>`;
         }
         $('li[data-song-id="'+song_id+'"] .comments').html(comments);
-        notyf.info(`Comment added to "${song_id}" by ${change.doc.comments[change.doc.comments.length - 1].user}`,
+        if(!window.silent){ 
+          notyf.info(`Comment added to "${song_id}" by ${change.doc.comments[change.doc.comments.length - 1].user}`,
                    'var(--songList-color)');
+        }
       }
     }
-    else if(change.doc._id == window.user._id){
-      let fav_sbs = change.doc.fav_sbs;
-      //jquery remove all favs
-      $('#songbooks .list li').each(function(){
-        let fav = false;
-        if(fav_sbs.indexOf($(this).attr('data-songbook-id')) > -1) {
-          fav = true;
+    else if(change.doc._id.startsWith('u-')){
+      if(!window.users){window.users={};} //doesn't always exist.
+      window.users[change.doc._id] = change.doc.name;
+      if(change.doc._id === window.user._id){
+        let fav_sbs = change.doc.fav_sbs;
+        //jquery remove all favs
+        $('#songbooks .list li').each(function(){
+          let fav = false;
+          if(fav_sbs.indexOf($(this).attr('data-songbook-id')) > -1) {
+            fav = true;
+          }
+          $(this).attr('data-user-fav', fav);
+        })
+        if(fav_sbs.indexOf(window.songbook._id) > -1) {
+          $('#songbook_title').attr('data-user-fav', 'true');
         }
-        $(this).attr('data-user-fav', fav);
-      })
-      if(fav_sbs.indexOf(window.songbook._id) > -1) {
-        $('#songbook_title').attr('data-user-fav', 'true');
+        else {
+          $('#songbook_title').attr('data-user-fav', 'false'); 
+        }
+        window.user = change.doc;
+        if(window.songbook._id == 'sb-favoriteSongs') {
+          window.songbook._id = '';
+          loadSongbook('sb-favoriteSongs');
+        }
+        updateUser();
+        if(!window.silent){ notyf.info(`User Updated "${change.doc.name}"`, 'var(--edit-color)'); }
+        window.songbooks_list.reIndex();
+        window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
+        $('#song song').attr('data-user-fav', (window.user.fav_songs.indexOf($('#song song').attr('data-id'))> -1 ? 'true': 'false'))
       }
-      else {
-        $('#songbook_title').attr('data-user-fav', 'false'); 
-      }
-      window.user = change.doc;
-      if(window.songbook._id == 'sb-favoriteSongs') {
-        window.songbook._id = '';
-        loadSongbook('sb-favoriteSongs');
-      }
-      updateUser();
-      notyf.info(`User Updated "${change.doc.name}"`,
-                   'var(--edit-color)');
-      window.songbooks_list.reIndex();
-      window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
-      $('#song song').attr('data-user-fav', (window.user.fav_songs.indexOf($('#song song').attr('data-id'))> -1 ? 'true': 'false'))
     }
     //New default config saved
-    else if(change.doc._id.startsWith('cfg-')){
-      notyf.inf('Default config saved');
+    else if(change.doc._id.startsWith('cfg-')){ //Change to be more specific.
+      if(!window.silent){ notyf.info('Default config saved'); }
     }
     //else... let it go! for now
     else {
@@ -150,9 +175,34 @@ function dbChanges() {
   });
 }
 
-function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
+async function dbExists(dbName) {
+  return new Promise(function(resolve, reject) {
+    const testdb = new PouchDB(dbName);
+    testdb.info().then(function (details) {
+      if (details.doc_count == 0 && details.update_seq == 0) {
+        console.log(dbName + 'database does not exist');
+        testdb.destroy().then(function() {console.log('test db removed');});
+        resolve(false);
+      }
+      else {
+        console.log(dbName + 'database exists');
+        resolve(true);
+      }
+    }).catch(function (err) {
+      console.log('error: ' + err);
+      resolve(false);
+    });
+  })
+}
+
+async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false, remote_url=false) {
+  let keep_logged_in = document.getElementById('keep_logged_in').checked;
   if(!dbName){
     dbName = $('#db_select :selected').val();
+  }
+  if(type=="login"){
+    if(dbName.endsWith('(local)')){type+='_local'}
+    else if(dbName.endsWith('(remote)')){type+='_remote'}
   }
   if(!username){
     username = $('#username').val().trim();
@@ -160,37 +210,26 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
   if(!pin){
     pin = $('#pin').val().trim();
   }
-  if(newDb){
+  if(!pwd){
+    pwd = $('#pwd').val().trim();
+  }
+  if(!remote_url && type == 'connect_remote'){
+    remote_url = $('#remote_url').val();
+  }
+  else if(!remote_url && type == 'login_remote'){
+    remote_url = $('#db_select :selected').attr('data-url');
+  }
+
+  if(type=="create_local"){
     dbName = $('#newDbName').val().trim()+'(local)';
-    console.log('New DB');
+    console.log('New local DB: '+dbName);
     //initialize local database;
     db = new PouchDB(dbName);
     
-    //create User doc
-    let user = {
-      _id: 'u-'+username,
-      name: username,
-      fav_sbs: [],
-      fav_songs: []
-    }
-    window.user = user;
-    db.put(user, function callback(err, result) {
-      if(!err) {
-        console.log('added user: ', username);
-      }
-      else {
-        console.log(err);
-      }
-    });
-    //store user pin in a local doc
-    db.put({_id: '_local/u-'+username, pin: pin}, function callback(err, result) {
-      if(!err) {
-        console.log("added user's pin");
-      }
-      else {
-        console.log(err);
-      }
-    });
+    //UPDATE LOCAL STORAGE DATABASES
+    addDBtoLocalStorage(dbName, 'local');
+    window.roles = {'_admin':true,'editor':true};
+
     //initialize list of categories
     var categories = {
       _id: 'categories',
@@ -204,22 +243,20 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
         console.log(err);
       }
     });
+    console.log(username,dbName);
     takeNextStep(username,dbName);
   }
-  else {
-    console.log('Logging in');
+  else if(type=="login_local"){
+    console.log('Logging in locally');
     db = new PouchDB(dbName);
     //check if pin matches
-    db.get('_local/u-'+username).then(function(userPin){
-      if(userPin.pin == pin) {
+    db.get('_local/u-'+username).then(function(localUser){
+      if(localUser.pin == pin) {
         console.log('Pin is correct!');
-        db.get('u-'+username).then(function(response) {
-          window.user = response;
-          takeNextStep(username,dbName);
-        });
+        window.roles = {'_admin':true,'editor':true};
+        takeNextStep(username,dbName);
       }
-      //if not then close the db
-      else {
+      else { //if not then close the db
         console.log('Username or pin was incorrect');
         alert('Username or pin was incorrect');
         dbLogout();
@@ -230,12 +267,234 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
       dbLogout();
     });
   }
-  function takeNextStep(username, dbName) {  //after login
+  else if(type=="connect_remote"){
+    console.log('Connecting to remote db');
+    remote_url = parseUrl(remote_url, username, pwd);
+    remoteDb = new PouchDB(remote_url, {skip_setup: true});
+    var ajaxOpts = {
+      ajax: {
+        headers: {
+          Authorization: 'Basic ' + window.btoa(username+':'+pwd)
+        }
+      }
+    };
+    try {
+      let batman = await remoteDb.logIn(username, pwd, ajaxOpts).catch(function (error){
+        console.log(error);
+        alert(error.message)
+        dbLogout();
+      });
+      
+      console.log("I'm Batman.", batman);
+      window.roles = batman.roles.reduce((a, v) => ({ ...a, [v]: true}), {})
+      let info = await remoteDb.info();
+      dbName = info.db_name + '(remote)';
+
+      //UPDATE LOCAL STORAGE DATABASES
+      addDBtoLocalStorage(dbName, 'remote', remote_url);
+
+      if(!keep_logged_in){
+        db = new PouchDB(dbName, {adapter: 'memory'});
+      } else {
+        db = new PouchDB(dbName);
+      }
+      takeNextStep(username,dbName);
+    }
+    catch(error) {
+      dbLogout();
+      if(error.name == 'unauthorized' || error.name == 'forbidden'){
+        alert('Username or Password are incorrect');
+      }
+      else {
+        alert('there was an error, please check your login information');
+        console.log('Log in error:', error);
+      }
+    }
+  }
+  else if(type=="login_remote"){
+    console.log('Logging in to remote db');
+    
+    if(!keep_logged_in){
+      db = new PouchDB(dbName, {adapter: 'memory'});
+    } else {
+      db = new PouchDB(dbName);
+    }
+    try { //change to check first if online, if so try logging in there first then log in to local once success, otherwise log in like we have here with locally saved pwd.
+      remote_url = parseUrl(remote_url, username, pwd);
+      remoteDb = new PouchDB(remote_url, {skip_setup: true});
+      var ajaxOpts = {
+        ajax: {
+          headers: {
+            Authorization: 'Basic ' + window.btoa(username+':'+pwd)
+          }
+        }
+      };
+      remoteDb.logIn(username, pwd, ajaxOpts).then(async function (batman) {
+        console.log("I'm Batman.", batman);
+        window.roles = batman.roles.reduce((a, v) => ({ ...a, [v]: true}), {}) 
+        takeNextStep(username,dbName);
+        
+      }).catch(async function(error){
+        if(error.name == 'unauthorized' || error.name == 'forbidden'){
+          alert('Username or Password are incorrect');
+        }
+        else {
+          console.log('Log in error:', error);
+          console.log('attempting offline login');
+          let localUser = await db.get('_local/u-'+username);
+          if(localUser.pwd == pwd) {
+            console.log('offline login successful');
+            window.roles = JSON.parse(localStorage.getItem('loggedin')).roles;
+            takeNextStep(username, dbName);
+          }
+          else {
+            dbLogout();
+            alert('you are offline and pwd or username are incorrect');
+          }
+        }
+      });
+    } 
+    catch(err) {
+      console.log(err);
+      alert('username or pwd was not correct');
+      dbLogout();
+    }
+  }
+  else {
+    dbLogout();
+    console.log('not sure what you want to login to');
+  }
+
+  async function takeNextStep(username, dbName) {  //after login
+    window.silent = true;
+    //initialized
+    window.songbook = {};
+    window.song = {};
+    dbChanges();
+    window.user = { //temp user document
+      _id: 'u-'+username,
+      name: username,
+      fav_sbs: [],
+      fav_songs: []
+    }
+    window.yCantaName = dbName;
+    try {  //REVISIT THIS!!!!!  Does it need to be in a try, catch?
+      document.documentElement.classList.add(...Object.keys(window.roles)); 
+    } catch(error) {
+      console.log(error);
+    }
+    //Store logged in status: pin for local, for remote we store pwd.
+    if(dbName.endsWith('(local)')){
+      localStorage.setItem('loggedin',JSON.stringify({dbName: dbName, username: username, pin: pin, roles: window.roles}));
+      //store user pin in a local doc
+      db.upsert('_local/u-'+username, function (doc) {
+        doc.pin = pin;
+        return doc;
+      }).then(function () {
+        console.log("updated user's pin");
+      }).catch(function (err) {
+        console.log(err);
+      });
+    }
+    else if(!keep_logged_in && dbName.endsWith('(remote)')){
+      localStorage.setItem('loggedin',JSON.stringify({dbName: dbName, username: username, pwd: pwd, roles: window.roles, url: remote_url}));
+      //store username/pwd/url
+      db.upsert('_local/u-'+username, function (doc) {
+        doc.pwd = pwd;
+        doc.remote_url = remote_url;
+        return doc;
+      }).then(function () {
+        console.log("updated user's pwd");
+      }).catch(function (err) {
+        console.log(err);
+      });
+    }
+    //Setup sync for remote database connections
+    if(db.name.endsWith('(remote)')){
+      let info = await remoteDb.info().catch(function(error){
+        console.log(error)
+      });
+      let localInfo = await db.info();
+      console.log('doing a onetime sync...');
+      firstSync = await db.sync(remoteDb).on('change', function (change) {
+        let percentage = parseInt(parseInt(change.change.last_seq.split('-')[0].replace('-',''))/parseInt(info.update_seq.replace('-',''))*100);
+        console.log('Synced some stuff', percentage+'%');
+        document.documentElement.style.setProperty('--status-text',`"loading . . . ${percentage}%"`);
+        document.documentElement.style.setProperty('--animation',`3s loading infinite`);
+        // !!!!============ Need some kind of loading dialog/indication
+      }).catch(function (error) {
+        console.log(error);
+      });
+      document.documentElement.style.setProperty('--status-text',`""`);
+      document.documentElement.style.setProperty('--animation',`"unset"`);
+      console.log('sync complete');
+      let categories = {
+        _id: 'categories',
+        categories: ["Adoration", "Aspiration/Desire", "Assurance", "Atonement", "Awe", "Bereavement", "Brokenness", "Calvary", "Christ as Bridegroom", "Christ as King", "Christ as Lamb", "Christ as Redeemer", "Christ as Savior", "Christ as Shepherd", "Christ as Son", "Christ's Blood", "Christ's Return", "Church as Christ's Body", "Church as Christ's Bride", "Church as God's House", "Cleansing", "Comfort", "Commitment", "Compassion", "Condemnation", "Consecration", "Conviction of Sin", "Courage", "Creation", "Cross", "Dedication/Devotion", "Dependence on God", "Encouragement", "Endurance", "Eternal Life", "Evangelism", "Faith", "Faithfulness", "Fear", "Fear of God", "Fellowship", "Forgiveness", "Freedom", "God as Creator", "God as Father", "God as Refuge", "God's Creation", "God's Faithfulness", "God's Glory", "God's Goodness", "God's Guidance", "God's Harvest", "God's Holiness", "God's Love", "God's Mercy", "God's Power", "God's Presence", "God's Strength", "God's Sufficiency", "God's Timelessness", "God's Victory", "God's Wisdom", "God's Word", "Godly Family", "Grace", "Gratefulness", "Healing", "Heaven", "Holiness", "Holy Spirit", "Hope", "Humility", "Hunger/Thirst for God", "Incarnation", "Invitation", "Jesus as Messiah", "Joy", "Kingdom of God", "Knowing Jesus", "Lordship of Christ", "Love for God", "Love for Jesus", "Love for Others", "Majesty", "Meditation", "Mercy", "Missions", "Mortality", "Neediness", "New Birth", "Obedience", "Oneness in Christ", "Overcoming Sin", "Patience", "Peace", "Persecution", "Praise", "Prayer", "Proclamation", "Provision", "Purity", "Purpose", "Quietness", "Redemption", "Refreshing", "Repentance", "Rest", "Resurrection", "Revival", "Righteousness", "Salvation", "Sanctification", "Security", "Seeking God", "Service", "Servanthood", "Sorrow", "Spiritual Warfare", "Submission to God", "Suffering for Christ", "Surrender", "Temptation", "Trials", "Trust", "Victorious Living", "Waiting on God", "Worship", "-----", "Christmas", "Easter", "Good Friday", "Thanksgiving", "-----", "Baptism", "Birth", "Closing Worship", "Communion", "Death", "Engagement", "Opening Worship", "Wedding", "-----", "Children's Songs", "Rounds", "Scripture Reading", "Scripture Songs", "-----", "Needs Work", "Needs Chord Work", "Needs Categorical Work", "Duplicate", "-----", "Norway", "Secular", "Delete", "Spanish words", "Celebration"]
+      }
+      db.put(categories, function callback(err, result) {
+        if(!err) {
+          console.log('added categories');
+        }
+        else {
+          console.log(err);
+        }
+      });
+
+      //now set up the live sync
+      syncHandler = db.sync(remoteDb, {
+        live: true,
+        retry: true
+      }).on('change', function (change) {
+        console.log('Synced some stuff', parseInt(parseInt(change.change.last_seq.split('-')[0].replace('-',''))/parseInt(info.update_seq.replace('-',''))*100)+'%');
+        // yo, something changed!
+      }).on('paused', function (info) {
+        // replication was paused, usually because of a lost connection
+        //notyf.info('Connection to server interupted', 'yellow');
+      }).on('active', function (info) {
+        //notyf.info('Connection to server resumed', 'yellow');
+        // replication was resumed
+      }).on('complete', function (err) {
+        console.log('complete');
+      }).catch(function (err) {
+        console.log(err);
+        // totally unhandled error (shouldn't happen)
+      });
+    }
+    
+    delete window.silent;
+    //Get user document or set it up
+    try {
+      let response = await db.get('u-'+username);
+      window.user = response;
+      updateUser();
+    }
+    catch (error){
+      console.log('username does not exist in database at this time, creating one for this user');
+      let user = {
+        _id: 'u-'+username,
+        name: username,
+        fav_sbs: [],
+        fav_songs: []
+      }
+      window.user = user;
+      db.put(user, function callback(err, result) {
+        if(!err) {
+          console.log('added user to database: ', username);
+        }
+        else {
+          console.log(err);
+        }
+      });
+    };
+
+    setLoginState();
     //layout the welcome?  maybe this goes in set login state?
     //Update ui when db changes]s
-    dbChanges();
-
-    localStorage.setItem('loggedin',JSON.stringify([dbName, username, pin]));
+    loadRecentSongs();
+    initializeSongbooksList();
+    loadUsersObject(); //list of all users stored for reference;
+    
     //check dark mode and set for app
     let darkMode = localStorage.getItem(window.user._id+'darkMode');
     if(darkMode){
@@ -256,13 +515,6 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
       document.getElementById('analytics').checked = false;
     }
 
-    window.yCantaName = dbName;
-    loadRecentSongs();
-    initializeSongbooksList();
-    setLoginState();
-    //initialized
-    window.songbook = {};
-    window.song = {};
     //wipe login cause we were successfull!
     $('#login :input').each(function(){$(this).val('')});
 
@@ -301,78 +553,45 @@ function dbLogin(newDb=false, dbName=false, username=false, pin=false) {
     }
     return true;
   }
-
   return false;
-
-  /*let pwd = $('#pwd').val();
-  let pin = $('#pin').val();
-  if(newDb)
-  console.log(dbName, username, pin);
-  db = new PouchDB(dbName);
-
-  //We're not online!
-  if(!online){
-    console.log(dbName, username, pin );
-  }
-  //we're online!
-  else {
-    var remoteDb = new PouchDB('https://bc1e4819-c782-4aad-8525-2e2340011ce7-bluemix.cloudantnosqldb.appdomain.cloud/canaanf/', {skip_setup: true});
-    
-    var ajaxOpts = {
-      ajax: {
-        headers: {
-          Authorization: 'Basic ' + window.btoa(username+':'+pwd)
-        }
-      }
-    };
-
-
-    remoteDb.logIn(username, pwd, ajaxOpts).then(function (batman) {
-      console.log("I'm Batman.", batman);
-
-      return remoteDb.allDocs();
-
-    }).then(function(docs){
-
-      syncHandler = db.sync(remoteDb, {
-        live: true,
-        retry: true
-      }).on('change', function (change) {
-        console.log('Synced some stuff');
-        // yo, something changed!
-      }).on('paused', function (info) {
-        // replication was paused, usually because of a lost connection
-      }).on('active', function (info) {
-        // replication was resumed
-      }).on('error', function (err) {
-        // totally unhandled error (shouldn't happen)
-      });
-
-      console.log(docs);
-    });
-
-    console.log(dbName, username, pwd );
-
-  }*/
 }
 
 function dbLogout(){
   if(!confirmWhenEditing()){
     setLogoutState();
-    db.close().then(function () {
+    db.close().then(function() {
       console.log('closed db');
     });
-  }
-
+    remoteDb.close().then(function() {
+      console.log('closed remote db');
+    }).catch(function(error){
+      console.log(error.message);
+    });
+    syncHandler.cancel(); // <-- this cancels it
   /*
-
   syncHandler.on('complete', function (info) {
     // replication was canceled!
   });
-
-  syncHandler.cancel(); // <-- this cancels it
-
   */
+  }
+}
+
+function loadUsersObject() {
+  db.allDocs({
+    include_docs: true,
+    startkey: 'u-',
+    endkey: 'u-\ufff0',
+  }).then(function(result){
+    let usersOb = result.rows.reduce((previousObject, currentObject) => {
+        return Object.assign(previousObject, {
+          [currentObject.doc._id]: currentObject.doc.name
+        })
+      },
+    {});
+    window.users = usersOb;
+  }).catch(function(err){
+    console.log(err);
+  });
 }
 
 function loadRecentSongs(days=1000, number=15){
@@ -483,6 +702,180 @@ function initializeSongbooksList(){
     console.log(err);
   });
 }
+
+async function addAdminUser(){
+  if(remoteDb){
+    let users = await getAllUsers();
+    if(users instanceof Error) {
+      alert('you are offline perhaps!');
+      return;
+    }
+
+    const username = prompt('What Admin username do you want to add?');
+    if(!username){return}
+
+    if(Object.keys(users.admins).indexOf(username) > -1 || users.users.map(usr => usr.doc.name).indexOf(username) > -1){
+      alert(`${username} is already taken`);
+      return;
+    }
+
+    const password = prompt('What password?');
+    const passwordAgain = prompt('Please enter it again.');
+    if(password != passwordAgain){
+      alert('Passwords did not match, please try again');
+      return
+    }
+    if(!password) {return}
+
+    remoteDb.signUpAdmin(username, password, function (err, response) {
+      if (err) {
+        handleError(err);
+      } else {
+        loadAllUsers();
+        notyf.info(`added ${username}`,'green');
+      }
+    });
+  }
+  else {
+    console.log('there is no remoteDb');
+  }
+}
+function changeAdminPassword(username){
+  if('u-'+username == user._id){
+    alert('You can not change your own password - try logging in as a different admin');
+    return
+  }
+  const password = prompt(`What do you want to change the password for ${username} to?`);
+  if(!password){return}
+  const passwordAgain = prompt('Please enter it again.');
+  if(password != passwordAgain){
+    alert('Passwords did not match, please try again');
+    return
+  }
+  remoteDb.deleteAdmin(username, function (err, response) {
+    if (err) {
+      handleError(err);
+    } else {
+      remoteDb.signUpAdmin(username, password, function (err, response) {
+        if (err) {
+          handleError(err);
+        } else {
+          loadAllUsers();
+          notyf.info(`Password changed for ${username}`,'red');
+        }  
+      });
+    }
+  }); 
+}
+function deleteAdminUser(username){
+  //check to be sure that username != current username
+  if('u-'+username == user._id){
+    alert('You can not delete your own admin account - try logging in as a different admin');
+    return
+  }
+
+  //then delete the admin, after checking that they want to do so.
+  if(confirm(`Are you sure you want to delete Admin: ${username}?`)){
+    remoteDb.deleteAdmin(username, function (err, response) {
+      if (err) {
+        handleError(err);
+      } else {
+        loadAllUsers();
+        notyf.info(`deleted ${username}`,'red');
+      }
+    });  
+  }
+  else {
+    console.log('decided not to delete them');
+  }
+}
+
+async function addUser(){
+  let users = await getAllUsers();
+  if(users instanceof Error) {
+    alert('you are offline perhaps!');
+    return;
+  }
+  const username = prompt('What username do you want to add?');
+  if(!username){return}
+
+  if(Object.keys(users.admins).indexOf(username) > -1 || users.users.map(usr => usr.doc.name).indexOf(username) > -1){
+    alert(`${username} is already taken`);
+    return;
+  }
+
+  const password = prompt('What password?');
+  const passwordAgain = prompt('Please enter it again.');
+  if(password != passwordAgain){
+    alert('Passwords did not match, please try again');
+    return
+  }
+  if(!password) {return}
+
+  remoteDb.signUp(username, password, {}, function (err, response) {
+    if (err) {
+      handleError(err);
+    } else {
+      loadAllUsers();
+      notyf.info(`added ${username}`,'green');
+    }
+  });
+}
+function toggleUserEditor(username, editor){
+  remoteDb.putUser(username, {
+   roles: [(editor ? 'editor' : '')]
+  }, function (err, response) {
+    if (err) {
+      handleError(err);
+    } else {
+      loadAllUsers();
+      notyf.info(`updated ${username}`,'green');
+    }
+  });
+}
+function changeUserPassword(username){
+  const password = prompt(`What do you want to change the password for ${username} to?`);
+  if(!password){return}
+  const passwordAgain = prompt('Please enter it again.');
+  if(password != passwordAgain){
+    alert('Passwords did not match, please try again');
+    return
+  }
+
+  remoteDb.changePassword(username, password, function(err, response) {
+    if (err) {
+      handleError(err);
+    } else {
+      notyf.info(`Password changed for ${username}`,'red');
+    }
+  });
+}
+function deleteUser(username){
+  const response = confirm(`Are you sure you want to delete ${username}?`);
+  if(!response){return}
+  remoteDb.deleteUser(username, function (err, response) {
+    if (err) {
+      handleError(err);
+    } else {
+      loadAllUsers();
+      notyf.info(`User: ${username} deleted`,'red');
+    }
+  });
+}
+function handleError(err){
+  if (err.name === 'not_found') {
+    // typo, or you don't have the privileges to see this user
+    alert('You do not have permission to see this user');
+  } else if(err.name ==='conflict') {
+    alert('That already exists');
+  } else if(!window.online){
+    alert('you are offline, try again when you are reconnected');
+  } else {
+    // some other error
+    console.log(err);
+  }
+}
+
 function saveSong(song_id, song_html=$('#song song'), change_url=true) {
   return new Promise(function(resolve, reject) {
     var new_song = false;
@@ -578,7 +971,7 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
         }
       }).then(function(){
         if(change_url){
-          window.location.hash = '#'+window.songbook._id+'&'+song._id;
+          window.location.hash = '#'+formatSbID(window.songbook._id)+'&'+song._id;
         }
         resolve(song._id);
         console.log(song_id);
@@ -603,7 +996,7 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
       new_song = true;
       let time = new Date().getTime();
       song_id = 's-' + time;
-      let song = {_id: song_id, added: time, addedBy: window.user.name, edited: time, editedBy: window.user.name};
+      let song = {_id: song_id, added: time, addedBy: window.user._id, edited: time, editedBy: window.user._id};
       loadSongContent(song);
       addSongToSongbook(song._id);
     }
@@ -611,13 +1004,13 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
     else if(!song_id.startsWith('s-')){
       let time = new Date().getTime();
       song_id = 's-' + song_id;
-      let song = {_id: song_id, added: time, addedBy: window.user.name, edited: time, editedBy: window.user.name};
+      let song = {_id: song_id, added: time, addedBy: window.user._id, edited: time, editedBy: window.user._id};
       loadSongContent(song);
     }
     else {  //existing song hopefully - need to make robust
       db.get(song_id).then(function(song){
         song.edited = new Date().getTime();
-        song.editedBy = window.user.name;
+        song.editedBy = window.user._id;
         loadSongContent(song);
       }).catch(function (err) {
         console.log(err);
@@ -637,14 +1030,24 @@ function loadSong(song_id) {
       else {
         $('#song').removeClass('deleted');
       }
-      var song_html = '<song data-rev="' + song._rev + '" data-id="' + song._id + '" data-user-fav="'+(window.user.fav_songs.indexOf(song._id) > -1 ? 'true' : 'false')+'">' + 
-        '<stitle><a data-song class="title_link">' + song.title + '</a><span onclick="event.stopPropagation(); toggleFavSong($(this).closest(\'song\').attr(\'data-id\'))"></span><info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo();"></info></stitle>' +  
-        '<authors><author>' + song.authors.join('</author>, <author>') + '</author></authors>' + 
-        '<scripture_ref><scrip_ref>' + song.scripture_ref.join('</scrip_ref>, <scrip_ref>') + '</scrip_ref></scripture_ref>' + 
-        '<introduction>' + song.introduction + '</introduction>' + 
-        '<key>' + song.key + '</key>' + 
-        '<categories><cat>' + song.categories.sort().join('</cat>, <cat>') + '</cat></categories>' + 
-        '<cclis>' + (song.cclis != false ? 'CCLIS' + (!isNaN(song.cclis) ? ': '+song.cclis: '') : '') + '</cclis>';
+
+      let editable = canEdit(song);
+      let float_menu = `${(editable ? '<button data-songbook onclick="deleteSong(window.song._id)" class="float-menu-item"><span class="float-menu-icon">&#128465;</span> Delete</button>' : '')}
+      <a data-song-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</a>
+      ${(editable ? '<a data-song-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>' : '')}
+      <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>`;
+      $('#song .float-menu').html(float_menu);
+
+      var song_html = `<song data-rev="${song._rev}" data-id="${song._id}" data-user-fav="${(window.user.fav_songs.indexOf(song._id) > -1 ? 'true' : 'false')}">
+        <div class="column_header" id="song_header"><stitle><a data-song class="title_link">${song.title}</a><span><span class="star" onclick="event.stopPropagation(); toggleFavSong($(this).closest('song').attr('data-id'))"></span>
+          <info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo();"></info></span>
+        </stitle></div>
+        <authors><author>${song.authors.join('</author>, <author>')}</author></authors>
+        <scripture_ref><scrip_ref>${song.scripture_ref.join('</scrip_ref>, <scrip_ref>')}</scrip_ref></scripture_ref>
+        <span id="keyToggleContainer"><span id="keyToggleFilter"><key>${song.key}</key><button id="keyToggle" onclick="this.parentElement.parentElement.classList.toggle(\'active\')">↑↓</button></span></span>
+        <categories><cat>${song.categories.sort().join('</cat>, <cat>')}</cat></categories>
+        <cclis>${(song.cclis != false ? 'CCLIS' + (!isNaN(song.cclis) ? ': '+song.cclis: '') : '')}</cclis>
+        <introduction>${song.introduction}</introduction>`;
       song.content.forEach(function(chunk){
         song_html += '<chunk type="' + chunk[0].type + '">';
         chunk[1].forEach(function(line){
@@ -655,22 +1058,34 @@ function loadSong(song_id) {
       song_html +=  '<copyright>' + song.copyright + '</copyright>' +
                   '</song>'
       $('#song .content').html(song_html);
-      let regex = /(https?:\/\/)?(?:www\.)?(youtu(?:\.be\/([-\w]+)|be\.com\/watch\?v=([-\w]+)))\w/g;
+      
       //add hrefs to comments
+      let regex = /(https?:\/\/)?(?:www\.)?(youtu(?:\.be\/([-\w]+)|be\.com\/watch\?v=([-\w]+)))\w/g;
       $('song chunk[type="comment"]').each(function(){
         $(this).html($(this).html().replace(/(((http|https|ftp):\/\/)*[\w?=&.\/-;#~%-]+\.[\w?=&.\/-;#~%-]+(?![\w\s?&.\/;#~%"=-]*>))/g, '<a href="$1" target="_blank">$1</a> '));
       });
+      
       //set youtube_links
       ($("song line").text().match(regex) != null ? window.youtube_links = [...$("song line").text().match(regex)] : window.youtube_links = []);
       if(window.youtube_links.length > 0) {
-        $('#song key').before('<button class="btn" style="padding: 5px 8px; margin-top: 0; background-color:var(--highlight-color);" onclick="loadSongPlayer();">▶</button>')
+        $('#song key').before('<button class="btn" style="padding: 5px 8px; margin-top: 0; margin-bottom: 0; background-color:var(--highlight-color);" onclick="loadSongPlayer();">▶</button>')
       }
-      resolve("song_loaded");
+      //Update songplacement
+      setTimeout(function(){ //needed as we don't know when the songbook will get loaded...
+        let songPlacement = window.songbook_list.visibleItems.findIndex(el => el._values['song-id'] == window.song._id) + 1;
+        $('#songbook_content .search + span').attr('data-number-visible',`${songPlacement ? songPlacement+'/' : ''}${window.songbook_list.visibleItems.length}`);
+      },300);
 
-      $('#song key').transpose();
+      resolve("song_loaded");
+      $('#song .edit_buttons').remove();
+
+      $('#keyToggle').transpose();
       if(document.getElementById('dialog').style.display=="block" && document.getElementById('dialog').getAttribute('data-use')=="info") {loadInfo()}
     }
-    if(song_id === 's-new-song'){
+    if(song_id == window.song._id){
+      resolve('song already loaded');
+    }
+    else if(song_id === 's-new-song'){
       var song = {
         _id: 's-new-song',
         title: '',
@@ -716,7 +1131,7 @@ async function deleteSong(song_id) {
     db.get(window.song._id).then(function (doc) {
       return db.remove(doc);
     }).then(function(){
-      window.location.hash='#'+window.songbook._id;
+      window.location.hash='#'+formatSbID(window.songbook._id);
     });
     console.log('deleted: '+window.song.title);
     return false
@@ -746,7 +1161,7 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
     return
   }
   else{
-    window.editing=false;
+    window.songbookEditing=false;
   }
   var new_songbook = false;
   return new Promise(function(resolve, reject) {
@@ -804,7 +1219,7 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
         }
       }).then(function(){
         if(change_url){
-          window.location.hash = '#'+window.songbook._id;
+          window.location.hash = '#'+formatSbID(window.songbook._id);
           $('.edit_buttons').remove();
           initializeSongbooksList();
         }
@@ -828,20 +1243,20 @@ function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_
       new_songbook = true;
       let time = new Date().getTime();
       songbook_id = 'sb-' + time;
-      var songbook = {_id: songbook_id, added: time, addedBy: window.user.name, edited: time, editedBy: window.user.name};
+      var songbook = {_id: songbook_id, added: time, addedBy: window.user._id, edited: time, editedBy: window.user._id};
       loadSongbookContent(songbook);
     }
     //we've got a non-standard songbook_id
     else if(!songbook_id.startsWith('sb-')){
       let time = new Date().getTime();
       songbook_id = 'sb-' + songbook_id;
-      var songbook = {_id: songbook_id, added: time, addedBy: window.user.name, edited: time, editedBy: window.user.name};
+      var songbook = {_id: songbook_id, added: time, addedBy: window.user._id, edited: time, editedBy: window.user._id};
       loadSongbookContent(songbook); 
     }
     else {  //existing songbook hopefully - need to make robust 
       db.get(songbook_id).then(function(songbook){
         songbook.edited = new Date().getTime();
-        songbook.editedBy = window.user.name;
+        songbook.editedBy = window.user._id;
         loadSongbookContent(songbook);
       }).catch(function (err) {
         console.log(err);
@@ -883,6 +1298,7 @@ function loadSongbook(songbook_id) {
       window.songbook._rev = '';
        
       db.allDocs(options).then(function(result){
+        result.rows = result.rows.filter(row => row.key !== ''); //remove missing ids.
         var sb_song_ids = result.rows.map(function (row) {
           return row.id
         });
@@ -911,17 +1327,12 @@ function loadSongbook(songbook_id) {
         window.songbook.songrefs = result.rows.map(function (row) {
           return {id: row.id, status: 'n'};
         });
-        buildSongbookList(result.rows);
-        $('#songbook_title').removeAttr('contenteditable');
-        $('#songbook_content .search').parent().removeAttr('disabled');
-        $('#songbook_content').removeClass('showStatus'); 
-        $('#songbook_content').removeClass('showComments'); 
-        $('.disabled-hidden').removeClass('disabled-hidden');
-        $('#songbook_title').html('<i>'+window.songbook.title+'</i>').removeAttr('data-rev').attr('data-songbook-id', songbook_id);
-        $('#songList .float-menu').addClass('special');
+        buildSongbookList(result.rows);        
+        setSongbookInfo(window.songbook);
         var dateAfter = new Date();
         console.log(dateAfter-dateBefore);
         resolve('loaded songbook');
+        $('#songList .edit_buttons').remove();
       }).catch(function(err){
         console.log(err);
       });
@@ -930,13 +1341,9 @@ function loadSongbook(songbook_id) {
       if(window.songbook_list != undefined) {
         window.songbook_list.clear();
       }
-      $('#songbook_title').removeAttr('contenteditable');
-      $('#songbook_content .search').parent().removeAttr('disabled');
-      $('#songbook_content').removeClass('showStatus'); 
-      $('#songbook_content').removeClass('showComments'); 
-      $('.disabled-hidden').removeClass('disabled-hidden');
-      $('#songbook_title').text('').removeAttr('data-rev');
-      resolve('loaded songbook');
+      setSongbookInfo({title: '', _id: 'sb-new-songbook'});
+      resolve('loaded blank new songbook');
+      $('#songList .edit_buttons').remove();
     }
     else {
       db.get(songbook_id).then(function(result){
@@ -970,17 +1377,8 @@ function loadSongbook(songbook_id) {
           console.log(err);
         });
         window.songbook = result;
-        $('#songbook_title').removeAttr('contenteditable');
-        $('#songbook_content .search').parent().removeAttr('disabled');
-        $('.disabled-hidden').removeClass('disabled-hidden');
-        (window.songbook.showStatus ? $('#songbook_content').addClass('showStatus') : $('#songbook_content').removeClass('showStatus'));
-        (window.songbook.showComments ? $('#songbook_content').addClass('showComments') : $('#songbook_content').removeClass('showComments'));
-        $('#songbook_title').html(result.title).attr('data-rev',result._rev).attr('data-songbook-id',result._id).nextAll().remove();
-        $('#songbook_title').parent().append('<span onclick="event.stopPropagation(); toggleFavSongbook(\''+result._id+'\')"></span>'+
-          '<info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo(false);"></info>');
-        if(document.getElementById('dialog').style.display=="block" && !parseHash('s-') && document.getElementById('dialog').getAttribute('data-use')=="info"){  //prevents info view flicker when you click on songbooks in song info view.
-          loadInfo(false);
-        }
+        setSongbookInfo(result);
+
         var dateAfter = new Date();
         console.log(dateAfter-dateBefore);
         if(window.user.fav_sbs.indexOf(window.songbook._id) > -1) {
@@ -990,12 +1388,10 @@ function loadSongbook(songbook_id) {
           $('#songbook_title').attr('data-user-fav', 'false'); 
         }
         resolve('loaded songbook');
+        $('#songList .edit_buttons').remove();
       }).catch(function(err){
         console.log(err);
       });
-    }
-    if((songbook_id != 'sb-allSongs') && (songbook_id != 'sb-favoriteSongs')){
-      $('#songList .float-menu').removeClass('special');
     }
   });
 }
@@ -1162,7 +1558,6 @@ function saveExportDefault() {
   $('#format').trigger('change');
   let cfg = {
     _id: 'cfg-'+window.exportObject._id+window.user._id, //must keep in sync with lib.js
-    title: 'Default: '+window.user.name,
     cfg: opts
   }
   db.get(cfg._id).then(function(_doc) {
@@ -1171,7 +1566,7 @@ function saveExportDefault() {
     return db.put(cfg);
   }).catch( function (error) {
     console.log('adding');
-    $('#format').html("<option id='user_export_pref' value='"+JSON.stringify(cfg.cfg)+"'>"+cfg.title+"</option>" + $('#format').html());
+    $('#format').html("<option id='user_export_pref' value='"+JSON.stringify(cfg.cfg)+"'>Your Default</option>" + $('#format').html());
     return db.put(cfg);
   }).then(function(info){
     console.log("id of record: " + info.id);
