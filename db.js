@@ -383,6 +383,8 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     } catch(error) {
       console.log(error);
     }
+    document.body.classList.remove('loading');
+
     //Store logged in status: pin for local, for remote we store pwd.
     if(dbName.endsWith('(local)')){
       localStorage.setItem('loggedin',JSON.stringify({dbName: dbName, username: username, pin: pin, roles: window.roles}));
