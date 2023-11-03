@@ -19,7 +19,6 @@ stitle {
   font-size: 1.17em;/*h3 STYLING*/
   font-weight: bold;
   margin-top: 1em;
-  top: 0;
 }
 #song .column_header {
   column-span: all;

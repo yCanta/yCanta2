@@ -817,7 +817,7 @@ function print_line(doc, font_face=null, font_size=null, y_offset=null, x_offset
 
   doc.font(font_face).fontSize(font_size);
   doc.text(line, page_mapping.startx+x_offset, page_mapping.starty + y_offset, { lineBreak: false });
-  
+  console.log(y_offset, line, line_space)
   return y_offset + line_space;
 }
 

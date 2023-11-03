@@ -250,20 +250,7 @@ def_configs['simple'] = [
   {name: 'page_layout',         value: 'single-sided'},
   {name: 'paper_margin_gutter', value: '0'},
   {name: 'font_face',           value: 'Helvetica'},
-  {name: 'booktitle_size',      value: '36'},
-  {name: 'booktitle_space',     value: '12'},
-  {name: 'songtitle_size',      value: '18'},
-  {name: 'songtitle_space',     value: '6'},
-  {name: 'song_space_after',    value: '12'},
-  {name: 'songchunk_b4',        value: '12'},
-  {name: 'songline_size',       value: '12'},
-  {name: 'songline_space',      value: '4'},
-  {name: 'songchord_size',      value: '12'},
-  {name: 'songchord_space',     value: '1'},
-  {name: 'small_size',          value: '8'},
-  {name: 'small_space',         value: '8'},
-  {name: 'copyright_size',      value: '8'},
-  {name: 'copyright_space_b4',  value: '3'},
+  {name: 'text',                value: 'Default' },
   {name: 'columns',             value: '1'},
   {name: 'display_chords',      value: 'no'},
   {name: 'index_title_font',    value: 'Helvetica'},
@@ -948,6 +935,7 @@ function mapSongRowToValue(row) {
 
 function setSongbookInfo(songbook){
   $('#songbook_title').removeAttr('contenteditable');
+  $('#sb_buttonsRight').remove();
   $('#songbook_content .search').parent().removeAttr('disabled');
   (songbook.showStatus ? $('#songbook_content').addClass('showStatus') : $('#songbook_content').removeClass('showStatus'));
   $('#songbook_content').removeClass('showStatus'); 
@@ -957,7 +945,7 @@ function setSongbookInfo(songbook){
   let title_text = (songbook._id == 'sb-allSongs' || songbook._id == 'sb-favoriteSongs' ? `<i>${songbook.title}</i>` : songbook.title);
   $('#songbook_title').html(title_text).attr('data-rev',songbook._rev).attr('data-songbook-id', songbook._id).nextAll().remove();
   if(songbook._id != 'sb-allSongs' && songbook._id != 'sb-favoriteSongs'){
-    $('#songbook_title').parent().append('<span><span class="star" onclick="event.stopPropagation(); toggleFavSongbook(\''+songbook._id+'\')"></span>'+
+    $('#songbook_header .title').append('<span class="buttonsRight" id="sb_buttonsRight"><span class="star" onclick="event.stopPropagation(); toggleFavSongbook(\''+songbook._id+'\')"></span>'+
       '<info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo(false);"></info></span>');
   }
   if(document.getElementById('dialog').style.display=="block" && !parseHash('s-') && document.getElementById('dialog').getAttribute('data-use')=="info"){  //prevents info view flicker when you click on songbooks in song info view.

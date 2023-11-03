@@ -504,8 +504,7 @@ stitle, cat, author, scrip_ref, key, copyright, cclis {
   background-color: var(--edit-color);
   border: 1px gray dashed;
 }
-.edit #songbook_header h3 *:not(a),
-.edit stitle *:not(a) {
+.edit .buttonsRight { 
   display: none;
 }
 .edit #songbook_header a,
@@ -536,8 +535,20 @@ info:after {
   font-family: monospace;
   cursor: pointer;
   position: absolute;
-  left: 2.5rem;
+  left: .3rem;
   top: .2rem;
+  font-size: 1.4rem;
+}
+.fsButton:after {
+  top: .2rem;
+  font-size: 1.7rem;
+  color: var(--text-color);
+  content:  '↔';
+  transform: rotateZ(135deg);
+  transform-origin: center;
+  cursor: pointer;
+  position: absolute;
+  line-height: 1.17rem; 
 }
 #songbookList li span:after {
   text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.15);
@@ -549,9 +560,9 @@ info:after {
   display: none;
   cursor: pointer;
 }
-#song song[data-user-fav="true"] stitle .star:after,
+#song song[data-user-fav="true"] .star:after,
 #songbookList li[data-user-fav="true"] .star:after,
-#songbook_title[data-user-fav="true"] + span > .star:after {
+#songbook_header .title[data-user-fav="true"] .star:after {
   content: '★';
   color: black;
   display: inline-block;
@@ -564,12 +575,27 @@ info:after {
   margin: 0 -1rem 0 -1rem;
   padding: 0.1px 1rem 0.5rem 1rem;
 }
+.column:not(.edit) .subcolumn:first-child .title {
+  display: flex;
+}
+.title > * {
+  flex: auto;
+}
 #song .subcolumn:first-child .column_header {
-  padding: 0px 6rem 0.5rem 1rem;
+  padding: 0px 1rem 0.5rem 1rem;
   overflow: hidden;
 }
-.column_header > * > * {
+.title > * > * {
   position: relative;
+}
+.column_header .buttonsRight {
+  line-height: 1rem;
+  flex: none;
+  padding-top: .3rem;
+}
+.buttonsRight > * {
+  width:  2rem;
+  display: inline-block;
 }
 .subcolumn:first-child .column_header {
   background: linear-gradient(180deg, var(--highlight-color) 0%, var(--background-color) 90%, rgba(255,255,255,0) 100%);
@@ -681,19 +707,14 @@ pre, .pre {
 }
 .active .tr {
   font-size: 1.5em;
-  display: initial;
-  position: absolute;
-  top: 1rem;
-  right: 0.5rem;
+  display: inline-block;
   z-index: 6;
-  padding: 0 .5rem 0.25rem .5rem;
+  padding-bottom: .3rem;
   border-radius: 2rem;
+  top: 1.2rem;
 }
 .icon-rotate {
   transform: rotateZ(45deg);
-}
-.icon-rotate2x {
-  transform: rotateZ(135deg);
 }
 .icon-fl-right {
   float: right;
@@ -1251,6 +1272,10 @@ input[type="number"] {
     display: none;
   }
 
+  .column:not(.active):not(.slidout) .buttonsRight {
+    display: none;
+  }
+
   .sidebar {
     position: fixed;
     top: 0;
@@ -1464,9 +1489,6 @@ only screen and (max-height: 31.25rem) {
   body main .sidebar {
     flex: 0 0 0;
   }
-  .active .tr {
-    top: 1.5rem;
-  }
   #column-filler {
     background-color: var(--edit-color);
   }
@@ -1625,13 +1647,13 @@ only screen and (max-height: 31.25rem) {
   .column:not(:last-child):hover {
     z-index: 6 !important;
   }
-  #songbook_title[data-user-fav="true"] .star:hover:after,
-  #song song[data-user-fav="true"] stitle .star:hover:after {
+  #songbook_header .title[data-user-fav="true"] .star:hover:after,
+  #song song[data-user-fav="true"] .star:hover:after {
     content: '☆';
     color: black;
   }
-  #songbook_title .star:hover:after,
-  #song stitle .star:hover:after {
+  #songbook_header .title .star:hover:after,
+  #song .star:hover:after {
     content: '★';
     cursor: pointer;
     color: black;

@@ -154,8 +154,10 @@
           <div class="subcolumn">
             <div id="songbooks">
               <div id="songbooks_header" class="column_header">
-                <h3><a class="title_link" href="#songbooks">Songbooks</a></h3>
-                <input aria-label="Search" class="search deletable" type="text" data-target="#songbooks" data-trigger="change" placeholder="Search">
+                <div>
+                  <h3><a class="title_link" href="#songbooks">Songbooks</a></h3>
+                  <input aria-label="Search" class="search deletable" type="text" data-target="#songbooks" data-trigger="change" placeholder="Search">
+                </div>
               </div>
               <ul class="list"></ul>
             </div>
@@ -177,7 +179,9 @@
           <div class="subcolumn">
             <div id="songbook_content">
               <div id="songbook_header" class="column_header">
-                <h3><a data-songbook class="title_link" href="#" id="songbook_title">All Songs</a></h3>
+                <div class="title">
+                  <h3><a data-songbook class="title_link" href="#" id="songbook_title">All Songs</a></h3>
+                </div>
                 <input aria-label="Search" class="search deletable" type="text" data-target="#songbook_content" data-trigger="change" placeholder="Search">
                 <nav id="category_filter_container">
                   <button class="cat_filter_btn" onclick="$('#category_filter_container').toggleClass('open'); $('#songbook_header').toggleClass('mb23');">⑂</button>
@@ -188,7 +192,6 @@
                     </label>
                   </div>
                 </nav>
-
               </div>
               <ul class="list"></ul>
             </div>
@@ -705,10 +708,10 @@
           <div class="subcolumn sidebar" id="exportPreview">
             <div>
               <div>
-                <div class="column_header">
+                <div class="column_header title">
                   <h3>Preview
                     <button onclick="$(this).closest('#exportPreview').removeClass('sidebar-open');" class="icon-fl-right close-icon">&times;</button>
-                    <button onclick="toggleFullscreen(this)" class="icon-rotate2x icon-fl-right emoji" style="  border-radius: 2rem;">↔</button>
+                    <span style="float: right; margin-right: 2rem;" class="fsButton" onclick="toggleFullscreen(this)"></span>
                   </h3>
                 </div>
                 <iframe id="pdf"></iframe>
@@ -771,8 +774,6 @@
       })();
       setTimeout(function(){sheet.insertRule("* { transition: all 0.25s, color 0s, font-size 0s; }", 0); },300);
       dragDialog();
-
-      $('#song .row').append('<button onclick="toggleFullscreen(this)" class="icon-rotate2x tr emoji">&#8596;</button>');
 
       bindToSongEdit();
       bindSearch('cat', 'c:');
