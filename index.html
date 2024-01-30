@@ -1136,6 +1136,11 @@
         document.body.classList = bodyClassList.join(' ');
         bodyClassList = [];
         $('.column').removeAttr('style');
+        //set meta theme color
+        setTimeout(() => {
+          let color = window.getComputedStyle(document.elementFromPoint(10,10)).getPropertyValue('--highlight-color');
+          document.querySelector("meta[name=theme-color]").setAttribute("content", color);
+        }, "250");
       }
     </script>
   </body>  
