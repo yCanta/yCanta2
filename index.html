@@ -1133,14 +1133,40 @@
           }
         }
         updateAllLinks();
+        //set meta theme color
+        let newColorId = '';
+        if(bodyClassList[bodyClassList.length - 2] == undefined) {
+          if(bodyClassList[0] == 'songList') { newColorId = 'songbookList' }
+        }
+        else {
+          newColorId = bodyClassList[bodyClassList.length - 2];
+        }
+
+        let oldColorId = '';
+        if(document.body.classList[document.body.classList.length - 2] == undefined) {
+          if(document.body.classList[0] == 'songList') { oldColorId = 'songbookList' }
+        }
+        else {
+          oldColorId = document.body.classList[document.body.classList.length - 2];
+        }
+
+        let color = window.getComputedStyle(document.body).getPropertyValue('--highlight-color');
+        
+        if(newColorId != '') {
+          color = window.getComputedStyle(document.getElementById(newColorId)).getPropertyValue('--highlight-color');
+        }
+        if(newColorId == 'song' || (newColorId == 'songbookList' && oldColorId == 'songList') || (newColorId == '' && oldColorId == 'songList')) {
+            document.querySelector("meta[name=theme-color]").setAttribute("content", color);
+        }
+        else {
+          setTimeout(() => {
+            document.querySelector("meta[name=theme-color]").setAttribute("content", color);
+          }, "200");          
+        }
+        
         document.body.classList = bodyClassList.join(' ');
         bodyClassList = [];
         $('.column').removeAttr('style');
-        //set meta theme color
-        setTimeout(() => {
-          let color = window.getComputedStyle(document.elementFromPoint(10,10)).getPropertyValue('--highlight-color');
-          document.querySelector("meta[name=theme-color]").setAttribute("content", color);
-        }, "250");
       }
     </script>
   </body>  
