@@ -2247,3 +2247,15 @@ function remToPx(rem) {
     return rem * parseFloat(getComputedStyle(document.documentElement).fontSize);
 }
 
+function checkColor() {
+  let color = window.getComputedStyle(document.elementFromPoint(1,1)).getPropertyValue('--highlight-color');
+  document.querySelector("meta[name=theme-color]").setAttribute("content", color);
+}
+
+if(window.innerWidth < 640) {
+  setInterval(checkColor, 20);
+}
+else {
+  checkColor();
+}
+
