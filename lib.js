@@ -760,7 +760,7 @@ async function getAllUsers(){
   };
   try { 
     let url = remoteDb.getUsersDatabaseUrl().replace('_users','');
-    let admin_response = await fetch(url+"_node/nonode@nohost/_config", requestOptions);
+    let admin_response = await fetch(url+"_node/couchdb@127.0.0.1/_config", requestOptions);
     let admin = await admin_response.text();
     admin = JSON.parse(admin);
     let response = await fetch(url+"/_users/_all_docs?include_docs=true&startkey=\"org.couchdb.user:\"", requestOptions)

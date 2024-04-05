@@ -398,7 +398,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
         console.log(err);
       });
     }
-    else if(!keep_logged_in && dbName.endsWith('(remote)')){
+    else if(keep_logged_in && dbName.endsWith('(remote)')){
       localStorage.setItem('loggedin',JSON.stringify({dbName: dbName, username: username, pwd: pwd, roles: window.roles, url: remote_url}));
       //store username/pwd/url
       db.upsert('_local/u-'+username, function (doc) {
