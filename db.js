@@ -570,15 +570,11 @@ function dbLogout(){
     });
     remoteDb.close().then(function() {
       console.log('closed remote db');
+      remoteDb = false;
+      syncHandler = false;
     }).catch(function(error){
       console.log(error.message);
     });
-    syncHandler.cancel(); // <-- this cancels it
-  /*
-  syncHandler.on('complete', function (info) {
-    // replication was canceled!
-  });
-  */
   }
 }
 

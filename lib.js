@@ -797,7 +797,7 @@ function canEdit(doc){
 }
 
 async function loadAllUsers(){
-  //let html = `<h3>Ordered List <a href="#" onclick="loadRawDbObject('categories',$('#category_content'),'loadCategories();');" class="mirror admin">&#9998;</a></h3>`;
+  html = '';
   if(remoteDb){
     let users = await getAllUsers();
 
@@ -805,7 +805,7 @@ async function loadAllUsers(){
       alert(users.message);
       return;
     }
-    let html = '<h3>Users</h3><h4>Admins <button class="circle btn" onclick="addAdminUser();">+</button></h4><ul>'
+    html = '<h3>Users</h3><h4>Admins <button class="circle btn" onclick="addAdminUser();">+</button></h4><ul>'
     html += Object.keys(users.admins).map(admin => `<li><span style="width: 30%; display:inline-block;">${admin}</span>
                          ${'u-'+admin != user._id ? `<label title="All admins are editors"><input type="checkbox" checked disabled> Editor</label><button onclick="changeAdminPassword('${admin}')">🔐 Change</button>
                          <button onclick="deleteAdminUser('${admin}')">🗑 Delete<button>` : `<i style="color:gray;"><- You can't modify yourself</i>`}</li>`).join('');
@@ -819,11 +819,11 @@ async function loadAllUsers(){
                         <label><input type="checkbox" onclick="event.preventDefault(); toggleUserEditor('${user.doc.name}', true)"> Editor</label><button onclick="changeUserPassword('${user.doc.name}')">🔐 Change</button>
                         <button onclick="deleteUser('${user.doc.name}')">🗑 Delete<button></li>`).join('');
     html += '</ul>'
-    document.getElementById('all_users').innerHTML = html;
   }
   else {
     console.log('RemoteDB does not exist');
   }
+  document.getElementById('all_users').innerHTML = html;
 }
 function searchSBfor(text){
   $('#songbook_header .search').val('c:'+text)[0].dispatchEvent(new KeyboardEvent('keyup'));
@@ -878,6 +878,8 @@ function setLogoutState() {
   localStorage.removeItem('loggedin');
   $('#title a').html('yCanta');
   $('#dialog').hide();
+  document.getElementById('all_users').innerHTML = '';
+  document.getElementById('adminSettings').classList.add('closed');
 }
 
 function mapSongbookRowToValue(row) {
