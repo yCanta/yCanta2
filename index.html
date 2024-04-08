@@ -939,9 +939,7 @@
   //Login
           else if(piece[0] == 'login') {
             let loggedIn = JSON.parse(localStorage.getItem('loggedin'));
-            if(loggedIn instanceof Array) {  //needed for upgrade, remove in future
-              loggedIn = {"dbName":loggedIn[0],"username":loggedIn[1],"pin":loggedIn[2],"roles":{"_admin":true,"editor":true}}
-            }
+            let defaultLogin = localStorage.getItem('defaultdbName');
             try {
               dbLogin('login', loggedIn.dbName, loggedIn.username, loggedIn.pin, loggedIn.pwd, loggedIn.url);
               console.log("still logged in!");
@@ -962,7 +960,7 @@
             let databases = JSON.parse(localStorage.getItem('databases'));
             if(databases) {
               for(const db of databases) {
-                db_opts += `<option value="${db.name}" data-url="${db.url}">${db.name}</option>`
+                db_opts += `<option value="${db.name}" data-url="${db.url}"${(defaultLogin == db.name ? ' selected' : '')}>${db.name}</option>`
               }
             }
             //db_opts += '<option value="CanaanF(remote)" data-url="url-to-db.com">Canaan Fellowship(remote)</option>';
