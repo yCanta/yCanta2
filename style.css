@@ -142,7 +142,8 @@ button.circle {
   text-align: center;
   margin-left: 0.5rem;
   padding: 0;
-  vertical-align: middle;
+  vertical-align: top;
+  font-weight: bold;
 }
 .loading {
   opacity: 0;
@@ -274,7 +275,15 @@ legend {
 #all_users li {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 1rem;
+  border-bottom: 3px solid gray;
+  padding: .5rem;
+  gap: 1rem;
+}
+#all_users li:first-child {
+  border-top-left-radius: .7rem;
+}
+#all_users li:nth-child(odd) {
+  background: var(--background-color);
 }
 .left {
   text-align: left;
@@ -1457,6 +1466,9 @@ only screen and (max-height: 31.25rem) {
     margin-left: auto;
     overflow-y: overlay;
     padding-right: 1rem;
+  }
+  #all_users li {
+    gap: 2rem;
   }
 
   .header header {

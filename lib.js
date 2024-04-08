@@ -805,11 +805,11 @@ async function loadAllUsers(){
       alert(users.message);
       return;
     }
-    html = '<h3>Users</h3><h4>Admins <button class="circle btn" onclick="addAdminUser();">+</button></h4><ul>'
+    html = '<h3>Users</h3><h4>Admins <button class="circle" onclick="addAdminUser();">+</button></h4><ul>'
     html += Object.keys(users.admins).map(admin => `<li><span style="width: 30%; display:inline-block;">${admin}</span>
                          ${'u-'+admin != user._id ? `<label title="All admins are editors"><input type="checkbox" checked disabled> Editor</label><button onclick="changeAdminPassword('${admin}')">🔐 Change</button>
                          <button onclick="deleteAdminUser('${admin}')">🗑 Delete<button>` : `<i style="color:gray;"><- You can't modify yourself</i>`}</li>`).join('');
-    html += '</ul><h4>Users <button class="circle btn" onclick="addUser();">+</button></h4><ul>'
+    html += '</ul><h4>Users <button class="circle" onclick="addUser();">+</button></h4><ul>'
     html += users.users.filter(user => user.doc.roles.indexOf('editor') > -1)
                        .map(user => `<li><span style="width: 30%; display:inline-block;">${user.doc.name}</span>
                         <label><input type="checkbox" checked onclick="event.preventDefault(); toggleUserEditor('${user.doc.name}')"> Editor</label><button onclick="changeUserPassword('${user.doc.name}')">🔐 Change</button>
