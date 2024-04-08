@@ -285,6 +285,9 @@ legend {
 #all_users li:nth-child(odd) {
   background: var(--background-color);
 }
+#all_users li *:not(:first-child) {
+    text-align: center;
+}
 .left {
   text-align: left;
 }
