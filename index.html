@@ -979,10 +979,6 @@
           }
   //Song
           else if(piece[0].startsWith('s-')) {
-            if(piece[0] == 's-new-song'){
-              window.location.hash = '#' + formatSbID(window.songbook._id);
-              return
-            }
             document.body.classList.add('song');
             bodyClassList.push('song');
             Promise.all([loadSong(piece[0])])
