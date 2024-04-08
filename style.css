@@ -142,7 +142,6 @@ button.circle {
   text-align: center;
   margin-left: 0.5rem;
   padding: 0;
-  vertical-align: top;
   font-weight: bold;
 }
 .loading {

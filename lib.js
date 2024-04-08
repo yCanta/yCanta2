@@ -805,7 +805,7 @@ async function loadAllUsers(){
       alert(users.message);
       return;
     }
-    html = '<h3>Users</h3><h4>Admins <button class="circle" onclick="addAdminUser();">+</button></h4><ul>'
+    html = '<b>Admins <button class="circle" onclick="addAdminUser();">+</button></b><ul>'
     html += Object.keys(users.admins).map(admin => `<li><span style="width: 30%; display:inline-block;">${admin}</span>
                          ${'u-'+admin != user._id ? `<label title="All admins are editors"><input type="checkbox" checked disabled> Editor</label><button onclick="changeAdminPassword('${admin}')">🔐 Change</button>
                          <button onclick="deleteAdminUser('${admin}')">🗑 Delete<button>` : `<i style="color:gray;"><- You can't modify yourself</i>`}</li>`).join('');
