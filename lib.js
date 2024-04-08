@@ -1254,7 +1254,10 @@ function editSong() {
   });
   $('#song categories').addClass('contenteditable-disabled').prop('tabindex',"0")
     .on('click', function(){
-      $('#song-edit').toggleClass('sidebar-open').find('.search').focus();
+      $('#song-edit').toggleClass('sidebar-open')
+      setTimeout(() => {
+        document.getElementById('song-edit').querySelector('.search').focus();
+      }, 400);
     });
   let cclis_text = $('cclis').text().replace('CCLIS: ', '');
   $('#song cclis').wrap('<div style="margin-bottom: 1rem;"></div>')

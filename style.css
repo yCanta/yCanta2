@@ -1286,17 +1286,20 @@ input[type="number"] {
   }
 
   /*Focus edit*/
-  .songList #songList.edit .sidebar,
-  .song #song.edit .sidebar {
+  .songList #songList.edit .sidebar { /*songbook*/
     transform: translate3d(15.5rem, 0, 0);
     width: 17.5rem;
+  }
+  .song #song.edit .sidebar {/*song*/
+    transform: translate3d(13.5rem, 0, 0);
+    width: 13.5rem;
   }
   .songList #songList.edit .sidebar-open,
   .song #song.edit .sidebar-open {
     transform: translate3d(0, 0, 0);
   }
-  #export .subcolumn:first-child > div,
-  .edit .subcolumn:first-child > div {
+  #export .subcolumn:first-child > div,  
+  #songList.edit .subcolumn:first-child > div {
     padding: 0 3rem 0 1rem;
   }
 
