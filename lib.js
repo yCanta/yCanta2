@@ -725,7 +725,7 @@ async function updateUser(){
     }
   } else {html+='<li>None yet!</li>';}
   html += '</ul>';
-  html += `<h4>Permissions</h4><ul>${Object.keys(window.roles).join(', ').toUpperCase()}</ul>`;
+  html += `<h4>Permissions</h4><ul>${Object.keys(window.roles).filter(role => role.startsWith(window.dbName)).join(', ').replaceAll(window.dbName+"-","").toUpperCase()}</ul>`;
   document.getElementById('user_content').innerHTML = html;
 }
 async function loadCategories(){
@@ -744,7 +744,7 @@ async function loadCategories(){
   document.getElementById('category_content').innerHTML = html;
 }
 
-async function getAllUsers(){
+async function getAllUsers(purpose = false){
   let loggedIn = JSON.parse(localStorage.getItem('loggedin'));
   let username = loggedIn.username;
   let password = loggedIn.pwd;
@@ -766,7 +766,24 @@ async function getAllUsers(){
     let response = await fetch(url+"/_users/_all_docs?include_docs=true&startkey=\"org.couchdb.user:\"", requestOptions)
     let non_admin = await response.text();
     non_admin = JSON.parse(non_admin);
-    return {"admins": admin.admins, "users": non_admin.rows};// data;
+    let security = await fetch(url+window.dbName+"/_security", requestOptions);
+    security = await security.text();
+    security = JSON.parse(security)
+    
+    let users = non_admin.rows.filter(user => user.doc.roles.filter(role => security.members.roles.includes(role)).length > 0);
+    if(purpose == 'adminSignup') { //only when creating an admin do we care that there is no existing username
+      users = non_admin.rows;
+    }
+    function adminFilter(admin) {
+      const hasUser = non_admin.rows.find(user => user.doc.name === admin);
+      return hasUser?.doc.roles.includes(`${window.dbName}-admin`);
+    }
+    let admins = Object.keys(admin.admins).filter(adminFilter);  //need to filter this against the users table list for those that have the dbname in an admin role.
+    if(purpose) { //if there is any purpose other than display (default = false) then we want to check against all admins
+      admins = Object.keys(admin.admins);
+    }
+
+    return {"admins": admins, "users": users};
   }
   catch(error) {
     console.log(error.message);
@@ -780,7 +797,7 @@ function canEdit(doc){
     if(window.roles._admin){
       result = true;
     }
-    else if(window.roles.editor){
+    else if(window.roles[window.dbName+"-editor"]){
       result = true;
     }
     else if(doc.addedBy.trim() == window.user._id.trim()){
@@ -805,19 +822,20 @@ async function loadAllUsers(){
       alert(users.message);
       return;
     }
+    let editorName = window.dbName+"-editor";
     html = '<b>Admins <button class="circle" onclick="addAdminUser();">+</button></b><ul>'
-    html += Object.keys(users.admins).map(admin => `<li><span style="width: 30%; display:inline-block;">${admin}</span>
-                         ${'u-'+admin != user._id ? `<label title="All admins are editors"><input type="checkbox" checked disabled> Editor</label><button onclick="changeAdminPassword('${admin}')">🔐 Change</button>
+    html += users.admins.map(admin => `<li><span style="width: 30%; display:inline-block;">${admin}</span>
+                         ${'u-'+admin != user._id ? `<label title="All admins are editors"><input type="checkbox" checked disabled> Editor</label><button onclick="changeAdminPassword('${admin}')">↻ Password</button>
                          <button onclick="deleteAdminUser('${admin}')">🗑 Delete<button>` : `<i style="color:gray;"><- You can't modify yourself</i>`}</li>`).join('');
     html += '</ul><h4>Users <button class="circle" onclick="addUser();">+</button></h4><ul>'
-    html += users.users.filter(user => user.doc.roles.indexOf('editor') > -1)
+    html += users.users.filter(user => user.doc.roles.indexOf(editorName) > -1)
                        .map(user => `<li><span style="width: 30%; display:inline-block;">${user.doc.name}</span>
-                        <label><input type="checkbox" checked onclick="event.preventDefault(); toggleUserEditor('${user.doc.name}')"> Editor</label><button onclick="changeUserPassword('${user.doc.name}')">🔐 Change</button>
-                        <button onclick="deleteUser('${user.doc.name}')">🗑 Delete<button></li>`).join('');
-    html += users.users.filter(user => user.doc.roles.indexOf('editor') == -1)
+                        <label><input type="checkbox" checked onclick="event.preventDefault(); toggleUserEditor('${user.doc.name}')"> Editor</label><button onclick="changeUserPassword('${user.doc.name}')">↻ Password</button>
+                        <button onclick="deleteUser('${user.doc.name}')">🗑 Remove<button></li>`).join('');
+    html += users.users.filter(user => user.doc.roles.indexOf(editorName) == -1)
                        .map(user => `<li><span style="width: 30%; display:inline-block;">${user.doc.name}</span>
-                        <label><input type="checkbox" onclick="event.preventDefault(); toggleUserEditor('${user.doc.name}', true)"> Editor</label><button onclick="changeUserPassword('${user.doc.name}')">🔐 Change</button>
-                        <button onclick="deleteUser('${user.doc.name}')">🗑 Delete<button></li>`).join('');
+                        <label><input type="checkbox" onclick="event.preventDefault(); toggleUserEditor('${user.doc.name}', true)"> Editor</label><button onclick="changeUserPassword('${user.doc.name}')">↻ Password</button>
+                        <button onclick="deleteUser('${user.doc.name}')">🗑 Remove<button></li>`).join('');
     html += '</ul>'
   }
   else {
@@ -857,7 +875,7 @@ function setLoginState() {
   window.loggedin = true;
   updateUser();
   $('html').addClass('loggedin');
-  $('#title a').html(`yCanta: ${window.yCantaName.split('(')[0]}<sup style="font-size: .8rem; font-weight: normal; color: var(--songList-color);"> ${window.yCantaName.match(/\((.*?)\)/)[1].toUpperCase()}</sup>`);
+  $('#title a').html(`yCanta: ${capEachWord(window.yCantaName.split('(')[0], "_")}<sup style="font-size: .8rem; font-weight: normal; color: var(--songList-color);"> ${window.yCantaName.match(/\((.*?)\)/)[1].toUpperCase()}</sup>`);
   if(location.hash.indexOf('?')>-1){
     location.hash = location.hash.split('?').slice(1).join('?');
   }
@@ -2263,4 +2281,6 @@ if(window.innerWidth < 640) {
 else {
   checkColor();
 }
-
+function capEachWord(toCapitalize, dividingChar = " ") {
+  return toCapitalize.split(dividingChar).map(word => word[0].toUpperCase()+word.substr(1)).join(" ");
+}

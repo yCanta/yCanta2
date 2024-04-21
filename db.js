@@ -500,6 +500,8 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     loadRecentSongs();
     initializeSongbooksList();
     loadUsersObject(); //list of all users stored for reference;
+
+    window.dbName = db.name.replace(/\(.+?\)/,'');
     
     //check dark mode and set for app
     let darkMode = localStorage.getItem(window.user._id+'darkMode');
@@ -510,7 +512,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     }
     handleDarkMode();
     //set font size;
-    let fontSize = localStorage.getItem(window.user._id+'fontSize');
+    let fontSize = localStorage.getItem(window.user._id+'fontSize') || 16;
     if(fontSize){
       document.documentElement.style.fontSize = fontSize+'px';
       document.getElementById('fontSize').value = fontSize;
@@ -519,6 +521,8 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     let analytics = localStorage.getItem(window.user._id+'analytics');
     if(analytics == 'false'){
       document.getElementById('analytics').checked = false;
+    }else {
+      document.getElementById('analytics').checked = true;
     }
 
     //wipe login cause we were successfull!
@@ -707,21 +711,22 @@ function initializeSongbooksList(){
 
 async function addAdminUser(){
   if(remoteDb){
-    let users = await getAllUsers();
+    let users = await getAllUsers('adminSignup');
     if(users instanceof Error) {
-      alert('you are offline perhaps!');
+      alert('you are offline perhaps! error: '+users.message);
       return;
     }
 
     const username = prompt('What Admin username do you want to add?');
     if(!username){return}
 
-    if(Object.keys(users.admins).indexOf(username) > -1 || users.users.map(usr => usr.doc.name).indexOf(username) > -1){
-      alert(`${username} is already taken`);
+    if(users.admins.indexOf(username) > -1 || users.users.map(usr => usr.doc.name).indexOf(username) > -1){
+      alert(`${username} is already used by a user`);
       return;
     }
 
     const password = prompt('What password?');
+    if(!password){return}
     const passwordAgain = prompt('Please enter it again.');
     if(password != passwordAgain){
       alert('Passwords did not match, please try again');
@@ -733,8 +738,16 @@ async function addAdminUser(){
       if (err) {
         handleError(err);
       } else {
-        loadAllUsers();
-        notyf.info(`added ${username}`,'green');
+        //also need to sign up an admin user...
+        remoteDb.signUp(username, password, { roles: [window.dbName+"-admin"] }, function (err, response) {
+          if (err) {
+            handleError(err);
+          }
+          else {
+            loadAllUsers();
+            notyf.info(`added Admin: ${username}`,'green');
+          }
+        });
       }
     });
   }
@@ -763,7 +776,7 @@ function changeAdminPassword(username){
           handleError(err);
         } else {
           loadAllUsers();
-          notyf.info(`Password changed for ${username}`,'red');
+          notyf.info(`Password changed for Admin: ${username}`,'olive');
         }  
       });
     }
@@ -782,8 +795,14 @@ function deleteAdminUser(username){
       if (err) {
         handleError(err);
       } else {
-        loadAllUsers();
-        notyf.info(`deleted ${username}`,'red');
+        remoteDb.deleteUser(username, function (err, response) {
+          if (err) {
+            handleError(err);
+          } else {
+            loadAllUsers();
+            notyf.info(`Admin: ${username} deleted`,'red');
+          }
+        });
       }
     });  
   }
@@ -793,20 +812,21 @@ function deleteAdminUser(username){
 }
 
 async function addUser(){
-  let users = await getAllUsers();
+  let users = await getAllUsers('userSignup');
   if(users instanceof Error) {
-    alert('you are offline perhaps!');
+    alert('you are offline perhaps! error: '+users.message);
     return;
   }
   const username = prompt('What username do you want to add?');
   if(!username){return}
 
-  if(Object.keys(users.admins).indexOf(username) > -1 || users.users.map(usr => usr.doc.name).indexOf(username) > -1){
-    alert(`${username} is already taken`);
+  if(users.admins.indexOf(username) > -1 || users.users.map(usr => usr.doc.name).indexOf(username) > -1){
+    alert(`${username} is already a user in your database`);
     return;
   }
 
   const password = prompt('What password?');
+  if(!password){return}
   const passwordAgain = prompt('Please enter it again.');
   if(password != passwordAgain){
     alert('Passwords did not match, please try again');
@@ -814,9 +834,32 @@ async function addUser(){
   }
   if(!password) {return}
 
-  remoteDb.signUp(username, password, {}, function (err, response) {
+  let viewerName = window.dbName+"-viewer"
+  remoteDb.signUp(username, password, { roles: [viewerName] }, function (err, response) {
     if (err) {
-      handleError(err);
+      if(err.name ==='conflict') { //let's add the viewer tag for this database
+        //User already exists but doesn't have access to this database - let's give it to them
+        alert('This user already exists but did not have access to this database.  They have been added. Their password was not changed.');
+        remoteDb.getUser(username).then(function(userJS){
+          let roles = {roles: userJS.roles.concat([viewerName])}
+
+          remoteDb.putUser(username, roles, function (err, response) {
+            if (err) {
+              handleError(err);
+            } else {
+              loadAllUsers();
+              notyf.info(`added ${username}`,'green');
+            }
+          });
+
+        }).catch(function (err) {
+          console.log(err);
+          handleError(err);
+        });
+      }
+      else {
+        handleError(err);
+      }
     } else {
       loadAllUsers();
       notyf.info(`added ${username}`,'green');
@@ -824,15 +867,22 @@ async function addUser(){
   });
 }
 function toggleUserEditor(username, editor){
-  remoteDb.putUser(username, {
-   roles: [(editor ? 'editor' : '')]
-  }, function (err, response) {
-    if (err) {
-      handleError(err);
-    } else {
-      loadAllUsers();
-      notyf.info(`updated ${username}`,'green');
-    }
+  remoteDb.getUser(username).then(function(userJS){
+    let editorName = window.dbName+"-editor"
+    let roles = {roles: (editor ? userJS.roles.concat([editorName]) : userJS.roles.filter(function(e) { return e !== editorName }))}
+
+    remoteDb.putUser(username, roles, function (err, response) {
+      if (err) {
+        handleError(err);
+      } else {
+        loadAllUsers();
+        notyf.info(`updated ${username}`,'green');
+      }
+    });
+
+  }).catch(function (err) {
+    console.log(err);
+    handleError(err);
   });
 }
 function changeUserPassword(username){
@@ -848,20 +898,31 @@ function changeUserPassword(username){
     if (err) {
       handleError(err);
     } else {
-      notyf.info(`Password changed for ${username}`,'red');
+      notyf.info(`Password changed for ${username}`,'olive');
     }
   });
 }
 function deleteUser(username){
-  const response = confirm(`Are you sure you want to delete ${username}?`);
+  const response = confirm(`Are you sure you want to remove ${username}?`);
   if(!response){return}
-  remoteDb.deleteUser(username, function (err, response) {
-    if (err) {
-      handleError(err);
-    } else {
-      loadAllUsers();
-      notyf.info(`User: ${username} deleted`,'red');
-    }
+  remoteDb.getUser(username).then(function(userJS){
+    
+    //remove all roles that have to do with this database.
+    console.log(userJS.roles);
+    let roles = {roles: userJS.roles.filter(function(e) { return !e.includes(window.dbName)})}
+
+    remoteDb.putUser(username, roles, function (err, response) {
+      if (err) {
+        handleError(err);
+      } else {
+        loadAllUsers();
+        notyf.info(`removed ${username}`,'red');
+      }
+    });
+
+  }).catch(function (err) {
+    console.log(err);
+    handleError(err);
   });
 }
 function handleError(err){

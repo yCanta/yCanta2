@@ -128,7 +128,7 @@
               </div>
             </fieldset>
             <fieldset id="adminSettings" class="admin closed align-right">
-              <legend onclick="this.parentElement.classList.toggle('closed'); loadAllUsers();">Admin</legend>
+              <legend onclick="this.parentElement.classList.toggle('closed'); if(!this.parentElement.classList.contains('closed')) {loadAllUsers()}">Admin</legend>
               <div class="content">
                 <div id="all_users"></div>
               </div>
@@ -960,12 +960,14 @@
             let databases = JSON.parse(localStorage.getItem('databases'));
             if(databases) {
               for(const db of databases) {
-                db_opts += `<option value="${db.name}" data-url="${db.url}"${(defaultLogin == db.name ? ' selected' : '')}>${db.name}</option>`
+                if(db.name != 'being_church(remote)' && db.name != 'canaan(remote)'){
+                  db_opts += `<option value="${db.name}" data-url="${db.url}"${(defaultLogin == db.name ? ' selected' : '')}>${(db.url ? capEachWord(db.name, "_") : db.name)}</option>`
+                }
               }
             }
-            //db_opts += '<option value="CanaanF(remote)" data-url="url-to-db.com">Canaan Fellowship(remote)</option>';
-            db_opts += '<option value="connect_remote">Connect Remote</option>';
+            db_opts += `<option value="canaan(remote)" data-url="http://ycanta.canaanf.org/couch/canaan"${(defaultLogin == "canaan(remote)" ? ' selected' : '')}>Canaan Fellowship</option><option value="being_church(remote)" data-url="http://ycanta.canaanf.org/couch/being_church"${(defaultLogin == "being_church(remote)" ? ' selected' : '')}>Being Church</option>`
             db_opts += '<option value="create_local">Create Local</option>';
+            db_opts += '<option value="connect_remote">Connect Remote</option>';
             setTimeout(function(){$('#db_select').html(db_opts).trigger('change');},0);
             window.document.title = "yCanta2 - Login";
             return; //otherwise we load the song and other pieces weirdly
