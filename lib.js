@@ -775,8 +775,7 @@ async function getAllUsers(purpose = false){
       users = non_admin.rows;
     }
     function adminFilter(admin) {
-      const hasUser = non_admin.rows.find(user => user.doc.name === admin);
-      return hasUser?.doc.roles.includes(`${window.dbName}-admin`);
+      return non_admin.rows.some(user => user.doc.name === admin && user.doc.roles.includes(window.dbName + "-admin"));
     }
     let admins = Object.keys(admin.admins).filter(adminFilter);  //need to filter this against the users table list for those that have the dbname in an admin role.
     if(purpose) { //if there is any purpose other than display (default = false) then we want to check against all admins
