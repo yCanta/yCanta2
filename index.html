@@ -965,7 +965,7 @@
                 }
               }
             }
-            db_opts += `<option value="canaan(remote)" data-url="http://ycanta.canaanf.org/couch/canaan"${(defaultLogin == "canaan(remote)" ? ' selected' : '')}>Canaan Fellowship</option><option value="being_church(remote)" data-url="http://ycanta.canaanf.org/couch/being_church"${(defaultLogin == "being_church(remote)" ? ' selected' : '')}>Being Church</option>`
+            db_opts += `<option value="canaan(remote)" data-url="https://ycanta.canaanf.org/couch/canaan"${(defaultLogin == "canaan(remote)" ? ' selected' : '')}>Canaan Fellowship</option><option value="being_church(remote)" data-url="https://ycanta.canaanf.org/couch/being_church"${(defaultLogin == "being_church(remote)" ? ' selected' : '')}>Being Church</option>`
             db_opts += '<option value="create_local">Create Local</option>';
             db_opts += '<option value="connect_remote">Connect Remote</option>';
             setTimeout(function(){$('#db_select').html(db_opts).trigger('change');},0);
