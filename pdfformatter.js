@@ -1204,7 +1204,7 @@ function calc_heights(songbook, cfg, doc) {
     }
 
     // wrap small_text
-    small_text = small_text.join(' '*8);
+    small_text = small_text.join(' '.repeat(8));
     song.small_text = word_wrap(small_text, cfg.page_layout.get_page_width(), cfg.FONT_FACE, cfg.SMALL_SIZE, 0, doc);
     // add height of wrapped small_text
     song.height += (cfg.SMALL_SIZE + cfg.SMALL_SPACE)*song.small_text.length;
