@@ -779,7 +779,6 @@ function word_wrap(text, width, font, size, hanging_indent=0, doc) {
 function print_chords(doc, cfg=null, font_size=null, y_offset=null, x_offset=null, page_mapping=null, line=null) {
   //assert null not in (doc, cfg, font_size, y_offset, x_offset, page_mapping, line)
 
-  y_offset += cfg.SONGCHORD_SIZE;
   doc.font(cfg.FONT_FACE).fontSize(cfg.SONGCHORD_SIZE);
 
   // loop through chords
@@ -788,6 +787,7 @@ function print_chords(doc, cfg=null, font_size=null, y_offset=null, x_offset=nul
     let chord_offset = myStringWidth(line.text.slice(0, char_offset), cfg.FONT_FACE, font_size, doc);
     doc.text(line.chords[char_offset], page_mapping.startx + x_offset + chord_offset, page_mapping.starty + y_offset, { lineBreak: false });
   }
+  y_offset += cfg.SONGCHORD_SIZE;
 
   return y_offset + cfg.SONGCHORD_SPACE;
 }
@@ -795,8 +795,6 @@ function print_chords(doc, cfg=null, font_size=null, y_offset=null, x_offset=nul
 
 function print_line(doc, font_face=null, font_size=null, y_offset=null, x_offset=0, line_space=null, page_mapping=null, line=null) { 
   //assert null not in (pdf, font_face, font_size, y_offset, line_space, page_mapping, line)
-
-  y_offset += font_size;
 
 //DBG  // rect around text
 //DBG  pdf.setStrokeColor('blue')
@@ -817,6 +815,8 @@ function print_line(doc, font_face=null, font_size=null, y_offset=null, x_offset
 
   doc.font(font_face).fontSize(font_size);
   doc.text(line, page_mapping.startx+x_offset, page_mapping.starty + y_offset, { lineBreak: false });
+
+  y_offset += font_size;
   console.log(y_offset, line, line_space)
   return y_offset + line_space;
 }

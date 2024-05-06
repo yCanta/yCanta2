@@ -420,7 +420,7 @@
                         <td></td>
                       </tr>
                       <tr>
-                        <td colspan=2 rel="tooltip" title="Spacing before Chorus/Verse/Bridge/etc">Block Spacing</td>
+                        <td colspan=2 rel="tooltip" title="Spacing after Chorus/Verse/Bridge/etc">Block Spacing</td>
                         <td><input type="number" id="songchunk_b4" name="songchunk_b4" value="12"></td>
                         <td></td>
                       </tr>
@@ -1070,7 +1070,9 @@
                               }
                             }
                           }
-                          procesed_song.push(song);        
+                          if(song.doc.content.length > 0) {
+                            procesed_song.push(song);        
+                          }
                         }
                         window.exportObject.songs = procesed_song;
                         prepExport();
