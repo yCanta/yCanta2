@@ -1094,7 +1094,7 @@ function loadSong(song_id) {
       }
 
       let editable = canEdit(song);
-      let float_menu = `${(editable ? '<button data-songbook onclick="deleteSong(window.song._id)" class="float-menu-item"><span class="float-menu-icon">&#128465;</span> Delete</button>' : '')}
+      let float_menu = `${(editable ? '<button data-songbook onclick="deleteSong(window.song._id)" class="float-menu-item deleteSong"><span class="float-menu-icon">&#128465;</span> Delete</button>' : '')}
       <a data-song-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</a>
       ${(editable ? '<a data-song-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>' : '')}
       <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>`;
@@ -1196,7 +1196,10 @@ function loadSong(song_id) {
 }
 async function deleteSong(song_id) {
   let sbs = await songInSongbooks(song_id);
-  if (confirm("Are you sure you want to delete song:\n -" + window.song.title + "?\n\nIt is in the following songbooks:\n -" + sbs.map(sb => sb.doc.title).join('\n -') )) {
+  if(sbs.length) {
+    alert(`"${window.song.title}" cannot be deleted it is in the following songbooks:\n - ${sbs.map(sb => sb.doc.title).join('\n -')}`);
+  }
+  else if (confirm(`Are you sure you want to delete song:\n - ${window.song.title}?`)) {
     db.get(window.song._id).then(function (doc) {
       return db.remove(doc);
     }).then(function(){

@@ -1652,8 +1652,11 @@ only screen and (max-height: 31.25rem) {
   .float-menu-icon {
     display: none;
   }
-  .float-menu-item:not(:first-child):after {
+  .float-menu-item:not(:nth-last-child(2)):before {
     content: ' //';
+  }
+  .float-menu-item.deleteSong:not([href="#sb-allSongs"]) {
+    display: none;
   }
   .closed .closing {
     max-width: initial;
