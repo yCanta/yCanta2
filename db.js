@@ -981,6 +981,7 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
   //Put together Search field.
       let punctuation = /[^a-zA-Z0-9\s:-]/g;
       let duplicateWhitespace = /\s{2,}/g;
+      let returnCharacters = /[\n\r]/g;
 
       function formatArray(array, letter){
         return (array != '' ? array.join(' '+letter+':') : '!'+letter).replace(duplicateWhitespace, ' ');
@@ -1001,6 +1002,7 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
               remove_chords(content[i][1][j])
               .replace(duplicateWhitespace,' ')
               .replace(punctuation,'')
+              .replace(returnCharacters, ' ')
               .trim() + '\n'
             );
             if(song_content.search(new_line) === -1) {
