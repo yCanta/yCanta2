@@ -976,7 +976,7 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
         chunks.push([{'type': $(this).attr('type').toLowerCase()}, lines]);
       });
       song.content      = chunks;
-      song.copyright    = song_html.find('copyright').text();
+      song.copyright    = song_html.find('copyright').text().replace(/\([cC]\)/,'©');
 
   //Put together Search field.
       let punctuation = /[^a-zA-Z0-9\s:-]/g;
