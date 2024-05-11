@@ -720,8 +720,13 @@ async function updateUser(){
     } catch (err) {
       console.log(err);
     }
-    for(fav_song of result.rows.sort((a, b) => a.doc.title.localeCompare(b.doc.title))){
-      html += `<li><a class="link" href="#sb-favoriteSongs&${fav_song.doc._id}">${fav_song.doc.title}</a></li>`;
+    for(fav_song of result.rows.sort((a, b) => (a.doc && b.doc ? a.doc.title.localeCompare(b.doc.title) : true))){
+      if(fav_song.doc) {
+        html += `<li><a class="link" href="#sb-favoriteSongs&${fav_song.doc._id}">${fav_song.doc.title}</a></li>`;
+      }
+      else {
+        html += `<li><a class="link" href="#sb-favoriteSongs&${fav_song.id}">[deleted song]</a></li>`;
+      }
     }
   } else {html+='<li>None yet!</li>';}
   html += '</ul>';
