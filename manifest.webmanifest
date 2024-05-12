@@ -14,7 +14,8 @@
     }
   ],
   "theme_color": "lightblue",
-  "start_url": "/yCanta2/index.html",
+  "id": "yCanta2",
+  "start_url": "/#sb-allSongs",
   "background_color": "#d3d3d3",
   "display": "standalone"
 }
