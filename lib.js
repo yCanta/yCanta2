@@ -880,12 +880,6 @@ function setLoginState() {
   updateUser();
   $('html').addClass('loggedin');
   $('#title a').html(`yCanta: ${capEachWord(window.yCantaName.split('(')[0], "_")}<sup style="font-size: .8rem; font-weight: normal; color: var(--songList-color);"> ${window.yCantaName.match(/\((.*?)\)/)[1].toUpperCase()}</sup>`);
-  if(location.hash.indexOf('?')>-1){
-    location.hash = location.hash.split('?').slice(1).join('?');
-  }
-  else {
-    location.hash = '#';
-  }
   setTimeout(function(){
     document.body.classList.remove('loading');
   }, 300)

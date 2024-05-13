@@ -374,7 +374,6 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     //initialized
     window.songbook = {};
     window.song = {};
-    dbChanges();
     window.user = { //temp user document
       _id: 'u-'+username,
       name: username,
@@ -424,17 +423,31 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
         dbLogout();
       });
       let localInfo = await db.info();
+      setLoginState();
+      location.hash = "#"
+
       console.log('doing a onetime sync...');
+      let startTime = new Date();
       firstSync = await db.sync(remoteDb).on('change', function (change) {
         let percentage = parseInt(parseInt(change.change.last_seq.split('-')[0].replace('-',''))/parseInt(info.update_seq.replace('-',''))*100);
         console.log('Synced some stuff', percentage+'%');
-        document.documentElement.style.setProperty('--status-text',`"loading . . . ${percentage}%"`);
+        document.documentElement.classList.add('barLoading');
+        if(new Date() - startTime > 4000 ) {
+          document.documentElement.classList.add('circleLoading');
+        }
+        if((new Date() - startTime) > 10000) {
+          document.documentElement.classList.remove('circleLoading');
+          startTime = false;
+        }
+        document.documentElement.style.setProperty('--status-text',`"Downloading song files to your device . . . ${percentage}%${(startTime ? ' \\a If this happens every time you log in, try clicking \\"remember me\\" :)' : '')}"`);
         document.documentElement.style.setProperty('--animation',`3s loading infinite`);
       }).catch(function (error) {
         alert(error.message);
         console.log(error);
         dbLogout();
       });
+      document.documentElement.classList.remove('circleLoading');
+      document.documentElement.classList.remove('barLoading');
       document.documentElement.style.setProperty('--status-text',`""`);
       document.documentElement.style.setProperty('--animation',`"unset"`);
       console.log('sync complete');
@@ -499,6 +512,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     };
 
     setLoginState();
+    dbChanges();
     //layout the welcome?  maybe this goes in set login state?
     //Update ui when db changes]s
     loadRecentSongs();

@@ -172,16 +172,42 @@ body {
 html::after {
   border-bottom: 5px solid green;
   z-index: 10;
-  width: 100vw;
   content: '';
   display: block;
   position: fixed;
-  bottom: 0;
   content: var(--status-text);
   background: var(--song-color);
   text-align: center;
   animation: var(--animation);
-
+  line-height: auto;
+  border-radius: 0;
+  top: calc(100vh - 5px);
+  bottom: 0;
+  left: 0;
+  right: 0;
+  transition: all .2s;
+}
+html.barLoading::after { 
+  line-height: 3rem;
+  top: calc(100vh - 3rem);
+  border-radius: 0%;
+  border-top-left-radius: 2rem;
+  border-top-right-radius: 2rem;
+}
+html.circleLoading::after {
+  --circle-size: min(90vw, 90vh, 30rem);
+  line-height: unset;
+  padding-top: calc(var(--circle-size)/2 - 2vh);
+  padding-left: 2rem;
+  padding-right: 2rem;
+  top: calc((100vh - var(--circle-size)) / 2);
+  bottom: calc((100vh - var(--circle-size)) / 2);
+  width: var(--circle-size);
+  margin-left: auto;
+  margin-right: auto;
+  border-radius: 100%;
+  white-space: pre-wrap;
+  box-sizing: border-box;
 }
 @keyframes loading { 
   from { 
