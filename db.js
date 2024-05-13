@@ -294,8 +294,10 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       addDBtoLocalStorage(dbName, 'remote', remote_url);
 
       if(!keep_logged_in){
+        console.log('going with memory!')
         db = new PouchDB(dbName, {adapter: 'memory'});
       } else {
+        console.log('going with on disk!')
         db = new PouchDB(dbName);
       }
       takeNextStep(username,dbName);
@@ -315,8 +317,10 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     console.log('Logging in to remote db');
     
     if(!keep_logged_in){
+      console.log('going with memory!')
       db = new PouchDB(dbName, {adapter: 'memory'});
     } else {
+      console.log('going with on disk!')
       db = new PouchDB(dbName);
     }
     try { //change to check first if online, if so try logging in there first then log in to local once success, otherwise log in like we have here with locally saved pwd.
