@@ -45,6 +45,7 @@ c {
   display: inline-block;
   width: 0;
   font-weight: 500;
+  white-space: nowrap;
 }
 .nochords c {
   display: none;
