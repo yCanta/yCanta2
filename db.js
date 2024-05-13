@@ -196,7 +196,7 @@ async function dbExists(dbName) {
 }
 
 async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false, remote_url=false) {
-  let keep_logged_in = document.getElementById('keep_logged_in').checked;
+  let keep_logged_in = document.getElementById('keep_logged_in').checked + (remote_url != false);
   if(!dbName){
     dbName = $('#db_select :selected').val();
   }
