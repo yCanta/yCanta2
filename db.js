@@ -418,7 +418,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
         document.documentElement.style.setProperty('--status-text',`"Downloading song files to your device . . . ${percentage}%${(startTime ? ' \\a If this happens every time you log in, try clicking \\"remember me\\" :)' : '')}"`);
         document.documentElement.style.setProperty('--animation',`3s loading infinite`);
       }).catch(function (error) {
-        alert(error.message || 'error in one time sync');
+        //alert(error.message || 'error in one time sync');
         console.log(error);
       });
       document.documentElement.classList.remove('circleLoading');
