@@ -246,14 +246,11 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       _id: 'categories',
       categories: ["Adoration", "Aspiration/Desire", "Assurance", "Atonement", "Awe", "Bereavement", "Brokenness", "Calvary", "Christ as Bridegroom", "Christ as King", "Christ as Lamb", "Christ as Redeemer", "Christ as Savior", "Christ as Shepherd", "Christ as Son", "Christ's Blood", "Christ's Return", "Church as Christ's Body", "Church as Christ's Bride", "Church as God's House", "Cleansing", "Comfort", "Commitment", "Compassion", "Condemnation", "Consecration", "Conviction of Sin", "Courage", "Creation", "Cross", "Dedication/Devotion", "Dependence on God", "Encouragement", "Endurance", "Eternal Life", "Evangelism", "Faith", "Faithfulness", "Fear", "Fear of God", "Fellowship", "Forgiveness", "Freedom", "God as Creator", "God as Father", "God as Refuge", "God's Creation", "God's Faithfulness", "God's Glory", "God's Goodness", "God's Guidance", "God's Harvest", "God's Holiness", "God's Love", "God's Mercy", "God's Power", "God's Presence", "God's Strength", "God's Sufficiency", "God's Timelessness", "God's Victory", "God's Wisdom", "God's Word", "Godly Family", "Grace", "Gratefulness", "Healing", "Heaven", "Holiness", "Holy Spirit", "Hope", "Humility", "Hunger/Thirst for God", "Incarnation", "Invitation", "Jesus as Messiah", "Joy", "Kingdom of God", "Knowing Jesus", "Lordship of Christ", "Love for God", "Love for Jesus", "Love for Others", "Majesty", "Meditation", "Mercy", "Missions", "Mortality", "Neediness", "New Birth", "Obedience", "Oneness in Christ", "Overcoming Sin", "Patience", "Peace", "Persecution", "Praise", "Prayer", "Proclamation", "Provision", "Purity", "Purpose", "Quietness", "Redemption", "Refreshing", "Repentance", "Rest", "Resurrection", "Revival", "Righteousness", "Salvation", "Sanctification", "Security", "Seeking God", "Service", "Servanthood", "Sorrow", "Spiritual Warfare", "Submission to God", "Suffering for Christ", "Surrender", "Temptation", "Trials", "Trust", "Victorious Living", "Waiting on God", "Worship", "-----", "Christmas", "Easter", "Good Friday", "Thanksgiving", "-----", "Baptism", "Birth", "Closing Worship", "Communion", "Death", "Engagement", "Opening Worship", "Wedding", "-----", "Children's Songs", "Rounds", "Scripture Reading", "Scripture Songs", "-----", "Needs Work", "Needs Chord Work", "Needs Categorical Work", "Duplicate", "-----", "Norway", "Secular", "Delete", "Spanish words", "Celebration"]
     }
-    db.put(categories, function callback(err, result) {
-      if(!err) {
+    db.put(categories).then(result => {
         console.log('added categories');
-      }
-      else {
+      }).catch(function(err) {
         console.log(err);
-      }
-    });
+      });
     console.log(username,dbName);
     takeNextStep(username,dbName);
   }
@@ -334,45 +331,42 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       console.log('going with on disk!')
       db = new PouchDB(dbName);
     }
-    try { //change to check first if online, if so try logging in there first then log in to local once success, otherwise log in like we have here with locally saved pwd.
-      remote_url = parseUrl(remote_url, username, pwd);
-      remoteDb = new PouchDB(remote_url, {skip_setup: true});
-      var ajaxOpts = {
-        ajax: {
-          headers: {
-            Authorization: 'Basic ' + window.btoa(username+':'+pwd)
-          }
-        }
-      };
-      remoteDb.logIn(username, pwd, ajaxOpts).then(async function (batman) {
+    try {
+      if(navigator.onLine) {
+        remote_url = parseUrl(remote_url, username, pwd);
+        remoteDb = new PouchDB(remote_url, {skip_setup: true});
+        const ajaxOpts = {
+          ajax: {
+            headers: {
+              Authorization: getBasicAuthHeader(username, pwd),
+            },
+          },
+        };
+        const batman = await remoteDb.logIn(username, pwd, ajaxOpts);
         console.log("I'm Batman.", batman);
         window.roles = batman.roles.reduce((a, v) => ({ ...a, [v]: true}), {}) 
         takeNextStep(username,dbName);
-        
-      }).catch(async function(error){
-        if(error.name == 'unauthorized' || error.name == 'forbidden'){
-          alert('Username or Password are incorrect');
+      }
+      else {
+        console.log('attempting offline login');
+        let localUser = await db.get('_local/u-'+username);
+        if(localUser.pwd == pwd) {
+          console.log('offline login successful');
+          window.roles = JSON.parse(localStorage.getItem('loggedin')).roles;
+          takeNextStep(username, dbName);
         }
-        else {
-          console.log('Log in error:', error);
-          console.log('attempting offline login');
-          let localUser = await db.get('_local/u-'+username);
-          if(localUser.pwd == pwd) {
-            console.log('offline login successful');
-            window.roles = JSON.parse(localStorage.getItem('loggedin')).roles;
-            takeNextStep(username, dbName);
-          }
-          else {
-            dbLogout();
-            alert('you are offline and pwd or username are incorrect');
-          }
-        }
-      });
-    } 
-    catch(err) {
-      console.log(err);
-      alert('username or pwd was not correct');
-      dbLogout();
+      }
+    } catch (error) {
+      if(error.name == 'unauthorized' || error.name == 'forbidden'){
+        console.log(error)
+        alert('Username or Password are incorrect');
+        dbLogout();
+      }
+      else {
+        console.log('Log in error:', error);
+        dbLogout();
+        alert('you are offline and pwd or username are incorrect');
+      }
     }
   }
   else {
@@ -453,9 +447,8 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
         document.documentElement.style.setProperty('--status-text',`"Downloading song files to your device . . . ${percentage}%${(startTime ? ' \\a If this happens every time you log in, try clicking \\"remember me\\" :)' : '')}"`);
         document.documentElement.style.setProperty('--animation',`3s loading infinite`);
       }).catch(function (error) {
-        alert(error.message);
+        alert(error.message || 'error in one time sync');
         console.log(error);
-        dbLogout();
       });
       document.documentElement.classList.remove('circleLoading');
       document.documentElement.classList.remove('barLoading');
@@ -491,8 +484,15 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       }).on('complete', function (err) {
         console.log('complete');
       }).catch(function (err) {
-        console.log(err);
-        // totally unhandled error (shouldn't happen)
+        if(err.name == 'unauthorized' || err.name == 'forbidden'){
+          console.log(err)
+          alert('Username or Password are incorrect');
+          dbLogout();
+        }
+        else {
+          console.log(err)
+          // totally unhandled error (shouldn't happen)
+        }
       });
     }
     
