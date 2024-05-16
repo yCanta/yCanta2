@@ -40,8 +40,7 @@
           <h2>Login:</h2>
           <select id="db_select">
             <option value="new">Create local</option>
-          </select><button class="btn btn-small" onclick="if(confirm('Are you sure you want to delete: '+$('#db_select').val()+'?')){new PouchDB($('#db_select').val()).destroy().then(function () {  console.log('database deleted'); removeDbfromLocalStorage($('#db_select').val()); setTimeout(function(){location.reload();},1000); }).catch(function (err) { alert('Could not delete database', err)});}" title="delete this database">🗑</button>
-          <button class="btn" onclick="if(confirm('Are you sure you want to delete all data?')){clearAllData();};">Clear all data</button>
+          </select><button tabindex="-1" class="btn btn-small" style="display: none" id="deleteDb" onclick="if(confirm('Are you sure you want to delete: '+$('#db_select').val()+'?')){destroyDb($('#db_select').val())}" title="delete this database">🗑</button>
           <input id="newDbUrl" class="d_none" placeholder="DB Url" type="text"></input>
           <input id="newDbName" class="d_none create_local" placeholder="DB Name" type="text"></input>
           <input id="remote_url" class="d_none connect_remote" placeholder="Remote URL" type="url"></input>
@@ -54,7 +53,8 @@
             <input id="pin2" class="d_none create_local" placeholder="Renter Pin" type="password"></input>
             <span class="d_none">⚠️ Offline - enter pin</span><br>
           </div>
-          <div style="text-align: right;">
+          <div style="text-align: right; margin-top: 2rem">
+            <button tabindex="-1" class="btn" style="float: left; color: red;" onclick="if(confirm('Are you sure you want to delete all data?')){clearAllData();};">🗑 Clear all local data</button>
             <button class="btn d_none login_local login_remote" onclick="if(checkLogin()){dbLogin('login');}">Login</button>
             <button class="btn d_none create_local" onclick="checkCreateNew();">Create Local</button>
             <button class="btn d_none connect_remote" onclick="dbLogin('connect_remote');">Connect Remote</button>

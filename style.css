@@ -249,6 +249,9 @@ chunk[type="comment"] a {
   height: 100%;
   overflow:auto;
 }
+.login_local #deleteDb {
+  display: inline-block !important;
+}
 fieldset {
   max-width: 100%;
   width: max-content;
@@ -876,7 +879,7 @@ span.deleteicon input {
   margin: 0 1rem 1rem 1rem;
 }
 #login button {
-  margin: 1rem;
+  margin: 1rem 0;
 }
 #login.create_local .create_local, /*Create Local*/
 #login.login_local .login_local, /*Login Local*/

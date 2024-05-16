@@ -26,7 +26,7 @@ window.addEventListener('load', function() {
 updateOnlineStatus();
 
 function clearAllData() { 
-  try { //This doesn't work on FF or safari - they don't have .databases() implemented.
+  try {
     window.indexedDB.databases().then((r) => {
         for (var i = 0; i < r.length; i++) window.indexedDB.deleteDatabase(r[i].name);
     }).then(() => {
@@ -193,6 +193,17 @@ async function dbExists(dbName) {
       resolve(false);
     });
   })
+}
+
+async function destroyDb(dbName){
+  new PouchDB(dbName).destroy().then(function() {
+    console.log('Database deleted:', dbName);
+    removeDbfromLocalStorage(dbName);
+    location.reload(); // Reload immediately after successful deletion
+  }).catch(function(err) {
+    console.error('Error deleting database:', err); // Log the error for debugging
+    alert(`Could not delete database: ${err.message}`); // Provide a more specific error message
+  });
 }
 
 async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false, remote_url=false) {
@@ -727,233 +738,228 @@ function initializeSongbooksList(){
   });
 }
 
-async function addAdminUser(){
-  if(remoteDb){
-    let users = await getAllUsers('adminSignup');
-    if(users instanceof Error) {
-      alert('you are offline perhaps! error: '+users.message);
-      return;
-    }
-
-    const username = prompt('What Admin username do you want to add?');
-    if(!username){return}
-
-    if(users.admins.indexOf(username) > -1 || users.users.map(usr => usr.doc.name).indexOf(username) > -1){
-      alert(`${username} is already used by a user`);
-      return;
-    }
-
-    const password = prompt('What password?');
-    if(!password){return}
-    const passwordAgain = prompt('Please enter it again.');
-    if(password != passwordAgain){
-      alert('Passwords did not match, please try again');
-      return
-    }
-    if(!password) {return}
-
-    remoteDb.signUpAdmin(username, password, function (err, response) {
-      if (err) {
-        handleError(err);
-      } else {
-        //also need to sign up an admin user...
-        remoteDb.signUp(username, password, { roles: [window.dbName+"-admin"] }, function (err, response) {
-          if (err) {
-            handleError(err);
-          }
-          else {
-            loadAllUsers();
-            notyf.info(`added Admin: ${username}`,'green');
-          }
-        });
-      }
-    });
-  }
-  else {
-    console.log('there is no remoteDb');
-  }
-}
-function changeAdminPassword(username){
-  if('u-'+username == user._id){
-    alert('You can not change your own password - try logging in as a different admin');
-    return
-  }
-  const password = prompt(`What do you want to change the password for ${username} to?`);
-  if(!password){return}
-  const passwordAgain = prompt('Please enter it again.');
-  if(password != passwordAgain){
-    alert('Passwords did not match, please try again');
-    return
-  }
-  remoteDb.deleteAdmin(username, function (err, response) {
-    if (err) {
-      handleError(err);
-    } else {
-      remoteDb.signUpAdmin(username, password, function (err, response) {
-        if (err) {
-          handleError(err);
-        } else {
-          loadAllUsers();
-          notyf.info(`Password changed for Admin: ${username}`,'olive');
-        }  
-      });
-    }
-  }); 
-}
-function deleteAdminUser(username){
-  //check to be sure that username != current username
-  if('u-'+username == user._id){
-    alert('You can not delete your own admin account - try logging in as a different admin');
-    return
-  }
-
-  //then delete the admin, after checking that they want to do so.
-  if(confirm(`Are you sure you want to delete Admin: ${username}?`)){
-    remoteDb.deleteAdmin(username, function (err, response) {
-      if (err) {
-        handleError(err);
-      } else {
-        remoteDb.deleteUser(username, function (err, response) {
-          if (err) {
-            handleError(err);
-          } else {
-            loadAllUsers();
-            notyf.info(`Admin: ${username} deleted`,'red');
-          }
-        });
-      }
-    });  
-  }
-  else {
-    console.log('decided not to delete them');
-  }
-}
-
-async function addUser(){
-  let users = await getAllUsers('userSignup');
-  if(users instanceof Error) {
-    alert('you are offline perhaps! error: '+users.message);
+async function addAdminUser() {
+  if (!remoteDb) {
+    console.log("There is no remoteDb");
     return;
   }
-  const username = prompt('What username do you want to add?');
-  if(!username){return}
 
-  if(users.admins.indexOf(username) > -1 || users.users.map(usr => usr.doc.name).indexOf(username) > -1){
-    alert(`${username} is already a user in your database`);
+  let users = await getAllUsers('adminSignup');
+  if (users instanceof Error) {
+    alert('You are offline perhaps! Error: ' + users.message);
+    return;
+  }
+
+  const username = prompt('What Admin username do you want to add?');
+  if (!username) return;
+
+  if (users.admins.includes(username) || users.users.some(usr => usr.doc.name === username)) {
+    alert(`${username} is already used by a user`);
     return;
   }
 
   const password = prompt('What password?');
-  if(!password){return}
+  if (!password) return;
   const passwordAgain = prompt('Please enter it again.');
-  if(password != passwordAgain){
+  if (password !== passwordAgain) {
     alert('Passwords did not match, please try again');
-    return
+    return;
   }
-  if(!password) {return}
 
-  let viewerName = window.dbName+"-viewer"
-  remoteDb.signUp(username, password, { roles: [viewerName] }, function (err, response) {
-    if (err) {
-      if(err.name ==='conflict') { //let's add the viewer tag for this database
-        //User already exists but doesn't have access to this database - let's give it to them
-        alert('This user already exists but did not have access to this database.  They have been added. Their password was not changed.');
-        remoteDb.getUser(username).then(function(userJS){
-          let roles = {roles: userJS.roles.concat([viewerName])}
+  try {
+    await remoteDb.signUpAdmin(username, password);
+    await remoteDb.signUp(username, password, { roles: [window.dbName+"-admin"] });
 
-          remoteDb.putUser(username, roles, function (err, response) {
-            if (err) {
-              handleError(err);
-            } else {
-              loadAllUsers();
-              notyf.info(`added ${username}`,'green');
-            }
-          });
-
-        }).catch(function (err) {
-          console.log(err);
-          handleError(err);
-        });
-      }
-      else {
-        handleError(err);
-      }
-    } else {
-      loadAllUsers();
-      notyf.info(`added ${username}`,'green');
-    }
-  });
-}
-function toggleUserEditor(username, editor){
-  remoteDb.getUser(username).then(function(userJS){
-    let editorName = window.dbName+"-editor"
-    let roles = {roles: (editor ? userJS.roles.concat([editorName]) : userJS.roles.filter(function(e) { return e !== editorName }))}
-
-    remoteDb.putUser(username, roles, function (err, response) {
-      if (err) {
-        handleError(err);
-      } else {
-        loadAllUsers();
-        notyf.info(`updated ${username}`,'green');
-      }
-    });
-
-  }).catch(function (err) {
-    console.log(err);
+    loadAllUsers();
+    notyf.info(`Added Admin: ${username}`, 'green');
+  } catch (err) {
     handleError(err);
-  });
+  }
 }
-function changeUserPassword(username){
+
+async function changeAdminPassword(username) {  // Pass user explicitly
   const password = prompt(`What do you want to change the password for ${username} to?`);
-  if(!password){return}
+  if (!password) return;
   const passwordAgain = prompt('Please enter it again.');
-  if(password != passwordAgain){
+  if (password !== passwordAgain) {
     alert('Passwords did not match, please try again');
-    return
+    return;
+  }
+  try {
+    if ('u-' + username === window.user._id) {  // Check against the passed currentUser
+      const tempAdminName = username + '-temp3';
+      const ajaxOpts = { ajax: { headers: { Authorization: null } } }; 
+
+      const tempAdmin = await remoteDb.signUpAdmin(tempAdminName, 'brucewayne');
+      
+      // Ensure temp admin login is successful BEFORE logging out the current user
+      ajaxOpts.ajax.headers.Authorization = getBasicAuthHeader(tempAdminName, 'brucewayne');
+      await remoteDb.logOut(); // Now logout the original user
+      await remoteDb.logIn(tempAdminName, 'brucewayne', ajaxOpts); 
+
+      await remoteDb.deleteAdmin(username);
+      await remoteDb.signUpAdmin(username, password); 
+      await remoteDb.logOut();
+
+      ajaxOpts.ajax.headers.Authorization = getBasicAuthHeader(username, password); // Use original username and new password
+      await remoteDb.logIn(username, password, ajaxOpts);
+      await remoteDb.deleteAdmin(tempAdminName);
+
+      let localStorageUser = JSON.parse(localStorage.getItem('loggedin'));
+      localStorageUser.pwd = password;
+      localStorage.setItem('loggedin',JSON.stringify(localStorageUser));
+    } else {
+      await remoteDb.deleteAdmin(username);
+      await remoteDb.signUpAdmin(username, password); 
+    }
+    
+    loadAllUsers();
+    notyf.info(`Password changed for Admin: ${username}`, 'olive');
+
+  } catch (err) {
+    handleError(err); 
+  }
+}
+
+async function deleteAdminUser(username) { // Pass current user explicitly
+  // Ensure the user isn't trying to delete themselves
+  if ('u-' + username === window.user._id) {
+    alert('You cannot delete your own admin account. Try logging in as a different admin.');
+    return;
   }
 
-  remoteDb.changePassword(username, password, function(err, response) {
-    if (err) {
-      handleError(err);
-    } else {
-      notyf.info(`Password changed for ${username}`,'olive');
-    }
-  });
-}
-function deleteUser(username){
-  const response = confirm(`Are you sure you want to remove ${username}?`);
-  if(!response){return}
-  remoteDb.getUser(username).then(function(userJS){
-    
-    //remove all roles that have to do with this database.
-    console.log(userJS.roles);
-    let roles = {roles: userJS.roles.filter(function(e) { return !e.includes(window.dbName)})}
+  // Confirm deletion
+  if (!confirm(`Are you sure you want to delete Admin: ${username}?`)) {
+    console.log('Decided not to delete them');
+    return;
+  }
 
-    remoteDb.putUser(username, roles, function (err, response) {
-      if (err) {
-        handleError(err);
-      } else {
-        loadAllUsers();
-        notyf.info(`removed ${username}`,'red');
-      }
-    });
+  try {
+    // Delete admin and user atomically (if your remoteDb supports it)
+    await remoteDb.deleteAdmin(username);
+    await remoteDb.deleteUser(username);
 
-  }).catch(function (err) {
-    console.log(err);
+    loadAllUsers();
+    notyf.info(`Admin: ${username} deleted`, 'red');
+
+  } catch (err) {
     handleError(err);
-  });
+  }
 }
+
+async function addUser() {
+  let users = await getAllUsers("userSignup");
+  if (users instanceof Error) {
+    alert("You are offline perhaps! Error: " + users.message);
+    return;
+  }
+
+  const username = prompt("What username do you want to add?");
+  if (!username) return;
+
+  if (users.admins.includes(username) || users.users.some((usr) => usr.doc.name === username) ) {
+    alert(`${username} is already a user in your database`);
+    return;
+  }
+
+  const password = prompt("What password?");
+  if (!password) return;
+  const passwordAgain = prompt("Please enter it again.");
+  if (password !== passwordAgain) {
+    alert("Passwords did not match, please try again");
+    return;
+  }
+
+  const viewerName = window.dbName + "-viewer";
+
+  try {
+    await remoteDb.signUp(username, password, { roles: [viewerName] });
+    loadAllUsers();
+    notyf.info(`Added ${username}`, 'green'); 
+  } catch (err) {
+    if (err.name === "conflict") {
+      try {
+        const userJS = await remoteDb.getUser(username);
+        const roles = { roles: userJS.roles.concat([viewerName]) };
+        await remoteDb.putUser(username, roles);
+        alert("This user already exists but did not have access to this database. They have been added. Their password was not changed.");
+      } catch (updateErr) {
+        handleError(updateErr); // Handle errors during role update
+      }
+    } else {
+      handleError(err); // Handle other errors
+    }
+  }
+}
+
+async function toggleUserEditor(username, editor) { // Pass dbName explicitly
+  try {
+    const userJS = await remoteDb.getUser(username);
+    const editorName = window.dbName + "-editor"; 
+
+    let roles;
+    if (editor) {
+      roles = Array.from(new Set(userJS.roles.concat([editorName]))); // Avoid duplicates
+    } else {
+      roles = userJS.roles.filter((e) => e !== editorName);
+    }
+
+    await remoteDb.putUser(username, { roles });  // Use async/await consistently
+    
+    loadAllUsers();
+    notyf.info(`Updated ${username}`, 'green');
+
+  } catch (err) {
+    handleError(err); 
+  }
+}
+
+async function changeUserPassword(username) {
+  const password = prompt(`What do you want to change the password for ${username} to?`);
+  if (!password) return;
+
+  const passwordAgain = prompt("Please enter it again.");
+  if (password !== passwordAgain) {
+    alert("Passwords did not match, please try again");
+    return;
+  }
+
+  try {
+    await remoteDb.changePassword(username, password);
+    notyf.info(`Password changed for ${username}`, "olive");
+  } catch (err) {
+    handleError(err); 
+  }
+}
+
+async function deleteUser(username) {
+    const response = confirm(`Are you sure you want to remove ${username}?`);
+    if (!response) return; 
+
+    try {
+        const userJS = await remoteDb.getUser(username);
+        const roles = userJS.roles.filter(e => !e.includes(window.dbName)); // Create a new array
+
+        await remoteDb.putUser(username, { roles });
+        loadAllUsers();
+        notyf.info(`Removed user: ${username}`, 'red');
+    } catch (err) {
+        handleError(err);
+    }
+}
+
 function handleError(err){
   if (err.name === 'not_found') {
-    // typo, or you don't have the privileges to see this user
     alert('You do not have permission to see this user');
   } else if(err.name ==='conflict') {
     alert('That already exists');
   } else if(!window.online){
     alert('you are offline, try again when you are reconnected');
   } else {
-    // some other error
-    console.log(err);
+    console.error("An unexpected error occurred:", err); // Log detailed error
+    alert(
+      `Sorry, something went wrong: ${err.message}`
+    );
   }
 }
 

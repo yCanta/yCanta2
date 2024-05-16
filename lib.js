@@ -790,6 +790,7 @@ async function getAllUsers(purpose = false){
     return {"admins": admins, "users": users};
   }
   catch(error) {
+    console.log(error)
     console.log(error.message);
     return error;
   }
@@ -829,8 +830,8 @@ async function loadAllUsers(){
     let editorName = window.dbName+"-editor";
     html = '<b>Admins <button class="circle" onclick="addAdminUser();">+</button></b><ul>'
     html += users.admins.map(admin => `<li><span style="width: 30%; display:inline-block;">${admin}</span>
-                         ${'u-'+admin != user._id ? `<label title="All admins are editors"><input type="checkbox" checked disabled> Editor</label><button onclick="changeAdminPassword('${admin}')">↻ Password</button>
-                         <button onclick="deleteAdminUser('${admin}')">🗑 Delete<button>` : `<i style="color:gray;"><- You can't modify yourself</i>`}</li>`).join('');
+                         <label title="All admins are editors"><input type="checkbox" checked disabled> Editor</label><button onclick="changeAdminPassword('${admin}')">↻ Password</button>
+                         <button onclick="deleteAdminUser('${admin}')">🗑 Delete<button></li>`).join('');
     html += '</ul><h4>Users <button class="circle" onclick="addUser();">+</button></h4><ul>'
     html += users.users.filter(user => user.doc.roles.indexOf(editorName) > -1)
                        .map(user => `<li><span style="width: 30%; display:inline-block;">${user.doc.name}</span>
@@ -866,7 +867,6 @@ function handleDarkMode(){
       document.getElementById('autoRadio').checked = true;
       document.documentElement.classList.remove('dark');
       document.documentElement.classList.remove('light');
-      break;
   }
   //save value to system/user prefs.  
   localStorage.setItem(window.user._id+'darkMode',value);
@@ -880,6 +880,12 @@ function setLoginState() {
   updateUser();
   $('html').addClass('loggedin');
   $('#title a').html(`yCanta: ${capEachWord(window.yCantaName.split('(')[0], "_")}<sup style="font-size: .8rem; font-weight: normal; color: var(--songList-color);"> ${window.yCantaName.match(/\((.*?)\)/)[1].toUpperCase()}</sup>`);
+  if(location.hash.indexOf('?')>-1){
+    location.hash = location.hash.split('?').slice(1).join('?');
+  }
+  else {
+    location.hash = '#';
+  }
   setTimeout(function(){
     document.body.classList.remove('loading');
   }, 300)
@@ -2284,4 +2290,7 @@ else {
 }
 function capEachWord(toCapitalize, dividingChar = " ") {
   return toCapitalize.split(dividingChar).map(word => word[0].toUpperCase()+word.substr(1)).join(" ");
+}
+function getBasicAuthHeader(username, password) {
+  return 'Basic ' + window.btoa(username + ':' + password); // Consider hashing password
 }
