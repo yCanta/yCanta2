@@ -969,7 +969,7 @@ function setSongbookInfo(songbook){
   let title_text = (songbook._id == 'sb-allSongs' || songbook._id == 'sb-favoriteSongs' ? `<i>${songbook.title}</i>` : songbook.title);
   $('#songbook_title').html(title_text).attr('data-rev',songbook._rev).attr('data-songbook-id', songbook._id).nextAll().remove();
   if(songbook._id != 'sb-allSongs' && songbook._id != 'sb-favoriteSongs'){
-    $('#songbook_header .title').append('<span class="buttonsRight" id="sb_buttonsRight"><span class="star" onclick="event.stopPropagation(); toggleFavSongbook(\''+songbook._id+'\')"></span>'+
+    $('#songbook_header .title').append('<span class="buttonsRight" id="sb_buttonsRight"><span class="star" onclick="event.stopPropagation(); toggleFavorite(\''+songbook._id+'\',\'fav_sbs\')"></span>'+
       '<info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo(false);"></info></span>');
   }
   if(document.getElementById('dialog').style.display=="block" && !parseHash('s-') && document.getElementById('dialog').getAttribute('data-use')=="info"){  //prevents info view flicker when you click on songbooks in song info view.

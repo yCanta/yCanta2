@@ -132,11 +132,7 @@
               <div class="content">
                 <div id="all_users"></div>
               </div>
-              <button class="btn" style="background-color: crimson; color: white;" onclick="if(confirm('Are you sure you want to delete this database?')){ db.destroy().then(function () {
-                  dbLogout();
-                }).catch(function (err) {
-                  console.log(err);
-              });}">Delete DB</button>
+              <button class="btn" style="background-color: crimson; color: white;" onclick="if(confirm('Are you sure you want to delete this database?')){ dbLogout(); destroyDb(db.name);}">Delete DB</button>
             </fieldset>
           </div>
         </div>

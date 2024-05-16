@@ -1,29 +1,20 @@
 //initialize global variable.
 var db, syncHandler, remoteDb;
 
-var online = false;
-
 function updateOnlineStatus(event) {
-  if(event == undefined) {
-    event = {};
-    event.type = 'windowLoad';
-  }
-  var condition = navigator.onLine ? "online" : "offline";
+  const condition = navigator.onLine ? "online" : "offline";
   document.documentElement.classList.add(condition);
-  document.documentElement.classList.remove(['offline','online'].filter(word => word != condition));
-  online = navigator.onLine;
-  console.log("beforeend", "Event: " + event.type + "; Status: " + condition);
-  try {logData('connection', condition); } catch(err) {console.log(err.message)} //ERROR when first loads - I'm ok with it...
+  document.documentElement.classList.remove(condition === "online" ? "offline" : "online");
+
+  console.log(`Event: ${event.type}; Status: ${condition}`);
+  logData('connection', condition);
 }
 //Update Online status
 window.addEventListener('load', function() {
-  function update(event) {
-    updateOnlineStatus(event);
-  }
-  window.addEventListener('online',  update);
-  window.addEventListener('offline', update);
+  updateOnlineStatus(event);
+  window.addEventListener('online',  updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
 });
-updateOnlineStatus();
 
 function clearAllData() { 
   try {
@@ -173,26 +164,6 @@ function dbChanges() {
     // handle errors
     console.log('Error in db.changes('+err);
   });
-}
-
-async function dbExists(dbName) {
-  return new Promise(function(resolve, reject) {
-    const testdb = new PouchDB(dbName);
-    testdb.info().then(function (details) {
-      if (details.doc_count == 0 && details.update_seq == 0) {
-        console.log(dbName + 'database does not exist');
-        testdb.destroy().then(function() {console.log('test db removed');});
-        resolve(false);
-      }
-      else {
-        console.log(dbName + 'database exists');
-        resolve(true);
-      }
-    }).catch(function (err) {
-      console.log('error: ' + err);
-      resolve(false);
-    });
-  })
 }
 
 async function destroyDb(dbName){
@@ -595,19 +566,21 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
   return false;
 }
 
-function dbLogout(){
-  if(!confirmWhenEditing()){
-    setLogoutState();
-    db.close().then(function() {
-      console.log('closed db');
-    });
-    remoteDb.close().then(function() {
-      console.log('closed remote db');
-      remoteDb = false;
-      syncHandler = false;
-    }).catch(function(error){
-      console.log(error.message);
-    });
+async function dbLogout() {
+  if (!confirmWhenEditing()) {
+    try {
+      setLogoutState();
+      await db.close();
+      console.log("Closed local database");
+      if (remoteDb) { // Check if remoteDb is initialized
+        await remoteDb.close();
+        console.log("Closed remote database");
+        remoteDb = null; // Explicitly set to null
+        syncHandler = null; // Explicitly set to null
+      }
+    } catch (err) {
+      console.error("Error closing databases:", err); 
+    }
   }
 }
 
@@ -769,7 +742,6 @@ async function addAdminUser() {
   try {
     await remoteDb.signUpAdmin(username, password);
     await remoteDb.signUp(username, password, { roles: [window.dbName+"-admin"] });
-
     loadAllUsers();
     notyf.info(`Added Admin: ${username}`, 'green');
   } catch (err) {
@@ -953,7 +925,7 @@ function handleError(err){
     alert('You do not have permission to see this user');
   } else if(err.name ==='conflict') {
     alert('That already exists');
-  } else if(!window.online){
+  } else if(!navigator.onLine){
     alert('you are offline, try again when you are reconnected');
   } else {
     console.error("An unexpected error occurred:", err); // Log detailed error
@@ -1130,7 +1102,7 @@ function loadSong(song_id) {
             <a data-song class="title_link">${song.title}</a>
           </stitle>
           <span class="buttonsRight">
-            <span class="star" onclick="event.stopPropagation(); toggleFavSong($(this).closest('song').attr('data-id'))"></span>
+            <span class="star" onclick="event.stopPropagation(); toggleFavorite($(this).closest('song').attr('data-id'),'fav_songs')"></span>
             <info onclick="event.stopPropagation(); loadInfo();"></info>
             <span class="fsButton" onclick="toggleFullscreen(this)"></span>
           </span>
@@ -1223,31 +1195,31 @@ async function deleteSong(song_id) {
   if(sbs.length) {
     alert(`"${window.song.title}" cannot be deleted it is in the following songbooks:\n - ${sbs.map(sb => sb.doc.title).join('\n -')}`);
   }
-  else if (confirm(`Are you sure you want to delete song:\n - ${window.song.title}?`)) {
-    db.get(window.song._id).then(function (doc) {
-      return db.remove(doc);
-    }).then(function(){
-      window.location.hash='#'+formatSbID(window.songbook._id);
-    });
-    console.log('deleted: '+window.song.title);
-    return false
-  } else { //we aren't leaving 
-    return true
+  else if (confirm(`Are you sure you want to delete song:\n\n - ${window.song.title}?`)) {
+    try {
+      const doc = await db.get(song_id);
+      await db.remove(doc);
+      window.location.hash = "#" + formatSbID(window.songbook._id);
+      console.log("Deleted:", window.song.title);
+    } catch (err) {
+      console.error("Error deleting song:", err); 
+      alert("An error occurred while deleting the song.");
+    }
   }
 }
-function deleteSongbook(songbook_id) {
-  console.log(songbook_id);
-  if (confirm("Are you sure you want to delete songbook:\n\n" + window.songbook.title + "?")) {
-    db.get(window.songbook._id).then(function (doc) {
-      return db.remove(doc);
-    }).then(function(){
+
+async function deleteSongbook(songbook_id) {
+  if (confirm(`Are you sure you want to delete songbook:\n\n - ${window.songbook.title}?`)) {
+    try {
+      const doc = await db.get(songbook_id);
+      await db.remove(doc);
       initializeSongbooksList();
-      window.location.hash='#songbooks'
-    });
-    console.log('deleted: '+window.songbook._id);
-    return false
-  } else { //we aren't leaving 
-    return true
+      window.location.hash = '#songbooks';
+      console.log("Deleted:", window.songbook.title);
+    } catch (err) {
+      console.error("Error deleting songbook:", err);
+      alert("An error occurred while deleting the songbook.");
+    }
   }
 }
 
@@ -1552,7 +1524,7 @@ function addSongToSongbook(song_id, songbook_id=window.songbook._id) {
   }
 
   if(songbook_id == 'sb-favoriteSongs') {
-    toggleFavSong(song_id);
+    toggleFavorite(song_id, 'fav_songs');
   }
   else if(songbook_id == 'sb-allSongs') {
     // do nothing because the db.changes function should update the allSongs songbook
@@ -1668,50 +1640,25 @@ function saveExportDefault() {
     console.log("id of record: " + info.id);
   });
 }
-function toggleFavSongbook(id){
-  db.get(window.user._id).then(function(user){
-    let i = -1;
-    try {
-      i = user.fav_sbs.indexOf(id);
+
+async function toggleFavorite(itemId, favoriteType) { // Make it more generic
+  try {
+    const user = await db.get(window.user._id);
+    if (!user[favoriteType]) {
+      user[favoriteType] = []; 
     }
-    catch {
-      //fav_sbs doesn't exist
-      user.fav_sbs = [];
+
+    const index = user[favoriteType].indexOf(itemId);
+    if (index === -1) {
+      user[favoriteType].push(itemId);
+    } else {
+      user[favoriteType].splice(index, 1);
     }
-    if(i == -1) {
-      user.fav_sbs.push(id);
-    }
-    else {
-      user.fav_sbs.splice(i,1);
-    }
-    db.put(user).then(function(result) {
-      console.log('Successfully updated fav songbooks!');
-    });
-  }).catch(function(err){
+
+    await db.put(user);
+    console.log(`Successfully updated favorite ${(favoriteType == 'fav_sbs' ? 'Songbook' :'Song')}s!`);
+  } catch (err) {
     console.log(err);
-  });
-}
-function toggleFavSong(id) {
-  db.get(window.user._id).then(function(user){
-    let i = -1;
-    try {
-      i = user.fav_songs.indexOf(id);
-    }
-    catch {
-      //fav_sbs doesn't exist
-      user.fav_songs = [];
-    }
-    if(i == -1) {
-      user.fav_songs.push(id);
-    }
-    else {
-      user.fav_songs.splice(i,1);
-    }
-    db.put(user).then(function(result) {
-      console.log('Successfully updated fav songs!');
-    });
-  }).catch(function(err){
-    console.log(err);
-  });
+  }
 }
 
