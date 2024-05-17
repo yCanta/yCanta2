@@ -2256,20 +2256,17 @@ $(function() {
   });
 });
 
-function scrollIntoViewIfNeed(el) {
-  function isScrolledIntoView(el) {
-    var rect = el.getBoundingClientRect();
-    var elemTop = rect.top;
-    var elemBottom = rect.bottom;
+function scrollIntoViewIfNeed(el, partiallyVisible = true, behavior = "smooth") {
+  const rect = el.getBoundingClientRect();
+  const isVisible = partiallyVisible
+    ? rect.top < window.innerHeight && rect.bottom >= 0 // Partially visible
+    : rect.top >= 0 && rect.bottom <= window.innerHeight; // Completely visible
 
-    // Only completely visible elements return true:
-    var isVisible = (elemTop >= 0) && (elemBottom <= window.innerHeight);
-    // Partially visible elements return true:
-    //isVisible = elemTop < window.innerHeight && elemBottom >= 0;
-    return isVisible;
-  }
-  if(!isScrolledIntoView(el)){
-    el.scrollIntoView({behavior: "smooth", block: "center"});
+  if (!isVisible) {
+    el.scrollIntoView({
+      behavior: behavior,
+      block: "center",
+    });
   }
 }
 
