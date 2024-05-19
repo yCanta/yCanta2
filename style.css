@@ -243,7 +243,7 @@ a {
 }
 chunk[type="comment"] a {
   text-decoration: underline;
-  color: blue;
+  color: #58a6ff;
 }
 #logged_in {
   height: 100%;
