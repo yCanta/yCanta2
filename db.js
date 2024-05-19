@@ -898,6 +898,12 @@ async function changeUserPassword(username) {
 
   try {
     await remoteDb.changePassword(username, password);
+    if ('u-' + username === window.user._id) {  // Check against the passed currentUser also check if we are on memory version
+      let localStorageUser = JSON.parse(localStorage.getItem('loggedin'));
+      localStorageUser.pwd = password;
+      localStorage.setItem('loggedin',JSON.stringify(localStorageUser));
+      location.reload();
+    }
     notyf.info(`Password changed for ${username}`, "olive");
   } catch (err) {
     handleError(err); 

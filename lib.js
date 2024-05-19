@@ -697,7 +697,7 @@ async function updateUser(){
   }
   $('#username_d').html(html);
   //User Profile information in Settings.
-  html = `<h3>${name} <a href="#" onclick="loadRawDbObject(window.user._id,$('#user_content'),'updateUser();');" class="mirror">&#9998;</a></h3>`;
+  html = `<h3>${name}</h3>`;
 
   let sbs = window.user.fav_sbs.filter(sb => sb.length != 0);
   html += '<h4>Favorite Songbooks</h4><ul>';
@@ -731,6 +731,8 @@ async function updateUser(){
   } else {html+='<li>None yet!</li>';}
   html += '</ul>';
   html += `<h4>Permissions</h4><ul>${Object.keys(window.roles).filter(role => role.startsWith(window.dbName)).join(', ').replaceAll(window.dbName+"-","").toUpperCase()}</ul>`;
+  html += `<button onclick="loadRawDbObject(window.user._id,$('#user_content'),'updateUser();');" class="btn"><span class="mirror">&#9998;</span> Edit</button>`
+  html += `<button onclick="change${document.documentElement.classList.contains('_admin')?'Admin':'User'}Password('${user._id.replace('u-','')}')" class="btn">↻ Password</button>`
   document.getElementById('user_content').innerHTML = html;
 }
 async function loadCategories(){
