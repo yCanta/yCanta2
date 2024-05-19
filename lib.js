@@ -881,11 +881,11 @@ function setLoginState() {
   window.loggedin = true;
   updateUser();
   $('html').addClass('loggedin');
-  $('#title a').html(`yCanta: ${capEachWord(window.yCantaName.split('(')[0], "_")}<sup style="font-size: .8rem; font-weight: normal; color: var(--songList-color);"> ${window.yCantaName.match(/\((.*?)\)/)[1].toUpperCase()}</sup>`);
-  if(location.hash.indexOf('?')>-1){
+  $('#title a').html(`${capEachWord(window.yCantaName.split('(')[0], "_")}<sup style="font-size: .8rem; font-weight: normal; color: var(--songList-color);"> ${window.yCantaName.match(/\((.*?)\)/)[1].toUpperCase()}</sup>`);
+  if(location.hash.startsWith('#login?')){
     location.hash = location.hash.split('?').slice(1).join('?');
   }
-  else {
+  if(location.hash.startsWith('#login')){
     location.hash = '#';
   }
   setTimeout(function(){

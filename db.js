@@ -399,8 +399,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
         dbLogout();
       });
       let localInfo = await db.info();
-      setLoginState();
-      location.hash = "#"
+      setLoginState(); //adding a setlogin state here for when syncing a large slow database - let's you see the app instead of having to wait.
 
       console.log('doing a onetime sync...');
       let startTime = new Date();
@@ -569,7 +568,6 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
 async function dbLogout() {
   if (!confirmWhenEditing()) {
     try {
-      setLogoutState();
       await db.close();
       console.log("Closed local database");
       if (remoteDb) { // Check if remoteDb is initialized
@@ -581,6 +579,7 @@ async function dbLogout() {
     } catch (err) {
       console.error("Error closing databases:", err); 
     }
+    setLogoutState();
   }
 }
 
