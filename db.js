@@ -845,8 +845,6 @@ async function addUser() {
 
   try {
     await remoteDb.signUp(username, password, { roles: [viewerName] });
-    loadAllUsers();
-    notyf.info(`Added ${username}`, 'green'); 
   } catch (err) {
     if (err.name === "conflict") {
       try {
@@ -861,6 +859,8 @@ async function addUser() {
       handleError(err); // Handle other errors
     }
   }
+  notyf.info(`Added ${username}`, 'green');
+  loadAllUsers();
 }
 
 async function toggleUserEditor(username, editor) { // Pass dbName explicitly
