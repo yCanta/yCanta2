@@ -555,7 +555,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
             return response.json();
           })
           .then(function(data) {
-            logData('location', data.country_name + ', ' + data.city);
+            logData('location', `${data.country_name}, ${data.region}, ${data.city}`);
           });
       }
       delete window.loadData;
@@ -806,7 +806,6 @@ async function deleteAdminUser(username) { // Pass current user explicitly
   }
 
   try {
-    // Delete admin and user atomically (if your remoteDb supports it)
     await remoteDb.deleteAdmin(username);
     await remoteDb.deleteUser(username);
 
