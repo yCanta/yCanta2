@@ -1094,9 +1094,9 @@ function loadSong(song_id) {
       }
 
       let editable = canEdit(song);
-      let float_menu = `${(editable ? '<button data-songbook onclick="deleteSong(window.song._id)" class="float-menu-item deleteSong"><span class="float-menu-icon">&#128465;</span> Delete</button>' : '')}
-      <a data-song-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</a>
-      ${(editable ? '<a data-song-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>' : '')}
+      let float_menu = `${(editable ? '<button data-songbook onclick="deleteSong(window.song._id)" class="float-menu-item deleteSong"><span class="float-menu-icon">&#128465;</span>Delete</button>' : '')}
+      <a data-song-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span>Export</a>
+      ${(editable ? '<a data-song-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span>Edit</a>' : '')}
       <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>`;
       $('#song .float-menu').html(float_menu);
 

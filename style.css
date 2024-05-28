@@ -1422,6 +1422,9 @@ only screen and (max-height: 31.25rem) {
     transform: scale(1);
     opacity: 1;
   }
+  .float-menu-item:not(:last-child) span {
+    margin-right: .5rem;
+  }
   .float-menu-item:not(:last-child){
     transform: scale(0);
     transform-origin: 85% 250%;
@@ -1438,6 +1441,7 @@ only screen and (max-height: 31.25rem) {
     line-height: 3rem;
     background: rgba(var(--edit-color-rgb), 0.75);
     border-radius: 2rem;
+    backdrop-filter: blur(3px);
   }
   .float-menu-item {
     display: block;
@@ -1685,7 +1689,12 @@ only screen and (max-height: 31.25rem) {
     display: none;
   }
   .float-menu-item:not(:nth-last-child(2)):before {
-    content: ' //';
+    content: ' // ';
+    background: var(--background-color);
+  }
+  #export .float-menu-item:before, 
+  #songbookList .float-menu-item:before {
+    content: '';
   }
   .float-menu-item.deleteSong:not([href="#sb-allSongs"]) {
     display: none;

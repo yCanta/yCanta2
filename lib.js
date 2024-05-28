@@ -980,11 +980,11 @@ function setSongbookInfo(songbook){
 
   //Float menu
   let editable = canEdit(songbook);
-  let float_menu = `<a data-song-edit="new" class="float-menu-item"><span class="float-menu-icon">+</span> Add Song</a>
-  ${(editable ? '<button data-home onclick="deleteSongbook(window.songbook._id)" class="float-menu-item delete"><span class="float-menu-icon">&#128465;</span> Delete</button>' : '')}
-  <button data-songbook-present class="float-menu-item" id="present"><span class="float-menu-icon">&#128253;</span> Present</button>
-  <a data-songbook-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span> Export</a>
-  ${(editable ? '<a data-songbook-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span> Edit</a>' : '')}
+  let float_menu = `${(songbook._id == 'sb-allSongs' ? '<a data-song-edit="new" class="float-menu-item"><span class="float-menu-icon">+</span>Add Song</a>' : '')}
+  ${(editable ? '<button data-home onclick="deleteSongbook(window.songbook._id)" class="float-menu-item delete"><span class="float-menu-icon">&#128465;</span>Delete</button>' : '')}
+  <button data-songbook-present class="float-menu-item" id="present"><span class="float-menu-icon">&#128253;</span>Present</button>
+  <a data-songbook-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span>Export</a>
+  ${(editable ? '<a data-songbook-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span>Edit</a>' : '')}
   <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>`;
 
   $('#songList .float-menu').html(float_menu);
