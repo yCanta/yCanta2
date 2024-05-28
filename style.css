@@ -887,6 +887,9 @@ span.deleteicon input {
 #login.login_remote .login_remote { /*Login Remote*/
   display: initial;
 }
+select:has(option[value=""]:checked) ~ :is(input) {
+  display: none;
+}
 
 
 /*Styling!*/

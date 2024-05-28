@@ -2293,3 +2293,9 @@ function capEachWord(toCapitalize, dividingChar = " ") {
 function getBasicAuthHeader(username, password) {
   return 'Basic ' + window.btoa(username + ':' + password); // Consider hashing password
 }
+function requestAccess() {
+  let selectEl = document.getElementById('db_select');
+  let db_name = selectEl.options[ selectEl.selectedIndex ].text;
+  let emailLink = `mailto:${'info.ycanta'}@${'gmail.com'}?subject=Requesting yCanta access${(db_name ? ' to '+ db_name : '')}&body=My name is: %0D%0A%0D%0AI'd like access to: ${db_name}`;
+  window.open(emailLink,'_blank');
+}

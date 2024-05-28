@@ -53,6 +53,7 @@
             <input id="pin2" class="d_none create_local" placeholder="Renter Pin" type="password"></input>
             <span class="d_none">⚠️ Offline - enter pin</span><br>
           </div>
+          <div style="margin-top:1.5rem"><b>ⓘ</b> To request access: <u><a style="cursor: pointer" onclick="requestAccess()">email us!</a></u></div>
           <div style="text-align: right; margin-top: 2rem">
             <button tabindex="-1" class="btn" style="float: left; color: red;" onclick="if(confirm('Are you sure you want to delete all data?')){clearAllData();};">🗑 Clear all local data</button>
             <button class="btn d_none login_local login_remote" onclick="if(checkLogin()){dbLogin('login');}">Login</button>
@@ -963,7 +964,7 @@
                 }
               }
             }
-            db_opts += `<option value="canaan(remote)" data-url="https://ycanta.canaanf.org/couch/canaan"${(defaultLogin == "canaan(remote)" ? ' selected' : '')}>Canaan Fellowship</option><option value="being_church(remote)" data-url="https://ycanta.canaanf.org/couch/being_church"${(defaultLogin == "being_church(remote)" ? ' selected' : '')}>Being Church</option>`
+            db_opts += `<option value=""></option><option value="canaan(remote)" data-url="https://ycanta.canaanf.org/couch/canaan"${(defaultLogin == "canaan(remote)" ? ' selected' : '')}>Canaan Fellowship</option><option value="being_church(remote)" data-url="https://ycanta.canaanf.org/couch/being_church"${(defaultLogin == "being_church(remote)" ? ' selected' : '')}>Being Church</option>`
             db_opts += '<option value="create_local">Create Local</option>';
             db_opts += '<option value="connect_remote">Connect Remote</option>';
             setTimeout(function(){$('#db_select').html(db_opts).trigger('change');},0);
