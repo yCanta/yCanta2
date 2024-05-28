@@ -214,28 +214,28 @@ text['large'] = [
 
 let index = [];
 index['default'] = [
-  {name: 'index_title_size', value: '18'},{name: 'index_title_space', value: '6'},{name: 'index_title_font', value: 'Helvetica'},
+  {name: 'index_title_size', value: '18'},{name: 'index_title_space', value: '6'},{name: 'index_title_font', value: 'Times-Roman'},
   {name: 'index_title_b4',   value: '20'},
-  {name: 'index_cat_size',   value: '14'},{name: 'index_cat_space',   value: '6'},{name: 'index_cat_font',   value: 'Helvetica'},
+  {name: 'index_cat_size',   value: '14'},{name: 'index_cat_space',   value: '6'},{name: 'index_cat_font',   value: 'Times-Roman'},
   {name: 'index_cat_b4',     value: '12'},
-  {name: 'index_song_size',  value: '12'},{name: 'index_song_space',  value: '4'},{name: 'index_song_font',  value: 'Helvetica'},
-  {name: 'index_first_line_size',  value: '11'},{name: 'index_first_line_space',  value: '4'},{name: 'index_first_line_font',  value: 'Helvetica-Oblique'}  
+  {name: 'index_song_size',  value: '12'},{name: 'index_song_space',  value: '4'},{name: 'index_song_font',  value: 'Times-Roman'},
+  {name: 'index_first_line_size',  value: '11'},{name: 'index_first_line_space',  value: '4'},{name: 'index_first_line_font',  value: 'Times-Italic'}  
 ];
 index['small'] = [
-  {name: 'index_title_size', value: '14'},{name: 'index_title_space', value: '4'},{name: 'index_title_font', value: 'Helvetica'},
+  {name: 'index_title_size', value: '14'},{name: 'index_title_space', value: '4'},{name: 'index_title_font', value: 'Times-Roman'},
   {name: 'index_title_b4',   value: '16'},
-  {name: 'index_cat_size',   value: '12'},{name: 'index_cat_space',   value: '4'},{name: 'index_cat_font',   value: 'Helvetica'},
+  {name: 'index_cat_size',   value: '12'},{name: 'index_cat_space',   value: '4'},{name: 'index_cat_font',   value: 'Times-Roman'},
   {name: 'index_cat_b4',     value: '10'},
-  {name: 'index_song_size',  value: '10'},{name: 'index_song_space',  value: '2'},{name: 'index_song_font',  value: 'Helvetica'},
-  {name: 'index_first_line_size',  value: '9'},{name: 'index_first_line_space',  value: '2'},{name: 'index_first_line_font',  value: 'Helvetica-Oblique'}  
+  {name: 'index_song_size',  value: '10'},{name: 'index_song_space',  value: '2'},{name: 'index_song_font',  value: 'Times-Roman'},
+  {name: 'index_first_line_size',  value: '9'},{name: 'index_first_line_space',  value: '2'},{name: 'index_first_line_font',  value: 'Times-Italic'}  
 ];
 index['large'] = [
-  {name: 'index_title_size', value: '26'},{name: 'index_title_space', value: '10'},{name: 'index_title_font', value: 'Helvetica'},
+  {name: 'index_title_size', value: '26'},{name: 'index_title_space', value: '10'},{name: 'index_title_font', value: 'Times-Roman'},
   {name: 'index_title_b4',   value: '24'},
-  {name: 'index_cat_size',   value: '18'},{name: 'index_cat_space',   value: '10'},{name: 'index_cat_font',   value: 'Helvetica'},
+  {name: 'index_cat_size',   value: '18'},{name: 'index_cat_space',   value: '10'},{name: 'index_cat_font',   value: 'Times-Roman'},
   {name: 'index_cat_b4',     value: '16'},
-  {name: 'index_song_size',  value: '16'},{name: 'index_song_space',  value: '8'},{name: 'index_song_font',  value: 'Helvetica'},
-  {name: 'index_first_line_size',  value: '14'},{name: 'index_first_line_space',  value: '6'},{name: 'index_first_line_font',  value: 'Helvetica-Oblique'}  
+  {name: 'index_song_size',  value: '16'},{name: 'index_song_space',  value: '8'},{name: 'index_song_font',  value: 'Times-Roman'},
+  {name: 'index_first_line_size',  value: '14'},{name: 'index_first_line_space',  value: '6'},{name: 'index_first_line_font',  value: 'Times-Italic'}  
 ];
 
 let def_configs = [];
@@ -249,26 +249,29 @@ def_configs['simple'] = [
   {name: 'column_gutter',       value: '0.5'},
   {name: 'page_layout',         value: 'single-sided'},
   {name: 'paper_margin_gutter', value: '0'},
-  {name: 'font_face',           value: 'Helvetica'},
+  {name: 'font_face',           value: 'Times-Roman'},
   {name: 'text',                value: 'Default' },
   {name: 'columns',             value: '1'},
   {name: 'display_chords',      value: 'no'},
-  {name: 'index_title_font',    value: 'Helvetica'},
+  {name: 'hide_booktitle',      value: 'yes'},
+  {name: 'index_title_font',    value: 'Times-Roman'},
   {name: 'index_title_b4',      value: '20'},
   {name: 'index_title_size',    value: '18'},
   {name: 'index_title_space',   value: '6'},
-  {name: 'index_cat_font',      value: 'Helvetica'},
+  {name: 'index_cat_font',      value: 'Times-Roman'},
   {name: 'index_cat_b4',        value: '12'},
   {name: 'index_cat_exclude',   value: 'Needs,Duplicate'},
   {name: 'index_cat_size',      value: '14'},
   {name: 'index_cat_space',     value: '6'},
-  {name: 'index_song_font',     value: 'Helvetica-Bold'},
+  {name: 'index_song_font',     value: 'Times-Bold'},
   {name: 'index_song_size',     value: '12'},
   {name: 'index_song_space',    value: '4'},
-  {name: 'index_first_line_font',  value: 'Helvetica-Oblique'},
+  {name: 'index_first_line_font',  value: 'Times-Italic'},
   {name: 'index_first_line_size',  value: '11'},
   {name: 'index_first_line_space', value: '4'},
-  {name: 'display_index',       value: 'on-new-page'},
+  {name: 'display_index',       value: 'no-index'},
+  {name: 'display_cat_index',   value: 'no-index'},
+  {name: 'display_scrip_index', value: 'no-index'},
   {name: 'scripture_location',  value: 'under-title'}
 ];
 def_configs['3-column'] = [
@@ -276,7 +279,7 @@ def_configs['3-column'] = [
   {name: 'paper_size',          value: 'LETTER'},
   {name: 'margin',              value: 'narrow'},
   {name: 'page_layout',         value: 'single-sided'},
-  {name: 'font_face',           value: 'Helvetica'},
+  {name: 'font_face',           value: 'Times-Roman'},
   {name: 'booktitle_size',      value: '36'},
   {name: 'booktitle_space',     value: '12'},
   {name: 'songtitle_size',      value: '18'},
@@ -293,22 +296,25 @@ def_configs['3-column'] = [
   {name: 'copyright_space_b4',  value: '3'},
   {name: 'columns',             value: '3'},
   {name: 'display_chords',      value: 'no'},
-  {name: 'index_title_font',    value: 'Helvetica'},
+  {name: 'hide_booktitle',      value: 'yes'},
+  {name: 'index_title_font',    value: 'Times-Roman'},
   {name: 'index_title_b4',      value: '20'},
   {name: 'index_title_size',    value: '18'},
   {name: 'index_title_space',   value: '6'},
-  {name: 'index_cat_font',      value: 'Helvetica'},
+  {name: 'index_cat_font',      value: 'Times-Roman'},
   {name: 'index_cat_b4',        value: '12'},
   {name: 'index_cat_exclude',   value: 'Needs,Duplicate'},
   {name: 'index_cat_size',      value: '14'},
   {name: 'index_cat_space',     value: '6'},
-  {name: 'index_song_font',     value: 'Helvetica-Bold'},
+  {name: 'index_song_font',     value: 'Times-Bold'},
   {name: 'index_song_size',     value: '12'},
   {name: 'index_song_space',    value: '4'},
-  {name: 'index_first_line_font',  value: 'Helvetica-Oblique'},
+  {name: 'index_first_line_font',  value: 'Times-Italic'},
   {name: 'index_first_line_size',  value: '11'},
   {name: 'index_first_line_space', value: '4'},
-  {name: 'display_index',       value: 'on-new-page'},
+  {name: 'display_index',       value: 'no-index'},
+  {name: 'display_cat_index',   value: 'no-index'},
+  {name: 'display_scrip_index', value: 'no-index'},
   {name: 'scripture_location',  value: 'under-title'}
 ];
 
@@ -963,9 +969,9 @@ function setSongbookInfo(songbook){
   $('#songbook_title').removeAttr('contenteditable');
   $('#sb_buttonsRight').remove();
   $('#songbook_content .search').parent().removeAttr('disabled');
-  (songbook.showStatus ? $('#songbook_content').addClass('showStatus') : $('#songbook_content').removeClass('showStatus'));
   $('#songbook_content').removeClass('showStatus'); 
   $('#songbook_content').removeClass('showComments'); 
+  (songbook.showStatus ? $('#songbook_content').addClass('showStatus') : $('#songbook_content').removeClass('showStatus'));
   (songbook.showComments ? $('#songbook_content').addClass('showComments') : $('#songbook_content').removeClass('showComments'));
   $('.disabled-hidden').removeClass('disabled-hidden');
   let title_text = (songbook._id == 'sb-allSongs' || songbook._id == 'sb-favoriteSongs' ? `<i>${songbook.title}</i>` : songbook.title);
