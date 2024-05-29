@@ -1358,7 +1358,7 @@ function prepSaveSong(element) {
     console.log(err);
   });
 }
-function prepExport(){
+async function prepExport(){
   document.getElementById('pdf_progress').style.width = '0%';
   document.getElementById('pdf_progress_text').innerHTML = '0%';
 
@@ -1368,7 +1368,7 @@ function prepExport(){
  
   //webworker stuff
   if(typeof(window.pdfFormatter) == 'undefined') {
-    window.pdfFormatter = new Worker('pdfformatter.js');
+    window.pdfFormatter = await new Worker('pdfformatter.js');
     pdfFormatter.onmessage = function(e) {
       if(e.data[0] == 'pdf'){
         document.getElementById('pdf').contentWindow.yourMethod(e.data[1]);
