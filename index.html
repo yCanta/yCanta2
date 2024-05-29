@@ -328,7 +328,7 @@
                     <div class="t3">
                       <label for="font_face"  rel="tooltip" title="Font to be used in the songbook">Default Font</label>
                       <select size="1" id="font_face" name="font_face" style="display: inline-block;">
-                        <option value="Courier">Courier</option><option value="Courier-Bold">Courier-Bold</option><option value="Courier-BoldOblique">Courier-BoldOblique</option><option value="Courier-Oblique">Courier-Oblique</option><option value="Helvetica" selected>Helvetica</option><option value="Helvetica-Bold">Helvetica-Bold</option><option value="Helvetica-BoldOblique">Helvetica-BoldOblique</option><option value="Helvetica-Oblique">Helvetica-Oblique</option><option value="Symbol">Symbol</option><option value="Times-Bold">Times-Bold</option><option value="Times-BoldItalic">Times-BoldItalic</option><option value="Times-Italic">Times-Italic</option><option value="Times-Roman">Times-Roman</option><option value="ZapfDingbats">ZapfDingbats</option>
+                        <option value="Courier">Courier</option><option value="Courier-Bold">Courier-Bold</option><option value="Courier-BoldOblique">Courier-BoldOblique</option><option value="Courier-Oblique">Courier-Oblique</option><option value="Helvetica">Helvetica</option><option value="Helvetica-Bold">Helvetica-Bold</option><option value="Helvetica-BoldOblique">Helvetica-BoldOblique</option><option value="Helvetica-Oblique">Helvetica-Oblique</option><option value="Symbol">Symbol</option><option value="Times-Bold">Times-Bold</option><option value="Times-BoldItalic">Times-BoldItalic</option><option value="Times-Italic">Times-Italic</option><option value="Times-Roman">Times-Roman</option><option value="ZapfDingbats">ZapfDingbats</option>
                       </select>
                     </div>
                     <div class="t3">
@@ -368,13 +368,13 @@
                       <input size="7" type="text" id="ccli" name="ccli">
                     </div>
                         
-                    <h4>Text Details<select id="text" class="fr">
+                    <h4 class="expandedTableHeader collapsed" onclick="this.classList.toggle('collapsed');">Text Details<select id="text" class="fr" onclick="event.stopPropagation()">
                       <option value='default'>Default</option>
                       <option value='small'>Small</option>
                       <option value='large'>Large</option>
                       <option value='custom'>Custom</option>
                     </select></h4>
-                    <table id="text_table" class="table">
+                    <table id="text_table" class="table expandedTable">
                       <tr>
                         <th></th>
                         <th><small>Size</small></th>
@@ -493,13 +493,13 @@
                         <option value="A0">A0</option><option value="A1">A1</option><option value="A2">A2</option><option value="A3">A3</option><option value="A4">A4</option><option value="A5">A5</option><option value="A6">A6</option><option value="B0">B0</option><option value="B1">B1</option><option value="B2">B2</option><option value="B3">B3</option><option value="B4">B4</option><option value="B5">B5</option><option value="B6">B6</option><option value="TABLOID">11x17</option><option value="LEGAL">LEGAL</option><option value="LETTER" selected>LETTER</option>
                       </select>
                     </div>
-                    <h4>Margins<select id="margin" class="fr">
+                    <h4 class="expandedTableHeader collapsed" onclick="this.classList.toggle('collapsed');">Margins<select id="margin" class="fr" onclick="event.stopPropagation()">
                       <option value='normal'>Normal</option>
                       <option value='narrow'>Narrow</option>
                       <option value='wide'>Wide</option>
                       <option value='custom'>Custom</option>
                     </select></h4>
-                    <table id="margin_table" class="table">
+                    <table id="margin_table" class="table expandedTable">
                       <thead>
                         <tr>
                           <th>
@@ -614,13 +614,13 @@
                         <option value="no-index">Off</option>
                       </select>
                     </div>
-                    <h4>Index Details<select id="index" class="fr">
+                    <h4 class="expandedTableHeader collapsed" onclick="this.classList.toggle('collapsed');">Index Details<select id="index" class="fr" onclick="event.stopPropagation()">
                       <option value='default'>Default</option>
                       <option value='small'>Small</option>
                       <option value='large'>Large</option>
                       <option value='custom'>Custom</option>
                     </select></h4>
-                    <table id="" class="table">
+                    <table id="index_table" class="table expandedTable">
                       <tr>
                         <th><small>Titles</small></th>
                         <th><small>Size</small></th>
@@ -813,6 +813,7 @@
           document.getElementById('paper_margin_bottom').value = margins[2];
           document.getElementById('paper_margin_left').value = margins[3];
           document.getElementById('column_gutter').value = margins[4];
+          document.getElementById('paper_margin_gutter').value = margins[5];
         }
       });
       $('#text').change(function() {

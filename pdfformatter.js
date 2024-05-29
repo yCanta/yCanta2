@@ -817,7 +817,6 @@ function print_line(doc, font_face=null, font_size=null, y_offset=null, x_offset
   doc.text(line, page_mapping.startx+x_offset, page_mapping.starty + y_offset, { lineBreak: false });
 
   y_offset += font_size;
-  console.log(y_offset, line, line_space)
   return y_offset + line_space;
 }
 
@@ -1715,7 +1714,6 @@ function read_config(config_array) {
   options.DEBUG_MARGINS =          safe_var(config_array.debug_margins,              'string');
 
   if (options.SONGS_TO_PRINT == '' || !window.songbook.showStatus) {
-    console.log('hi');
     options.SONGS_TO_PRINT = 'anr';
   }
   let opts = {size: options.PAPER_SIZE, layout: options.PAPER_ORIENTATION, autoFirstPage: true};

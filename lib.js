@@ -177,9 +177,9 @@ window.addEventListener("resize", function(){
 let export_form = {};
 
 let margins = [];
-margins['narrow'] = [.5,.5,.5,.5,.5];
-margins['wide'] = [1,2,1,2,1];
-margins['normal'] = [1,1,1,1,1];
+margins['narrow'] = [.5,.5,.5,.5,.5,0];
+margins['wide'] = [1,2,1,2,1,1];
+margins['normal'] = [1,1,1,1,1,1];
 
 let text = [];
 text['default'] = [
@@ -219,7 +219,8 @@ index['default'] = [
   {name: 'index_cat_size',   value: '14'},{name: 'index_cat_space',   value: '6'},{name: 'index_cat_font',   value: 'Times-Roman'},
   {name: 'index_cat_b4',     value: '12'},
   {name: 'index_song_size',  value: '12'},{name: 'index_song_space',  value: '4'},{name: 'index_song_font',  value: 'Times-Roman'},
-  {name: 'index_first_line_size',  value: '11'},{name: 'index_first_line_space',  value: '4'},{name: 'index_first_line_font',  value: 'Times-Italic'}  
+  {name: 'index_first_line_size',  value: '11'},{name: 'index_first_line_space',  value: '4'},{name: 'index_first_line_font',  value: 'Times-Italic'},
+  {name: 'index_cat_exclude',   value: 'Needs,Duplicate'}
 ];
 index['small'] = [
   {name: 'index_title_size', value: '14'},{name: 'index_title_space', value: '4'},{name: 'index_title_font', value: 'Times-Roman'},
@@ -227,7 +228,8 @@ index['small'] = [
   {name: 'index_cat_size',   value: '12'},{name: 'index_cat_space',   value: '4'},{name: 'index_cat_font',   value: 'Times-Roman'},
   {name: 'index_cat_b4',     value: '10'},
   {name: 'index_song_size',  value: '10'},{name: 'index_song_space',  value: '2'},{name: 'index_song_font',  value: 'Times-Roman'},
-  {name: 'index_first_line_size',  value: '9'},{name: 'index_first_line_space',  value: '2'},{name: 'index_first_line_font',  value: 'Times-Italic'}  
+  {name: 'index_first_line_size',  value: '9'},{name: 'index_first_line_space',  value: '2'},{name: 'index_first_line_font',  value: 'Times-Italic'},
+  {name: 'index_cat_exclude',   value: 'Needs,Duplicate'}
 ];
 index['large'] = [
   {name: 'index_title_size', value: '26'},{name: 'index_title_space', value: '10'},{name: 'index_title_font', value: 'Times-Roman'},
@@ -235,87 +237,59 @@ index['large'] = [
   {name: 'index_cat_size',   value: '18'},{name: 'index_cat_space',   value: '10'},{name: 'index_cat_font',   value: 'Times-Roman'},
   {name: 'index_cat_b4',     value: '16'},
   {name: 'index_song_size',  value: '16'},{name: 'index_song_space',  value: '8'},{name: 'index_song_font',  value: 'Times-Roman'},
-  {name: 'index_first_line_size',  value: '14'},{name: 'index_first_line_space',  value: '6'},{name: 'index_first_line_font',  value: 'Times-Italic'}  
+  {name: 'index_first_line_size',  value: '14'},{name: 'index_first_line_space',  value: '6'},{name: 'index_first_line_font',  value: 'Times-Italic'},
+  {name: 'index_cat_exclude',   value: 'Needs,Duplicate'}
 ];
 
 let def_configs = [];
-def_configs['simple'] = [
-  {name: 'paper_orientation',   value: 'portrait'},
-  {name: 'paper_size',          value: 'LETTER'},
-  {name: 'paper_margin_left',   value: '0.5'},
-  {name: 'paper_margin_right',  value: '0.5'},
-  {name: 'paper_margin_top',    value: '0.5'},
-  {name: 'paper_margin_bottom', value: '0.5'},
-  {name: 'column_gutter',       value: '0.5'},
-  {name: 'page_layout',         value: 'single-sided'},
-  {name: 'paper_margin_gutter', value: '0'},
-  {name: 'font_face',           value: 'Times-Roman'},
-  {name: 'text',                value: 'Default' },
-  {name: 'columns',             value: '1'},
+def_configs['1-column'] = [
+  {name: 'font_face',           value: 'Times-Roman'}, // Text Options
   {name: 'display_chords',      value: 'no'},
   {name: 'hide_booktitle',      value: 'yes'},
-  {name: 'index_title_font',    value: 'Times-Roman'},
-  {name: 'index_title_b4',      value: '20'},
-  {name: 'index_title_size',    value: '18'},
-  {name: 'index_title_space',   value: '6'},
-  {name: 'index_cat_font',      value: 'Times-Roman'},
-  {name: 'index_cat_b4',        value: '12'},
-  {name: 'index_cat_exclude',   value: 'Needs,Duplicate'},
-  {name: 'index_cat_size',      value: '14'},
-  {name: 'index_cat_space',     value: '6'},
-  {name: 'index_song_font',     value: 'Times-Bold'},
-  {name: 'index_song_size',     value: '12'},
-  {name: 'index_song_space',    value: '4'},
-  {name: 'index_first_line_font',  value: 'Times-Italic'},
-  {name: 'index_first_line_size',  value: '11'},
-  {name: 'index_first_line_space', value: '4'},
-  {name: 'display_index',       value: 'no-index'},
+  {name: 'scripture_location',  value: 'under-title'},
+  {name: 'text',                value: 'default' },
+  {name: 'columns',             value: '1'},           // Page Options
+  {name: 'page_layout',         value: 'single-sided'},
+  {name: 'paper_orientation',   value: 'portrait'},
+  {name: 'paper_size',          value: 'LETTER'},
+  {name: 'margin',              value: 'normal'},
+  {name: 'paper_margin_gutter', value: '1'},
+  {name: 'display_index',       value: 'no-index'},    // Index Options
   {name: 'display_cat_index',   value: 'no-index'},
   {name: 'display_scrip_index', value: 'no-index'},
-  {name: 'scripture_location',  value: 'under-title'}
+  {name: 'index',               value: 'default'}
+];
+def_configs['2-column'] = [
+  {name: 'font_face',           value: 'Times-Roman'}, // Text Options
+  {name: 'display_chords',      value: 'no'},
+  {name: 'hide_booktitle',      value: 'yes'},
+  {name: 'scripture_location',  value: 'under-title'},
+  {name: 'text',                value: 'default' },
+  {name: 'columns',             value: '2'},           // Page Options
+  {name: 'page_layout',         value: 'single-sided'},
+  {name: 'paper_orientation',   value: 'portrait'},
+  {name: 'paper_size',          value: 'LETTER'},
+  {name: 'margin',              value: 'narrow'},
+  {name: 'display_index',       value: 'no-index'},    // Index Options
+  {name: 'display_cat_index',   value: 'no-index'},
+  {name: 'display_scrip_index', value: 'no-index'},
+  {name: 'index',               value: 'default'}
 ];
 def_configs['3-column'] = [
+  {name: 'font_face',           value: 'Times-Roman'}, // Text Options
+  {name: 'display_chords',      value: 'no'},
+  {name: 'hide_booktitle',      value: 'yes'},
+  {name: 'scripture_location',  value: 'under-title'},
+  {name: 'text',                value: 'default' },
+  {name: 'columns',             value: '3'},           // Page Options
+  {name: 'page_layout',         value: 'single-sided'},
   {name: 'paper_orientation',   value: 'landscape'},
   {name: 'paper_size',          value: 'LETTER'},
   {name: 'margin',              value: 'narrow'},
-  {name: 'page_layout',         value: 'single-sided'},
-  {name: 'font_face',           value: 'Times-Roman'},
-  {name: 'booktitle_size',      value: '36'},
-  {name: 'booktitle_space',     value: '12'},
-  {name: 'songtitle_size',      value: '18'},
-  {name: 'songtitle_space',     value: '6'},
-  {name: 'song_space_after',    value: '12'},
-  {name: 'songchunk_b4',        value: '12'},
-  {name: 'songline_size',       value: '12'},
-  {name: 'songline_space',      value: '4'},
-  {name: 'songchord_size',      value: '12'},
-  {name: 'songchord_space',     value: '1'},
-  {name: 'small_size',          value: '8'},
-  {name: 'small_space',         value: '8'},
-  {name: 'copyright_size',      value: '8'},
-  {name: 'copyright_space_b4',  value: '3'},
-  {name: 'columns',             value: '3'},
-  {name: 'display_chords',      value: 'no'},
-  {name: 'hide_booktitle',      value: 'yes'},
-  {name: 'index_title_font',    value: 'Times-Roman'},
-  {name: 'index_title_b4',      value: '20'},
-  {name: 'index_title_size',    value: '18'},
-  {name: 'index_title_space',   value: '6'},
-  {name: 'index_cat_font',      value: 'Times-Roman'},
-  {name: 'index_cat_b4',        value: '12'},
-  {name: 'index_cat_exclude',   value: 'Needs,Duplicate'},
-  {name: 'index_cat_size',      value: '14'},
-  {name: 'index_cat_space',     value: '6'},
-  {name: 'index_song_font',     value: 'Times-Bold'},
-  {name: 'index_song_size',     value: '12'},
-  {name: 'index_song_space',    value: '4'},
-  {name: 'index_first_line_font',  value: 'Times-Italic'},
-  {name: 'index_first_line_size',  value: '11'},
-  {name: 'index_first_line_space', value: '4'},
-  {name: 'display_index',       value: 'no-index'},
+  {name: 'display_index',       value: 'no-index'},    // Index Options
   {name: 'display_cat_index',   value: 'no-index'},
   {name: 'display_scrip_index', value: 'no-index'},
-  {name: 'scripture_location',  value: 'under-title'}
+  {name: 'index',               value: 'default'}
 ];
 
 export_form.margins = margins;
@@ -327,6 +301,9 @@ window.export = export_form;
 function set_value_by_id(list) {
   for(item of list) {
     document.getElementById(item.name).value = item.value;
+    if(['margin','text','index'].includes(item.name)){
+      $('#'+item.name).trigger('change'); //trigger specifics
+    }
   }
 }
 if ('serviceWorker' in navigator) {
@@ -1434,6 +1411,7 @@ function prepExport(){
     }
   });
 }
+let timeout
 function export_form_summary_update() {
   document.getElementById('format').value = JSON.stringify([]);
   for(option of $('#format option')) {
@@ -1459,7 +1437,8 @@ function export_form_summary_update() {
                  document.getElementById('paper_margin_right').value,
                  document.getElementById('paper_margin_bottom').value,
                  document.getElementById('paper_margin_left').value,
-                 document.getElementById('column_gutter').value]
+                 document.getElementById('column_gutter').value,
+                 document.getElementById('paper_margin_gutter').value]
 
   let margin_name;
   if(margins.equals(window.export.margins['normal'])){
@@ -1550,7 +1529,8 @@ function export_form_summary_update() {
   document.getElementById('index_summary').innerHTML = index_name;
 
   if($('#auto_refresh').is(":checked")){
-    pdfFormatter.postMessage([window.exportObject,read_config_form()]);
+    clearTimeout(timeout);
+    timeout = setTimeout(() => {pdfFormatter.postMessage([window.exportObject,read_config_form()])}, 200); //hack to prevent multiple sends to the formatter
   }
 }
 function read_config_form(){

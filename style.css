@@ -1111,6 +1111,25 @@ input[type="number"] {
 .fr {
   float: right;
 }
+.expandedTableHeader {
+  border-top-right-radius: 2rem;
+  border-top-left-radius: 2rem;
+  padding: .5rem 1rem;
+  padding-bottom: 1rem;
+  margin-bottom: 0;
+  box-shadow: var(--btn-shadow-var);
+  cursor: pointer;
+}
+.expandedTable {
+  box-shadow: var(--btn-shadow-var);
+  width: 100%;
+}
+.expandedTableHeader.collapsed {
+  border-radius: 2rem;
+}
+.expandedTableHeader.collapsed + .expandedTable {
+  display: none;
+}
 .mirror {
   display: inline-block;
   transform: scaleX(-1);
