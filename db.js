@@ -258,19 +258,23 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       }
     };
     try {
-      let batman = await remoteDb.logIn(username, pwd, ajaxOpts).catch(function (error){
-        console.log(error);
-        alert(error.message)
-        dbLogout();
-      });
+      let batman = await remoteDb.logIn(username, pwd, ajaxOpts);
       
       console.log("I'm Batman.", batman);
       window.roles = batman.roles.reduce((a, v) => ({ ...a, [v]: true}), {})
       let info = await remoteDb.info();
       dbName = info.db_name + '(remote)';
 
+      //check access, admin different than user
+      const userJS = await remoteDb.getUser(username);
+      if(!userJS.roles.some((role) => role.startsWith(info.db_name))) {
+        dbLogout();
+        alert('you do not have access to this database');
+        return;
+      }
+
       //UPDATE LOCAL STORAGE DATABASES
-      addDBtoLocalStorage(dbName, 'remote', remote_url);
+      addDBtoLocalStorage(dbName, 'remote', remote_url); //shouldn't we move this into the going on disk block?
 
       if(!keep_logged_in){
         console.log('going with memory!')
@@ -315,6 +319,14 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
         };
         const batman = await remoteDb.logIn(username, pwd, ajaxOpts);
         console.log("I'm Batman.", batman);
+        //check access, admin different than user
+        let info = await remoteDb.info();
+        const userJS = await remoteDb.getUser(username);
+        if(!userJS.roles.some((role) => role.startsWith(info.db_name))) {
+          dbLogout();
+          alert('you do not have access to this database');
+          return;
+        }
         window.roles = batman.roles.reduce((a, v) => ({ ...a, [v]: true}), {}) 
         takeNextStep(username,dbName);
       }
