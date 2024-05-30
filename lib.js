@@ -1371,6 +1371,7 @@ async function prepExport(){
     window.pdfFormatter = await new Worker('pdfformatter.js');
     pdfFormatter.onmessage = function(e) {
       if(e.data[0] == 'pdf'){
+        document.getElementById('downloadPDF').innerHTML = `<a class="btn" href="${e.data[1]}" style="margin-top:0; " target='_blank' download="${window.exportObject.title}.pdf">Download ⭳</button>`;
         document.getElementById('pdf').contentWindow.yourMethod(e.data[1]);
         console.log('Message received from worker');
         logData('exported', window.exportObject._id + ": " + JSON.stringify(read_config_form()));
