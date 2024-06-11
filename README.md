@@ -4,10 +4,10 @@ is a yCanta rewrite designed to quickly create, manage, and present/export songs
 # Current status
 Songs and Songbooks can be edited, exported, and presented
 
-Still needs work on user management and server setup for persistence
+User management is functional and it syncs all instances when connected to a couchdb server
 
 # Recent Changes
-...
+* 6/10/24 - launched
 
 # Libraries
 * List.js v1.5.0 (http://listjs.com) by Jonny Strömberg (http://javve.com)
