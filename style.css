@@ -1597,7 +1597,7 @@ only screen and (max-height: 31.25rem) {
 
   /*Focus song*/
   body.song #song{
-    flex: 0 0 25rem;
+    flex: 0 0 27rem;
   }
   body.song #songList {
     flex: 0 1 25rem;
