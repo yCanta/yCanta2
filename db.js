@@ -13,9 +13,52 @@ function updateOnlineStatus(event) {
 window.addEventListener('load', function() {
   updateOnlineStatus(event);
   window.addEventListener('online',  updateOnlineStatus);
+  window.addEventListener('online',  checkRemoteDBandSyncHanlder);
   window.addEventListener('offline', updateOnlineStatus);
 });
+async function checkRemoteDBandSyncHanlder(){
+  if(!db) {
+    console.log('no db!')
+    notyf.info('Logging out, something broke!', 'red');
+    dbLogout();
+  }
+  //get user from local db, pwd, and remote url...
+  let user = await db.get('_local/'+window.user._id);
+  let pwd = user.pwd;
+  let username = user._id.slice(9);
+  let remote_url = user.remote_url;
 
+  if(!remoteDb && remote_url) {
+    console.log('setting up remoteDb')
+    await loginRemoteDb(remote_url, username, pwd);
+  }
+  if(!syncHandler && remote_url) {
+    console.log('setting up sync handler')
+    await setUpSyncHandler();
+  }
+}
+async function loginRemoteDb(remote_url, username, pwd) {
+  remoteDb = new PouchDB(remote_url, {skip_setup: true});
+  const ajaxOpts = {
+    ajax: {
+      headers: {
+        Authorization: getBasicAuthHeader(username, pwd),
+      },
+    },
+  };
+  const batman = await remoteDb.logIn(username, pwd, ajaxOpts);
+  console.log("I'm Batman.", batman);
+  //check access, admin different than user
+  let info = await remoteDb.info();
+  const userJS = await remoteDb.getUser(username);
+  if(!userJS.roles.some((role) => role.startsWith(info.db_name))) {
+    dbLogout();
+    alert('you do not have access to this database');
+    return;
+  }
+  window.roles = batman.roles.reduce((a, v) => ({ ...a, [v]: true}), {});
+  notyf.info('Connected to server', 'green');
+}
 function clearAllData() { 
   try {
     window.indexedDB.databases().then((r) => {
@@ -179,22 +222,15 @@ async function destroyDb(dbName){
 
 async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false, remote_url=false) {
   let keep_logged_in = document.getElementById('keep_logged_in').checked + (remote_url != false);
-  if(!dbName){
-    dbName = $('#db_select :selected').val();
-  }
+  dbName = dbName || document.getElementById('db_select').value;
   if(type=="login"){
     if(dbName.endsWith('(local)')){type+='_local'}
     else if(dbName.endsWith('(remote)')){type+='_remote'}
   }
-  if(!username){
-    username = $('#username').val().trim();
-  }
-  if(!pin){
-    pin = $('#pin').val().trim();
-  }
-  if(!pwd){
-    pwd = $('#pwd').val().trim();
-  }
+  username = username || document.getElementById('username').value.trim();
+  pin = pin || document.getElementById('pin').value.trim();
+  pwd = pwd || document.getElementById('pwd').value.trim();
+
   if(!remote_url && type == 'connect_remote'){
     remote_url = $('#remote_url').val();
   }
@@ -203,7 +239,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
   }
 
   if(type=="create_local"){
-    dbName = $('#newDbName').val().trim()+'(local)';
+    dbName = document.getElementById('newDbName').value.trim() + '(local)';
     console.log('New local DB: '+dbName);
     //initialize local database;
     db = new PouchDB(dbName);
@@ -249,29 +285,8 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
   else if(type=="connect_remote"){
     console.log('Connecting to remote db');
     remote_url = parseUrl(remote_url, username, pwd);
-    remoteDb = new PouchDB(remote_url, {skip_setup: true});
-    var ajaxOpts = {
-      ajax: {
-        headers: {
-          Authorization: 'Basic ' + window.btoa(username+':'+pwd)
-        }
-      }
-    };
     try {
-      let batman = await remoteDb.logIn(username, pwd, ajaxOpts);
-      
-      console.log("I'm Batman.", batman);
-      window.roles = batman.roles.reduce((a, v) => ({ ...a, [v]: true}), {})
-      let info = await remoteDb.info();
-      dbName = info.db_name + '(remote)';
-
-      //check access, admin different than user
-      const userJS = await remoteDb.getUser(username);
-      if(!userJS.roles.some((role) => role.startsWith(info.db_name))) {
-        dbLogout();
-        alert('you do not have access to this database');
-        return;
-      }
+      loginRemoteDb(remote_url, username, pwd);
 
       //UPDATE LOCAL STORAGE DATABASES
       addDBtoLocalStorage(dbName, 'remote', remote_url); //shouldn't we move this into the going on disk block?
@@ -309,33 +324,17 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     try {
       if(navigator.onLine) {
         remote_url = parseUrl(remote_url, username, pwd);
-        remoteDb = new PouchDB(remote_url, {skip_setup: true});
-        const ajaxOpts = {
-          ajax: {
-            headers: {
-              Authorization: getBasicAuthHeader(username, pwd),
-            },
-          },
-        };
-        const batman = await remoteDb.logIn(username, pwd, ajaxOpts);
-        console.log("I'm Batman.", batman);
-        //check access, admin different than user
-        let info = await remoteDb.info();
-        const userJS = await remoteDb.getUser(username);
-        if(!userJS.roles.some((role) => role.startsWith(info.db_name))) {
-          dbLogout();
-          alert('you do not have access to this database');
-          return;
-        }
-        window.roles = batman.roles.reduce((a, v) => ({ ...a, [v]: true}), {}) 
+        await loginRemoteDb(remote_url, username, pwd);
         takeNextStep(username,dbName);
       }
       else {
         console.log('attempting offline login');
         let localUser = await db.get('_local/u-'+username);
+        console.log(localUser)
         if(localUser.pwd == pwd) {
           console.log('offline login successful');
-          window.roles = JSON.parse(localStorage.getItem('loggedin')).roles;
+          window.roles = localUser.roles;
+          notyf.info('Offline login successful', 'green');
           takeNextStep(username, dbName);
         }
       }
@@ -383,6 +382,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       //store user pin in a local doc
       db.upsert('_local/u-'+username, function (doc) {
         doc.pin = pin;
+        doc.roles = window.roles;
         return doc;
       }).then(function () {
         console.log("updated user's pin");
@@ -396,6 +396,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       db.upsert('_local/u-'+username, function (doc) {
         doc.pwd = pwd;
         doc.remote_url = remote_url;
+        doc.roles = window.roles;
         return doc;
       }).then(function () {
         console.log("updated user's pwd");
@@ -404,13 +405,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       });
     }
     //Setup sync for remote database connections
-    if(db.name.endsWith('(remote)')){
-      let info = await remoteDb.info().catch(function(error){
-        alert(error.message);
-        console.log(error);
-        dbLogout();
-      });
-      let localInfo = await db.info();
+    if(navigator.onLine && db.name.endsWith('(remote)')){
       setLoginState(); //adding a setlogin state here for when syncing a large slow database - let's you see the app instead of having to wait.
 
       console.log('doing a onetime sync...');
@@ -449,33 +444,8 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
           console.log(err);
         }
       });
-
       //now set up the live sync
-      syncHandler = db.sync(remoteDb, {
-        live: true,
-        retry: true
-      }).on('change', function (change) {
-        console.log('Synced some stuff', parseInt(parseInt(change.change.last_seq.split('-')[0].replace('-',''))/parseInt(info.update_seq.replace('-',''))*100)+'%');
-        // yo, something changed!
-      }).on('paused', function (info) {
-        // replication was paused, usually because of a lost connection
-        //notyf.info('Connection to server interupted', 'yellow');
-      }).on('active', function (info) {
-        //notyf.info('Connection to server resumed', 'yellow');
-        // replication was resumed
-      }).on('complete', function (err) {
-        console.log('complete');
-      }).catch(function (err) {
-        if(err.name == 'unauthorized' || err.name == 'forbidden'){
-          console.log(err)
-          alert('Username or Password are incorrect');
-          dbLogout();
-        }
-        else {
-          console.log(err)
-          // totally unhandled error (shouldn't happen)
-        }
-      });
+      setUpSyncHandler();
     }
     
     delete window.silent;
@@ -576,7 +546,35 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
   }
   return false;
 }
-
+function setUpSyncHandler() {
+  try {
+    syncHandler = db.sync(remoteDb, {
+      live: true,
+      retry: true
+    }).on('change', function (change) {
+      console.log('Synced some stuff', parseInt(parseInt(change.change.last_seq.split('-')[0].replace('-',''))/parseInt(info.update_seq.replace('-',''))*100)+'%');
+      // yo, something changed!
+    }).on('paused', function (info) {
+      // replication was paused, usually because of a lost connection
+    }).on('active', function (info) {
+      // replication was resumed
+    }).on('complete', function (err) {
+      //replication canceled
+      console.log('complete');
+    });
+    notyf.info('Sync established', 'green');
+  }
+  catch(err) {
+    if(err.name == 'unauthorized' || err.name == 'forbidden'){
+      console.log(err)
+      alert('Username or Password are incorrect');
+      dbLogout();
+    }
+    else {
+      console.log(err) // totally unhandled error (shouldn't happen)
+    }
+  }
+}
 async function dbLogout() {
   if (!confirmWhenEditing()) {
     try {
