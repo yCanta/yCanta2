@@ -13,10 +13,10 @@ function updateOnlineStatus(event) {
 window.addEventListener('load', function() {
   updateOnlineStatus(event);
   window.addEventListener('online',  updateOnlineStatus);
-  window.addEventListener('online',  checkRemoteDBandSyncHanlder);
+  //window.addEventListener('online',  checkRemoteDBandSyncHandler);
   window.addEventListener('offline', updateOnlineStatus);
 });
-async function checkRemoteDBandSyncHanlder(){
+async function checkRemoteDBandSyncHandler(){
   if(!db) {
     console.log('no db!')
     notyf.info('Logging out, something broke!', 'red');
@@ -248,17 +248,6 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     addDBtoLocalStorage(dbName, 'local');
     window.roles = {'_admin':true,'editor':true};
 
-    //initialize list of categories
-    var categories = {
-      _id: 'categories',
-      categories: ["Adoration", "Aspiration/Desire", "Assurance", "Atonement", "Awe", "Bereavement", "Brokenness", "Calvary", "Christ as Bridegroom", "Christ as King", "Christ as Lamb", "Christ as Redeemer", "Christ as Savior", "Christ as Shepherd", "Christ as Son", "Christ's Blood", "Christ's Return", "Church as Christ's Body", "Church as Christ's Bride", "Church as God's House", "Cleansing", "Comfort", "Commitment", "Compassion", "Condemnation", "Consecration", "Conviction of Sin", "Courage", "Creation", "Cross", "Dedication/Devotion", "Dependence on God", "Encouragement", "Endurance", "Eternal Life", "Evangelism", "Faith", "Faithfulness", "Fear", "Fear of God", "Fellowship", "Forgiveness", "Freedom", "God as Creator", "God as Father", "God as Refuge", "God's Creation", "God's Faithfulness", "God's Glory", "God's Goodness", "God's Guidance", "God's Harvest", "God's Holiness", "God's Love", "God's Mercy", "God's Power", "God's Presence", "God's Strength", "God's Sufficiency", "God's Timelessness", "God's Victory", "God's Wisdom", "God's Word", "Godly Family", "Grace", "Gratefulness", "Healing", "Heaven", "Holiness", "Holy Spirit", "Hope", "Humility", "Hunger/Thirst for God", "Incarnation", "Invitation", "Jesus as Messiah", "Joy", "Kingdom of God", "Knowing Jesus", "Lordship of Christ", "Love for God", "Love for Jesus", "Love for Others", "Majesty", "Meditation", "Mercy", "Missions", "Mortality", "Neediness", "New Birth", "Obedience", "Oneness in Christ", "Overcoming Sin", "Patience", "Peace", "Persecution", "Praise", "Prayer", "Proclamation", "Provision", "Purity", "Purpose", "Quietness", "Redemption", "Refreshing", "Repentance", "Rest", "Resurrection", "Revival", "Righteousness", "Salvation", "Sanctification", "Security", "Seeking God", "Service", "Servanthood", "Sorrow", "Spiritual Warfare", "Submission to God", "Suffering for Christ", "Surrender", "Temptation", "Trials", "Trust", "Victorious Living", "Waiting on God", "Worship", "-----", "Christmas", "Easter", "Good Friday", "Thanksgiving", "-----", "Baptism", "Birth", "Closing Worship", "Communion", "Death", "Engagement", "Opening Worship", "Wedding", "-----", "Children's Songs", "Rounds", "Scripture Reading", "Scripture Songs", "-----", "Needs Work", "Needs Chord Work", "Needs Categorical Work", "Duplicate", "-----", "Norway", "Secular", "Delete", "Spanish words", "Celebration"]
-    }
-    db.put(categories).then(result => {
-        console.log('added categories');
-      }).catch(function(err) {
-        console.log(err);
-      });
-    console.log(username,dbName);
     takeNextStep(username,dbName);
   }
   else if(type=="login_local"){
@@ -361,49 +350,79 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     //initialized
     window.songbook = {};
     window.song = {};
-    window.user = { //temp user document
+    let categories = {
+      _id: 'categories',
+      categories: ["Adoration", "Aspiration/Desire", "Assurance", "Atonement", "Awe", "Bereavement", "Brokenness", "Calvary", "Christ as Bridegroom", "Christ as King", "Christ as Lamb", "Christ as Redeemer", "Christ as Savior", "Christ as Shepherd", "Christ as Son", "Christ's Blood", "Christ's Return", "Church as Christ's Body", "Church as Christ's Bride", "Church as God's House", "Cleansing", "Comfort", "Commitment", "Compassion", "Condemnation", "Consecration", "Conviction of Sin", "Courage", "Creation", "Cross", "Dedication/Devotion", "Dependence on God", "Encouragement", "Endurance", "Eternal Life", "Evangelism", "Faith", "Faithfulness", "Fear", "Fear of God", "Fellowship", "Forgiveness", "Freedom", "God as Creator", "God as Father", "God as Refuge", "God's Creation", "God's Faithfulness", "God's Glory", "God's Goodness", "God's Guidance", "God's Harvest", "God's Holiness", "God's Love", "God's Mercy", "God's Power", "God's Presence", "God's Strength", "God's Sufficiency", "God's Timelessness", "God's Victory", "God's Wisdom", "God's Word", "Godly Family", "Grace", "Gratefulness", "Healing", "Heaven", "Holiness", "Holy Spirit", "Hope", "Humility", "Hunger/Thirst for God", "Incarnation", "Invitation", "Jesus as Messiah", "Joy", "Kingdom of God", "Knowing Jesus", "Lordship of Christ", "Love for God", "Love for Jesus", "Love for Others", "Majesty", "Meditation", "Mercy", "Missions", "Mortality", "Neediness", "New Birth", "Obedience", "Oneness in Christ", "Overcoming Sin", "Patience", "Peace", "Persecution", "Praise", "Prayer", "Proclamation", "Provision", "Purity", "Purpose", "Quietness", "Redemption", "Refreshing", "Repentance", "Rest", "Resurrection", "Revival", "Righteousness", "Salvation", "Sanctification", "Security", "Seeking God", "Service", "Servanthood", "Sorrow", "Spiritual Warfare", "Submission to God", "Suffering for Christ", "Surrender", "Temptation", "Trials", "Trust", "Victorious Living", "Waiting on God", "Worship", "-----", "Christmas", "Easter", "Good Friday", "Thanksgiving", "-----", "Baptism", "Birth", "Closing Worship", "Communion", "Death", "Engagement", "Opening Worship", "Wedding", "-----", "Children's Songs", "Rounds", "Scripture Reading", "Scripture Songs", "-----", "Needs Work", "Needs Chord Work", "Needs Categorical Work", "Duplicate", "-----", "Norway", "Secular", "Delete", "Spanish words", "Celebration"]
+    }
+    //setup user
+    let user = {
       _id: 'u-'+username,
       name: username,
       fav_sbs: [],
       fav_songs: []
     }
-    window.yCantaName = dbName;
-    try {  //REVISIT THIS!!!!!  Does it need to be in a try, catch?
-      document.documentElement.classList.add(...Object.keys(window.roles)); 
-    } catch(error) {
-      console.log(error);
+    if(remoteDb) {
+      await remoteDb.putIfNotExists(user)
+      await remoteDb.putIfNotExists(categories);
+      user = await remoteDb.get('u-'+username);
     }
+    else {
+      await db.putIfNotExists(user)
+      await db.putIfNotExists(categories);
+      user = await db.get('u-'+username);
+    }
+    window.user = user;
+    
+    //User Preferences
+    let userId = window.user._id;
+    let fontSize = localStorage.getItem(userId+'fontSize') || 16;
+    let darkMode = localStorage.getItem(userId+'darkMode') || 'auto';
+    let analytics = localStorage.getItem(userId+'analytics');
+    //check dark mode and set for app
+    document.getElementById(darkMode+'Radio').checked = true;
+    handleDarkMode();
+    //set font size;
+    document.documentElement.style.fontSize = fontSize+'px';
+    document.getElementById('fontSize').value = fontSize;
+    document.getElementById('fontSizeOutput').value = fontSize + 'px';
+    //set analytics
+    if(analytics == 'false') {
+      document.getElementById('analytics').checked = false;
+    } else {
+      document.getElementById('analytics').checked = true;
+    }
+
+    window.yCantaName = dbName; //only used in setLoginState - use dbName instead of storing here too, right?
+
     document.body.classList.remove('loading');
 
     //Store logged in status: pin for local, for remote we store pwd.
     localStorage.setItem('defaultdbName', dbName);
-    if(dbName.endsWith('(local)')){
-      localStorage.setItem('loggedin',JSON.stringify({dbName: dbName, username: username, pin: pin, roles: window.roles}));
-      //store user pin in a local doc
-      db.upsert('_local/u-'+username, function (doc) {
-        doc.pin = pin;
-        doc.roles = window.roles;
-        return doc;
-      }).then(function () {
-        console.log("updated user's pin");
-      }).catch(function (err) {
-        console.log(err);
-      });
+    let userData = {
+      dbName,
+      username,
+      roles: window.roles,
+    };
+    if (dbName.endsWith("(local)")) {
+      userData.pin = pin;
+    } else if (keep_logged_in && dbName.endsWith("(remote)")) {
+      userData.pwd = pwd;
+      userData.remote_url = remote_url;
     }
-    else if(keep_logged_in && dbName.endsWith('(remote)')){
-      localStorage.setItem('loggedin',JSON.stringify({dbName: dbName, username: username, pwd: pwd, roles: window.roles, url: remote_url}));
-      //store username/pwd/url
-      db.upsert('_local/u-'+username, function (doc) {
-        doc.pwd = pwd;
-        doc.remote_url = remote_url;
-        doc.roles = window.roles;
-        return doc;
-      }).then(function () {
-        console.log("updated user's pwd");
-      }).catch(function (err) {
-        console.log(err);
-      });
-    }
+    localStorage.setItem('loggedin',JSON.stringify(userData));
+    //update local user document
+    db.upsert('_local/u-'+username, function(doc){
+      for(key of Object.keys(userData)) {
+        if( key != 'username' && key != 'dbName'){ //don't want to store username and dbName
+          doc[key] = userData[key];
+        }
+      }
+      return doc;
+    }).then(function () {
+      console.log("updated user's data");
+    }).catch(function (err) {
+      console.log(err);
+    });
     //Setup sync for remote database connections
     if(navigator.onLine && db.name.endsWith('(remote)')){
       setLoginState(); //adding a setlogin state here for when syncing a large slow database - let's you see the app instead of having to wait.
@@ -432,49 +451,13 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       document.documentElement.style.setProperty('--status-text',`""`);
       document.documentElement.style.setProperty('--animation',`"unset"`);
       console.log('sync complete');
-      let categories = {
-        _id: 'categories',
-        categories: ["Adoration", "Aspiration/Desire", "Assurance", "Atonement", "Awe", "Bereavement", "Brokenness", "Calvary", "Christ as Bridegroom", "Christ as King", "Christ as Lamb", "Christ as Redeemer", "Christ as Savior", "Christ as Shepherd", "Christ as Son", "Christ's Blood", "Christ's Return", "Church as Christ's Body", "Church as Christ's Bride", "Church as God's House", "Cleansing", "Comfort", "Commitment", "Compassion", "Condemnation", "Consecration", "Conviction of Sin", "Courage", "Creation", "Cross", "Dedication/Devotion", "Dependence on God", "Encouragement", "Endurance", "Eternal Life", "Evangelism", "Faith", "Faithfulness", "Fear", "Fear of God", "Fellowship", "Forgiveness", "Freedom", "God as Creator", "God as Father", "God as Refuge", "God's Creation", "God's Faithfulness", "God's Glory", "God's Goodness", "God's Guidance", "God's Harvest", "God's Holiness", "God's Love", "God's Mercy", "God's Power", "God's Presence", "God's Strength", "God's Sufficiency", "God's Timelessness", "God's Victory", "God's Wisdom", "God's Word", "Godly Family", "Grace", "Gratefulness", "Healing", "Heaven", "Holiness", "Holy Spirit", "Hope", "Humility", "Hunger/Thirst for God", "Incarnation", "Invitation", "Jesus as Messiah", "Joy", "Kingdom of God", "Knowing Jesus", "Lordship of Christ", "Love for God", "Love for Jesus", "Love for Others", "Majesty", "Meditation", "Mercy", "Missions", "Mortality", "Neediness", "New Birth", "Obedience", "Oneness in Christ", "Overcoming Sin", "Patience", "Peace", "Persecution", "Praise", "Prayer", "Proclamation", "Provision", "Purity", "Purpose", "Quietness", "Redemption", "Refreshing", "Repentance", "Rest", "Resurrection", "Revival", "Righteousness", "Salvation", "Sanctification", "Security", "Seeking God", "Service", "Servanthood", "Sorrow", "Spiritual Warfare", "Submission to God", "Suffering for Christ", "Surrender", "Temptation", "Trials", "Trust", "Victorious Living", "Waiting on God", "Worship", "-----", "Christmas", "Easter", "Good Friday", "Thanksgiving", "-----", "Baptism", "Birth", "Closing Worship", "Communion", "Death", "Engagement", "Opening Worship", "Wedding", "-----", "Children's Songs", "Rounds", "Scripture Reading", "Scripture Songs", "-----", "Needs Work", "Needs Chord Work", "Needs Categorical Work", "Duplicate", "-----", "Norway", "Secular", "Delete", "Spanish words", "Celebration"]
-      }
-      db.putIfNotExists(categories, function callback(err, result) {
-        if(!err) {
-          console.log('added categories if needed');
-        }
-        else {
-          console.log(err);
-        }
-      });
       //now set up the live sync
       setUpSyncHandler();
     }
     
     delete window.silent;
-    //Get user document or set it up
-    try {
-      let response = await db.get('u-'+username);
-      window.user = response;
-      updateUser();
-    }
-    catch (error){
-      console.log('username does not exist in database at this time, creating one for this user');
-      let user = {
-        _id: 'u-'+username,
-        name: username,
-        fav_sbs: [],
-        fav_songs: []
-      }
-      window.user = user;
-      db.put(user, function callback(err, result) {
-        if(!err) {
-          console.log('added user to database: ', username);
-        }
-        else {
-          console.log(err);
-        }
-      });
-    };
-
-    setLoginState();
+    
+    setLoginState(); //includes: title, changing the hash setting window.loggedin, updating the user
     dbChanges();
     //layout the welcome?  maybe this goes in set login state?
     //Update ui when db changes]s
@@ -482,33 +465,12 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     initializeSongbooksList();
     loadUsersObject(); //list of all users stored for reference;
 
-    window.dbName = db.name.replace(/\(.+?\)/,'');
+    window.dbName = db.name.replace(/\(.+?\)/,''); //this is used for permissions/roles.
     
-    //check dark mode and set for app
-    let darkMode = localStorage.getItem(window.user._id+'darkMode');
-    if(darkMode){
-      document.getElementById(darkMode+'Radio').checked = true;
-    }else {
-      document.getElementById('autoRadio').checked = true;
-    }
-    handleDarkMode();
-    //set font size;
-    let fontSize = localStorage.getItem(window.user._id+'fontSize') || 16;
-    if(fontSize){
-      document.documentElement.style.fontSize = fontSize+'px';
-      document.getElementById('fontSize').value = fontSize;
-      document.getElementById('fontSizeOutput').value = fontSize + 'px';
-    }
-    let analytics = localStorage.getItem(window.user._id+'analytics');
-    if(analytics == 'false'){
-      document.getElementById('analytics').checked = false;
-    }else {
-      document.getElementById('analytics').checked = true;
-    }
-
     //wipe login cause we were successfull!
     $('#login :input').each(function(){$(this).val('')});
 
+//ANalytics - could be nice to move this elsewhere...?
     //DeviceInfo(deviceID, os, screen dimensions, touch capable, )
     if(!localStorage.getItem('analyticID')){
       localStorage.setItem('analyticID',self.crypto.randomUUID()); //random anyonymous id
@@ -542,6 +504,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       }
       delete window.loadData;
     }
+    document.documentElement.classList.add(...Object.keys(window.roles));
     return true;
   }
   return false;

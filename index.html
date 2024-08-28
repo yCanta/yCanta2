@@ -939,7 +939,7 @@
             let loggedIn = JSON.parse(localStorage.getItem('loggedin'));
             let defaultLogin = localStorage.getItem('defaultdbName');
             try {
-              dbLogin('login', loggedIn.dbName, loggedIn.username, loggedIn.pin, loggedIn.pwd, loggedIn.url);
+              dbLogin('login', loggedIn.dbName, loggedIn.username, loggedIn.pin, loggedIn.pwd, loggedIn.remote_url);
               console.log("still logged in!");
               return
             }

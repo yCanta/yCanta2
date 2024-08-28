@@ -873,7 +873,7 @@ function setLoginState() {
   }
   setTimeout(function(){
     document.body.classList.remove('loading');
-  }, 300)
+  }, 20);
 }
 
 function setLogoutState() {
