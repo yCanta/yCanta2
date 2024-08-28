@@ -102,13 +102,11 @@ function dbChanges() {
           .then(function(values) {
             updateAllLinks();
           });         
-        if(!window.silent){ notyf.info('Song updated', 'var(--song-color)') };
+        notyf.info('Song updated', 'var(--song-color)');
       } else {
-        if(!window.silent){ 
-          notyf.info(`Song "${change.doc.title}" updated by ${window.users[change.doc.editedBy]}`,
-                   'var(--song-color)',
-                   `#${window.songbook._id}&${change.doc._id}`);
-        }
+        notyf.info(`Song "${change.doc.title}" updated by ${window.users[change.doc.editedBy]}`,
+                 'var(--song-color)',
+                 `#${window.songbook._id}&${change.doc._id}`);
       }
       //update all songs in songbooks
       if(window.songbook_list != undefined ){
@@ -133,13 +131,11 @@ function dbChanges() {
       if(window.songbook._id === change.doc._id && (document.body.classList.contains('songList') || document.body.classList.contains('song'))){
         window.songbook = '';
         loadSongbook(change.doc._id);
-        if(!window.silent){ notyf.info('Songbook updated', 'var(--songList-color)'); }
+        notyf.info('Songbook updated', 'var(--songList-color)');
       } else {
-        if(!window.silent){ 
-          notyf.info(`Songbook "${change.doc.title}" updated by ${window.users[change.doc.editedBy]}`,
-                   'var(--songList-color)',
-                   `#${change.doc._id}`);
-        }
+        notyf.info(`Songbook "${change.doc.title}" updated by ${window.users[change.doc.editedBy]}`,
+                 'var(--songList-color)',
+                 `#${change.doc._id}`);
       }
       //update the songbook entry in songbooks_list
       if(window.songbooks_list != undefined){
@@ -158,10 +154,8 @@ function dbChanges() {
           comments += `<div><b>${comment.user} </b>${new Date(comment.date).toLocaleTimeString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})}<pre>${comment.comment}</pre></div>`;
         }
         $('li[data-song-id="'+song_id+'"] .comments').html(comments);
-        if(!window.silent){ 
-          notyf.info(`Comment added to "${song_id}" by ${change.doc.comments[change.doc.comments.length - 1].user}`,
-                   'var(--songList-color)');
-        }
+        notyf.info(`Comment added to "${song_id}" by ${change.doc.comments[change.doc.comments.length - 1].user}`,
+                 'var(--songList-color)');
       }
     }
     else if(change.doc._id.startsWith('u-')){
@@ -189,7 +183,7 @@ function dbChanges() {
           loadSongbook('sb-favoriteSongs');
         }
         updateUser();
-        if(!window.silent){ notyf.info(`User Updated "${change.doc.name}"`, 'var(--edit-color)'); }
+        notyf.info(`User Updated "${change.doc.name}"`, 'var(--edit-color)');
         window.songbooks_list.reIndex();
         window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
         $('#song song').attr('data-user-fav', (window.user.fav_songs.indexOf($('#song song').attr('data-id'))> -1 ? 'true': 'false'))
@@ -197,7 +191,7 @@ function dbChanges() {
     }
     //New default config saved
     else if(change.doc._id.startsWith('cfg-')){ //Change to be more specific.
-      if(!window.silent){ notyf.info('Default config saved'); }
+      notyf.info('Default config saved');
     }
     //else... let it go! for now
     else {
@@ -346,7 +340,6 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
   }
 
   async function takeNextStep(username, dbName) {  //after login
-    window.silent = true;
     //initialized
     window.songbook = {};
     window.song = {};
@@ -425,10 +418,9 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     }).catch(function (err) {
       console.log(err);
     });
+    setLoginState();
     //Setup sync for remote database connections
     if(navigator.onLine && db.name.endsWith('(remote)')){
-      setLoginState(); //adding a setlogin state here for when syncing a large slow database - let's you see the app instead of having to wait.
-
       console.log('doing a onetime sync...');
       let startTime = new Date();
       let firstSync = await db.sync(remoteDb).on('change', function (change) {
@@ -457,20 +449,11 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       console.log('sync complete');
       //now set up the live sync
       setUpSyncHandler();
+      setLoginState();
     }
-    
-    delete window.silent;
-    
-    setLoginState(); //includes: title, changing the hash setting window.loggedin, updating the user
-    dbChanges();
-    //layout the welcome?  maybe this goes in set login state?
     //Update ui when db changes]s
-    loadRecentSongs();
-    initializeSongbooksList();
-    loadUsersObject(); //list of all users stored for reference;
-
+    dbChanges();
     window.dbName = db.name.replace(/\(.+?\)/,''); //this is used for permissions/roles.
-    
     //wipe login cause we were successfull!
     $('#login :input').each(function(){$(this).val('')});
 
@@ -535,11 +518,11 @@ function setUpSyncHandler() {
     if(err.name == 'unauthorized' || err.name == 'forbidden'){
       console.log(err)
       alert('Username or Password are incorrect');
-      dbLogout();
     }
     else {
       console.log(err) // totally unhandled error (shouldn't happen)
     }
+    dbLogout();
   }
 }
 async function dbLogout() {

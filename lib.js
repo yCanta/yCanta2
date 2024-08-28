@@ -874,6 +874,10 @@ function setLoginState() {
   setTimeout(function(){
     document.body.classList.remove('loading');
   }, 20);
+  //Update ui when db changes]s
+  loadRecentSongs();
+  initializeSongbooksList();
+  loadUsersObject(); //list of all users stored for reference;
 }
 
 function setLogoutState() {
