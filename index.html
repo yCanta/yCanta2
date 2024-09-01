@@ -950,7 +950,7 @@
                 }
               }
             }
-            let hostName = (list.filter(a => a[1].includes(location.hostName)).length ? 'login.ycanta.com' : location.hostName);
+            let hostName = (list.filter(a => a[1].includes(location.hostname)).length ? 'login.ycanta.com' : location.hostname);
             //Generate options
             if(hostName == 'login.ycanta.com') {
               for(item of list) {
