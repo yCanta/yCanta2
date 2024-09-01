@@ -1,19 +1,5 @@
 function startHandlingFiles(){
   try {
-    async function handleFile(f) {
-      let result = '';
-
-      if(f.name.endsWith('zip')) {
-        result = await importSongV1(f);
-      }
-      else if(f.name.endsWith('json')){
-        result = await importSongV2(f);
-      }
-      else {
-        console.log('not a recognized file');
-      }
-      return result;
-    }
     var files = document.getElementById('file').files;  // we can have multiple files selected.
     for (var i = 0; i < files.length; i++) {
       handleFile(files[i]);
@@ -21,6 +7,19 @@ function startHandlingFiles(){
   } catch(err) {
     alert(err);
   }
+}
+async function handleFile(f) {
+  let result = '';
+  if(f.name.endsWith('zip')) {
+    result = await importSongV1(f);
+  }
+  else if(f.name.endsWith('json')){
+    result = await importSongV2(f);
+  }
+  else {
+    console.log('not a recognized file');
+  }
+  return result;
 }
 function updateProgress(){
   let i = window.import;
@@ -192,6 +191,7 @@ async function importSongV1(f){
   return 'toga';
 }
 async function importSongV2(f){
+  changeHandler.cancel();
   var $result = $("#result");
   // remove content
   $result.html("");
@@ -270,6 +270,9 @@ async function importSongV2(f){
       console.log('done!', results.length);
       initializeSongbooksList();
       document.getElementById('progress_text').innerHTML = 'All docs imported!';
+      initializeSongbooksList();
+      dbChanges();
+      loadRecentSongs();
     });
   }
 

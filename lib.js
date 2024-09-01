@@ -610,7 +610,7 @@ function checkCreateNew() {
   let response = true;
 
   let databases = JSON.parse(localStorage.getItem('databases'));
-  if(databases && databases.find(db => db.name === dbName)){
+  if(databases && databases[dbName]) {
     alert('Database name already taken - try another!');
     response = false;
   }
@@ -661,13 +661,13 @@ function addDBtoLocalStorage(dbName, type, remote_url=false){
     new_db.url = parseUrl(remote_url);
   }
   let databases = JSON.parse(localStorage.getItem('databases'));
-  if(!databases){databases = [];}
-  databases.push(new_db);
+  if(!databases){databases = {};}
+  databases[dbName] = new_db;
   localStorage.setItem('databases',JSON.stringify(databases));
 }
 function removeDbfromLocalStorage(dbName){
   let databases = JSON.parse(localStorage.getItem('databases'));
-  databases = databases.filter(el => el.name !== dbName );
+  delete databases[dbName];
   localStorage.setItem('databases',JSON.stringify(databases)); 
 }
 

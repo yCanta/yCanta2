@@ -1052,7 +1052,6 @@ input[type='radio'].toggle {
 .collapsible-content .content-inner {
   --background-color: var(--edit-color);
   background-color: var(--background-color);
-  border-bottom: 1px solid lightgray;
   border-bottom-left-radius: 8px;
   border-bottom-right-radius: 8px;
   padding: .5rem 1rem;

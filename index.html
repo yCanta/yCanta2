@@ -853,23 +853,6 @@
         window.onbeforeunload = function() {
           return ((window.songEditing || window.songbookEditing) ? "If you leave this page you will lose your unsaved changes." : null);
         }
-
-        $('#db_select').on('change', function() {
-          $('#login').removeClass();
-          let selected_val = $('#db_select :selected').val();
-          if(selected_val == 'create_local') {
-            $('#login').addClass('create_local');
-          } 
-          else if(selected_val == 'connect_remote') {
-            $('#login').addClass('connect_remote');
-          }
-          else if(selected_val.endsWith('(local)')){
-            $('#login').addClass('login_local');
-          }
-          else if(selected_val.endsWith('(remote)')){
-            $('#login').addClass('login_remote');
-          }
-        });
       });   
       async function hashchanged(e){
         let oldHash = '';
@@ -956,18 +939,33 @@
             bodyClassList.push('login');
             bodyClassList.push('header');
 
+            let list = [['canaan(remote)','https://ycanta.canaanf.org/couch/canaan', 'Canaan Fellowship'],['being_church(remote)','https://ycanta.beingchurchfl.org/couch/being_church', 'Being Church'],['demo(local)','https://demo.ycanta.com/', 'Demo']];
             let db_opts = '';
             let databases = JSON.parse(localStorage.getItem('databases'));
             if(databases) {
-              for(const db of databases) {
-                if(db.name != 'being_church(remote)' && db.name != 'canaan(remote)'){
+              for(const key of Object.keys(databases)) {
+                let db = databases[key];
+                if(db.name != 'being_church(remote)' && db.name != 'canaan(remote)' && db.name != 'demo(local)'){
                   db_opts += `<option value="${db.name}" data-url="${db.url}"${(defaultLogin == db.name ? ' selected' : '')}>${(db.url ? capEachWord(db.name, "_") : db.name)}</option>`
                 }
               }
             }
-            db_opts += `<option value="canaan(remote)" data-url="https://ycanta.canaanf.org/couch/canaan"${(defaultLogin == "canaan(remote)" ? ' selected' : '')}>Canaan Fellowship</option><option value="being_church(remote)" data-url="https://ycanta.canaanf.org/couch/being_church"${(defaultLogin == "being_church(remote)" ? ' selected' : '')}>Being Church</option>`
-            db_opts += '<option value="create_local">Create Local</option>';
-            db_opts += '<option value="connect_remote">Connect Remote</option>';
+            let hostName = (list.filter(a => a[1].includes(location.hostName)).length ? location.hostName : 'login.ycanta.com');
+            //Generate options
+            if(hostName == 'login.ycanta.com') {
+              for(item of list) {
+                db_opts += `<option value="${item[0]}" data-url="${item[1]}"${(defaultLogin == item[0] ? ' selected' : '')}>${item[2]}</option>`
+              }
+              db_opts += '<option value="create_local">Create Local</option>';
+              db_opts += '<option value="connect_remote">Connect Remote</option>';
+            }
+            else {
+              for(item of list) {
+                if(item[1].includes(hostName)){
+                  db_opts += `<option value="${item[0]}" data-url="${item[1]}"${(defaultLogin == item[0] ? ' selected' : '')}>${item[2]}</option>`
+                }
+              }
+            }
             setTimeout(function(){$('#db_select').html(db_opts).trigger('change');},0);
             window.document.title = "yCanta2 - Login";
             return; //otherwise we load the song and other pieces weirdly

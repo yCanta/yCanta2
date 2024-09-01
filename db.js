@@ -9,12 +9,46 @@ function updateOnlineStatus(event) {
   console.log(`Event: ${event.type}; Status: ${condition}`);
   logData('connection', condition);
 }
-//Update Online status
 window.addEventListener('load', function() {
+  //Update Online status
   updateOnlineStatus(event);
   window.addEventListener('online',  updateOnlineStatus);
-  //window.addEventListener('online',  checkRemoteDBandSyncHandler);
   window.addEventListener('offline', updateOnlineStatus);
+  
+  //Login listener
+  document.getElementById('db_select').addEventListener('change', async function(e){
+    const loginElement = document.getElementById('login');
+    const selectedValue = document.getElementById('db_select').value;
+
+    loginElement.removeAttribute('class'); // Remove all classes
+    if (selectedValue === 'create_local') {
+      loginElement.classList.add('create_local');
+    } else if (selectedValue === 'connect_remote') {
+      loginElement.classList.add('connect_remote');
+    } else if (selectedValue.endsWith('(local)')) {
+      loginElement.classList.add('login_local');
+    } else if (selectedValue.endsWith('(remote)')) {
+      loginElement.classList.add('login_remote');
+    }
+    //All Demo login and import code happens here.
+    if(e.target.value == 'demo(local)') {
+      dbLogin('create_local', 'demo(local)','Johannes Gutenberg', 42);
+      notyf.info('<b>Login Info</b><br>Username: Johannes Gutenberg<br> Pin: 42', 'green');
+      //add import process to happen as soon as possible afterwards.
+      try {
+        const response = await fetch('https://ycanta.canaanf.org/Public Domain.json');
+        const blob = await response.blob();
+        const file = new File([blob], 'Public Domain.json', { type: 'TEXT/JSON' });
+        setTimeout(function(){
+          handleFile(file);
+          notyf.info('Imported Public Domain songs', 'green');
+        },500);
+      } catch (error) {
+        console.error('Error fetching file:', error);
+      }
+    }
+  });
+  setTimeout(function(){document.getElementById('db_select').dispatchEvent(new Event('change'));},50);
 });
 async function checkRemoteDBandSyncHandler(){
   if(!db) {
@@ -71,8 +105,8 @@ function clearAllData() {
   catch (error) { //If there's an error, we fall back to our local storage list of databases, and do our best to clear.
     console.log(error.message);
     let databases = JSON.parse(localStorage.getItem('databases'));
-    for (db of databases) { //iterate through our listed databases and remove all we know of.
-      removeDbfromLocalStorage(db.name);
+    for (db of Object.keys(databases)) { //iterate through our listed databases and remove all we know of.
+      removeDbfromLocalStorage(databases[db].name);
     }
     localStorage.clear();
     location.reload();
@@ -233,7 +267,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
   }
 
   if(type=="create_local"){
-    dbName = document.getElementById('newDbName').value.trim() + '(local)';
+    dbName = dbName || document.getElementById('newDbName').value.trim() + '(local)';
     console.log('New local DB: '+dbName);
     //initialize local database;
     db = new PouchDB(dbName);
