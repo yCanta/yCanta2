@@ -267,7 +267,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
   }
 
   if(type=="create_local"){
-    dbName = dbName || document.getElementById('newDbName').value.trim() + '(local)';
+    dbName = (dbName  == 'create_local' ? document.getElementById('newDbName').value.trim() + '(local)' : dbName);
     console.log('New local DB: '+dbName);
     //initialize local database;
     db = new PouchDB(dbName);
@@ -420,9 +420,6 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     } else {
       document.getElementById('analytics').checked = true;
     }
-
-    window.yCantaName = dbName; //only used in setLoginState - use dbName instead of storing here too, right?
-
     document.body.classList.remove('loading');
 
     //Store logged in status: pin for local, for remote we store pwd.
