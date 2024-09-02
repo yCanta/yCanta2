@@ -32,19 +32,26 @@ window.addEventListener('load', function() {
     }
     //All Demo login and import code happens here.
     if(e.target.value == 'demo(local)') {
-      dbLogin('create_local', 'demo(local)','Johannes Gutenberg', 42);
-      notyf.info('<b>Login Info</b><br>Username: Johannes Gutenberg<br> Pin: 42', 'green');
-      //add import process to happen as soon as possible afterwards.
-      try {
-        const response = await fetch('https://ycanta.canaanf.org/Public Domain.json');
-        const blob = await response.blob();
-        const file = new File([blob], 'Public Domain.json', { type: 'TEXT/JSON' });
-        setTimeout(function(){
-          handleFile(file);
-          notyf.info('Imported Public Domain songs', 'green');
-        },500);
-      } catch (error) {
-        console.error('Error fetching file:', error);
+      let databases = JSON.parse(localStorage.getItem('databases'));
+      if(databases && databases[e.target.value]) {
+        dbLogin('login_local', 'demo(local)','Johannes Gutenberg', 42);
+        notyf.info('<b>Login Info</b><br>Username: Johannes Gutenberg<br> Pin: 42', 'green');
+      }
+      else {
+        dbLogin('create_local', 'demo(local)','Johannes Gutenberg', 42);
+        notyf.info('<b>Login Info</b><br>Username: Johannes Gutenberg<br> Pin: 42', 'green');
+        //add import process to happen as soon as possible afterwards.
+        try {
+          const response = await fetch('https://ycanta.canaanf.org/Public Domain.json');
+          const blob = await response.blob();
+          const file = new File([blob], 'Public Domain.json', { type: 'TEXT/JSON' });
+          setTimeout(function(){
+            handleFile(file);
+            notyf.info('Imported Public Domain songs', 'green');
+          },500);
+        } catch (error) {
+          console.error('Error fetching file:', error);
+        }
       }
     }
   });
