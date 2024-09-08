@@ -985,7 +985,7 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
         return (text != '' ? text : '!'+letter).replace(duplicateWhitespace, ' ');
       }
       function formatNumber(number, letter){
-        return (number != '' ? letter + number : '!'+letter).replace(duplicateWhitespace, ' ');
+        return (number != '' ? number : '!'+letter).replace(duplicateWhitespace, ' ');
       }
       function formatSongContent(content){
         var song_content = '';
@@ -1018,7 +1018,9 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
                    + 'yt:' + formatNumber(song.yt, 'yt') + '\0'
                    + 'cclis:' + formatNumber(song.cclis, 'cclis') + '\0'
                    + 'chords:' + formatText(song.chords, 'chords') + '\0'
-                   + formatSongContent(song.content); + '\0'
+                   + 'addedBy:' + formatText(song.addedBy.slice(2), 'addedBy') + '\0'
+                   + 'editedBy:' + formatText(song.editedBy.slice(2), 'editedBy') + '\0'
+                   + formatSongContent(song.content) + '\0';
 
       console.log(song)
 

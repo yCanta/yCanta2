@@ -896,7 +896,9 @@ function setLogoutState() {
 function mapSongbookRowToValue(row) {
   return { 'songbook-id':           row.doc._id,
     'songbook-rev':                 row.doc._rev,
-    'songbook-title':        't:' + row.doc.title,
+    'songbook-title':        't:' + row.doc.title + '\0' 
+  + 'addedBy:' + row.doc.addedBy.slice(2) + '\0'
+  + 'editedBy:' + row.doc.editedBy.slice(2) + '\0',
     'link': '#'+row.doc._id,
     'name': row.doc.title
   };
