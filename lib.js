@@ -996,7 +996,7 @@ function buildSongbookList(songs, target_class='songbook_content',
   var i;
   for (i = 0; i < songs.length; i++) { 
     //I tried to use saved_list as a standin variable for the window object we save below - it never worked out so I'm using this clunky bit of code here.
-    let save_list;
+    let saved_list;
     if(edit != true) {
       saved_list = window.songbook_list;
     }

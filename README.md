@@ -10,7 +10,7 @@ User management is functional and it syncs all instances when connected to a cou
 * 6/10/24 - launched
 
 # Libraries
-* List.js v1.5.0 (http://listjs.com) by Jonny Strömberg (http://javve.com)
+* List.js v2.3.0 (http://listjs.com) by Jonny Strömberg (http://javve.com)
 * PDFKit (https://github.com/foliojs/pdfkit/releases/tag/v0.10.0)
 * Blob-stream (https://github.com/devongovett/blob-stream/releases/tag/v0.1.3)
 * Notyf (https://github.com/caroso1222/notyf/releases/tag/3.0.0)

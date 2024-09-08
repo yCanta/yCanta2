@@ -668,16 +668,13 @@ function initializeSongbooksList(){
                      'songbook-title': 't:All Songs',
                      'user-fav': 'false',
                      'link': '#sb-allSongs',
-                     'name': 'All Songs'},/*];
-                     console.log(window.user.fav_songs.length);
-      if(window.user.fav_songs.length > 0){
-        values.push(*/{'songbook-id': 'sb-favoriteSongs',
+                     'name': 'All Songs'},
+                    {'songbook-id': 'sb-favoriteSongs',
                      'songbook-rev': 'n/a',
                      'songbook-title': 't:Favorite Songs',
                      'user-fav': 'false',
                      'link': '#sb-favoriteSongs',
-                     'name': 'Favorite Songs'}];//);
-      //}
+                     'name': 'Favorite Songs'}];
       songbooks.map(function(row) {
         if(window.songbooks_list != undefined){
           var songbookIdInList = window.songbooks_list.get('songbook-id',row.doc._id);
