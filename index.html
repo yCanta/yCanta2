@@ -893,7 +893,11 @@
           return
         }
 
-        logData('hashchanged', location.hash);
+        try { //logData hasn't always been loading in time
+          logData('hashchanged', location.hash);
+        } catch (error) {
+          console.log(error.message);
+        }
 
         $('.deleted').removeClass('deleted');
 
