@@ -184,7 +184,7 @@
                   <button class="cat_filter_btn" onclick="$('#category_filter_container').toggleClass('open'); $('#songbook_header').toggleClass('mb23');">⑂</button>
                   <div id="category_filter">
                     <label>Category: 
-                      <select onchange="$('#songbook_content .search').val($(this).val())[0].dispatchEvent(new KeyboardEvent('keyup'));">
+                      <select onchange="$('#songbook_content .search').val('&quot;'+$(this).val()+'&quot;')[0].dispatchEvent(new KeyboardEvent('keyup'));">
                       </select>
                     </label>
                   </div>

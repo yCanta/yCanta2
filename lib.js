@@ -834,7 +834,7 @@ async function loadAllUsers(){
   document.getElementById('all_users').innerHTML = html;
 }
 function searchSBfor(text){
-  $('#songbook_header .search').val('c:'+text)[0].dispatchEvent(new KeyboardEvent('keyup'));
+  $('#songbook_header .search').val(`"c:${text}"`)[0].dispatchEvent(new KeyboardEvent('keyup'));
 }
 
 function handleDarkMode(){
@@ -1761,7 +1761,7 @@ function bindSearch(element, search_prefix) {
     if(window.songEditing ||window.songbookEditing || $('body').hasClass('export')) {
       return;
     }
-    $('#songbook_content .search').val(search_prefix+$(this).text())[0]
+    $('#songbook_content .search').val(`"${search_prefix+$(this).text()}"`)[0]
       .dispatchEvent(new KeyboardEvent("keyup"));
   });
 }
