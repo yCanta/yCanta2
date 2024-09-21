@@ -985,7 +985,7 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
         return (text != '' ? text : '!'+letter).replace(duplicateWhitespace, ' ');
       }
       function formatNumber(number, letter){
-        return (number != '' ? number : '!'+letter).replace(duplicateWhitespace, ' ');
+        return (number != '' ? letter + number : '!'+letter).replace(duplicateWhitespace, ' ');
       }
       function formatSongContent(content){
         var song_content = '';
