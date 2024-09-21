@@ -46,17 +46,14 @@ async function importSongV1(f){
   });
   $result.append($title);
 
-  var dateBefore = new Date();
-
   JSZip.loadAsync(f)
   .then(function(zip) {
-    var dateAfter = new Date();
     window.import= {};
     window.import.file_count = Object.keys(zip.files).length;
 
     $title.append($("<span>", {
       "class": "small",
-      text:" (" + window.import.file_count + " files imported in " + (dateAfter - dateBefore) + "ms)"
+      text: ` (${window.import.file_count} files loaded . . . starting import)`
     }));
     let progress =  "<div id='progress_bar' style='width:min(100%, 400px); height: 1rem; border: 1px solid black; background: linear-gradient(to right, white 0);'>"+
                     "</div>";
