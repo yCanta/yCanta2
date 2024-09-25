@@ -54,7 +54,7 @@ c {
 song {
   display: block;
   counter-reset: verse_n; 
-  column-width: 18.75rem;
+  /*column-width: 18.75rem;*/
   column-fill: auto;
   column-rule: 2px solid var(--edit-color);
   column-gap: 4rem;
