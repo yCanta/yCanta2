@@ -1251,7 +1251,7 @@ function calc_heights(songbook, cfg, doc) {
     if(song.copyright) {
       let copyright_text = song.copyright + '.';
       if(song.ccli) {
-        copyright_text = copyright_text + '  Used By Permission. CCLI License //'+cfg.CCLI;
+        copyright_text = copyright_text + '  Used By Permission. CCLI License #'+cfg.CCLI;
       }
 
       song.chunks[song.chunks.length-1].last_chunk = true;  // lets the formatter know to print the copyright_footer
