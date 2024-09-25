@@ -1596,7 +1596,7 @@ only screen and (max-height: 31.25rem) {
 
   /*Focus song*/
   body.song #song{
-    flex: 0 0 27rem;
+    flex: .2 0 27rem;
   }
   body.song #songList {
     flex: 0 1 25rem;
@@ -1665,7 +1665,7 @@ only screen and (max-height: 31.25rem) {
   }
   body.song #song.edit, 
   body.songList #songList.edit {
-    flex: 0 .2 46.25rem;
+    flex: 0.4 .2 56.25rem;
   }
   body.song #songbookList #songbooks_header h3 {
     height: 100vh;
