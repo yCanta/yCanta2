@@ -1400,7 +1400,7 @@ async function prepExport(){
         innerhtml = `<option id='user_export_pref' value='${JSON.stringify(row.doc.cfg)}'>${"Your default"}</option>` + innerhtml;
       }
       else {
-        innerhtml += `<option value='${JSON.stringify(row.doc.cfg)}'>${window.users[row.doc._id]}</option>`;
+        innerhtml += `<option value='${JSON.stringify(row.doc.cfg)}'>${window.users[row.doc._id.match(/u\-.*/)[0]]}'s</option>`;
       }
     });
 
