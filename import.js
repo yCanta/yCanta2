@@ -121,7 +121,7 @@ async function importSongV1(f){
                 }
 
                 Promise.resolve(saveSongbook('i'+CRC32.str(zipEntry.name.replace('songbooks/',''),0), $(songbook), false))
-                .then(function(results){ //results is the song._id
+                .then(function(results){ //results is the songbook._id
                   window.import.n_songbooks++;
                   updateProgress();
                   window.import.progressText.innerHTML = zipEntry.name;
@@ -258,9 +258,13 @@ async function importSongV2(f){
     let songbook = fileObject;
     delete songbook.songs;
     delete songbook._rev;
-    if(songbook._id == 'sb-allSongs'||songbook._id == 'sb-favoriteSongs'){
+    if(songbook._id == 'sb-allSongs' || songbook._id == 'sb-favoriteSongs'){
       songbook._id = 'sb-'+new Date().getTime().toString();
       songbook.title = 'Import '+songbook.title;
+      songbook.addedBy = window.user._id;
+      songbook.editedBy = window.user._id;
+      songbook.added = new Date().getTime();
+      songbook.edited = new Date().getTime();
     }
     promiseList.push(uploadIfNewer(songbook));
     Promise.all(promiseList).then(function(results){
