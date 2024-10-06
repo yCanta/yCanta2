@@ -1018,8 +1018,8 @@ function paginate(songbook, cfg) {
 
     // sort index entries then add to page
     let entries = songbook.scrip_index.sort(function(a,b) {
-      let a_num = parseInt(sort_scrip_index(a.index_text.toLowerCase().replace(/^([^a-z0-9]*the +|[^a-z0-9]+)/, '')));
-      let b_num = parseInt(sort_scrip_index(b.index_text.toLowerCase().replace(/^([^a-z0-9]*the +|[^a-z0-9]+)/, '')));
+      let a_num = parseInt(sort_scrip_index(a.index_text.toLowerCase()));
+      let b_num = parseInt(sort_scrip_index(b.index_text.toLowerCase()));
       let response = 0;
       if(a_num > b_num){
         response = 1;
@@ -1069,8 +1069,8 @@ function paginate(songbook, cfg) {
 
     // sort index entries then add to page
     let entries = songbook.index.sort(function(a,b) { 
-      let a_sort = a.index_text.toLowerCase().replace(/^([^a-z0-9]*the +|[^a-z0-9]+)/, '');
-      let b_sort = b.index_text.toLowerCase().replace(/^([^a-z0-9]*the +|[^a-z0-9]+)/, '');
+      let a_sort = a.index_text.toLowerCase();
+      let b_sort = b.index_text.toLowerCase();
       if(a_sort > b_sort){
         return 1;
       }
