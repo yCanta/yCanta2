@@ -1225,6 +1225,23 @@ input[type="number"] {
 }
 /*End Switch*/
 
+#export_copy::before {
+  content: '📄';
+  position: absolute;
+  top: .5em;
+  left: 1.15em;
+}
+.export_close {
+  float: right;
+  margin: -5px -15px -5px 0.5em;
+  border-left: 1px solid gray;
+  padding-left: 0.5em;
+  border-radius: 50%;
+  width: 2rem;
+  height: calc(1.2em + 10px);
+  align-content: center;
+}
+
 #rawObRoot ~ fieldset {
   border-left: 2px solid var(--background-color);
   box-shadow: none;

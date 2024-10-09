@@ -231,12 +231,17 @@ function dbChanges() {
       }
     }
     //New default config saved
-    else if(change.doc._id.startsWith('cfg-')){ //Change to be more specific.
-      notyf.info('Default config saved');
+    else if(change.doc._id.startsWith('cfg-') && change.doc._id.match(window.user._id)){ //Change to be more specific.
+      if(change.deleted){
+        notyf.info((change.doc.name || 'Default') + ' config deleted','var(--export-color)');
+      }
+      else {
+        notyf.info((change.doc.name || 'Default') + ' config saved','var(--export-color)');
+      }
     }
     //else... let it go! for now
     else {
-      console.log('changed:',change.doc._id);
+      console.log('changed:', change.doc._id);
     }
   }).on('error', function (err) {
     // handle errors
@@ -1621,13 +1626,32 @@ function saveRawDbObject(html) {
   html.html('');
 }
 
-function saveExportDefault() {
+function createExportCfg(){
+  let configName = prompt("What do you want call your new config?");
+  if(configName && configName != '') { 
+    saveExport(configName);
+  }
+  blueHighlight(document.getElementById('export_new_config'));
+}
+async function deleteExportCfg(cfgId){
+  try {
+    const doc = await db.get(cfgId);
+    if (confirm(`Are you sure you want to delete ${doc.name} config?`)) {
+      await db.remove(doc);
+      console.log("Deleted:", doc.name);
+    }
+  } catch (err) {
+    console.error("Error deleting cfg:", err); 
+    alert("An error occurred while deleting the cfg.");
+  }
+  prepExport();
+}
+function saveExport(name) {
   let opts = $('#export_form').serializeArray();
-  $('#user_export_pref').attr('value',JSON.stringify(opts));
-  $('#format').trigger('change');
   let cfg = {
-    _id: 'cfg-'+window.exportObject._id+window.user._id, //must keep in sync with lib.js
-    cfg: opts
+    _id: 'cfg-'+window.exportObject._id+window.user._id+(name != '' ? ':'+name.replaceAll(/[^A-Za-z0-9 -]/g, "") : ''),
+    cfg: opts,
+    name: name
   }
   db.get(cfg._id).then(function(_doc) {
     console.log('updating');
@@ -1635,10 +1659,10 @@ function saveExportDefault() {
     return db.put(cfg);
   }).catch( function (error) {
     console.log('adding');
-    $('#format').html("<option id='user_export_pref' value='"+JSON.stringify(cfg.cfg)+"'>Your Default</option>" + $('#format').html());
     return db.put(cfg);
   }).then(function(info){
     console.log("id of record: " + info.id);
+    prepExport();
   });
 }
 

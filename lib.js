@@ -22,7 +22,22 @@ const copyToClipboard = str => {
     document.getSelection().removeAllRanges();    // Unselect everything on the HTML document
     document.getSelection().addRange(selected);   // Restore the original selection
   }
+  notyf.info('Config copied to your clipboard', 'var(--export-color)');
+  blueHighlight(document.getElementById('export_copy'));
 };
+function pasteFromClipboard() {
+  navigator.clipboard.readText().then(text => {
+    set_value_by_id(JSON.parse(text)); $('#paper_margin_top').trigger('change');
+  }).catch(err => {
+    console.error('Failed to read clipboard contents: ', err);
+  }); 
+  blueHighlight(document.getElementById('export_paste'));
+  notyf.info('Config pasted from your clipboard', 'var(--export-color)');
+}
+function blueHighlight(highlightElement){
+  highlightElement.classList.add('bluehighlight'); 
+  setTimeout(function(){ highlightElement.classList.remove('bluehighlight')}, 300);
+}
 /*!
  * Check if two objects or arrays are equal
  * (c) 2017 Chris Ferdinandi, MIT License, https://gomakethings.com
@@ -1395,21 +1410,27 @@ async function prepExport(){
   }).then(function(result){
     let innerhtml = '';
     let user_id_cfg = 'cfg-'+window.exportObject._id+window.user._id; //must keep in sync with db.js
+    document.getElementById('cfg_buttons').innerHTML = '';
     result.rows.map(function (row) {
-      if(row.doc._id == user_id_cfg) {
-        innerhtml = `<option id='user_export_pref' value='${JSON.stringify(row.doc.cfg)}'>${"Your default"}</option>` + innerhtml;
+      if(row.doc._id.match(user_id_cfg)) {
+        if(row.doc._id != user_id_cfg){
+          document.getElementById('cfg_buttons').insertAdjacentHTML("beforeend",`<button class="btn" onclick="blueHighlight(this);"><span onclick="saveExport('${encodeURIComponent(row.doc.name || 'Default').replace(/'/g, "\\\'")}');">Save as ${(row.doc.name || 'Default')}</span><span class="export_close" onclick="event.preventDefault(); deleteExportCfg('${row.doc._id}');">×</span></button>`);
+        }
+        innerhtml = `<option value='${JSON.stringify(row.doc.cfg)}'>Your ${(row.doc.name || 'Default')}</option>` + innerhtml;
       }
       else {
-        innerhtml += `<option value='${JSON.stringify(row.doc.cfg)}'>${window.users[row.doc._id.match(/u\-.*/)[0]]}'s</option>`;
+        innerhtml += `<option value='${JSON.stringify(row.doc.cfg)}'>${window.users[row.doc._id.match(/u\-.*/)[0]]}'s ${(row.doc.name || 'Default')}</option>`;
       }
     });
+    document.getElementById('cfg_buttons').insertAdjacentHTML("afterbegin",`<button class="btn" onclick="blueHighlight(this);"><span onclick="saveExport('');">Save as Default</span></button>`);
 
     let opts = window.export.def_configs;
     for(opt in opts) {
       innerhtml += "<option value='"+JSON.stringify(opts[opt])+"'>"+opt+"</option>";
     }
     innerhtml += "<option value='[]'>Custom</option>";
-    $('#format').html(innerhtml).trigger('change');
+    $('#format').html(innerhtml);
+    $('#font_face').trigger('change')
     if(window.songbook.showStatus){
       $('#export').addClass('showStatus');
     }
@@ -1418,7 +1439,7 @@ async function prepExport(){
     }
   });
 }
-let timeout
+let timeout;
 function export_form_summary_update() {
   document.getElementById('format').value = JSON.stringify([]);
   for(option of $('#format option')) {
