@@ -736,6 +736,7 @@
     <script src="notyf.min.js"></script>
 
     <script src="db.js"></script>
+    <script src="mark.min.js"></script>
     <script src="lib.js"></script>
     <script async src="jquery.myTransposer.js"></script>
     <script async src="jquery.toTextarea.js"></script>
@@ -756,6 +757,8 @@
           }
         }
       });
+
+      let instance = new Mark(document.querySelector("#song .content"));
 
       var sheet = (function() {
         var style = document.createElement("style");

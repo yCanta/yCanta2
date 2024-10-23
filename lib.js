@@ -549,13 +549,24 @@ function toggleFullscreen(el){
     $('main').addClass('fullscreen');
   }
 }
-
+function highlightText(){
+  let text = document.querySelector('#songList .search').value
+  text = (text.indexOf(`"`)<0 ? `"${text}"` : text).match(/(?:"[^"]*"|\S+)/g).map(word => word.replace(/^"|"$/g, '').replace(/^.*?:/g,''));
+  instance.unmark().mark(text, {
+    "exclude": [
+        "c"
+    ],
+    "ignorePunctuation": ":;.,-–—‒_(){}[]!'\"+=".split(""),
+    "acrossElements": true,
+    "separateWordSearch": false
+  });
+}
 function bindSearchToList(list, id){
   if(list == window.songbook_list){
     list.on('searchComplete', function(){
       let songPlacement = window.songbook_list.visibleItems.findIndex(el => el._values['song-id'] == window.song._id) + 1;
- ;
       $(id + ' .search + span').attr('data-number-visible',`${songPlacement ? songPlacement+'/' : ''}${list.visibleItems.length}`);
+      highlightText();
     });  
     let songPlacement = window.songbook_list.visibleItems.findIndex(el => el._values['song-id'] == window.song._id) + 1;
     $(id + ' .search + span').attr('data-number-visible', `${songPlacement ? songPlacement+'/' : ''}${$(id + ' .list li').length}`);
@@ -1247,6 +1258,7 @@ function editSongbook() {
 }
 
 function editSong() {
+  instance.unmark();
   let buttons = '<div class="edit_buttons"><button data-song class="btn" style="background-color: var(--edit-color);" onclick="prepSaveSong($(this))">Save</button>';
   buttons += `<button data-song${(window.song._id == 's-new-song' ? 'book' : '')} class="btn" style="background-color: var(--edit-color);" onclick="window.songEditing=false; delete window.song; window.location.hash=$(this).attr(\'href\');">Cancel</button>`;
   buttons += '<button data-song class="btn" style="background-color: var(--edit-color);" onclick="window.songEditing=false; location.reload()">Reset</button></div>';

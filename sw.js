@@ -13,6 +13,7 @@ var prefetchedURLs = [
   'list.min.js',
   'import.js',
   'jszip.min.js',
+  'mark.min.js',
   'notyf.min.js',
   'pdfformatter.js',
   'pouchdb.authentication.min.js',

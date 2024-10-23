@@ -1027,8 +1027,6 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
                    + 'editedBy:' + formatText(song.editedBy.slice(2), 'editedBy') + '\0'
                    + formatSongContent(song.content) + '\0';
 
-      console.log(song)
-
       db.put(song, function callback(err, result) {
         if (!err) {
           console.log('saved: ', song.title);
@@ -1152,6 +1150,7 @@ function loadSong(song_id) {
 
       $('#keyToggle').transpose();
       if(document.getElementById('dialog').style.display=="block" && document.getElementById('dialog').getAttribute('data-use')=="info") {loadInfo()}
+      highlightText();
     }
     if(song_id == window.song._id){
       resolve('song already loaded');
