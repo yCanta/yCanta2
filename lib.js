@@ -548,6 +548,31 @@ function toggleFullscreen(el){
     fullscreen.addClass('fullscreen');
     $('main').addClass('fullscreen');
   }
+  toggleWakeLock();
+}
+function toggleWakeLock(){
+  if (!navigator.wakeLock){
+    notyf.info('Your device does not allow us to keep the screen on. Try a recent Android device for modern features! :)', 'var(--song-color)');
+  }
+  else if (window.currentWakeLock && !window.currentWakeLock.released){
+    releaseScreen();
+  }
+  else {
+    lockScreen();
+  }
+}
+async function lockScreen(){
+ try {
+    window.currentWakeLock = await navigator.wakeLock.request();
+    notyf.info('Screen will stay on', 'var(--song-color)');
+  }
+  catch(err){
+    notyf.info(`Wake Lock error: ${err}`, 'var(--song-color)');
+  }
+}
+async function releaseScreen(){
+  window.currentWakeLock.release();
+  notyf.info('Screen will dim as normal', 'var(--song-color)');
 }
 function highlightText(){
   let text = document.querySelector('#songList .search').value
