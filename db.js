@@ -1645,8 +1645,20 @@ async function deleteExportCfg(cfgId){
   }
   prepExport();
 }
+function serializeForm(formId) {
+  const form = document.getElementById(formId);
+  const elements = form.elements;
+
+  const serializedArray = [];
+  for (let i = 0; i < elements.length; i++) {
+    const element = elements[i];
+    if(element.name == ''){ continue }
+    serializedArray.push({ name: element.name, value: (element.type === 'checkbox' ? element.checked : element.value)});
+  }
+  return serializedArray;
+}
 function saveExport(name) {
-  let opts = $('#export_form').serializeArray();
+  let opts = serializeForm('export_form');
   let cfg = {
     _id: 'cfg-'+window.exportObject._id+window.user._id+(name != '' ? ':'+name.replaceAll(/[^A-Za-z0-9 -]/g, "") : ''),
     cfg: opts,

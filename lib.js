@@ -260,7 +260,9 @@ let def_configs = [];
 def_configs['1-column'] = [
   {name: 'font_face',           value: 'Times-Roman'}, // Text Options
   {name: 'display_chords',      value: 'no'},
+  {name: 'start_song_on_new_page', value: false},
   {name: 'hide_booktitle',      value: 'yes'},
+  {name: 'songtitle_format',    value: '${num} '},
   {name: 'scripture_location',  value: 'under-title'},
   {name: 'text',                value: 'default' },
   {name: 'columns',             value: '1'},           // Page Options
@@ -270,6 +272,7 @@ def_configs['1-column'] = [
   {name: 'margin',              value: 'normal'},
   {name: 'paper_margin_gutter', value: '1'},
   {name: 'display_index',       value: 'no-index'},    // Index Options
+  {name: 'include_first_line',  value: false},
   {name: 'display_cat_index',   value: 'no-index'},
   {name: 'display_scrip_index', value: 'no-index'},
   {name: 'index',               value: 'default'}
@@ -277,7 +280,9 @@ def_configs['1-column'] = [
 def_configs['2-column'] = [
   {name: 'font_face',           value: 'Times-Roman'}, // Text Options
   {name: 'display_chords',      value: 'no'},
+  {name: 'start_song_on_new_page', value: false},
   {name: 'hide_booktitle',      value: 'yes'},
+  {name: 'songtitle_format',    value: '${num} '},
   {name: 'scripture_location',  value: 'under-title'},
   {name: 'text',                value: 'default' },
   {name: 'columns',             value: '2'},           // Page Options
@@ -286,6 +291,7 @@ def_configs['2-column'] = [
   {name: 'paper_size',          value: 'LETTER'},
   {name: 'margin',              value: 'narrow'},
   {name: 'display_index',       value: 'no-index'},    // Index Options
+  {name: 'include_first_line',  value: false},
   {name: 'display_cat_index',   value: 'no-index'},
   {name: 'display_scrip_index', value: 'no-index'},
   {name: 'index',               value: 'default'}
@@ -293,7 +299,9 @@ def_configs['2-column'] = [
 def_configs['3-column'] = [
   {name: 'font_face',           value: 'Times-Roman'}, // Text Options
   {name: 'display_chords',      value: 'no'},
+  {name: 'start_song_on_new_page', value: false},
   {name: 'hide_booktitle',      value: 'yes'},
+  {name: 'songtitle_format',    value: '${num} '},
   {name: 'scripture_location',  value: 'under-title'},
   {name: 'text',                value: 'default' },
   {name: 'columns',             value: '3'},           // Page Options
@@ -302,6 +310,7 @@ def_configs['3-column'] = [
   {name: 'paper_size',          value: 'LETTER'},
   {name: 'margin',              value: 'narrow'},
   {name: 'display_index',       value: 'no-index'},    // Index Options
+  {name: 'include_first_line',  value: false},
   {name: 'display_cat_index',   value: 'no-index'},
   {name: 'display_scrip_index', value: 'no-index'},
   {name: 'index',               value: 'default'}
@@ -315,7 +324,13 @@ window.export = export_form;
 
 function set_value_by_id(list) {
   for(item of list) {
-    document.getElementById(item.name).value = item.value;
+    let element = document.getElementById(item.name);
+    if(element.type == 'checkbox'){
+      element.checked = item.value;
+    }
+    else{
+      element.value = item.value;
+    }
     if(['margin','text','index'].includes(item.name)){
       $('#'+item.name).trigger('change'); //trigger specifics
     }
@@ -1486,7 +1501,8 @@ function export_form_summary_update() {
       continue // this is empty!
     }
     for(item of values) {
-      opts.push({name: item.name, value: document.getElementById(item.name).value});
+      let element = document.getElementById(item.name);
+      opts.push({name: item.name, value: (element.type =='checkbox' ? element.checked : element.value)});
     }
     if(isEqual(opts, values)){
       document.getElementById('format').value = JSON.stringify(values);
