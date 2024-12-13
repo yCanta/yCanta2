@@ -1115,7 +1115,7 @@ function loadSong(song_id) {
         <scripture_ref><scrip_ref>${song.scripture_ref.join('</scrip_ref>, <scrip_ref>')}</scrip_ref></scripture_ref>
         <span id="keyToggleContainer"><span id="keyToggleFilter"><key>${song.key}</key><button id="keyToggle" onclick="this.parentElement.parentElement.classList.toggle(\'active\')">↑↓</button></span></span>
         <categories><cat>${song.categories.sort().join('</cat>, <cat>')}</cat></categories>
-        <cclis>${(song.cclis != false ? 'CCLIS' + (!isNaN(song.cclis) ? ': '+song.cclis: '') : '')}</cclis>
+        <cclis>${(song.cclis != false ? (!isNaN(song.cclis) ? 'CCLI Song #: '+song.cclis: 'In CCLI') : '')}</cclis>
         <introduction>${song.introduction}</introduction>`;
       song.content.forEach(function(chunk){
         song_html += '<chunk type="' + chunk[0].type + '">';

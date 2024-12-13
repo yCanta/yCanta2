@@ -1339,7 +1339,7 @@ function editSong() {
         document.getElementById('song-edit').querySelector('.search').focus();
       }, 400);
     });
-  let cclis_text = $('cclis').text().replace('CCLIS: ', '');
+  let cclis_text = $('cclis').text().replace('CCLI Song #: ', '');
   $('#song cclis').wrap('<div style="margin-bottom: 1rem;"></div>')
   $('#song cclis').before('<label>CCLIS: <input id="cclis_checkbox" onchange="$(\'cclis\').toggle();"'+(cclis_text ? 'checked' : '')+' type="checkbox"></input> </label>');  
   if(cclis_text){
