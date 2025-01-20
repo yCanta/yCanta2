@@ -23,7 +23,7 @@
 
   </head>
   <body class="header login loading">
-    <fieldset class="loggedin_display closed align-right" style="position: absolute; top:1.5rem;right:1rem; z-index:7; margin-right: 0;">
+    <fieldset class="loggedin_display closed align-right accountBtn">
       <legend onclick="this.parentElement.classList.toggle('closed');" style="margin-right: 0; padding: 0 .4rem; margin-left: auto;" id="username_legend"><span id="username_d"></span></legend>
       <div class="content">
         <a href="#" style="background-color: var(--background-color);" class="btn" onclick="$(this).closest('fieldset').addClass('closed'); goToSettings();">Settings</a>
@@ -206,7 +206,7 @@
           <div class="subcolumn sidebar" id="songListEdit">
             <div id="songbook_edit_togglesongs">
               <div class="column_header">
-                <h3>Add a song?<button onclick="$(this).closest('.sidebar-open').removeClass('sidebar-open');" class="icon-fl-right close-icon">&times;</button></h3>
+                <h3>Add a song?<button onclick="$(this).closest('.sidebar-open').removeClass('sidebar-open');" class="icon-fl-right close-icon-mobile">&times;</button></h3>
                 <input aria-label="Search" class="search deletable" type="text" data-target="#songbook_edit_togglesongs" data-trigger="change" placeholder="Search">
               </div>
               <ul class="list">
@@ -230,14 +230,14 @@
         <div class="row">
           <div class="subcolumn">
             <div>
-              <article class="content">
+              <article class="content" style="display:flex";>
               </article>
             </div>
           </div>
           <div class="subcolumn sidebar" id="song-edit">
             <div id="categories">
               <div class="column_header">
-                <h3>Song Categories<button onclick="$(this).closest('#song-edit').removeClass('sidebar-open');" class="icon-fl-right close-icon">&times;</button></h3>
+                <h3>Song Categories<button onclick="$(this).closest('#song-edit').removeClass('sidebar-open');" class="icon-fl-right close-icon-mobile">&times;</button></h3>
                 <input aria-label="Search" class="search deletable" type="text" data-target="#categories" data-trigger="change" placeholder="Search">
               </div>
               <ul class="list">
@@ -700,7 +700,7 @@
               <div>
                 <div class="column_header title">
                   <h3>Preview
-                    <button onclick="$(this).closest('#exportPreview').removeClass('sidebar-open');" class="icon-fl-right close-icon">&times;</button>
+                    <button onclick="$(this).closest('#exportPreview').removeClass('sidebar-open');" class="icon-fl-right close-icon-mobile">&times;</button>
                     <span style="float: right; margin-right: 2rem;" class="fsButton" onclick="toggleFullscreen(this)"></span>
                     <span style="float: right; margin-right: 4rem; font-size: 1rem;" id="downloadPDF"></span>
                   </h3>

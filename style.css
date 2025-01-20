@@ -78,6 +78,21 @@
 "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans",
 "Droid Sans", "Helvetica Neue", sans-serif;
 }
+#song:has(song:nth-child(1)) {
+  --count: 1;
+}
+#song:has(song:nth-child(2)) {
+  --count: 2;
+}
+#song:has(song:nth-child(3)) {
+  --count: 3;
+}
+#song:has(song:nth-child(4)) {
+  --count: 4;
+}
+#song:has(song:nth-child(5)) {
+  --count: 5;
+}
 /*normalize*/
 html {
   -webkit-tap-highlight-color: rgba(0,0,0,0);
@@ -157,6 +172,10 @@ button.circle {
   display: inline-block;
   margin: 1rem .5rem 1rem .5rem;
   color: var(--text-color);
+}
+.btn-tiny {
+  padding: 2px 7px 2px 7px;
+  margin: 0 .5rem !important;
 }
 .btn-small {
   padding: 2px 7px 2px 7px;
@@ -453,6 +472,10 @@ legend {
   height: calc(100vh - 9rem);
 }
 
+.current_rev {
+  box-shadow: 0 9px 0 0 var(--background-color), 0 -9px 0 0 var(--background-color), 1px 0 0px 0px blue, -1px 0 0px 0px blue;
+}
+
 /*CSS FOR Song Display*/
 .deleted button,
 .deleted a,
@@ -471,6 +494,18 @@ legend {
   color: red;
   margin-top: .5rem;
   margin-left: 1rem;
+  z-index: 2;
+}
+.revision .revision{
+  color: gray;
+}
+.revision song:before {
+  position: absolute;
+  display: block;
+  content: attr(rev-info);
+  font-weight: bold;
+  color: red;
+  margin-top: .15rem;
   z-index: 2;
 }
 li[data-song-deleted="true"] a {
@@ -519,7 +554,7 @@ stitle, cat, author, scrip_ref, key, copyright, cclis {
 #keyToggleFilter {
   display: inline-block;
   padding: .5rem;
-  padding-bottom: 1rem;
+  padding-bottom: 0rem;
   margin-top: -.5rem;
   border-top-right-radius: 1rem;
   border-top-left-radius: 1rem;
@@ -794,6 +829,9 @@ ul li {
   position: relative;
 }
 .close-icon {
+  font-size:2rem;
+}
+.close-icon-mobile {
   border-radius: 5em;
   background-color: var(--highlight-color);
   box-shadow: var(--btn-shadow-var);
@@ -1258,6 +1296,13 @@ input[type="number"] {
   padding-bottom: .1rem;
   padding-left: .45rem;
 }
+.accountBtn {
+  position: absolute; 
+  top:1.5rem;
+  right:1rem; 
+  z-index:7;
+  margin-right: 0;
+}
 
 /*For phone in portrait only*/
 @media only screen and (max-width: 39.99rem) {
@@ -1267,6 +1312,12 @@ input[type="number"] {
   }
   .edit .sidebar-open {
     overflow: auto;
+  }
+  song {
+    display: none !important;
+  }
+  song:last-child{
+    display: block !important;
   }
   ul li a{
     padding: 5px 10px 5px 10px;
@@ -1419,6 +1470,17 @@ input[type="number"] {
   }
   .column {
     position: relative;
+  }
+  .song .title {
+    padding-left: 1rem;
+  }
+  body.song #songbookList .title_link {
+    transform: translate3d(-100%, 200%, 0) rotate(-90deg) !important;
+  }
+  .song .accountBtn {
+    top:1.2rem;
+    right: unset; 
+    left: 1rem;
   }
 }
 @media only screen and (max-height: 31.25rem) {
@@ -1613,13 +1675,13 @@ only screen and (max-height: 31.25rem) {
 
   /*Focus song*/
   body.song #song{
-    flex: .2 0 27rem;
+    flex: .2 1 calc(var(--count) * 22rem + 5rem) ;
   }
   body.song #songList {
-    flex: 0 1 25rem;
+    flex: 0 20 25rem;
   }
   body.song #songbookList {
-    flex: 0 0 2.5rem;
+    flex: 0 20 2.5rem;
   }
   body.song #songbookList .subcolumn {
     overflow: hidden;
@@ -1677,7 +1739,7 @@ only screen and (max-height: 31.25rem) {
     text-align: center;
     z-index: 10;
   }
-  .close-icon {
+  .close-icon-mobile {
     display: none;
   }
   body.song #song.edit, 

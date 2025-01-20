@@ -14,7 +14,8 @@ window.addEventListener('load', function() {
   updateOnlineStatus(event);
   window.addEventListener('online',  updateOnlineStatus);
   window.addEventListener('offline', updateOnlineStatus);
-  
+  window.currentWakeLock = navigator.wakeLock.request();
+
   //Login listener
   document.getElementById('db_select').addEventListener('change', async function(e){
     const loginElement = document.getElementById('login');
@@ -1082,41 +1083,57 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
   })
 }
 
-function loadSong(song_id) {
+function loadSong(song_id, song_rev=false) {
   return new Promise(function(resolve, reject) {
     function createSongHtml(song, deleted = false) {
-      window.song = song;
+      window.song_rev = song._rev;
+      document.querySelectorAll('.current_rev').forEach(element => {
+        element.classList.remove('current_rev'); 
+      });
+      if(!song_rev){
+        window.song = song;
+        window.song._revs_info = song._revs_info.filter(rev => rev.status === 'available');
+      }
+
+      let songElClassList = ''
       if(deleted) {
-        $('#song').addClass('deleted');
+        songElClassList += 'deleted' // no way for this to ever activate.
       }
-      else {
-        $('#song').removeClass('deleted');
+      if(song_rev) {
+        songElClassList += ' revision current_rev'
+        document.body.classList.add('revision');
+      } 
+
+      if(!song_rev){
+        let editable = canEdit(song);
+        let float_menu = `${(editable ? '<button data-songbook onclick="deleteSong(window.song._id)" class="float-menu-item deleteSong"><span class="float-menu-icon">&#128465;</span>Delete</button>' : '')}
+        <a data-song-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span>Export</a>
+        ${(editable ? '<a data-song-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span>Edit</a>' : '')}
+        <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>`;
+        $('#song .float-menu').html(float_menu);
       }
 
-      let editable = canEdit(song);
-      let float_menu = `${(editable ? '<button data-songbook onclick="deleteSong(window.song._id)" class="float-menu-item deleteSong"><span class="float-menu-icon">&#128465;</span>Delete</button>' : '')}
-      <a data-song-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span>Export</a>
-      ${(editable ? '<a data-song-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span>Edit</a>' : '')}
-      <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>`;
-      $('#song .float-menu').html(float_menu);
-
-      var song_html = `<song data-rev="${song._rev}" data-id="${song._id}" data-user-fav="${(window.user.fav_songs.indexOf(song._id) > -1 ? 'true' : 'false')}">
+      var song_html = 
+      `<song class="${songElClassList}" data-rev="${song._rev}" rev-info="${(window.users[song.editedBy] || song.editedBy.slice(2))}: ${formatDate(song.edited)}"
+            data-id="${song._id}" data-user-fav="${(window.user.fav_songs.indexOf(song._id) > -1 ? 'true' : 'false')}">
         <div class="column_header title" id="song_header">
-          <stitle>
-            <a data-song class="title_link">${song.title}</a>
-          </stitle>
+          <stitle><a data-song class="title_link">${song.title}</a></stitle>
+
           <span class="buttonsRight">
-            <span class="star" onclick="event.stopPropagation(); toggleFavorite($(this).closest('song').attr('data-id'),'fav_songs')"></span>
-            <info onclick="event.stopPropagation(); loadInfo();"></info>
-            <span class="fsButton" onclick="toggleFullscreen(this)"></span>
+            ${song_rev ? `<button onclick="this.closest('song').remove()" class="close-icon">&times;</button>` : 
+            ` <span class="star" onclick="event.stopPropagation(); toggleFavorite($(this).closest('song').attr('data-id'),'fav_songs')"></span>
+              <info onclick="event.stopPropagation(); loadInfo();"></info>
+              <span class="fsButton" onclick="toggleFullscreen(this)"></span>`
+            }
           </span>
         </div>
         <authors><author>${song.authors.join('</author>, <author>')}</author></authors>
         <scripture_ref><scrip_ref>${song.scripture_ref.join('</scrip_ref>, <scrip_ref>')}</scrip_ref></scripture_ref>
-        <span id="keyToggleContainer"><span id="keyToggleFilter"><key>${song.key}</key><button id="keyToggle" onclick="this.parentElement.parentElement.classList.toggle(\'active\')">↑↓</button></span></span>
+        ${(!song_rev ? `<span id="keyToggleContainer"><span id="keyToggleFilter">` : '')}<key>${song.key}</key>${(!song_rev ? `<button id="keyToggle" onclick="this.parentElement.parentElement.classList.toggle(\'active\')">↑↓</button></span></span>`:'')}
         <categories><cat>${song.categories.sort().join('</cat>, <cat>')}</cat></categories>
         <cclis>${(song.cclis != false ? (!isNaN(song.cclis) ? 'CCLI Song #: '+song.cclis: 'In CCLI') : '')}</cclis>
         <introduction>${song.introduction}</introduction>`;
+
       song.content.forEach(function(chunk){
         song_html += '<chunk type="' + chunk[0].type + '">';
         chunk[1].forEach(function(line){
@@ -1125,19 +1142,32 @@ function loadSong(song_id) {
         song_html += '</chunk>';
       });
       song_html +=  '<copyright>' + song.copyright + '</copyright>' +
-                  '</song>'
-      $('#song .content').html(song_html);
+                  '</song>';
+
+      if((song_rev && document.querySelector(`[data-rev="${song_rev}"]`)) == null){
+        document.querySelector('#song .content').insertAdjacentHTML('beforeend', song_html);
+      }
+      else if(!song_rev) {
+        document.querySelector('#song .content').innerHTML = song_html;
+      }
+      else {
+        document.querySelectorAll('song[data-rev="'+song._rev+'"').forEach(element => {
+          element.classList.add('current_rev');
+        });
+        if(document.getElementById('dialog').style.display=="block" && document.getElementById('dialog').getAttribute('data-use')=="info") {loadInfo()}
+        return;
+      }
       
       //add hrefs to comments
       let regex = /(https?:\/\/)?(?:www\.)?(youtu(?:\.be\/([-\w]+)|be\.com\/watch\?v=([-\w]+)))\w/g;
-      $('song chunk[type="comment"]').each(function(){
+      $(`song[data-rev="${song._rev}"] chunk[type="comment"]`).each(function(){
         $(this).html($(this).html().replace(/(((http|https|ftp):\/\/)*[\w?=&.\/-;#~%-]+\.[\w?=&.\/-;#~%-]+(?![\w\s?&.\/;#~%"=-]*>))/g, '<a href="$1" target="_blank">$1</a> '));
       });
       
       //set youtube_links
-      ($("song line").text().match(regex) != null ? window.youtube_links = [...$("song line").text().match(regex)] : window.youtube_links = []);
-      if(window.youtube_links.length > 0) {
-        $('#song key').before('<button class="btn" style="padding: 5px 8px; margin-top: 0; margin-bottom: 0; background-color:var(--highlight-color);" onclick="loadSongPlayer();">▶</button>')
+      ($(`song[data-rev="${song._rev}"] line`).text().match(regex) != null ? window.youtube_links = [...$("song line").text().match(regex)] : window.youtube_links = []);
+      if(window.youtube_links.length > 0 && !song_rev) {
+        $(`#song song[data-rev="${song._rev}"] key`).before('<button class="btn" style="padding: 5px 8px; margin-top: 0; margin-bottom: 0; background-color:var(--highlight-color);" onclick="loadSongPlayer();">▶</button>')
       }
       //Update songplacement
       setTimeout(function(){ //needed as we don't know when the songbook will get loaded...
@@ -1148,14 +1178,11 @@ function loadSong(song_id) {
       resolve("song_loaded");
       $('#song .edit_buttons').remove();
 
-      $('#keyToggle').transpose();
+      if(!song_rev) { $('#keyToggle').transpose(); }
       if(document.getElementById('dialog').style.display=="block" && document.getElementById('dialog').getAttribute('data-use')=="info") {loadInfo()}
       highlightText();
     }
-    if(song_id == window.song._id){
-      resolve('song already loaded');
-    }
-    else if(song_id === 's-new-song'){
+    if(song_id === 's-new-song'){
       var song = {
         _id: 's-new-song',
         title: '',
@@ -1173,23 +1200,19 @@ function loadSong(song_id) {
       createSongHtml(song)
     }
     else {
-      db.get(song_id).then(function(song){
-        createSongHtml(song);
-      }).catch(function (err) {
-        //Let's load up a deleted song.
-        if(err.reason == 'deleted'){
-          db.get(song_id, {revs: true, open_revs: "all"})
-          .then(function(result){
-            db.get(song_id,{rev:(result[0].ok._revisions.start - 1)+'-'+result[0].ok._revisions.ids[1]})
-            .then(function(song){
-              createSongHtml(song, true);
-            });
-          });
+      let options = {revs_info: true}
+      if(song_rev){ options.rev = song_rev }
+      db.get(song_id, options).then(function(song){
+        if(song._deleted == true) {
+          window.song._revs_info = window.song._revs_info.filter(rev => rev.rev != song._rev); //remove deleted revision
+          prevSongRev();
         }
         else {
-          console.log(err);
-          reject('got an error!');
+          createSongHtml(song);
         }
+      }).catch(function (err) {
+        console.log(err);
+        reject('got an error!');
         //should load the song and explain what's up.
       });
     }  

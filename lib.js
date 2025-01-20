@@ -563,31 +563,6 @@ function toggleFullscreen(el){
     fullscreen.addClass('fullscreen');
     $('main').addClass('fullscreen');
   }
-  toggleWakeLock();
-}
-function toggleWakeLock(){
-  if (!navigator.wakeLock){
-    notyf.info('Your device does not allow us to keep the screen on. Try a recent Android device for modern features! :)', 'var(--song-color)');
-  }
-  else if (window.currentWakeLock && !window.currentWakeLock.released){
-    releaseScreen();
-  }
-  else {
-    lockScreen();
-  }
-}
-async function lockScreen(){
- try {
-    window.currentWakeLock = await navigator.wakeLock.request();
-    notyf.info('Screen will stay on', 'var(--song-color)');
-  }
-  catch(err){
-    notyf.info(`Wake Lock error: ${err}`, 'var(--song-color)');
-  }
-}
-async function releaseScreen(){
-  window.currentWakeLock.release();
-  notyf.info('Screen will dim as normal', 'var(--song-color)');
 }
 function highlightText(){
   let text = document.querySelector('#songList .search').value
@@ -1297,8 +1272,9 @@ function editSongbook() {
   });
 }
 
-function editSong() {
+async function editSong() {
   instance.unmark();
+  await loadSong(window.song._id);
   let buttons = '<div class="edit_buttons"><button data-song class="btn" style="background-color: var(--edit-color);" onclick="prepSaveSong($(this))">Save</button>';
   buttons += `<button data-song${(window.song._id == 's-new-song' ? 'book' : '')} class="btn" style="background-color: var(--edit-color);" onclick="window.songEditing=false; delete window.song; window.location.hash=$(this).attr(\'href\');">Cancel</button>`;
   buttons += '<button data-song class="btn" style="background-color: var(--edit-color);" onclick="window.songEditing=false; location.reload()">Reset</button></div>';
@@ -1384,6 +1360,8 @@ function editSong() {
     reject('got an error while working on categories');
     //should load the songbook and explain what's up.
   });  
+
+  updateAllLinks();
 }
 function prepSaveSong(element) {
   if($('stitle').text().trim() == ''){
@@ -1808,9 +1786,6 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
   }, false); 
 }
 
-function sayHi(message) {
-  window.alert(message);
-}
 function dragToggleClass(el, toggleClass) {
   $(el).toggleClass(toggleClass);
 }
@@ -1923,18 +1898,35 @@ async function songInSongbooks(song_id){
   return result.rows.filter(sb => sb.doc.songrefs.map(ref => ref.id).indexOf(song_id) > -1);  
 }
 
+// Define a function to format the date with desired format
+function formatDate(date) {
+  return new Date(date).toLocaleTimeString(undefined, {
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 async function loadInfo(song=true) {
   document.getElementById('dialog').setAttribute('data-use','info');
   if(song){
     $('#dialog h5').text('Song');
     let song_id = window.song._id;
-    let content = `<small>Added: ${window.users[window.song.addedBy] || window.song.addedBy}, ${new Date(window.song.added).toLocaleTimeString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</small><br />
-      <small>Edited: ${window.users[window.song.editedBy] || window.song.editedBy}, ${new Date(window.song.edited).toLocaleTimeString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</small><br />
-      <small>${(window.song._rev.split('-')[0] - 1)} previous edits</small>`;
+    let revs = window.song._revs_info.map(rev => rev.rev);
+    let rev_num = revs.indexOf(window.song_rev);
+    let content = `<small>Added by: ${window.users[window.song.addedBy] || window.song.addedBy}<br>${formatDate(window.song.added)}</small><br />
+      <small>Edited by: ${window.users[window.song.editedBy] || window.song.editedBy.slice(2)}<br>${formatDate(window.song.edited)}</small><br />
+      
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+      <button onclick="prevSongRev();" style="width:1.75rem" class="${(rev_num != revs.length - 1 ? 'btn btn-tiny': '')}">${( rev_num != revs.length - 1 ? '<<': '')}</button>
+      <small>Edit ${window.song._revs_info.length - rev_num} / ${window.song._revs_info.length}</small>
+      <button onclick="nextSongRev();" style="width:1.75rem" class="${(rev_num != 0 ? 'btn btn-tiny': 'btn-tiny')}">${( rev_num != 0 ? '>>': '')}</button></div>`;
   
     let sbs = await songInSongbooks(song_id);
     if(sbs.length > 0){
-     content += '<div class="left"><br /><b>Used in:</b><br />' + sbs.map(sb => '<a href="#'+sb.doc._id+'&'+window.song._id+'">'+sb.doc.title+'</a>').join('<br />') + '</div>';
+      content += '<div class="left"><br /><b>Used in:</b><br />' + sbs.map(sb => '<a href="#'+sb.doc._id+'&'+window.song._id+'">'+sb.doc.title+'</a>').join('<br />') + '</div>';
     }
     else {
       content += '<div class="left"><br /><b>Not used in any songbook</b></div>';
@@ -1945,13 +1937,22 @@ async function loadInfo(song=true) {
   }
   else{
     $('#dialog h5').text('Songbook');
-    let content = `<small>Added: ${window.users[window.songbook.addedBy] || window.songbook.addedBy}, ${new Date(window.songbook.added).toLocaleTimeString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</small><br />
-      <small>Edited: ${window.users[window.songbook.editedBy] || window.songbook.editedBy}, ${new Date(window.songbook.edited).toLocaleTimeString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</small><br />
+    let content = `<small>Added: ${window.users[window.songbook.addedBy] || window.songbook.addedBy}, ${formatDate(window.songbook.added)}</small><br />
+      <small>Edited: ${window.users[window.songbook.editedBy] || window.songbook.editedBy}, ${formatDate(window.songbook.edited)}</small><br />
       <small>${(window.songbook._rev.split('-')[0] - 1)} previous edits</small>`;
     document.querySelector('#dialog .content').innerHTML = content;
     document.querySelector('#dialog .title').innerHTML = window.songbook.title;
     $('#dialog').slideDown('fast');
   }
+}
+
+function prevSongRev() {
+  let prevRev = window.song._revs_info.map(rev => rev.rev).indexOf(window.song_rev) + 1;
+  loadSong(window.song._id, window.song._revs_info[prevRev].rev);
+}
+function nextSongRev() {
+  let nextRev = window.song._revs_info.map(rev => rev.rev).indexOf(window.song_rev) - 1;
+  loadSong(window.song._id, window.song._revs_info[nextRev].rev);
 }
 
 function loadSongPlayer(){

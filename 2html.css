@@ -7,7 +7,7 @@ key {
 key:empty + #keyToggle {
     display: none;
 }
-authors, introduction, scripture_ref {
+key, authors, introduction, scripture_ref {
   margin-right: 1em; 
   margin-bottom: 1em;
   display: inline-block;
@@ -54,6 +54,7 @@ c {
 song {
   display: block;
   counter-reset: verse_n; 
+  flex-grow: 1;
   /*column-width: 18.75rem;*/
   column-fill: auto;
   column-rule: 2px solid var(--edit-color);
