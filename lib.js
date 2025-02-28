@@ -567,14 +567,16 @@ function toggleFullscreen(el){
 function highlightText(){
   let text = document.querySelector('#songList .search').value
   text = (text.indexOf(`"`)<0 ? `"${text}"` : text).match(/(?:"[^"]*"|\S+)/g).map(word => word.replace(/^"|"$/g, '').replace(/^.*?:/g,''));
-  instance.unmark().mark(text, {
-    "exclude": [
-        "c"
-    ],
-    "ignorePunctuation": ":;.,-–—‒_(){}[]!'\"+=".split(""),
-    "acrossElements": true,
-    "separateWordSearch": false
-  });
+  if(!document.getElementById('song').classList.contains('edit')){
+    instance.unmark().mark(text, {
+      "exclude": [
+          "c"
+      ],
+      "ignorePunctuation": ":;.,-–—‒_(){}[]!'\"+=".split(""),
+      "acrossElements": true,
+      "separateWordSearch": false
+    });
+  }
 }
 function bindSearchToList(list, id){
   if(list == window.songbook_list){
@@ -1273,7 +1275,6 @@ function editSongbook() {
 }
 
 async function editSong() {
-  instance.unmark();
   await loadSong(window.song._id);
   let buttons = '<div class="edit_buttons"><button data-song class="btn" style="background-color: var(--edit-color);" onclick="prepSaveSong($(this))">Save</button>';
   buttons += `<button data-song${(window.song._id == 's-new-song' ? 'book' : '')} class="btn" style="background-color: var(--edit-color);" onclick="window.songEditing=false; delete window.song; window.location.hash=$(this).attr(\'href\');">Cancel</button>`;
