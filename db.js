@@ -1,5 +1,6 @@
 //initialize global variable.
 var db, syncHandler, remoteDb;
+window.users = {}; // Initialize empty users object
 
 function updateOnlineStatus(event) {
   const condition = navigator.onLine ? "online" : "offline";
@@ -588,20 +589,23 @@ async function dbLogout() {
 }
 
 function loadUsersObject() {
-  db.allDocs({
+  // Ensure window.users exists
+  window.users = window.users || {};
+  
+  return db.allDocs({
     include_docs: true,
     startkey: 'u-',
     endkey: 'u-\ufff0',
   }).then(function(result){
-    let usersOb = result.rows.reduce((previousObject, currentObject) => {
-        return Object.assign(previousObject, {
-          [currentObject.doc._id]: currentObject.doc.name
-        })
-      },
-    {});
-    window.users = usersOb;
+    result.rows.forEach(row => {
+      if (row.doc) {
+        window.users[row.doc._id] = row.doc.name;
+      }
+    });
+    return window.users;
   }).catch(function(err){
-    console.log(err);
+    console.error("Error loading users:", err);
+    return window.users; // Return existing users even if error occurs
   });
 }
 
@@ -1084,6 +1088,12 @@ function saveSong(song_id, song_html=$('#song song'), change_url=true) {
 }
 
 function loadSong(song_id, song_rev=false) {
+  // Validate song_id format
+  if (song_id && !song_id.startsWith('s-') && song_id !== 's-new-song') {
+    console.error('Invalid song ID format:', song_id);
+    return Promise.reject(new Error('Invalid song ID format'));
+  }
+
   return new Promise(function(resolve, reject) {
     function createSongHtml(song, deleted = false) {
       window.song_rev = song._rev;
@@ -1092,7 +1102,7 @@ function loadSong(song_id, song_rev=false) {
       });
       if(!song_rev){
         window.song = song;
-        window.song._revs_info = song._revs_info.filter(rev => rev.status === 'available');
+        window.song._revs_info = song._revs_info ? song._revs_info.filter(rev => rev.status === 'available') : [];
       }
 
       let songElClassList = ''
@@ -1127,6 +1137,7 @@ function loadSong(song_id, song_rev=false) {
             }
           </span>
         </div>
+        <div class="edited-by">${window.users[song.editedBy] || song.editedBy.slice(2)} - ${formatDate(song.edited)}</div>
         <authors><author>${song.authors.join('</author>, <author>')}</author></authors>
         <scripture_ref><scrip_ref>${song.scripture_ref.join('</scrip_ref>, <scrip_ref>')}</scrip_ref></scripture_ref>
         ${(!song_rev ? `<span id="keyToggleContainer"><span id="keyToggleFilter">` : '')}<key>${song.key}</key>${(!song_rev ? `<button id="keyToggle" onclick="this.parentElement.parentElement.classList.toggle(\'active\')">↑↓</button></span></span>`:'')}
@@ -1183,37 +1194,51 @@ function loadSong(song_id, song_rev=false) {
       highlightText();
     }
     if(song_id === 's-new-song'){
-      var song = {
-        _id: 's-new-song',
-        title: '',
-        authors: [''],
-        scripture_ref: [''],
+      const timestamp = Date.now();
+      const newSong = {
+        _id: `s-new-song`,
+        title: 'New Song',
+        authors: [],
+        scripture_ref: [],
         introduction: '',
         key: '',
-        categories: [""],
-        cclis: false,
-        content: [[{type: 'verse'},
-          [""]]
-          ],
-        copyright: ''
+        categories: [],
+        cclis: '',
+        content: [[{type: 'verse'}, ['']]],
+        copyright: '',
+        added: timestamp,
+        addedBy: window.user._id,
+        edited: timestamp,
+        editedBy: window.user._id,
+        search: '' // Initialize empty search field
       };
-      createSongHtml(song)
+      createSongHtml(newSong);
+      return; // Exit early after new song creation
     }
     else {
       let options = {revs_info: true}
       if(song_rev){ options.rev = song_rev }
       db.get(song_id, options).then(function(song){
         if(song._deleted == true) {
-          window.song._revs_info = window.song._revs_info.filter(rev => rev.rev != song._rev); //remove deleted revision
+          if (window.song._revs_info) {
+            window.song._revs_info = window.song._revs_info.filter(rev => rev.rev != song._rev); //remove deleted revision
+          }
           prevSongRev();
         }
         else {
           createSongHtml(song);
         }
       }).catch(function (err) {
-        console.log(err);
-        reject('got an error!');
-        //should load the song and explain what's up.
+        console.error("Error loading song:", err);
+        if (err.status === 404) {
+          // Song not found - show error message and redirect
+          notyf.error(`Song not found (ID: ${song_id})`, 'red');
+          window.location.hash = '#' + formatSbID(window.songbook._id);
+        } else {
+          // Other errors
+          notyf.error('Error loading song', 'red');
+          reject(err);
+        }
       });
     }  
   });
