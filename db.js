@@ -1137,7 +1137,6 @@ function loadSong(song_id, song_rev=false) {
             }
           </span>
         </div>
-        <div class="edited-by">${window.users[song.editedBy] || song.editedBy.slice(2)} - ${formatDate(song.edited)}</div>
         <authors><author>${song.authors.join('</author>, <author>')}</author></authors>
         <scripture_ref><scrip_ref>${song.scripture_ref.join('</scrip_ref>, <scrip_ref>')}</scrip_ref></scripture_ref>
         ${(!song_rev ? `<span id="keyToggleContainer"><span id="keyToggleFilter">` : '')}<key>${song.key}</key>${(!song_rev ? `<button id="keyToggle" onclick="this.parentElement.parentElement.classList.toggle(\'active\')">↑↓</button></span></span>`:'')}
