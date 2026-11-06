@@ -1201,7 +1201,7 @@ function setSongbookInfo(songbook) {
   // Update float menu
   const editable = canEdit(songbook);
   document.querySelector('#songList .float-menu').innerHTML = `
-    ${isSpecial ? '<a data-song-edit="new" class="float-menu-item"><span class="float-menu-icon">+</span>Add Song</a>' : ''}
+    ${songbook._id === 'sb-allSongs' ? '<a data-song-edit="new" class="float-menu-item"><span class="float-menu-icon">+</span>Add Song</a>' : ''}
     ${editable ? `<button data-home onclick="deleteSongbook('${songbook._id}')" class="float-menu-item delete"><span class="float-menu-icon">&#128465;</span>Delete</button>` : ''}
     <button data-songbook-present class="float-menu-item" id="present"><span class="float-menu-icon">&#128253;</span>Present</button>
     <a data-songbook-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span>Export</a>
@@ -1213,6 +1213,8 @@ function setSongbookInfo(songbook) {
   if (dialog.style.display === "block" && !parseHash('s-') && dialog.dataset.use === "info") {
     loadInfo(false);
   }
+  // The float menu was just rebuilt without hrefs (a sync reload doesn't go through the router)
+  if (window.songbook && window.song) updateAllLinks();
 }
 
 function buildSongbookList(songs, target_class='songbook_content', 
@@ -1252,6 +1254,8 @@ function buildSongbookList(songs, target_class='songbook_content',
     window.songbook_edit_togglesongs_list = new List(target_class, options, values);
     bindSearchToList(window.songbook_edit_togglesongs_list, '#songListEdit');
   }
+  // A list rebuilt by a sync change has no hrefs or current-song highlight yet
+  if (window.songbook && window.song) updateAllLinks();
 }
 function dataxInBookUpdate(song, remove = false) {
    const songId = song.getAttribute('data-song-id');
@@ -1851,9 +1855,9 @@ function export_form_summary_update() {
   // Update format select
   const formatSelect = document.getElementById('format');
   formatSelect.value = JSON.stringify([]);
-  Array.from(formatSelect.options).forEach(option => {
+  for (const option of formatSelect.options) {
     const values = JSON.parse(option.value);
-    if (values.length === 0) return;
+    if (values.length === 0) continue;
 
     const opts = values.map(item => ({
       name: item.name,
@@ -1861,8 +1865,9 @@ function export_form_summary_update() {
     }));
     if (arraysOfObjectsEqual(opts, values)) {
       formatSelect.value = option.value;
+      break; // first match wins, so "Your Default" shows ahead of a built-in preset
     }
-  });
+  }
 
   // Update page icon
   const columns = document.getElementById('columns').value;
@@ -1936,14 +1941,14 @@ function export_form_summary_update() {
   document.getElementById('chords_summary').textContent = `Chords: ${document.getElementById('display_chords').value}`;
 
   // Update index summaries
-  const updateIndexSummary = (id, selectId) => {
+  const updateIndexSummary = (id, selectId, label) => {
     const select = document.getElementById(selectId);
-    document.getElementById(id).textContent = select.options[select.selectedIndex].text;
+    document.getElementById(id).textContent = label + select.options[select.selectedIndex].text;
   };
 
-  updateIndexSummary('alphabetical_summary', 'display_index');
-  updateIndexSummary('category_summary', 'display_cat_index');
-  updateIndexSummary('scripture_summary', 'display_scrip_index');
+  updateIndexSummary('alphabetical_summary', 'display_index', 'Index: ');
+  updateIndexSummary('category_summary', 'display_cat_index', 'Category: ');
+  updateIndexSummary('scripture_summary', 'display_scrip_index', 'Scripture: ');
 
   // Update index settings
   const indexValues = window.export.index.default.map(item => ({

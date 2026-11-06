@@ -1153,7 +1153,11 @@ async function _handleLoginRoute(piece) { // bodyClassList removed
   setTimeout(function() {
     const dbSelect = document.getElementById('db_select');
     dbSelect.innerHTML = db_opts;
-    dbSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    // Update the login form for the selected DB, but don't auto-login the demo: after Logout that
+    // would log straight back in (production's jQuery trigger never reached this native listener)
+    const change = new Event('change', { bubbles: true });
+    change.fromLoginRoute = true;
+    dbSelect.dispatchEvent(change);
   }, 0);
   window.document.title = "yCanta2 - Login";
   return true; // Return true to stop ALL execution (matches original 'return')
@@ -1171,7 +1175,10 @@ function _handleSongbooksRoute(piece) { // bodyClassList removed
 // Handles the 's-' (song) route
 async function _handleSongRoute(piece, context) { // bodyClassList removed
   // === CONTENT LOADING: Use caching guard to prevent redundant DB calls ===
-  if (!window.song || window.song._id !== piece[0]) {
+  // Reuse it only when the song was already open (e.g. edit -> view); coming back to it from a list
+  // reloads, so changes synced while it was closed show up, as production always reloaded.
+  const wasOpen = context.oldHashList.some(p => p[0] === piece[0]);
+  if (!window.song || window.song._id !== piece[0] || !wasOpen) {
     try {
       await loadSong(piece[0]);
     } catch (error) {

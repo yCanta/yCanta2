@@ -250,7 +250,7 @@ function toggleChords(touch=false) {
 
   if(!touch){
     const chngChords = document.getElementById('chngChords');
-    chngChords.checked = !chngChords.checked;
+    if (chngChords) chngChords.checked = !chngChords.checked;
   }
 }
 
@@ -671,7 +671,7 @@ function gotoVerse(num){
 function whiteScreen(touch=false){
   if(!touch){
     const fgText = document.getElementById('fgText');
-    fgText.checked = !fgText.checked;
+    if (fgText) fgText.checked = !fgText.checked; // the help panel (and this box) may not exist yet
   }
   if(document.body.classList.contains('white')){
     document.body.classList.remove('white');
@@ -684,7 +684,7 @@ function whiteScreen(touch=false){
 function blackScreen(touch=false){
   if(!touch){
     const bgColor = document.getElementById('bgColor');
-    bgColor.checked = !bgColor.checked;
+    if (bgColor) bgColor.checked = !bgColor.checked;
   }
   if(document.body.classList.contains('black')){
     document.body.classList.remove('black');

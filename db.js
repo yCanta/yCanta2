@@ -38,7 +38,7 @@ window.addEventListener('load', function() {
     }
 
     // Demo login handling
-    if (e.target.value === 'demo(local)') {
+    if (e.target.value === 'demo(local)' && !e.fromLoginRoute) {
       const databases = JSON.parse(localStorage.getItem('databases'));
       const username = 'Johannes Gutenberg';
       const pin = '42';
@@ -145,7 +145,7 @@ function dbChanges() {
     if (change.deleted) {
       const id = change.doc._id;
       console.log('deleted: ' + id);
-      const isOpen = location.hash.replace('#', '').split('&').some(part => part.split('?')[0] === id);
+      const isOpen = id !== window.deletingId && location.hash.replace('#', '').split('&').some(part => part.split('?')[0] === id);
       if (id.startsWith('s-')) {
         loadRecentSongs();
         window.songbook_list?.remove('song-id', id);
@@ -251,19 +251,19 @@ function dbChanges() {
       if (songbookId && window.songbook?._id === songbookId && window.songbook.showComments) {
         const songId = change.doc._id.match(/s-.*?$/g)?.[0];
         if (songId) {
-          const songElement = document.querySelector(`li[data-song-id="${songId}"]`);
-          if (songElement) {
-            const toggleComment = songElement.querySelector('.toggle_comment');
-            const commentsContainer = songElement.querySelector('.comments');
-            
-            if (toggleComment) {
-              toggleComment.dataset.commentNumber = change.doc.comments.length;
-            }
-            
-            if (commentsContainer) {
-              commentsContainer.innerHTML = change.doc.comments.map(commentHtml).join('');
-            }
-            
+          const songElements = document.querySelectorAll(`li[data-song-id="${songId}"]`); // a song can be in a book twice
+          if (songElements.length) {
+            songElements.forEach(songElement => {
+              const toggleComment = songElement.querySelector('.toggle_comment');
+              const commentsContainer = songElement.querySelector('.comments');
+              if (toggleComment) {
+                toggleComment.dataset.commentNumber = change.doc.comments.length;
+              }
+              if (commentsContainer) {
+                commentsContainer.innerHTML = change.doc.comments.map(commentHtml).join('');
+              }
+            });
+
             notyf.info(
               `Comment added to "${escapeHtml(songId)}" by ${escapeHtml(change.doc.comments.at(-1).user)}`,
               'var(--songList-color)'
@@ -600,7 +600,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
           logData('touch', isTouchCapable());
           logData('darkMode', localStorage.getItem(window.user._id+'darkMode') || 'def');
           logData('fontSize', localStorage.getItem(window.user._id+'fontSize') || 'def');
-          notyf.info('yCanta has been updated to send information to help improve how it works. You can toggle this in settings.', 'var(--song-color)', '#');
+          dysmyssable.info('yCanta has been updated to send information to help improve how it works. You can toggle this in settings.', 'var(--song-color)', '#'); // stays until closed, like production
         }
 
         logData('username', window.user._id);
@@ -1353,8 +1353,8 @@ function loadSong(song_id, song_rev = false) {
           ) + 1;
           const placementElement = document.querySelector('#songbook_content .search + span');
           if (placementElement) {
-            placementElement.dataset.numberVisible = songPlacement ? 
-              `${songPlacement}/${window.songbook_list.visibleItems.length}` : '';
+            placementElement.dataset.numberVisible =
+              `${songPlacement ? songPlacement + '/' : ''}${window.songbook_list.visibleItems.length}`;
           }
         }, 300);
       }
@@ -1429,6 +1429,7 @@ async function deleteSong(song_id) {
   else if (confirm(`Are you sure you want to delete song:\n\n - ${window.song.title}?`)) {
     try {
       const doc = await db.get(song_id);
+      window.deletingId = song_id; // our own delete: the change feed should not warn about it
       await db.remove(doc);
       window.location.hash = "#" + formatSbID(window.songbook._id);
       console.log("Deleted:", window.song.title);
@@ -1443,6 +1444,7 @@ async function deleteSongbook(songbook_id) {
   if (confirm(`Are you sure you want to delete songbook:\n\n - ${window.songbook.title}?`)) {
     try {
       const doc = await db.get(songbook_id);
+      window.deletingId = songbook_id;
       await db.remove(doc);
       initializeSongbooksList();
       window.location.hash = '#songbooks';
@@ -1736,11 +1738,13 @@ function loadSongbookComments() {
     // Populate existing comments
     rows.forEach(({doc: song}) => {
       const songId = song._id.match(/s-.*/)?.[0];
-      const li = document.querySelector(`li[data-song-id="${songId}"]`);
-      if (!li) return;
-
-      li.querySelector('.comments').innerHTML = song.comments.map(commentHtml).join('');
-      li.querySelector('.toggle_comment')?.setAttribute('data-comment-number', song.comments.length);
+      // Every row for this song (a song can be in a book twice); add-song panel rows have no .comments
+      document.querySelectorAll(`li[data-song-id="${songId}"]`).forEach(li => {
+        const commentsBox = li.querySelector('.comments');
+        if (!commentsBox) return;
+        commentsBox.innerHTML = song.comments.map(commentHtml).join('');
+        li.querySelector('.toggle_comment')?.setAttribute('data-comment-number', song.comments.length);
+      });
     });
   }).catch(console.error);
 }

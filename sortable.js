@@ -82,6 +82,12 @@ function dragDrop(e, selector = 'li') {
   var li = e.target.closest(selector) || e.target;
   if (e.stopPropagation) e.stopPropagation();
 
+  // Dropped on the empty part of the row's own list: move it to the end (the add-song list keeps its order)
+  if (li.nodeName === 'UL' && li === selected.parentNode) {
+    if (!isVerboten(li)) li.append(selected);
+    return;
+  }
+
   if (isVerboten(li)) {
     if (li.parentNode != selected.parentNode) {
       dataxInBookUpdate(selected, true);
