@@ -129,7 +129,13 @@ async function importSongV1(f){
                   songbook = songbook.replace('songs/'+key, value);
                 }
 
-                Promise.resolve(saveSongbook('i'+CRC32.str(zipEntry.name.replace('songbooks/',''),0), new DOMParser().parseFromString(songbook, 'text/xml'), false))
+                // Strict XML fails on a BOM, &nbsp; or a bare &; fall back to lenient HTML parsing like the old $(songbook)
+                songbook = songbook.replace(/^﻿/, '');
+                let songbookDoc = new DOMParser().parseFromString(songbook, 'text/xml');
+                if (songbookDoc.querySelector('parsererror')) {
+                  songbookDoc = new DOMParser().parseFromString(songbook, 'text/html');
+                }
+                Promise.resolve(saveSongbook('i'+CRC32.str(zipEntry.name.replace('songbooks/',''),0), songbookDoc, false))
                 .then(function(results){ //results is the songbook._id
                   window.import.n_songbooks++;
                   updateProgress();

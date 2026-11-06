@@ -145,12 +145,24 @@ function dbChanges() {
     if (change.deleted) {
       const id = change.doc._id;
       console.log('deleted: ' + id);
+      const isOpen = location.hash.replace('#', '').split('&').some(part => part.split('?')[0] === id);
       if (id.startsWith('s-')) {
         loadRecentSongs();
         window.songbook_list?.remove('song-id', id);
         window.songbook_edit_togglesongs_list?.remove('song-id', id);
+        if (isOpen) { // someone deleted the song we're looking at (or editing): leave it, as production did
+          window.songEditing = false;
+          notyf.error('This song was deleted', 'red');
+          window.location.hash = '#' + formatSbID(window.songbook?._id || 'sb-allSongs');
+        }
       } else if (id.startsWith('sb-')) {
         window.songbooks_list?.remove('songbook-id', id);
+        if (isOpen) {
+          window.songbookEditing = false;
+          window.songEditing = false;
+          notyf.error('This songbook was deleted', 'red');
+          window.location.hash = '#songbooks';
+        }
       } else if (id.startsWith('cfg-') && id.includes(window.user._id)) {
         notyf.info('Config deleted', 'var(--export-color)');
       }
@@ -353,7 +365,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
         remote_url = document.getElementById('remote_url').value;
       } else if (type === 'login_remote') {
         const selectedOption = document.getElementById('db_select').selectedOptions[0];
-        remote_url = selectedOption.dataset.url;
+        remote_url = selectedOption?.dataset.url;
       }
     }
 
@@ -534,25 +546,6 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
 
       // Setup sync for remote databases
       if(navigator.onLine && db.name.endsWith('(remote)')) {
-        const remoteInfo = await remoteDb.info();
-        const localInfo = await db.info();
-
-        // Number of docs
-        const remoteDocs = remoteInfo.doc_count; 
-        const localDocs = localInfo.doc_count;
-
-        // Calculate the actual "Work" to be done
-        const docsToDownload = remoteDocs - localDocs;
-
-        console.log(`Actual Documents to Sync: ${docsToDownload}`);
-
-        // Logic: Show the bar if we are missing more than 100 actual documents
-        if (docsToDownload > 100) {
-            console.log("This is a big one. Showing progress bar.");
-            // Run your sync with the UI
-        }
-
-
         console.log('doing a onetime sync...');
         let startTime = new Date();
         

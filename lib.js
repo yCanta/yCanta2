@@ -1353,7 +1353,7 @@ function cancelSongbook(el) {
     const confirmed = confirmWhenEditing(); // Then check for confirmation
     if (!confirmed) {
       window.songbook._id = '';
-      window.location.href = el.href; // Use native href instead of jQuery
+      window.location.hash = el.getAttribute('href'); // a button has no .href property
       window.songEditing = false;
     } else {
       window.songbookEditing = true; // Restore editing state if not confirmed
@@ -1509,6 +1509,11 @@ async function editSongbook() {
   addStatusAndCommentsToggle();
   await loadSongsIntoAdder();
   bindSongbookListEvents();
+  // Let songs be dropped onto the list itself (empty songbook, or below the last song)
+  document.querySelectorAll('#songList ul.list').forEach(ul => {
+    ul.addEventListener('drop', dragDrop, false);
+    ul.addEventListener('dragover', dragOver, false);
+  });
 }
 
 async function editSong() { 
@@ -1962,10 +1967,11 @@ function export_form_summary_update() {
   }
 }
 function read_config_form(){
-  let opts = serializeForm('export_form');
+  // Like jQuery serializeArray: checked boxes read 'on', unchecked and disabled fields are left out.
+  // pdfformatter.js tests for 'on', so serializeForm's true/false values won't do here.
   let new_opts = {};
-  for(let opt of opts) {
-    new_opts[opt.name] = opt.value;
+  for(let [name, value] of new FormData(document.getElementById('export_form'))) {
+    new_opts[name] = value;
   }
   return new_opts;
 }
@@ -2302,6 +2308,7 @@ async function loadInfo(song = true) {
 
   // Helper function to show dialog
   const showDialog = (title, content) => {
+    dialog.querySelector('h5').textContent = song ? 'Song' : 'Songbook';
     dialog.querySelector('.title').textContent = title;
     dialog.querySelector('.content').innerHTML = content;
     if (dialog.style.display === 'none') {
@@ -2607,11 +2614,11 @@ function handleVisibilityChange() {
     return;
   }
 
-  // If the tab becomes hidden and the player exists, keep playing the video
+  // If the tab becomes hidden while a video is playing, keep it playing (but never start a paused one)
   if (document[hidden]) {
     try {
-      if (window.player && typeof window.player.playVideo === 'function') {
-        window.player.playVideo();
+      if (window.player && typeof window.player.getPlayerState === 'function' && window.player.getPlayerState() === 1) {
+        setTimeout(() => window.player.playVideo(), 300);
       }
     } catch (error) {
       console.error('Error maintaining background playback:', error);

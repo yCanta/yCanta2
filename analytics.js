@@ -66,7 +66,7 @@ function logData(header, information, time = new Date().getTime()) {
   if (analytics === 'false') return;
 
   let id = localStorage.getItem('analyticID');
-  let dataLog = JSON.parse(localStorage.getItem('dataLog')) || [];
+  let dataLog = (JSON.parse(localStorage.getItem('dataLog')) || []).filter(e => e && typeof e === 'object'); // drop old-format string entries
 
   // Push as a clean object
   dataLog.push({
@@ -86,7 +86,7 @@ function logData(header, information, time = new Date().getTime()) {
 
 // SUBMIT VIA POST
 async function submitLogData() {
-  let dataLog = JSON.parse(localStorage.getItem('dataLog')) || [];
+  let dataLog = (JSON.parse(localStorage.getItem('dataLog')) || []).filter(e => e && typeof e === 'object'); // drop old-format string entries
   if (dataLog.length === 0) return;
 
   const payload = {

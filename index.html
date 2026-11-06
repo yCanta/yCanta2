@@ -891,10 +891,6 @@
   }
   // --- End Initial Global Cleanup ---
   
-  // CRITICAL FIX: Run general element cleanup here, before parsing and guards.
-  document.querySelectorAll('.edit').forEach(el => el.classList.remove('edit'));
-  document.querySelectorAll('.active').forEach(el => el.classList.remove('active'));
-
   // 1. Parse Event/Location and Get Context
   const context = _parseHashContext(e);
 
@@ -902,6 +898,11 @@
   if (_runPreRouteGuards(context)) {
     return;
   }
+
+  // Clear edit/active state only once we're really navigating: if the user stayed to keep
+  // their unsaved edits, the guard above returned and the editor must keep its classes.
+  document.querySelectorAll('.edit').forEach(el => el.classList.remove('edit'));
+  document.querySelectorAll('.active').forEach(el => el.classList.remove('active'));
 
   // 3. Prepare for Routing (Body Class Management)
   // FIX: Calculate the full bodyClassList based on the new hash segments
@@ -1114,7 +1115,7 @@ async function _handleLoginRoute(piece) { // bodyClassList removed
     console.log("Not logged in yet");
   }
 
-  document.body.classList.remove('loading', 'song', 'songList');
+  document.body.classList.remove('loading', 'song', 'songList', 'songbookList', 'export', 'present', 'present+new'); // a cold deep link adds these before the redirect to login
   // Login is a sticky route, so _runPostRouteCleanup never applies body classes; add them here
   document.body.classList.add('login', 'header');
 
@@ -1316,7 +1317,7 @@ async function _handleSongbookRoute(piece, oldHashOb) { // bodyClassList removed
 
       if (mode.includes('new')) {
         window.location = '#' + window.songbook._id;
-        window.presentationFrame = window.open('', '_blank', 'height=200,width=200');
+        window.presentationFrame = window.open('', '_blank', 'popup');
       } else {
         const ifrm = document.createElement('iframe');
         ifrm.id = "presentation";

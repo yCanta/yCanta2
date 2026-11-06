@@ -20,6 +20,7 @@ function convertChunksToEditable(chunks) {
   });
 
   function handleKeydown(e) {
+    if (e.isComposing || e.keyCode === 229) return; // Enter that commits an IME composition (CJK input) is not a newline
     const el = e.currentTarget;
 
     // Keep it plain text: no bold, italic or underline
