@@ -507,13 +507,12 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
         roles: window.roles
       };
 
-      const pwdInput = document.getElementById('pwd');
       const keepLoggedIn = document.getElementById('keep_logged_in').checked;
 
       if (dbName.endsWith("(local)")) {
         userData.pin = pin; // the input box is empty on auto-login and demo login
       } else if (keepLoggedIn && dbName.endsWith("(remote)")) {
-        userData.pwd = pwdInput.value;
+        userData.pwd = pwd; // trimmed, so offline login matches
         userData.remote_url = remote_url;
       }
 
@@ -1115,7 +1114,7 @@ function saveSong(song_id, songElement = document.querySelector('#song song'), c
       const duplicateWhitespace = /\s{2,}/g;
       
       function formatArray(array, letter) {
-        return (array.length ? array.join(` ${letter}:`) : `!${letter}`).replace(duplicateWhitespace, ' ');
+        return (array.join(',') !== '' ? array.join(` ${letter}:`) : `!${letter}`).replace(duplicateWhitespace, ' ');
       }
       
       function formatText(text, letter) {
