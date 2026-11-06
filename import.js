@@ -38,27 +38,29 @@ function updateProgress(){
 }
 async function importSongV1(f){
   changeHandler.cancel();
-  var $result = $("#result");
+  const result = document.getElementById('result');
   // remove content
-  $result.html("");
-  var $title = $("<h4>", {
-    text : f.name
-  });
-  $result.append($title);
+  result.innerHTML = '';
+  const title = document.createElement('h4');
+  title.textContent = f.name;
+  result.appendChild(title);
 
   JSZip.loadAsync(f)
   .then(function(zip) {
     window.import= {};
     window.import.file_count = Object.keys(zip.files).length;
 
-    $title.append($("<span>", {
-      "class": "small",
-      text: ` (${window.import.file_count} files loaded . . . starting import)`
-    }));
+    const span = document.createElement('span');
+    span.className = 'small';
+    span.textContent = ` (${window.import.file_count} files loaded . . . starting import)`;
+    title.appendChild(span);
     let progress =  "<div id='progress_bar' style='width:min(100%, 400px); height: 1rem; border: 1px solid black; background: linear-gradient(to right, white 0);'>"+
                     "</div>";
-    $title.after($("<div id='progress_text' style='width:min(100%, 400px); max-width: 80vw; font-size:small; white-space:nowrap; overflow: hidden;'></div>"));
-    $title.after($(progress));
+    const progressText = document.createElement('div');
+    progressText.id = 'progress_text';
+    progressText.style.cssText = 'width:min(100%, 400px); max-width: 80vw; font-size:small; white-space:nowrap; overflow: hidden;';
+    title.insertAdjacentElement('afterend', progressText);
+    title.insertAdjacentElement('afterend', document.createElement('div')).innerHTML = progress;
     //Import files
     window.import.n_songs = 0;
     window.import.n_songs2 = 0;
@@ -85,12 +87,19 @@ async function importSongV1(f){
               song = song.replace(/\<[^>]+?\/\>/gi, ''); //empty tags...
               song = song.replace(/\|/gi, ',');  //Replace all the pipes with ,'s
               
-              Promise.resolve(saveSong('i'+CRC32.str(zipEntry.name.replace('songs/',''),0), $(song), false))
+              //parse as HTML like the old $(song) did, so entities like &nbsp; don't break it
+              Promise.resolve(saveSong('i'+CRC32.str(zipEntry.name.replace('songs/',''),0), new DOMParser().parseFromString(song, 'text/html').body, false))
               .then(function(results){ //results is the song._id
                 window.import.n_songs ++;
                 song_map[relativePath] = results;
                 updateProgress();
                 window.import.progressText.innerHTML = zipEntry.name;
+                resolve('done');
+              })
+              .catch(function(err){ //don't let one bad song stop the whole import
+                console.error('Could not import ' + zipEntry.name, err);
+                window.import.n_other++;
+                updateProgress();
                 resolve('done');
               });
             }
@@ -120,7 +129,7 @@ async function importSongV1(f){
                   songbook = songbook.replace('songs/'+key, value);
                 }
 
-                Promise.resolve(saveSongbook('i'+CRC32.str(zipEntry.name.replace('songbooks/',''),0), $(songbook), false))
+                Promise.resolve(saveSongbook('i'+CRC32.str(zipEntry.name.replace('songbooks/',''),0), new DOMParser().parseFromString(songbook, 'text/xml'), false))
                 .then(function(results){ //results is the songbook._id
                   window.import.n_songbooks++;
                   updateProgress();
@@ -140,7 +149,13 @@ async function importSongV1(f){
                   //{id: c_songbook.song , comments: [{date: , user: , comment: }]}
                   let id = 'c_'+'sb-i'+CRC32.str(zipEntry.name.replace('songbooks/','').replace('.comment','.xml'),0)+'_s-i'+CRC32.str(song_path,0)
                   let comments = song.match(/<div\b(?:|(?:(?!<\/?div).))*<\/div>/g).map(function(comment) {
-                    return {date: new Date(comment.match(/(?<=\()(.*?)(?=\):)/g)[0]).getTime(), user: $(comment).find('b').text(), comment: $(comment).find('pre').text()}
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = comment;
+                    return {
+                      date: new Date(comment.match(/(?<=\()(.*?)(?=\):)/g)[0]).getTime(),
+                      user: tempDiv.querySelector('b').textContent,
+                      comment: tempDiv.querySelector('pre').textContent
+                    }
                   });
                   comments_list.push({_id: id, comments: comments});
                 }
@@ -178,10 +193,10 @@ async function importSongV1(f){
       });
     });
   }, function (e) {
-    $result.append($("<div>", {
-      "class" : "alert alert-danger",
-      text : "Error reading " + f.name + ": " + e.message
-    }));
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-danger';
+    alertDiv.textContent = "Error reading " + f.name + ": " + e.message;
+    result.appendChild(alertDiv);
     dbChanges();
     loadRecentSongs();
   });
@@ -189,18 +204,20 @@ async function importSongV1(f){
 }
 async function importSongV2(f){
   changeHandler.cancel();
-  var $result = $("#result");
+  const result = document.getElementById('result');
   // remove content
-  $result.html("");
-  var $title = $("<h4>", {
-    text : f.name
-  });
-  $result.append($title);
+  result.innerHTML = '';
+  const title = document.createElement('h4');
+  title.textContent = f.name;
+  result.appendChild(title);
 
   let progress =  "<div id='progress_bar' style='width:min(100%, 400px); height: 1rem; border: 1px solid black; background: linear-gradient(to right, white 0);'>"+
                   "</div>";
-  $title.after($("<div id='progress_text' style='width:min(100%, 400px); max-width: 80vw; font-size:small; white-space:nowrap; overflow: hidden;'></div>"));
-  $title.after($(progress));
+  const progressText = document.createElement('div');
+  progressText.id = 'progress_text';
+  progressText.style.cssText = 'width:min(100%, 400px); max-width: 80vw; font-size:small; white-space:nowrap; overflow: hidden;';
+  title.insertAdjacentElement('afterend', progressText);
+  title.insertAdjacentElement('afterend', document.createElement('div')).innerHTML = progress;
   //Import files    
   window.import = {};
   window.import.n_songs = 0;

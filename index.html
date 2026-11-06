@@ -12,7 +12,7 @@
     <link rel="mask-icon" href="safari-pinned-tab.svg" color="#ff0000">
 
     <link rel="stylesheet" type="text/css" href="style.css">
-    <link rel="stylesheet" type="text/css" href="jquery.myTransposer.css">
+    <link rel="stylesheet" type="text/css" href="myTransposer.css">
     <link rel="stylesheet" type="text/css" href="2html.css">
     <link rel="stylesheet" type="text/css" href="notyf.min.css">
     <title>yCanta2</title>
@@ -26,8 +26,8 @@
     <fieldset class="loggedin_display closed align-right accountBtn">
       <legend onclick="this.parentElement.classList.toggle('closed');" style="margin-right: 0; padding: 0 .4rem; margin-left: auto;" id="username_legend"><span id="username_d"></span></legend>
       <div class="content">
-        <a href="#" style="background-color: var(--background-color);" class="btn" onclick="$(this).closest('fieldset').addClass('closed'); goToSettings();">Settings</a>
-        <button style="background-color: var(--background-color);" class="btn" onclick="$(this).closest('fieldset').addClass('closed'); dbLogout();">Logout</button>
+        <a href="#" style="background-color: var(--background-color);" class="btn" onclick="this.closest('fieldset').classList.add('closed'); goToSettings();">Settings</a>
+        <button style="background-color: var(--background-color);" class="btn" onclick="this.closest('fieldset').classList.add('closed'); dbLogout();">Logout</button>
       </div>
     </fieldset>
     <header id="header">
@@ -40,7 +40,7 @@
           <h2>Login:</h2>
           <select id="db_select">
             <option value="new">Create local</option>
-          </select><button tabindex="-1" class="btn btn-small" style="display: none" id="deleteDb" onclick="if(confirm('Are you sure you want to delete: '+$('#db_select').val()+'?')){destroyDb($('#db_select').val())}" title="delete this database">🗑</button>
+          </select><button tabindex="-1" class="btn btn-small" style="display: none" id="deleteDb" onclick="if(confirm('Are you sure you want to delete: '+document.getElementById('db_select').value+'?')){destroyDb(document.getElementById('db_select').value)}" title="delete this database">🗑</button>
           <input id="newDbUrl" class="d_none" placeholder="DB Url" type="text"></input>
           <input id="newDbName" class="d_none create_local" placeholder="DB Name" type="text"></input>
           <input id="remote_url" class="d_none connect_remote" placeholder="Remote URL" type="url"></input>
@@ -181,10 +181,10 @@
                 </div>
                 <input aria-label="Search" class="search deletable" type="text" data-target="#songbook_content" data-trigger="change" placeholder="Search">
                 <nav id="category_filter_container">
-                  <button class="cat_filter_btn" onclick="$('#category_filter_container').toggleClass('open'); $('#songbook_header').toggleClass('mb23');">⑂</button>
+                  <button class="cat_filter_btn" onclick="document.getElementById('category_filter_container').classList.toggle('open'); document.getElementById('songbook_header').classList.toggle('mb23');">⑂</button>
                   <div id="category_filter">
                     <label>Category: 
-                      <select onchange="$('#songbook_content .search').val('&quot;'+$(this).val()+'&quot;')[0].dispatchEvent(new KeyboardEvent('keyup'));">
+                      <select onchange="const searchInput = document.querySelector('#songbook_content .search'); searchInput.value = '&quot;' + this.value + '&quot;'; searchInput.dispatchEvent(new KeyboardEvent('keyup'));">
                       </select>
                     </label>
                   </div>
@@ -206,7 +206,7 @@
           <div class="subcolumn sidebar" id="songListEdit">
             <div id="songbook_edit_togglesongs">
               <div class="column_header">
-                <h3>Add a song?<button onclick="$(this).closest('.sidebar-open').removeClass('sidebar-open');" class="icon-fl-right close-icon-mobile">&times;</button></h3>
+                <h3>Add a song?<button onclick="this.closest('.sidebar-open').classList.remove('sidebar-open');" class="icon-fl-right close-icon-mobile">&times;</button></h3>
                 <input aria-label="Search" class="search deletable" type="text" data-target="#songbook_edit_togglesongs" data-trigger="change" placeholder="Search">
               </div>
               <ul class="list">
@@ -237,7 +237,7 @@
           <div class="subcolumn sidebar" id="song-edit">
             <div id="categories">
               <div class="column_header">
-                <h3>Song Categories<button onclick="$(this).closest('#song-edit').removeClass('sidebar-open');" class="icon-fl-right close-icon-mobile">&times;</button></h3>
+                <h3>Song Categories<button onclick="this.closest('#song-edit').classList.remove('sidebar-open');" class="icon-fl-right close-icon-mobile">&times;</button></h3>
                 <input aria-label="Search" class="search deletable" type="text" data-target="#categories" data-trigger="change" placeholder="Search">
               </div>
               <ul class="list">
@@ -691,7 +691,7 @@
               </form>
               <div id="cfg_buttons"></div>
               <button class="btn" id="export_new_config" onclick="createExportCfg();">+ Save new Config</button>
-              <button class="btn" id="export_copy" onclick="copyToClipboard(JSON.stringify($('#export_form').serializeArray()));" style="position: relative;">📄 Copy</button>
+              <button class="btn" id="export_copy" onclick="copyToClipboard(JSON.stringify(serializeForm('export_form')));" style="position: relative;">📄 Copy</button>
               <button class="btn" id="export_paste" onclick="pasteFromClipboard();">📋Paste</button>
             </div>
           </div>
@@ -700,7 +700,7 @@
               <div>
                 <div class="column_header title">
                   <h3>Preview
-                    <button onclick="$(this).closest('#exportPreview').removeClass('sidebar-open');" class="icon-fl-right close-icon-mobile">&times;</button>
+                    <button onclick="this.closest('#exportPreview').classList.remove('sidebar-open');" class="icon-fl-right close-icon-mobile">&times;</button>
                     <span style="float: right; margin-right: 2rem;" class="fsButton" onclick="toggleFullscreen(this)"></span>
                     <span style="float: right; margin-right: 4rem; font-size: 1rem;" id="downloadPDF"></span>
                   </h3>
@@ -721,14 +721,13 @@
       <b class="title" style="overflow-wrap: break-word;"></b>
       <div class="content"></div>
       <div class="center_contents">
-        <button class="close btn" onclick="$('#dialog').hide(); pauseVideo();">X</button>
+        <button class="close btn" onclick="document.getElementById('dialog').style.display = 'none'; pauseVideo();">X</button>
       </div>
     </dialog>
     <footer>
     </footer>
     <iframe id="presentation" title="Presentation Slideshow"></iframe>
 
-    <script src="jquery-3.5.1.min.js"></script>
     <script src="pouchdb.min.js"></script>
     <script src="pouchdb.memory.min.js"></script>
     <script src="pouchdb.authentication.min.js"></script>
@@ -738,13 +737,13 @@
     <script src="db.js"></script>
     <script src="mark.min.js"></script>
     <script src="lib.js"></script>
-    <script async src="jquery.myTransposer.js"></script>
-    <script async src="jquery.toTextarea.js"></script>
+    <script src="myTransposer.js"></script>
+    <script src="toTextarea.js"></script>
     <script src="list.min.js"></script>
     <script src="sortable.js"></script>
     <script async src="jszip.min.js"></script>
     <script async src="import.js"></script>
-    <script async src="analytics.js" id="analyticsScript"></script>
+    <script src="analytics.js" id="analyticsScript"></script>
 
     <script>
       window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
@@ -777,32 +776,38 @@
       //bindSearch('cclis', 'cclis:'); //currently not working as desired.
       bindSearch('copyright', 'cp:');
       
-      $("#export_form > label").click(function(e){
-        if(this.previousElementSibling.checked){
-          e.stopPropagation();
-          e.preventDefault();
-          this.previousElementSibling.checked = false;
-        };
+      document.querySelectorAll("#export_form > label").forEach(label => {
+        label.addEventListener('click', function(e) {
+          if(this.previousElementSibling.checked){
+            e.stopPropagation();
+            e.preventDefault();
+            this.previousElementSibling.checked = false;
+          }
+        });
       });
-      $('.column').click(function(e){
-        var h = this.offsetHeight;
-        var w = this.offsetWidth;
-        if((h <= 100 && h > 0) || ( w <= 60 && w > 0)) {
-          e.preventDefault();
-          e.stopPropagation();
-          location.hash = $(this).find('.title_link').attr('href');
-        }
+      document.querySelectorAll('.column').forEach(column => {
+        column.addEventListener('click', function(e) {
+          var h = this.offsetHeight;
+          var w = this.offsetWidth;
+          if((h <= 100 && h > 0) || ( w <= 60 && w > 0)) {
+            e.preventDefault();
+            e.stopPropagation();
+            location.hash = this.querySelector('.title_link').getAttribute('href');
+          }
+        });
       });
-      $('.content-inner').change(function(){
-        export_form_summary_update();
+      document.querySelectorAll('.content-inner').forEach(content => {
+        content.addEventListener('change', function() {
+          export_form_summary_update();
+        });
       });
-      $('#format').change(function() {
+      document.getElementById('format').addEventListener('change', function() {
         if(this.value != 'custom'){
           set_value_by_id(JSON.parse(this.value));
-          $('#paper_margin_top').trigger('change'); //random element to trigger
         }
+        document.getElementById('paper_margin_top').dispatchEvent(new Event('change', { bubbles: true }));
       });
-      $('#margin').change(function() {
+      document.getElementById('margin').addEventListener('change', function() {
         if(this.value != 'custom'){
           let margins = window.export.margins[this.value];
           document.getElementById('paper_margin_top').value = margins[0];
@@ -813,19 +818,19 @@
           document.getElementById('paper_margin_gutter').value = margins[5];
         }
       });
-      $('#text').change(function() {
+      document.getElementById('text').addEventListener('change', function() {
         if(this.value != 'custom'){
           let text = window.export.text[this.value];
           set_value_by_id(text);
         }
       });
-      $('#index').change(function() {
+      document.getElementById('index').addEventListener('change', function() {
         if(this.value != 'custom'){
           let index = window.export.index[this.value];
           set_value_by_id(index);
         }
       });
-      $(function () {
+      document.addEventListener('DOMContentLoaded', function() {
         PouchDB.on('destroyed', function (dbName) {
           console.log('Destroyed: ', dbName);
         });
@@ -833,15 +838,39 @@
           console.log('Created: ', dbName);
         });
 
-        $('input.deletable').wrap('<span class="deleteicon" />').after($('<span/>').on('mouseup touchend',function(e){
+        document.querySelectorAll('input.deletable').forEach(input => {
+          // Create wrapper span
+          const wrapper = document.createElement('span');
+          wrapper.classList.add('deleteicon');
+          
+          // Wrap input
+          input.parentNode.insertBefore(wrapper, input);
+          wrapper.appendChild(input);
+          
+          // Create delete span
+          const deleteSpan = document.createElement('span');
+          
+          // Add event listeners
+          deleteSpan.addEventListener('mouseup', handleDelete);
+          deleteSpan.addEventListener('touchend', handleDelete);
+          
+          // Insert after input
+          input.after(deleteSpan);
+        });
+
+        function handleDelete(e) {
           e.preventDefault();
-          $(this).prev('input').val('').trigger('change')[0].dispatchEvent(new KeyboardEvent("keyup"));
-          if(e.type=='mouseup') {
-            $(this).prev('input').focus();
-          }else {
-            $(this).prev('input').blur();
+          const input = this.previousElementSibling;
+          input.value = '';
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+          input.dispatchEvent(new KeyboardEvent('keyup'));
+          
+          if(e.type === 'mouseup') {
+            input.focus();
+          } else {
+            input.blur();
           }
-        }));
+        }
         // URL navigation implementing
         window.addEventListener("hashchange", hashchanged, false);
         // Trigger the event (useful on page load).
@@ -851,291 +880,490 @@
           return ((window.songEditing || window.songbookEditing) ? "If you leave this page you will lose your unsaved changes." : null);
         }
       });   
-      async function hashchanged(e){
-        let oldHash = '';
-        let newHash;
-        if(e) {
-          let oldURL = e.oldURL.match(/#.*$/);
-          let newURL = e.newURL.match(/#.*$/);
-          oldHash = (oldURL ? oldURL[0] : '');
-          newHash = (newURL ? newURL[0] : '');
-        }
-        else {
-          newHash = location.hash;
-        }
-        let newHashList = newHash.replace('#','').split('&').map(itm => itm.split('?'));
-        let oldHashList = oldHash.replace('#','').split('&').map(itm => itm.split('?'));
-        let oldHashOb = {};
-        for(el of oldHash.replace('#','').split('&')){
-          let pieces = el.split('?');
-          oldHashOb[pieces[0]] = pieces[1];
-        }
+      async function hashchanged(e) {
+  // --- Initial Global Cleanup (Preserved from Original) ---
+  document.querySelectorAll('.fullscreen').forEach(el => el.classList.remove('fullscreen'));
+  let pres_iframe = document.getElementById('presentation');
+  if (pres_iframe) {
+    setTimeout(function() {
+      pres_iframe.remove()
+    }, 300);
+  }
+  // --- End Initial Global Cleanup ---
+  
+  // CRITICAL FIX: Run general element cleanup here, before parsing and guards.
+  document.querySelectorAll('.edit').forEach(el => el.classList.remove('edit'));
+  document.querySelectorAll('.active').forEach(el => el.classList.remove('active'));
 
-        $('.fullscreen').removeClass('fullscreen');
-        let pres_iframe = document.getElementById('presentation');
-        if(pres_iframe){setTimeout(function(){pres_iframe.remove()},300);}
+  // 1. Parse Event/Location and Get Context
+  const context = _parseHashContext(e);
 
-        if(window.dontChangeURL){
-          delete window.dontChangeURL;
-          return
-        }
-        if(confirmWhenEditing(oldHashList, newHashList)) { //need to know if we are navigating away from an in progress edit.
-          window.location.hash = oldHash;
-          window.dontChangeURL = true;
-          return
-        }
-        if(!(newHash.startsWith('#login')) && !window.loggedin){
-          location.hash = '#login?' + newHash;
-          console.log("Hi, let's login first");
-          return
-        }
+  // 2. Run Pre-Route Guards
+  if (_runPreRouteGuards(context)) {
+    return;
+  }
 
-        try { //logData hasn't always been loading in time
-          logData('hashchanged', location.hash);
-        } catch (error) {
-          console.log(error.message);
-        }
+  // 3. Prepare for Routing (Body Class Management)
+  // FIX: Calculate the full bodyClassList based on the new hash segments
+  let bodyClassList = _getClassesFromHash(context.newHashList);
+  // Re-add 'loading' if it was present at the start of the function
+  if (document.body.classList.contains('loading') && !bodyClassList.includes('loading')) {
+      bodyClassList.push('loading');
+  }
+  // Add the route classes now so the layout is right while routes load (old code did this too);
+  // _runPostRouteCleanup sets the exact list at the end
+  bodyClassList.forEach(cls => document.body.classList.add(cls));
 
-        $('.deleted').removeClass('deleted');
 
-        let bodyClassList = (document.body.classList.contains('loading') ? ['loading'] : []);
-        $('.edit').removeClass('edit');
-        $('.active').removeClass('active');
-        if(!newHash.includes('export')) {
-          if(newHash.includes('s-')) {
-            $('#song').addClass('active');
-          }
-          else if(newHash.includes('sb-')) {
-            $('#songList').addClass('active');
-          }
-        }
+  // 4. Set initial active states (Element-specific classes still set here)
+  if (!context.newHash.includes('export')) {
+    if (context.newHash.includes('s-')) {
+      document.getElementById('song').classList.add('active');
+    } else if (context.newHash.includes('sb-')) {
+      document.getElementById('songList').classList.add('active');
+    }
+  }
 
-        for(piece of newHashList){
-  //if blank - should have to do nothing  
-          if(piece[0] == ''){
-            document.body.classList.add('header');
-            bodyClassList.push('header');
-            window.document.title = "yCanta2";
-            updateAllLinks();
-          }
-  //Login
-          else if(piece[0] == 'login') {
-            let loggedIn = JSON.parse(localStorage.getItem('loggedin'));
-            let defaultLogin = localStorage.getItem('defaultdbName');
-            try {
-              dbLogin('login', loggedIn.dbName, loggedIn.username, loggedIn.pin, loggedIn.pwd, loggedIn.remote_url);
-              console.log("still logged in!");
-              return
-            }
-            catch {
-              console.log("Not logged in yet");
-            }
+  let routeWasSticky = false;
+  // 5. Execute Routes based on hash pieces
+  for (const piece of context.newHashList) {
+    let routeHandledAndStop = false;
+    const route = piece[0];
 
-            document.body.classList.remove('loading');
-            document.body.classList.remove('song');
-            document.body.classList.remove('songList');
-
-            document.body.classList.add('login');
-            document.body.classList.add('header');
-            bodyClassList.push('login');
-            bodyClassList.push('header');
-
-            let list = [['canaan(remote)','https://ycanta.canaanf.org/couch/canaan', 'Canaan Fellowship'],['being_church(remote)','https://login.ycanta.com/couch/being_church', 'Being Church'],['demo(local)','https://demo.ycanta.com/', 'Demo']];
-            let db_opts = '';
-            let databases = JSON.parse(localStorage.getItem('databases'));
-            if(databases) {
-              for(const key of Object.keys(databases)) {
-                let db = databases[key];
-                if(db.name != 'being_church(remote)' && db.name != 'canaan(remote)' && db.name != 'demo(local)'){
-                  db_opts += `<option value="${db.name}" data-url="${db.url}"${(defaultLogin == db.name ? ' selected' : '')}>${(db.url ? capEachWord(db.name, "_") : db.name)}</option>`
-                }
-              }
-            }
-            let hostName = location.hostname || 'login.ycanta.com';
-            hostName = (list.filter(a => a[1].includes(hostName)).length ? hostName : 'login.ycanta.com');
-            //Generate options
-            if(hostName == 'login.ycanta.com') {
-              for(item of list) {
-                db_opts += `<option value="${item[0]}" data-url="${item[1]}"${(defaultLogin == item[0] ? ' selected' : '')}>${item[2]}</option>`
-              }
-              db_opts += '<option value="create_local">Create Local</option>';
-              db_opts += '<option value="connect_remote">Connect Remote</option>';
-            }
-            else {
-              for(item of list) {
-                if(item[1].includes(hostName)){
-                  db_opts += `<option value="${item[0]}" data-url="${item[1]}"${(defaultLogin == item[0] ? ' selected' : '')}>${item[2]}</option>`
-                }
-              }
-            }
-            setTimeout(function(){$('#db_select').html(db_opts).trigger('change');},0);
-            window.document.title = "yCanta2 - Login";
-            return; //otherwise we load the song and other pieces weirdly
-          }
-  //Songbooks List
-          else if(piece[0] == 'songbooks'){
-            document.body.classList.add('songbookList');
-            bodyClassList.push('songbookList');
-            $('#songbookList').addClass('active');
-            window.document.title = "yCanta2";
-          }
-  //Song
-          else if(piece[0].startsWith('s-')) {
-            document.body.classList.add('song');
-            bodyClassList.push('song');
-            Promise.all([loadSong(piece[0])])
-              .then(function(values) {
-        //Initiate song edit
-                if(piece[1] == 'edit') { 
-                  document.getElementById('song').classList.add('edit');
-                  editSong();
-                  window.document.title = "yCanta2: Editing " + window.song.title;  
-                }
-        //initiate song export 
-                else if (piece[1] == 'export') { 
-                  document.body.classList.add('export');
-                  bodyClassList.push('export');
-                  $('#export').addClass('active');
-                  $('#export').removeClass('showStatus');
-
-                  window.exportObject = window.song;
-                  console.log(exportObject);
-                  //PREPROCESS THE SONG OBJECT
-                  // -- REMOVE ALL COMMENTS
-                  let chunks = [];
-                  for(var i = 0; i < window.song.content.length; i++) {
-                    if(window.song.content[i][0].type != 'comment') {
-                      chunks.push(window.song.content[i]);
-                    }
-                  }
-                  if(chunks.length == 0) {
-                    alert("You can't export a song with no verses, chorus, or other text");
-                    window.location = '#'+window.songbook._id+'&'+window.song._id;
-                  }
-                  window.exportObject.content = chunks;
-                  prepExport();
-                  setTimeout(function() { $('#format').trigger('change')} , 300);
-                  window.document.title = "yCanta2: Exporting " + window.song.title;  
-                }
-                else {
-                  window.document.title = "yCanta2: "+window.songbook.title + " > " + window.song.title;
-                }
-                updateAllLinks();
-                setTimeout(function(){  
-                  scrollIntoViewIfNeed(document.querySelector('[data-song-id="'+window.song._id+'"]'));
-                },200);
-            });
-          }
-  //if songbook
-          else if(piece[0].startsWith('sb-')) {
-            document.body.classList.add('songList');
-            bodyClassList.push('songList');
-            await Promise.resolve(loadSongbook(piece[0]))
-              .then(async function() {
-        //initiate songbook edit
-                if(piece[1] == 'edit') {
-                  document.getElementById('songList').classList.add('edit');
-                  if(piece[1] != oldHashOb[piece[0]]) {
-                    editSongbook();
-                    window.document.title = "yCanta2: Editing " + window.songbook.title;
-                  }
-                }
-        //initiate songbook export/present
-                else if(piece[1] == 'export' || piece[1] == 'present+new' || piece[1] == 'present') {
-                  $('#export').addClass('active');
-                  window.document.title = `yCanta2: ${piece[1][0].toUpperCase()+piece[1].substring(1,piece[1].length)}ing ${window.songbook.title}`;
-                //Load all the songs
-                  await Promise.resolve(new Promise(function(resolve, reject){
-                    //Songbooks are already loaded into the window.songbook object
-                    window.exportObject = window.songbook;
-                    var sb_song_ids = window.songbook.songrefs.map(function (row) {
-                        return row.id
-                      });
-                    db.allDocs({
-                      include_docs: true,
-                      keys: sb_song_ids, //we need error handling for missing ids
-                    }).then(function (result) {
-                      //EXPORT PROCESS
-                      if(piece[1] == 'export'){
-                        document.body.classList.add(piece[1]);
-                        bodyClassList.push(piece[1]);
-                        window.exportObject.songs = result.rows;
-                        //PREPROCESS THE SONGBOOK OBJECT
-                        let procesed_song = [];
-                        for(song of window.exportObject.songs) {
-                          // -- REMOVE ALL COMMENTS
-                          if(song.key != "section"){
-                            for(var i = song.doc.content.length - 1; i >= 0; i--) {
-                              if(song.doc.content[i][0].type === 'comment') {
-                                song.doc.content.splice(i, 1);
-                              }
-                            }
-                          }
-                          if(song.doc.content.length > 0) {
-                            procesed_song.push(song);        
-                          }
-                        }
-                        window.exportObject.songs = procesed_song;
-                        prepExport();
-                        resolve('Its done');
-                      }
-                      //PRESENT PROCESS
-                      else {
-                        //Save json object to data id'd element
-                        let myString = JSON.stringify({songs: result.rows.filter(song => song.key != "section"), title: window.songbook.title});
-                        let presHtml = '';
-
-                        //load the presentation.html, jquery and presentation.js file into their spots.
-                        $.ajax({url: "presentation.html",
-                          success: function (data){
-                            presHtml = data;
-                            $.ajax({url: "jquery-3.5.1.min.js", dataType: 'text',
-                              success: function (data){
-                                presHtml = presHtml.replace('jQuery_embed', data);
-                                $.ajax({url: "presentation.js", dataType: 'text',
-                                  success: function (data){
-                                    presHtml = presHtml.replace('presentation_embed', data);
-                                    if(piece[1].indexOf('new') > -1){                          //New window/tab
-                                      window.location = '#'+window.songbook._id;
-                                      window.presentationFrame = window.open('','_blank', height="200", width="200");
-                                    }
-                                    else {                                                 //Iframe
-                                      var ifrm = document.createElement('iframe');
-                                      ifrm.id = "presentation";
-                                      document.body.appendChild(ifrm);
-                                      ifrm.contentWindow.focus();
-                                      window.presentationFrame = ifrm.contentWindow || ifrm.contentDocument.document || ifrm. contentDocument;
-                                    }
-                                    window.presentationFrame.document.write(presHtml);
-                                    window.presentationFrame.document.close();
-                                    window.presentationFrame.document.getElementById('data').setAttribute('data', myString);
-                                    window.presentationFrame.location = "#";
-                                    resolve('Its done');
-                                    document.body.classList.add(piece[1]);
-                                    bodyClassList.push(piece[1]);
-                                  }
-                                });
-                              }
-                            });
-                          }
-                        });
-                      }
-                    }).catch(function (err) {
-                      console.log(err);
-                    });
-                  }));
-                }
-                else {
-                  window.document.title = "yCanta2: " + window.songbook.title;
-                }
-            });
-          }
-        }
-        updateAllLinks();        
-        document.body.classList = bodyClassList.join(' ');
-        bodyClassList = [];
-        $('.column').removeAttr('style');
+    try { // one failing route shouldn't skip the cleanup that applies body classes
+      if (route == '') {
+        routeHandledAndStop = _handleDefaultRoute(piece);
+      } else if (route == 'login') {
+        routeHandledAndStop = await _handleLoginRoute(piece);
+      } else if (route == 'songbooks') {
+        routeHandledAndStop = _handleSongbooksRoute(piece);
+      } else if (route.startsWith('s-')) {
+        routeHandledAndStop = await _handleSongRoute(piece, context);
+      } else if (route.startsWith('sb-')) {
+        routeHandledAndStop = await _handleSongbookRoute(piece, context.oldHashOb);
       }
+    } catch (err) {
+      console.error(`Error handling route ${route}:`, err);
+    }
+
+    // If a route explicitly returned true, we stop processing the rest of the hash pieces
+    if (routeHandledAndStop) {
+      routeWasSticky = true;
+      break;
+    }
+  }
+
+  // CRITICAL FIX: Sticky routes (like login) bypass final cleanup entirely.
+  if (routeWasSticky) {
+    return;
+  }
+
+  // 6. Run Post-Route Cleanup and Finalize DOM
+  _runPostRouteCleanup(bodyClassList);
+}
+
+
+// ====================================================================
+//                             UPDATED HELPER FUNCTION
+// ====================================================================
+
+function _getClassesFromHash(hashList) {
+    const classSet = new Set();
+    
+    // Check if the hash represents the default (empty) route:
+    // This assumes an empty hash is represented by an array containing one piece: ['']
+    if (hashList.length === 1 && hashList[0][0] === '') {
+        classSet.add('header');
+    }
+
+    for (const piece of hashList) {
+        const route = piece[0];
+        const mode = piece[1];
+
+        if (route === 'login') {
+            classSet.add('login');
+        } else if (route === 'songbooks') {
+            classSet.add('songbookList');
+        } else if (route.startsWith('s-')) {
+            classSet.add('song');
+            // If any piece has 'export' or 'edit', it needs the header class to be managed
+            // by its container, but we only add it here for the body context if needed
+            if (mode === 'export') {
+                classSet.add('export');
+            }
+        } else if (route.startsWith('sb-')) {
+            classSet.add('songList');
+            if (mode === 'export') {
+                classSet.add('export');
+            } else if (mode === 'present' || mode === 'present+new') {
+                classSet.add(mode);
+            }
+        }
+    }
+    
+    // The previous logic to remove 'header' if a fullscreen mode is present is now unnecessary
+    // because 'header' is only added for the empty hash, which won't contain present/export.
+    // However, if 'login' is present, it will still show 'header' via _getClassesFromHash
+    // as it represents a non-fullscreen, navigable view. Let's keep the logic simple: only
+    // for the empty hash. Login should probably manage its own header class internally, 
+    // but without seeing the CSS, we stick to the empty hash rule.
+
+    return Array.from(classSet);
+}
+
+
+// ====================================================================
+//                             OTHER HELPER FUNCTIONS
+// (Unchanged from previous response)
+// ====================================================================
+
+// A utility to standardize hash parsing (split hash into sections: route?param)
+const _parseHashSection = (hashString = '') => {
+  // An empty hash gives [['']], the default route (same as the old parsing)
+  // Remove the leading '#' if present
+  const hash = hashString.startsWith('#') ? hashString.substring(1) : hashString;
+  return hash.split('&').map(item => item.split('?'));
+};
+
+// Returns an object of old pieces for quick lookup: { 's-123': 'edit' }
+const _hashListToObject = (hashList) => {
+  const obj = {};
+  for (const piece of hashList) {
+    if (piece[0] && piece[1] !== undefined) {
+      obj[piece[0]] = piece[1];
+    }
+  }
+  return obj;
+};
+
+// Main function to extract context from the event
+function _parseHashContext(e) {
+  // 1. Determine old and new hashes
+  const oldHash = e ? e.oldURL.match(/#.*$/)?.[0] || '' : '';
+  // If no event, use current location hash (for initial load)
+  const newHash = e ? e.newURL.match(/#.*$/)?.[0] || location.hash : location.hash;
+
+  // 2. Parse into structured lists and object
+  const newHashList = _parseHashSection(newHash);
+  const oldHashList = _parseHashSection(oldHash);
+
+  // This object is used for checking the previous state in 'sb-' route
+  const oldHashOb = _hashListToObject(oldHashList);
+
+  return {
+    oldHash,
+    newHash,
+    oldHashList,
+    newHashList,
+    oldHashOb
+  };
+}
+
+
+// Handles conditional returns (editing confirmation, login check)
+function _runPreRouteGuards(context) {
+  const {
+    oldHash,
+    newHash,
+    oldHashList,
+    newHashList
+  } = context;
+
+  // 1. dontChangeURL guard
+  if (window.dontChangeURL) {
+    delete window.dontChangeURL;
+    return true; // Stop routing
+  }
+
+  // 2. Editing Confirmation guard
+  if (confirmWhenEditing(oldHashList, newHashList)) {
+    window.location.hash = oldHash;
+    window.dontChangeURL = true;
+    return true; // Stop routing
+  }
+
+  // 3. Login/Authentication check
+  if (!(newHash.startsWith('#login')) && !window.loggedin) {
+    location.hash = '#login?' + newHash;
+    console.log("Hi, let's login first");
+    return true; // Stop routing
+  }
+
+  // Continue to routing
+  return false;
+}
+
+
+// Handles the default empty hash ('') route
+function _handleDefaultRoute(piece) { // bodyClassList removed
+  window.document.title = "yCanta2";
+  return false; // Default routes usually don't stop processing
+}
+
+
+// Handles the 'login' route
+async function _handleLoginRoute(piece) { // bodyClassList removed
+  let loggedIn = JSON.parse(localStorage.getItem('loggedin'));
+  let defaultLogin = localStorage.getItem('defaultdbName');
+
+  try {
+    await dbLogin('login', loggedIn.dbName, loggedIn.username, loggedIn.pin, loggedIn.pwd, loggedIn.remote_url);
+    console.log("still logged in!");
+    return true; // Return true to stop ALL execution (matches original 'return')
+  } catch {
+    console.log("Not logged in yet");
+  }
+
+  document.body.classList.remove('loading', 'song', 'songList');
+  // Login is a sticky route, so _runPostRouteCleanup never applies body classes; add them here
+  document.body.classList.add('login', 'header');
+
+  let list = [
+    ['canaan(remote)', 'https://ycanta.canaanf.org/couch/canaan', 'Canaan Fellowship'],
+    ['being_church(remote)', 'https://login.ycanta.com/couch/being_church', 'Being Church'],
+    ['demo(local)', 'https://demo.ycanta.com/', 'Demo']
+  ];
+  let db_opts = '';
+  let databases = JSON.parse(localStorage.getItem('databases'));
+  if (databases) {
+    for (const key of Object.keys(databases)) {
+      let db = databases[key];
+      if (db.name != 'being_church(remote)' && db.name != 'canaan(remote)' && db.name != 'demo(local)') {
+        db_opts += `<option value="${db.name}" data-url="${db.url}"${(defaultLogin == db.name ? ' selected' : '')}>${(db.url ? capEachWord(db.name, "_") : db.name)}</option>`
+      }
+    }
+  }
+  let hostName = location.hostname || 'login.ycanta.com';
+  hostName = (list.filter(a => a[1].includes(hostName)).length ? hostName : 'login.ycanta.com');
+  //Generate options
+  if (hostName == 'login.ycanta.com') {
+    for (item of list) {
+      db_opts += `<option value="${item[0]}" data-url="${item[1]}"${(defaultLogin == item[0] ? ' selected' : '')}>${item[2]}</option>`
+    }
+    db_opts += '<option value="create_local">Create Local</option>';
+    db_opts += '<option value="connect_remote">Connect Remote</option>';
+  } else {
+    for (item of list) {
+      if (item[1].includes(hostName)) {
+        db_opts += `<option value="${item[0]}" data-url="${item[1]}"${(defaultLogin == item[0] ? ' selected' : '')}>${item[2]}</option>`
+      }
+    }
+  }
+  setTimeout(function() {
+    const dbSelect = document.getElementById('db_select');
+    dbSelect.innerHTML = db_opts;
+    dbSelect.dispatchEvent(new Event('change', { bubbles: true }));
+  }, 0);
+  window.document.title = "yCanta2 - Login";
+  return true; // Return true to stop ALL execution (matches original 'return')
+}
+
+
+// Handles the 'songbooks' route
+function _handleSongbooksRoute(piece) { // bodyClassList removed
+  document.getElementById('songbookList').classList.add('active');
+  window.document.title = "yCanta2";
+  return false;
+}
+
+
+// Handles the 's-' (song) route
+async function _handleSongRoute(piece, context) { // bodyClassList removed
+  // === CONTENT LOADING: Use caching guard to prevent redundant DB calls ===
+  if (!window.song || window.song._id !== piece[0]) {
+    try {
+      await loadSong(piece[0]);
+    } catch (error) {
+      console.error("Error loading song:", error);
+      return false;
+    }
+  }
+  // === End CONTENT LOADING ===
+
+  // === MODE HANDLING: Always execute regardless of content cache ===
+  const mode = piece[1];
+  const oldMode = context.oldHashOb[piece[0]]; // Retrieve the previous mode for this song piece
+  // Handle edit mode
+  if (mode == 'edit') {
+    // hashchanged strips .edit/.active every time, so always put them back;
+    // only rebuild the editor when the mode actually changes
+    document.getElementById('song').classList.add('edit');
+    if (mode !== oldMode || context.oldHashOb['login']) {
+      await editSong();
+      window.document.title = "yCanta2: Editing " + window.song.title;
+    }
+  } 
+  // Handle export mode
+  else if (mode == 'export') {
+    document.getElementById('export').classList.add('active');
+    if (mode !== oldMode || context.oldHashOb['login']) { // Check if the mode is actually changing
+      document.getElementById('export').classList.remove('showStatus');
+
+      window.exportObject = window.song;
+
+      // Preprocess - remove all comments
+      window.exportObject.content = window.song.content.filter(chunk =>
+        chunk[0].type != 'comment'
+      );
+
+      if (window.exportObject.content.length == 0) {
+        alert("You can't export a song with no verses, chorus, or other text");
+        window.location = '#' + window.songbook._id + '&' + window.song._id;
+        return true; // Stop routing due to error
+      }
+
+      await prepExport();
+      // Apply the selected export preset, like the old $('#format').trigger('change')
+      setTimeout(() => document.getElementById('format').dispatchEvent(new Event('change', { bubbles: true })), 300);
+      window.document.title = "yCanta2: Exporting " + window.song.title;
+    }
+  }
+  // Default view mode
+  else {
+    window.document.title = "yCanta2: " + window.songbook.title + " > " + window.song.title;
+    highlightText();
+  }
+  setTimeout(() => {
+    scrollIntoViewIfNeed(document.querySelector(`[data-song-id="${window.song._id}"]`));
+  }, 200);
+  // === End MODE HANDLING ===
+
+  return false;
+}
+
+
+// Handles the 'sb-' (songbook) route
+async function _handleSongbookRoute(piece, oldHashOb) { // bodyClassList removed
+  // === MODE HANDLING: Always execute regardless of content cache ===
+  const mode = piece[1];
+
+  // === CONTENT LOADING: Use caching guard to prevent redundant DB calls ===
+  if (!window.songbook || window.songbook._id !== piece[0]) {
+    try {
+      await loadSongbook(piece[0]);
+    } catch (err) {
+      console.error("Error loading songbook:", err);
+      return false;
+    }
+  }
+  // === End CONTENT LOADING ===
+
+  // Handle edit mode
+  if (mode == 'edit') {
+    document.getElementById('songList').classList.add('edit');
+    if (mode != oldHashOb[piece[0]]) { // Only run editSongbook if mode is new
+      window.songbookEditing = true;
+      await loadSongbook(piece[0], true);
+      await editSongbook();
+      window.document.title = "yCanta2: Editing " + window.songbook.title;
+    }
+  }
+  // Handle export mode
+  else if (mode == 'export') {
+    document.getElementById('export').classList.add('active');
+    if (mode != oldHashOb[piece[0]]) { // Check if the mode is actually changing
+      window.document.title = `yCanta2: Exporting ${window.songbook.title}`;
+
+      // Load all songs for export
+      const sb_song_ids = window.songbook.songrefs.map(row => row.id);
+      const result = await db.allDocs({
+        include_docs: true,
+        keys: sb_song_ids
+      });
+
+      window.exportObject = window.songbook;
+      window.exportObject.songs = result.rows.filter(song => {
+        // Remove all comments
+        if (song.key != "section") {
+          song.doc.content = song.doc.content.filter(chunk =>
+            chunk[0].type !== 'comment'
+          );
+        }
+        return song.doc.content.length > 0;
+      });
+
+      await prepExport();
+    }
+  }
+  // Handle presentation mode
+  else if (mode == 'present' || mode == 'present+new') {
+    // Always run: hashchanged removes the presentation iframe on every change (old code did this too)
+    {
+      window.document.title = `yCanta2: Presenting ${window.songbook.title}`;
+
+      // Load all songs for presentation
+      const sb_song_ids = window.songbook.songrefs.map(row => row.id);
+      const result = await db.allDocs({
+        include_docs: true,
+        keys: sb_song_ids
+      });
+
+      const songs = result.rows.filter(song => song.key != "section");
+      const myString = JSON.stringify({
+        songs,
+        title: window.songbook.title
+      });
+
+      // Load presentation resources
+      const [presHtmlRes, presentationRes] = await Promise.all([
+        fetch('presentation.html'),
+        fetch('presentation.js')
+      ]);
+
+      let presHtml = await presHtmlRes.text();
+      presHtml = presHtml
+        .replace('presentation_embed', await presentationRes.text());
+
+      if (mode.includes('new')) {
+        window.location = '#' + window.songbook._id;
+        window.presentationFrame = window.open('', '_blank', 'height=200,width=200');
+      } else {
+        const ifrm = document.createElement('iframe');
+        ifrm.id = "presentation";
+        document.body.appendChild(ifrm);
+        ifrm.contentWindow.focus();
+        window.presentationFrame = ifrm.contentWindow || ifrm.contentDocument.document || ifrm.contentDocument;
+      }
+
+      window.presentationFrame.document.write(presHtml);
+      // Set the data before close(): presentation.js reads it on DOMContentLoaded, which can fire inside close()
+      window.presentationFrame.document.getElementById('data').setAttribute('data', myString);
+      window.presentationFrame.document.close();
+      window.presentationFrame.location = "#";
+    }
+  }
+  // Default view mode
+  else {
+    window.document.title = "yCanta2: " + window.songbook.title;
+  }
+  // === End MODE HANDLING ===
+
+  return false;
+}
+
+
+// Handles logging, general DOM cleanup, and final body class application
+function _runPostRouteCleanup(bodyClassList) {
+  // 1. Log data
+  try { //logData hasn't always been loading in time
+    logData('hashchanged', location.hash);
+  } catch (error) {
+    console.log(error.message);
+  }
+
+  // 2. DOM Reset/Cleanup
+  document.querySelectorAll('.deleted').forEach(el => el.classList.remove('deleted'));
+  document.querySelectorAll('.column').forEach(el => el.removeAttribute('style'));
+
+  // 3. Update all internal links
+  updateAllLinks();
+
+  // 4. Keep 'loading' only if nothing has removed it yet (login removes it when done)
+  const finalClassList = bodyClassList.filter(cls => cls !== 'loading' || document.body.classList.contains('loading'));
+
+  // 5. Apply final body classes
+  document.body.classList = finalClassList.join(' ');
+}
     </script>
   </body>  
 </html>

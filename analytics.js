@@ -53,50 +53,65 @@ window.addEventListener("visibilitychange", (event)=> {
   submitLogData();
 });
 
-//Capture function
+// Capture function
 function logData(header, information, time = new Date().getTime()) {
-  if(!window.user) { return }
-
-  let analytics = localStorage.getItem(window.user._id+'analytics');
-  if(analytics == 'false') { return }
+  if (!window.user) return;
+  
+  // If information is empty, return
+  if (information === undefined || information === null || information.toString().trim() === '') {
+    return
+  }
+  
+  let analytics = localStorage.getItem(window.user._id + 'analytics');
+  if (analytics === 'false') return;
 
   let id = localStorage.getItem('analyticID');
   let dataLog = JSON.parse(localStorage.getItem('dataLog')) || [];
-  information = encodeURIComponent(information);
-  if(information.trim() == '') {information = 'blank';}
-  dataLog.push(encodeURI(`Timestamp=${time}&analyticId=${id}&${header}=${information}`));
-  localStorage.setItem('dataLog', JSON.stringify(dataLog));
 
-  return;
-}
-
-//SUBMIT LOCATION FORM AFTER PROCESSING CURRENT PAGE
-async function submitLogData(){
-  let dataLog = JSON.parse(localStorage.getItem('dataLog')) || [];
-
-  if(dataLog == []) {return}
-
-  let queryString = dataLog.join('+');
-
-  //submit everything - we can do this in one go.
-  await fetch(window.analyticsURL+`?${queryString}`, {
-    method: "GET",
-    dataType: "json",
-  }).then(handleErrors)
-  .then(json)
-  .then(function(data){
-   // console.log(data);
-    localStorage.removeItem('dataLog'); //reset datalogs
-  }).catch(function(error){
-    console.log(error.message);
+  // Push as a clean object
+  dataLog.push({
+    Timestamp: time,
+    analyticId: id,
+    [header]: information
   });
-}
-function handleErrors(response) {
-  if(!response.ok) {
-    throw new Error("Request failed " + response.statusText);
+
+  // Keep only the newest entries so the log can't grow forever if submitting keeps failing
+  const MAX_LOG_ENTRIES = 500;
+  if (dataLog.length > MAX_LOG_ENTRIES) {
+    dataLog = dataLog.slice(-MAX_LOG_ENTRIES);
   }
-  return response;
+
+  localStorage.setItem('dataLog', JSON.stringify(dataLog));
 }
-function json(response) {
-  return response.json();
+
+// SUBMIT VIA POST
+async function submitLogData() {
+  let dataLog = JSON.parse(localStorage.getItem('dataLog')) || [];
+  if (dataLog.length === 0) return;
+
+  const payload = {
+    action: "log",
+    data: dataLog // Sending the entire array of objects
+  };
+
+  try {
+    const response = await fetch(window.analyticsURL, {
+      method: "POST",
+      body: JSON.stringify(payload),
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8", 
+        // Note: Using text/plain avoids "CORS preflight" checks in Apps Script
+      }
+    });
+
+    if (!response.ok) throw new Error("Request failed " + response.statusText);
+    
+    const result = await response.json();
+    
+    if (result.result === "success") {
+      localStorage.removeItem('dataLog'); // Only reset on success
+    }
+  } catch (error) {
+    console.error("Analytics Error:", error.message);
+  }
 }

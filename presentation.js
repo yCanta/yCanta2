@@ -1,4 +1,55 @@
 
+// Vanilla JS slideToggle helper
+function slideToggle(element, duration = 400) {
+  if (window.getComputedStyle(element).display === 'none') {
+    return slideDown(element, duration);
+  } else {
+    return slideUp(element, duration);
+  }
+}
+
+function slideUp(element, duration = 400) {
+  element.style.height = element.offsetHeight + 'px';
+  element.style.transition = `height ${duration}ms ease-out`;
+  element.style.overflow = 'hidden';
+  
+  setTimeout(() => {
+    element.style.height = '0';
+  }, 10);
+  
+  return new Promise(resolve => {
+    setTimeout(() => {
+      element.style.display = 'none';
+      element.style.height = '';
+      element.style.transition = '';
+      element.style.overflow = ''; // jQuery restored overflow after sliding too
+      resolve();
+    }, duration);
+  });
+}
+
+function slideDown(element, duration = 400) {
+  element.style.display = 'block';
+  element.style.height = ''; // measure the real height, not an inline height: 0
+  const height = element.offsetHeight;
+  element.style.height = '0';
+  element.style.transition = `height ${duration}ms ease-out`;
+  element.style.overflow = 'hidden';
+  
+  setTimeout(() => {
+    element.style.height = height + 'px';
+  }, 10);
+  
+  return new Promise(resolve => {
+    setTimeout(() => {
+      element.style.height = '';
+      element.style.transition = '';
+      element.style.overflow = ''; // jQuery restored overflow after sliding too
+      resolve();
+    }, duration);
+  });
+}
+
 punctuation = /[^a-zA-Z0-9\s:-]/g;
 
 var tappedTwice = false;
@@ -84,14 +135,14 @@ presentation_key_map = {
 }
 
 
-$(document).ready(function(){
-    $("stitle").click(toggleSongVisible);
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('stitle').forEach(el => el.addEventListener('click', toggleSongVisible));
 
-    $(document).keydown({method: 'keydown'}, processKey);   
+    document.addEventListener('keydown', processKey);
     document.getElementById('searchinput').addEventListener('beforeinput', processKey);
 
-    $('#searchbox').blur(endSearch); // XXX: need to work on this
-    $('#searchbox input').val(''); // initialize to empty
+    document.getElementById('searchbox').addEventListener('blur', endSearch);
+    document.querySelector('#searchbox input').value = '';
   
     makeDraggable();
 
@@ -100,7 +151,7 @@ $(document).ready(function(){
     //lib.decompress($('footer').attr('data')).then(output => {console.log(output)});
 
     if(!window.songbook) {
-      let myString = $('footer').attr('data');
+      let myString = document.querySelector('footer').getAttribute('data');
       if(myString == undefined) {
         //alert("Couldn't load presentation");
       }
@@ -130,7 +181,7 @@ $(document).ready(function(){
       current_song = window.songbook.songs[window.songbook.song_index];
       current_song.chunk_index = current_song.doc.content.length - 1;
       
-      $('#cur_slide .content').html('<div style="width: calc(100% - 2rem);position: absolute; top: 40%;"><div style="width: 100%;text-align: center"><h1>Presenting</h1><h2><i id="pres_title">Lorem Ipsum</i></h2></div></div></div>');
+      document.querySelector('#cur_slide .content').innerHTML = '<div style="width: calc(100% - 2rem);position: absolute; top: 40%;"><div style="width: 100%;text-align: center"><h1>Presenting</h1><h2><i id="pres_title">Lorem Ipsum</i></h2></div></div></div>';
       document.getElementById('pres_title').innerHTML = window.songbook.title;
       window.document.title = "yCanta2: Presenting " + window.songbook.title;
     },300);
@@ -143,7 +194,7 @@ function openWindow() {
 }
 
 function toggleHelp() {
-  if($('#help').length == 0) { // help element not created yet -- lets do it
+  if(!document.getElementById('help')) { // help element not created yet -- lets do it
     let content = '<div id="help"><div>'
 
     content += '<div id="files"><span>Background:</span><input onclick="clearFile(this)" onchange="loadFiles(this);" data="bg-image" type="file" accept="image/*">'+
@@ -173,35 +224,40 @@ function toggleHelp() {
       }
     }*/
     content += '</div></div>'
-    $('body').prepend(content);
-    $('#help').hide();
+    document.body.insertAdjacentHTML('afterbegin', content);
+    document.getElementById('help').style.display = 'none';
   }
 
   // now certain that all is inited
-  $('#help').slideToggle('fast');
+  slideToggle(document.getElementById('help'), 200);
+}
+function hideHelp() {
+  const help = document.getElementById('help'); // only exists once help has been opened
+  if (help) help.style.display = 'none';
 }
 function toggleChords(touch=false) {
   if(isSearching()) {
     return;
   }
-  else if($("body").hasClass("nochords")){
-    $('body').removeClass("nochords")
+  else if(document.body.classList.contains("nochords")){
+    document.body.classList.remove("nochords");
     scaleText();
   }
   else {
-    $('body').addClass("nochords")
+    document.body.classList.add("nochords");
     scaleText();
   }
 
   if(!touch){
-    $('#chngChords').prop("checked", !$('#chngChords').prop("checked"));
+    const chngChords = document.getElementById('chngChords');
+    chngChords.checked = !chngChords.checked;
   }
 }
 
 function searchDatabase(){
-  var text = $('#searchbox input').val();
-  if(jQuery.trim(text).length < 2){
-    $('#searchresults').empty();
+  const text = document.querySelector('#searchbox input').value.trim();
+  if(text.length < 2) {
+    document.getElementById('searchresults').innerHTML = '';
     return;
   }
 
@@ -247,28 +303,31 @@ function searchDatabase(){
         + item.doc.search.substring(m.index + m[1].length, matchline_end) + '</span></div>');
   });
 
-  $('#searchresults').html(textmatches.join('\n'));
-  $('#searchbox > span.info').text('  showing ' + textmatches.length + ' of ' + total_matches);
+  document.getElementById('searchresults').innerHTML = textmatches.join('\n');
+  const infoSpan = document.querySelector('#searchbox > span.info');
+  if(infoSpan) infoSpan.textContent = '  showing ' + textmatches.length + ' of ' + total_matches;
 
 }
 
 function isSearching(){
-  return $('#searchbox').css('display') != 'none';
+  return document.getElementById('searchbox').style.display != 'none';
 }
 
 function beginSearch(touch=false){
-  $('#searchbox').show();
+  document.getElementById('searchbox').style.display = 'block';
   if(!touch){
-    $('#searchbox input').focus();
+    document.querySelector('#searchbox input').focus();
   }
-  $('#searchbox input').val('');
+  document.querySelector('#searchbox input').value = '';
 }
 
 function endSearch(){
-  $('#searchbox').hide();
-  $('#searchbox input').val('');
-  $('#searchresults').empty();
-  $('#searchbox > span.info').empty();
+  const searchbox = document.getElementById('searchbox');
+  searchbox.style.display = 'none';
+  searchbox.querySelector('input').value = '';
+  document.getElementById('searchresults').innerHTML = '';
+  const infoSpan = searchbox.querySelector('span.info');
+  if(infoSpan) infoSpan.textContent = '';
 }
 
 function searchResult(n){
@@ -289,8 +348,8 @@ function searchResult(n){
 }
 
 function enterPresentation(){
-  $('#help').hide();
-  $("body").addClass("presentation");
+  hideHelp();
+  document.body.classList.add("presentation");
 
   // find the 'current' node if needed
   if(current_song == 0){
@@ -300,19 +359,22 @@ function enterPresentation(){
   }
   showChunk('first');
 }
-function inPresentation(){ return $("body").hasClass("presentation"); }
+function inPresentation(){ return document.body.classList.contains("presentation"); }
 function exitPresentation(){ 
   //$("chunk,author,copyright,key,scripture_ref").css({'display':'none'}); // not visible to start -- toggled as needed
-  $("body").removeClass("presentation"); 
-  $("stitle").css({'display': 'block'});
+  document.body.classList.remove("presentation");
+  document.querySelectorAll('stitle').forEach(el => el.style.display = 'block');
   resetText();
 }
 function scrollTo(domEl){
-  window.scroll(0, $(domEl).offset().top);
+  window.scroll(0, domEl.getBoundingClientRect().top + window.scrollY);
 }
 function toggleSongVisible(evt) {
   if(!inPresentation()){
-    $(this).parent().find('chunk,author,copyright,scripture_ref,copyright').slideToggle("normal");
+    const elements = this.parentNode.querySelectorAll('chunk,author,copyright,scripture_ref,copyright');
+    elements.forEach(el => {
+      slideToggle(el, 400); 
+    });
   }
 }
 function showChunk(name) {
@@ -359,7 +421,7 @@ function showChunk(name) {
       return content;
     }
 
-    $('#cur_slide .content').html(build_chunk(current_song.doc.content[current_song.chunk_index]));
+    document.querySelector('#cur_slide .content').innerHTML = build_chunk(current_song.doc.content[current_song.chunk_index]);
 
     //now add the other chunks.
     let pre_chunk;
@@ -403,11 +465,11 @@ function showChunk(name) {
       post_chunk = post_song.doc.content[0];
     }
 
-    $('#pre_slide .content').html(build_chunk(pre_chunk, pre_song));
-    $('#post_slide .content').html(build_chunk(post_chunk, post_song));
+    document.querySelector('#pre_slide .content').innerHTML = build_chunk(pre_chunk, pre_song);
+    document.querySelector('#post_slide .content').innerHTML = build_chunk(post_chunk, post_song);
 
     var total = current_song.doc.content.length;
-    $('#slides').css('--percent', (((current_song.chunk_index + 1) / total) * 100));
+    document.getElementById('slides').style.setProperty('--percent', (((current_song.chunk_index + 1) / total) * 100));
     let progress_text = ''
     for(let chunk_index = 0; chunk_index < total; chunk_index++) {
       progress_text += '<div class="'+current_song.doc.content[chunk_index][0].type.replace(/[^a-z]/g,'');
@@ -420,25 +482,24 @@ function showChunk(name) {
       }
       progress_text += '"></div>';
     }
-    $('#progress').html(progress_text);
+    document.getElementById('progress').innerHTML = progress_text;
 
     scaleText();
 
-    $.each(secondary_windows, function(index,value) { 
-      try{
-        $(this.document).find('#slides').html($("#cur_slide").clone());
-        $(this.document).find('#statusbar').html($("#progress").clone()); // set progress bar
-        this.scaleText();
-        $(this.document).find('#slides').css('--percent', (((current_song.chunk_index + 1) / total) * 100));
-      }
-      catch(err){
-      }
+    secondary_windows.forEach(win => {
+      try {
+        const winDoc = win.document;
+        winDoc.querySelector('#slides').innerHTML = document.getElementById('cur_slide').outerHTML;
+        winDoc.querySelector('#statusbar').innerHTML = document.getElementById('progress').outerHTML;
+        win.scaleText();
+        winDoc.querySelector('#slides').style.setProperty('--percent', (((current_song.chunk_index + 1) / total) * 100));
+      } catch(err) {}
     });
   }
   else {
-    var song = chunk.parent();
-    song.find('chunk').slideToggle("normal");
-    scrollTo(chunk.parent());
+    const song = chunk.parentNode;
+    song.querySelectorAll('chunk').forEach(el => slideToggle(el, 200));
+    scrollTo(chunk.parentNode);
   }
 }
 
@@ -609,27 +670,27 @@ function gotoVerse(num){
 
 function whiteScreen(touch=false){
   if(!touch){
-    $('#fgText').prop("checked", !$('#fgText').prop("checked"));
+    const fgText = document.getElementById('fgText');
+    fgText.checked = !fgText.checked;
   }
-  var body = $('body');
-  if(body.hasClass('white')){
-    body.removeClass('white');
+  if(document.body.classList.contains('white')){
+    document.body.classList.remove('white');
   }
   else {
-    body.addClass('white');
+    document.body.classList.add('white');
   }
 }
 
 function blackScreen(touch=false){
   if(!touch){
-    $('#bgColor').prop("checked", !$('#bgColor').prop("checked"));
+    const bgColor = document.getElementById('bgColor');
+    bgColor.checked = !bgColor.checked;
   }
-  var body = $('body');
-  if(body.hasClass('black')){
-    body.removeClass('black');
+  if(document.body.classList.contains('black')){
+    document.body.classList.remove('black');
   }
   else {
-    body.addClass('black');
+    document.body.classList.add('black');
   }
 }
 
@@ -644,7 +705,8 @@ function numberHit(num){
 
 
 function resetText() {
-  $("#cur_slide .content").parent().css("font-size", "100%");
+  const slide = document.querySelector('#cur_slide .content').parentElement;
+  slide.style.fontSize = "100%";
 }
 
 function scaleText() {
@@ -655,24 +717,21 @@ function scaleText() {
     return;
   }
 
-  $('.slide').each(function(){
-    let slide = $(this);
-    var container = $(this).children(".content");
-    var container_dom = container.get(0); // always only 1 because we use ID selector
-    var win       = $(window);
-    var win_width = win.width();
-    var win_height= win.height();
+  document.querySelectorAll('.slide').forEach(slide => {
+    const container = slide.querySelector(".content");
+    const win_width = window.innerWidth;
+    const win_height = window.innerHeight;
 
     var small     = 50;
     var big       = 1500;
     var percent   = (big + small) / 2;
 
     function container_height() {
-      return slide[0].scrollHeight;
+      return slide.scrollHeight;
     }
 
     function container_width() {
-      return slide[0].scrollWidth;
+      return slide.scrollWidth;
     }
 
     var oldWidth  = container_width();
@@ -682,7 +741,7 @@ function scaleText() {
     //console.log('c:', container_width(), 'w:', win_width);
 
     while(big - small > 10) { // iterate till we get within 10% of ideal
-      container.css("font-size", ""+percent+"%");
+      container.style.fontSize = percent + "%";
 
       if(container_width() > win_width || container_height() > win_height){ // too big
         big = percent;
@@ -693,11 +752,11 @@ function scaleText() {
 
       percent = (big + small) / 2;
     }
-    container.css("font-size", ""+(percent - 10) +"%");
+    container.style.fontSize = (percent - 10) + "%";
 
 
     if(container_width() > win_width || container_height() > win_height){ // too big
-      container.css("font-size", ""+small+"%");
+      container.style.fontSize = small + "%";
     }
 
     //console.log('Ending font', container.css("font-size"));
@@ -719,7 +778,7 @@ function togglePresentation() {
 }
 
 function escapeAction() {
-  $('#help').hide();
+  hideHelp();
   if(isSearching()){
     endSearch();
   }
@@ -766,7 +825,7 @@ function makeDraggable() {
   let width = 0;
   let height = 0;
 
-  $('body')[0].addEventListener('touchstart', function(e) {
+  document.body.addEventListener('touchstart', function(e) {
     //e.preventDefault();   
     var touchobj = e.changedTouches[0]; // reference first touch point (ie: first finger)
     startx = parseInt(touchobj.clientX);
@@ -787,7 +846,7 @@ function makeDraggable() {
       else {
         beginSearch(true);
       }
-      $('#help').hide();
+      hideHelp();
     }
 
   }, {passive: false});
@@ -817,23 +876,33 @@ function makeDraggable() {
     var dist = startx - parseInt(touchobj.clientX);
     var disty = Math.abs(parseInt(touchobj.clientY) - starty);
 
-    $('.slide').removeAttr('style');
+    document.querySelectorAll('.slide').forEach(el => el.removeAttribute('style'));
     document.getElementById('cur_slide').style.removeProperty('transition');
 
     if(dist > 100 ){ //make sure that distance isn't just accidental
-      $('#pre_slide').remove();
-      $('#cur_slide').attr('id', 'pre_slide');
-      $('#post_slide').attr('id', 'cur_slide');
-      $('#cur_slide').after('<div id="post_slide" class="slide"><div class="content"></div></div>');
+      const preSlide = document.getElementById('pre_slide');
+      preSlide.parentNode.removeChild(preSlide);
+      document.getElementById('cur_slide').id = 'pre_slide';
+      document.getElementById('post_slide').id = 'cur_slide';
+      const newPostSlide = document.createElement('div');
+      newPostSlide.id = 'post_slide';
+      newPostSlide.className = 'slide';
+      newPostSlide.innerHTML = '<div class="content"></div>';
+      document.getElementById('cur_slide').insertAdjacentElement('afterend', newPostSlide);
 
       nextChunk();
       e.preventDefault(); 
     }
     else if(dist < -100){
-      $('#post_slide').remove();
-      $('#cur_slide').attr('id', 'post_slide');
-      $('#pre_slide').attr('id', 'cur_slide');
-      $('#cur_slide').before('<div id="pre_slide" class="slide"><div class="content"></div></div>');
+      const postSlide = document.getElementById('post_slide');
+      postSlide.parentNode.removeChild(postSlide);
+      document.getElementById('cur_slide').id = 'post_slide';
+      document.getElementById('pre_slide').id = 'cur_slide';
+      const newPreSlide = document.createElement('div');
+      newPreSlide.id = 'pre_slide';
+      newPreSlide.className = 'slide';
+      newPreSlide.innerHTML = '<div class="content"></div>';
+      document.getElementById('cur_slide').insertAdjacentElement('beforebegin', newPreSlide);
 
       prevChunk();
       e.preventDefault();

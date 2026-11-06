@@ -19,8 +19,8 @@
   --songList-color: #E6772E;
   --song-color: #00B0CC;
   --export-color: #00cc66;
-  --edit-color: #444;
-  --edit-color-rgb: 68,68,68;
+  --edit-color: #222;
+  --edit-color-rgb: 34,34,34;
   
   --background-color: #121212;
   --background-color-rgb: 18,18,18;
@@ -36,8 +36,8 @@
     --songList-color: #E6772E;
     --song-color: #00B0CC;
     --export-color: #00cc66;
-    --edit-color: #444;
-    --edit-color-rgb: 68,68,68;
+    --edit-color: #222;
+    --edit-color-rgb: 34,34,34;
     
     --background-color: #121212;
     --background-color-rgb: 18,18,18;
@@ -312,7 +312,7 @@ legend {
   cursor: pointer;
   font-weight: bold;
   font-size: 1.2rem;
-  background-color: var(--background-color);
+  background-color: var(--edit-color);
   border-left: 1px solid var(--edit-color);
   border-right: 1px solid var(--edit-color);
   border-radius: 1rem;
@@ -1975,9 +1975,57 @@ only screen and (max-height: 31.25rem) {
 
 /*TOOLTIP CSS*/
 [rel="tooltip"] {
-}
-[rel="tooltip"] {
   cursor: help;
+  position: relative;
+}
+
+#tooltip {
+  text-align: center;
+  font-style: italic;
+  background: var(--export-color);
+  position: absolute;
+  z-index: 100;
+  padding: 15px;
+  border-radius: 2rem;
+  box-shadow: var(--box-shadow-var);
+  max-width: 340px;
+  opacity: 0;
+  transition: opacity 50ms ease-in-out, top 50ms ease-in-out;
+}
+
+#tooltip.top {
+  top: -10px;
+}
+
+#tooltip:after {
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-top: 10px solid var(--export-color);
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -10px;
+  margin-left: -10px;
+}
+
+#tooltip.top:after {
+  border-top-color: transparent;
+  border-bottom: 10px solid var(--export-color);
+  top: -20px;
+  bottom: auto;
+}
+
+#tooltip.left:after {
+  left: 10px;
+  margin: 0;
+}
+
+#tooltip.right:after {
+  right: 10px;
+  left: auto;
+  margin: 0;
 }
 #tooltip {
   text-align: center;
@@ -2037,7 +2085,7 @@ only screen and (max-height: 31.25rem) {
   0% {
     background-color: transparent;
   }
-  0.1% {
+  1% {
     background-color: var(--highlight-color);
   }
   50% {

@@ -4,6 +4,15 @@ String.prototype.count=function(s1) {
 function escapeRegExp(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
 }
+// Escape user-entered text before putting it into innerHTML
+function escapeHtml(text) {
+  return String(text ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 const copyToClipboard = str => {
   const el = document.createElement('textarea');  // Create a <textarea> element
   el.value = str;                                 // Set its value to the string that you want copied
@@ -27,7 +36,8 @@ const copyToClipboard = str => {
 };
 function pasteFromClipboard() {
   navigator.clipboard.readText().then(text => {
-    set_value_by_id(JSON.parse(text)); $('#paper_margin_top').trigger('change');
+    set_value_by_id(JSON.parse(text));
+     document.getElementById('paper_margin_top').dispatchEvent(new Event('change', { bubbles: true }));
   }).catch(err => {
     console.error('Failed to read clipboard contents: ', err);
   }); 
@@ -332,7 +342,7 @@ function set_value_by_id(list) {
       element.value = item.value;
     }
     if(['margin','text','index'].includes(item.name)){
-      $('#'+item.name).trigger('change'); //trigger specifics
+      document.getElementById(item.name).dispatchEvent(new Event('change', { bubbles: true })); //trigger specifics
     }
   }
 }
@@ -480,62 +490,84 @@ function sortFavSongbooks(a,b){
     return -1;
   }
 }
-function updateAllLinks(whatChanged='all') {
-  let songbook_id = window.songbook._id || 'sb-allSongs';
-  let song_id = window.song._id;
-  $('[data-song-edit]').attr('href',`#${formatSbID(songbook_id)}&${song_id}?edit`);
-  $('[data-song-edit="new"]').attr('href',`#${formatSbID(songbook_id)}&s-new-song?edit`);
-  $('[data-song]').attr('href','#'+formatSbID(songbook_id)+'&'+song_id);
-  $('[data-song-export]').attr('href','#'+formatSbID(songbook_id)+'&'+song_id+'?export');
-  $('[data-songbook-edit]').attr('href','#'+songbook_id+'?edit');
-  $('[data-songbook-edit="new"]').attr('href','#sb-new-songbook?edit');
-  $('[data-songbook-present]').attr('href', '#'+songbook_id+'?present');
-  $('[data-songbook]').attr('href','#'+songbook_id);
-  $('[data-songbook-export]').attr('href','#'+songbook_id+'?export');
-  $('[data-home]').attr('href','#');
 
-  //add highlighting
-  //doesn't happen after it's done rendering the list.js on initial page load
-  //Also not working in info click views.
-  $('.song-highlight').removeClass('song-highlight');
-  $("[data-song-id='"+song_id+"']").addClass("song-highlight");
-  $('.songbook-highlight').removeClass('songbook-highlight');
-  $("[data-songbook-id='"+songbook_id+"']").addClass("songbook-highlight");
+function updateAllLinks(whatChanged = 'all') {
+  const songbook_id = window.songbook._id || 'sb-allSongs';
+  const song_id = window.song._id;
+  const formattedSbId = formatSbID(songbook_id);
+
+  // Helper function to update multiple elements
+  function updateElements(selector, href) {
+    document.querySelectorAll(selector).forEach(el => el.setAttribute('href', href)); // attribute, like jQuery .attr: buttons need it for CSS too
+  }
+
+  // Helper function to toggle highlighting
+  function toggleHighlight(selector, className, condition) {
+    document.querySelectorAll(selector).forEach(el => 
+      el.classList.toggle(className, condition(el))
+    );
+  }
+
+  // Update all links
+  updateElements('[data-song-edit]', `#${formattedSbId}&${song_id}?edit`);
+  updateElements('[data-song-edit="new"]', `#${formattedSbId}&s-new-song?edit`);
+  updateElements('[data-song]', `#${formattedSbId}&${song_id}`);
+  updateElements('[data-song-export]', `#${formattedSbId}&${song_id}?export`);
+  updateElements('[data-songbook-edit]', `#${songbook_id}?edit`);
+  updateElements('[data-songbook-edit="new"]', '#sb-new-songbook?edit');
+  updateElements('[data-songbook-present]', `#${songbook_id}?present`);
+  updateElements('[data-songbook]', `#${songbook_id}`);
+  updateElements('[data-songbook-export]', `#${songbook_id}?export`);
+  updateElements('[data-home]', '#');
+  // While a song is being edited its title is a text field, not a link
+  if (window.songEditing) {
+    document.querySelector('#song .title_link')?.removeAttribute('href');
+  }
+
+  // Update highlights
+  toggleHighlight('.song-highlight', 'song-highlight', () => false);
+  toggleHighlight(`[data-song-id='${song_id}']`, 'song-highlight', () => true);
+  toggleHighlight('.songbook-highlight', 'songbook-highlight', () => false);
+  toggleHighlight(`[data-songbook-id='${songbook_id}']`, 'songbook-highlight', () => true);
 }
 
 function formatSbID(songbook_id) {
   return songbook_id + (window.songbookEditing ? '?edit' : '');
 }
 
-$(function () {
-  //float menu activation
-  $('body').on('click', '.float-menu-toggle', function() {
-    $(this).children('.float-menu-icon').toggleClass('icon-rotate');
-    $(this).siblings().toggleClass('uncollapsed');
+document.addEventListener('DOMContentLoaded', function() {
+  // float menu activation
+  document.body.addEventListener('click', function(e) {
+    const toggle = e.target.closest('.float-menu-toggle');
+    if (toggle) {
+      toggle.querySelector('.float-menu-icon')?.classList.toggle('icon-rotate');
+      Array.from(toggle.parentElement.children)
+        .filter(el => el !== toggle)
+        .forEach(el => el.classList.toggle('uncollapsed'));
+    }
   });
 
-  //chord toggling
-  $('body').on('click', '.toggle-chords', function() {
-    $('#song').toggleClass('nochords');
+  // chord toggling
+  document.body.addEventListener('click', function(e) {
+    if (e.target.classList.contains('toggle-chords')) {
+      document.getElementById('song').classList.toggle('nochords');
+    }
   });
 
-  $('#songList').on('mousedown','#present', function() {
-    switch (event.which) {
-      case 1:
-        //alert('Left mouse button pressed');
-        window.location = '#'+window.songbook._id+'?present';
-        break;
-      case 2:
-        //alert('Middle mouse button pressed');
-        window.location = '#'+window.songbook._id+'?present+new';
-        break;
-      case 3:
-        //alert('Right mouse button pressed');
-        window.location = '#'+window.songbook._id+'?present+new';
-        break;
-      default:
-        //alert('You have a strange mouse');
-        window.location = '#'+window.songbook._id+'?present';
+  // present button handling: delegated, because #present is re-created each time a songbook renders
+  document.getElementById('songList').addEventListener('mousedown', function(e) {
+    if (e.target.closest('#present')) {
+      switch (e.which) {
+        case 1: // left click
+          window.location = '#' + window.songbook._id + '?present';
+          break;
+        case 2: // middle click
+        case 3: // right click  
+          window.location = '#' + window.songbook._id + '?present+new';
+          break;
+        default:
+          window.location = '#' + window.songbook._id + '?present';
+      }
     }
   });
 });
@@ -547,21 +579,14 @@ if (typeof console  != "undefined")
     else
         console.olog = function() {};
 
-/*console.log = function(message) {
-    console.olog(message);
-    $('#debugDiv').prepend('<p>' + message + '</p>');
-};
-console.error = console.debug = console.info =  console.log
-*/
+function toggleFullscreen(el) {
+  const fullscreen = el.closest(".column");
+  const isFull = fullscreen.classList.contains('fullscreen');
 
-function toggleFullscreen(el){
-  var fullscreen = $(el).closest(".column");
-  var full = fullscreen.hasClass('fullscreen');
-
-  $('.fullscreen').removeClass('fullscreen');
-  if(!full) {
-    fullscreen.addClass('fullscreen');
-    $('main').addClass('fullscreen');
+  document.querySelectorAll('.fullscreen').forEach(el => el.classList.remove('fullscreen'));
+  if (!isFull) {
+    fullscreen.classList.add('fullscreen');
+    document.querySelector('main').classList.add('fullscreen');
   }
 }
 function highlightText(){
@@ -578,101 +603,147 @@ function highlightText(){
     });
   }
 }
-function bindSearchToList(list, id){
-  if(list == window.songbook_list){
-    list.on('searchComplete', function(){
-      let songPlacement = window.songbook_list.visibleItems.findIndex(el => el._values['song-id'] == window.song._id) + 1;
-      $(id + ' .search + span').attr('data-number-visible',`${songPlacement ? songPlacement+'/' : ''}${list.visibleItems.length}`);
-      highlightText();
-    });  
-    let songPlacement = window.songbook_list.visibleItems.findIndex(el => el._values['song-id'] == window.song._id) + 1;
-    $(id + ' .search + span').attr('data-number-visible', `${songPlacement ? songPlacement+'/' : ''}${$(id + ' .list li').length}`);
+function bindSearchToList(list, id) {
+  const updateCountDisplay = (list, targetId) => {
+    const countElement = document.querySelector(`${targetId} .search + span`);
+    if (!countElement) return;
+
+    if (list === window.songbook_list) {
+      const songPlacement = list.visibleItems.findIndex(
+        el => el._values['song-id'] === window.song._id
+      ) + 1;
+      const visibleCount = list.visibleItems.length;
+      countElement.dataset.numberVisible = `${songPlacement ? `${songPlacement}/` : ''}${visibleCount}`;
+    } else {
+      countElement.dataset.numberVisible = list.visibleItems.length;
+    }
+  };
+
+  const handleSearchComplete = () => {
+    updateCountDisplay(list, id);
+    highlightText();
+  };
+
+  // Initial count setup
+  if (list === window.songbook_list) {
+    const initialPlacement = list.visibleItems.findIndex(
+      el => el._values['song-id'] === window.song._id
+    ) + 1;
+    const totalCount = document.querySelectorAll(`${id} .list li`).length;
+    const countElement = document.querySelector(`${id} .search + span`);
+    if (countElement) {
+      countElement.dataset.numberVisible = `${initialPlacement ? `${initialPlacement}/` : ''}${totalCount}`;
+    }
+  } else {
+    const countElement = document.querySelector(`${id} .search + span`);
+    if (countElement) {
+      countElement.dataset.numberVisible = document.querySelectorAll(`${id} .list li`).length;
+    }
   }
-  else {
-    list.on('searchComplete', function(){
-      $(id + ' .search + span').attr('data-number-visible',list.visibleItems.length);
-    });  
-    $(id + ' .search + span').attr('data-number-visible', $(id + ' .list li').length);
-  }
+
+  // Bind search complete event
+  list.on('searchComplete', handleSearchComplete);
 }
 
 function bindToSongEdit() {
-  $('#song #categories').on('change', '[type="checkbox"]', function() {
-    //add/remove categories as checkboxes are modified
-    var cats = $('categories').text().trim();
-    if(cats != ''){
-      cats = cats.split(',').map(Function.prototype.call, String.prototype.trim);
-    }
-    else {
-      cats = [];
-    }
-    if(this.checked) {
-      $('categories').text(cats.concat($(this).next().text()).sort().join(', '));
-    }
-    else{
-      $('categories').text(cats.filter(cat => cat != $(this).next().text()).sort().join(', '));
+  const song = document.getElementById('song');
+  if (!song) return;
+
+  // Handle category checkbox changes
+  song.querySelector('#categories')?.addEventListener('change', e => {
+    if (e.target.type === 'checkbox') {
+      const cats = document.querySelector('categories');
+      if (!cats) return;
+      
+      const currentCats = cats.textContent.trim().split(/\s*,\s*/).filter(Boolean);
+      const catName = e.target.nextElementSibling?.textContent.trim();
+      
+      if (catName) {
+        const updatedCats = e.target.checked
+          ? [...currentCats, catName].sort()
+          : currentCats.filter(c => c !== catName);
+        cats.textContent = updatedCats.join(', ');
+      }
     }
   });
-  $('#song').on('change', 'select', function(){
-    $(this).next().attr('type',$(this).find('option:selected').text());
+
+  // Handle select changes
+  song.addEventListener('change', e => {
+    if (e.target.tagName === 'SELECT') {
+      const type = e.target.options[e.target.selectedIndex]?.text;
+      if (type) e.target.nextElementSibling?.setAttribute('type', type);
+    }
   });
 }
 
-function checkLogin(){
-  let db_name = $('#db_select :selected').val();
-  let good = true;
-  let pin = $('#pin').val();
-  let pwd = $('#pwd').val();
-  let username = $('#username').val();
+function checkLogin() {
+  const dbSelect = document.getElementById('db_select');
+  const pinInput = document.getElementById('pin');
+  const pwdInput = document.getElementById('pwd');
+  const usernameInput = document.getElementById('username');
 
-  if(db_name.endsWith('(local)') && (pin.trim() == '' || username.trim() == '')){
-    good = false;
+  const dbName = dbSelect.options[dbSelect.selectedIndex].value;
+  const pin = pinInput.value.trim();
+  const pwd = pwdInput.value.trim();
+  const username = usernameInput.value.trim();
+
+  let isValid = true;
+
+  if (dbName.endsWith('(local)') && (pin === '' || username === '')) {
+    isValid = false;
     alert('Username or pin not entered');
-  }
-  else if(db_name.endsWith('(remote)') && (pwd.trim() == '' || username.trim() == '')){
-    good = false;
+  } else if (dbName.endsWith('(remote)') && (pwd === '' || username === '')) {
+    isValid = false;
     alert('Username or pwd not entered');
   }
 
-  return good;
+  return isValid;
 }
 
 function checkCreateNew() {
-  let dbName = $('#newDbName').val().trim();
-  if(dbName.includes('(local)')){
+  const dbNameInput = document.getElementById('newDbName');
+  const pinInput = document.getElementById('pin');
+  const pin2Input = document.getElementById('pin2');
+  const usernameInput = document.getElementById('username');
+
+  // Get and validate inputs
+  const dbName = dbNameInput.value.trim();
+  const pin = pinInput.value.trim();
+  const pin2 = pin2Input.value.trim();
+  const username = usernameInput.value.trim();
+
+  // Check for invalid database name
+  if (dbName.includes('(local)')) {
     alert('DB name cannot have "(local)" in the name');
-    return
+    return false;
   }
-  else {
-    dbName += '(local)';
-  }
-  let pin = $('#pin').val().trim();
-  let pin2 = $('#pin2').val().trim();
-  let username = $('#username').val();
 
-  let response = true;
+  // Validate required fields
+  if (!username || !pin) {
+    alert('Username and pin are required');
+    return false;
+  }
 
-  let databases = JSON.parse(localStorage.getItem('databases'));
-  if(databases && databases[dbName]) {
-    alert('Database name already taken - try another!');
-    response = false;
+  // Check pin confirmation
+  if (pin !== pin2) {
+    alert('Pin and confirmation pin do not match');
+    return false;
   }
-  else if(pin == '' || username == ''){
-    response = false;
-    alert('Username or pin are not entered');
+
+  // Check if database already exists
+  const databases = JSON.parse(localStorage.getItem('databases') || '{}');
+  const fullDbName = `${dbName}(local)`;
+  
+  if (databases[fullDbName]) {
+    alert('Database name already exists - please choose another name');
+    return false;
   }
-  else if(pin != pin2) {
-    response = false;
-    alert('Pin and confirmation pin are not equal');
-  }
-  //Go ahead and log in.
-  if(response) {
-    dbLogin('create_local');
-  }
-  else {
-    return;
-  }
+
+  // If all validations pass, proceed with login
+  dbLogin('create_local');
+  return true;
 }
+
 function parseUrl(url, username=false, pwd=false){
   //browser parts of an a element ['href','protocol','host','hostname','port','pathname','search','hash']
   let a = document.createElement('a');
@@ -714,67 +785,120 @@ function removeDbfromLocalStorage(dbName){
   localStorage.setItem('databases',JSON.stringify(databases)); 
 }
 
-async function updateUser(){
-  let name = window.user.name.trim();
-  //Username in header area
+async function updateUser() {
+  const name = window.user.name.trim();
+  const usernameContainer = document.getElementById('username_d');
+  const userContent = document.getElementById('user_content');
+
+  // Update username display
   let html = '';
-  for(word of name.split(/\W+/)){
+  for (const word of name.split(/\W+/)) {
     html += `${word[0]}<span class="closing">${word.substring(1)} </span>`;
   }
-  $('#username_d').html(html);
-  //User Profile information in Settings.
-  html = `<h3>${name}</h3>`;
+  usernameContainer.innerHTML = html;
 
-  let sbs = window.user.fav_sbs.filter(sb => sb.length != 0);
-  html += '<h4>Favorite Songbooks</h4><ul>';
-  if(sbs.length){
+  // Build user profile content
+  let profileHtml = `<h3>${name}</h3>`;
+
+  // Favorite Songbooks
+  const favSongbooks = window.user.fav_sbs.filter(sb => sb.length !== 0);
+  profileHtml += '<h4>Favorite Songbooks</h4><ul>';
+  
+  if (favSongbooks.length) {
     try {
-      var result = await db.allDocs({include_docs: true, keys: sbs});
+      const result = await db.allDocs({
+        include_docs: true,
+        keys: favSongbooks
+      });
+      
+      profileHtml += result.rows
+        .sort((a, b) => (a.doc?.title || '').localeCompare(b.doc?.title || ''))
+        .map(sb => `<li><a class="link" href="#${sb.doc._id}">${sb.doc.title}</a></li>`)
+        .join('');
     } catch (err) {
-      console.log(err);
+      console.error('Error loading favorite songbooks:', err);
     }
-    for(sb of result.rows.sort((a, b) => a.doc.title.localeCompare(b.doc.title))){
-      html += `<li><a class="link" href="#${sb.doc._id}">${sb.doc.title}</a></li>`;
-    }
-  } else {html+='<li>None yet!</li>';}
-  html += '</ul>';
-  let songs = window.user.fav_songs.filter(song => song.length != 0);
-  html += '<h4>Favorite Songs</h4><ul>';
-  if(songs.length){
+  } else {
+    profileHtml += '<li>None yet!</li>';
+  }
+  profileHtml += '</ul>';
+
+  // Favorite Songs
+  const favSongs = window.user.fav_songs.filter(song => song.length !== 0);
+  profileHtml += '<h4>Favorite Songs</h4><ul>';
+  
+  if (favSongs.length) {
     try {
-      var result = await db.allDocs({include_docs: true, keys: songs});
+      const result = await db.allDocs({
+        include_docs: true,
+        keys: favSongs
+      });
+      
+      profileHtml += result.rows.sort((a, b) => {
+          if (a.doc && b.doc) {
+            return (a.doc?.title || '').localeCompare(b.doc?.title || '');
+          }
+          return 0;
+        }).map(favSong => {
+          if (favSong.doc) {
+            return `<li><a class="link" href="#sb-favoriteSongs&${favSong.doc._id}">${favSong.doc.title}</a></li>`;
+          }
+          return `<li><a class="link" href="#sb-favoriteSongs&${favSong.id}">[deleted song]</a></li>`;
+        }).join('');
     } catch (err) {
-      console.log(err);
+      console.error('Error loading favorite songs:', err);
     }
-    for(fav_song of result.rows.sort((a, b) => (a.doc && b.doc ? a.doc.title.localeCompare(b.doc.title) : true))){
-      if(fav_song.doc) {
-        html += `<li><a class="link" href="#sb-favoriteSongs&${fav_song.doc._id}">${fav_song.doc.title}</a></li>`;
-      }
-      else {
-        html += `<li><a class="link" href="#sb-favoriteSongs&${fav_song.id}">[deleted song]</a></li>`;
-      }
-    }
-  } else {html+='<li>None yet!</li>';}
-  html += '</ul>';
-  html += `<h4>Permissions</h4><ul>${Object.keys(window.roles).filter(role => role.startsWith(window.dbName)).join(', ').replaceAll(window.dbName+"-","").toUpperCase()}</ul>`;
-  html += `<button onclick="loadRawDbObject(window.user._id,$('#user_content'),'updateUser();');" class="btn"><span class="mirror">&#9998;</span> Edit</button>`
-  html += `<button onclick="change${document.documentElement.classList.contains('_admin')?'Admin':'User'}Password('${user._id.replace('u-','')}')" class="btn">↻ Password</button>`
-  document.getElementById('user_content').innerHTML = html;
+  } else {
+    profileHtml += '<li>None yet!</li>';
+  }
+  profileHtml += '</ul>';
+
+  // Permissions
+  const permissions = Object.keys(window.roles)
+    .filter(role => role.startsWith(window.dbName))
+    .map(role => role.replace(window.dbName + "-", "").toUpperCase())
+    .join(', ');
+  
+  profileHtml += `<h4>Permissions</h4><ul>${permissions}</ul>`;
+
+  // Buttons
+  profileHtml += `
+    <button onclick="loadRawDbObject(window.user._id, document.getElementById('user_content'), 'updateUser();')" class="btn">
+      <span class="mirror">&#9998;</span> Edit
+    </button>
+    <button onclick="change${document.documentElement.classList.contains('_admin') ? 'Admin' : 'User'}Password('${window.user._id.replace('u-', '')}')" class="btn">
+      ↻ Password
+    </button>`;
+
+  userContent.innerHTML = profileHtml;
 }
-async function loadCategories(){
-  let html = `<h3>Ordered List <a href="#" onclick="loadRawDbObject('categories',$('#category_content'),'loadCategories();');" class="mirror admin">&#9998;</a></h3>`;
 
+async function loadCategories() {
+  const categoryContent = document.getElementById('category_content');
+  
   try {
-    var result = await db.get('categories');
+    // Get categories from database
+    const result = await db.get('categories');
+    
+    // Build HTML content
+    let html = `<h3>Ordered List <a href="#" onclick="loadRawDbObject('categories', document.getElementById('category_content'), 'loadCategories();')" class="mirror admin">&#9998;</a>
+      </h3><ul>`;
+    
+    // Add each category as a list item
+    result.categories.forEach(cat => {
+      html += `
+        <li><a href="#sb-allSongs" onclick="searchSBfor(this.textContent)">${cat}</a></li>`;
+    });
+    
+    html += '</ul>';
+    
+    // Update DOM
+    categoryContent.innerHTML = html;
+    
   } catch (err) {
-    console.log(err);
+    console.error('Error loading categories:', err);
+    categoryContent.innerHTML = '<p>Error loading categories</p>';
   }
-  html += '<ul>';
-  for(cat of result.categories){
-    html += `<li><a href="#sb-allSongs" onclick="searchSBfor(this.text)">${cat}</a></li>`;
-  }
-  html += '</ul>';
-  document.getElementById('category_content').innerHTML = html;
 }
 
 async function getAllUsers(purpose = false){
@@ -876,8 +1000,12 @@ async function loadAllUsers(){
   }
   document.getElementById('all_users').innerHTML = html;
 }
-function searchSBfor(text){
-  $('#songbook_header .search').val(`"c:${text}"`)[0].dispatchEvent(new KeyboardEvent('keyup'));
+function searchSBfor(text) {
+  const searchInput = document.querySelector('#songbook_header .search');
+  if (searchInput) {
+    searchInput.value = `"c:${text}"`;
+    searchInput.dispatchEvent(new KeyboardEvent('keyup'));
+  }
 }
 
 function handleDarkMode(){
@@ -905,35 +1033,80 @@ function goToSettings(){
 }
 function setLoginState() {
   window.loggedin = true;
+  
+  // Update user interface
   updateUser();
-  $('html').addClass('loggedin');
-  $('#title a').html(`${capEachWord(window.db.name.split('(')[0], "_")}<sup style="font-size: .8rem; font-weight: normal; color: var(--songList-color);"> ${window.db.name.match(/\((.*?)\)/)[1].toUpperCase()}</sup>`);
-  if(location.hash.startsWith('#login?')){
-    location.hash = location.hash.split('?').slice(1).join('?');
+  
+  // Add logged-in class to HTML element
+  document.documentElement.classList.add('loggedin');
+  
+  // Update title display
+  const titleLink = document.getElementById('title').querySelector('a');
+  if (titleLink) {
+    const dbNameParts = window.db.name.split('(');
+    const dbName = capEachWord(dbNameParts[0], "_");
+    const dbType = dbNameParts[1] ? dbNameParts[1].replace(')', '').toUpperCase() : '';
+    
+    titleLink.innerHTML = `${dbName}<sup style="font-size: .8rem; font-weight: normal; color: var(--songList-color);"> ${dbType}</sup>`;
   }
-  if(location.hash.startsWith('#login')){
+  
+  // Handle login hash
+  if (location.hash.startsWith('#login?')) {
+    location.hash = location.hash.split('?').slice(1).join('?');
+  } else if (location.hash.startsWith('#login')) {
     location.hash = '#';
   }
-  setTimeout(function(){
+  
+  // Remove loading state
+  setTimeout(() => {
     document.body.classList.remove('loading');
   }, 20);
-  //Update ui when db changes]s
+  
+  // Load additional data
   loadRecentSongs();
   initializeSongbooksList();
-  loadUsersObject(); //list of all users stored for reference;
+  loadUsersObject();
 }
 
 function setLogoutState() {
   window.loggedin = false;
+  
+  // Reset document classes
   document.documentElement.className = '';
+  
+  // Update location hash
   location.hash = '#login';
+  
+  // Clear user and roles
   window.user = '';
   window.roles = '';
+  
+  // Remove loggedin state from localStorage
   localStorage.removeItem('loggedin');
-  $('#title a').html('yCanta');
-  $('#dialog').hide();
-  document.getElementById('all_users').innerHTML = '';
-  document.getElementById('adminSettings').classList.add('closed');
+  
+  // Update title display
+  const titleLink = document.getElementById('title').querySelector('a');
+  if (titleLink) {
+    titleLink.textContent = 'yCanta';
+  }
+  
+  // Hide dialog
+  const dialog = document.getElementById('dialog');
+  if (dialog) {
+    dialog.style.display = 'none';
+  }
+  
+  // Clear all users display
+  const allUsers = document.getElementById('all_users');
+  if (allUsers) {
+    allUsers.innerHTML = '';
+  }
+  
+  // Close admin settings
+  const adminSettings = document.getElementById('adminSettings');
+  if (adminSettings) {
+    adminSettings.classList.add('closed');
+  }
 }
 
 function mapSongbookRowToValue(row) {
@@ -991,41 +1164,60 @@ function mapSongRowToValue(row) {
   };
 }
 
-function setSongbookInfo(songbook){
-  $('#songbook_title').removeAttr('contenteditable');
-  $('#sb_buttonsRight').remove();
-  $('#songbook_content .search').parent().removeAttr('disabled');
-  $('#songbook_content').removeClass('showStatus'); 
-  $('#songbook_content').removeClass('showComments'); 
-  (songbook.showStatus ? $('#songbook_content').addClass('showStatus') : $('#songbook_content').removeClass('showStatus'));
-  (songbook.showComments ? $('#songbook_content').addClass('showComments') : $('#songbook_content').removeClass('showComments'));
-  $('.disabled-hidden').removeClass('disabled-hidden');
-  let title_text = (songbook._id == 'sb-allSongs' || songbook._id == 'sb-favoriteSongs' ? `<i>${songbook.title}</i>` : songbook.title);
-  $('#songbook_title').html(title_text).attr('data-rev',songbook._rev).attr('data-songbook-id', songbook._id).nextAll().remove();
-  if(songbook._id != 'sb-allSongs' && songbook._id != 'sb-favoriteSongs'){
-    $('#songbook_header .title').append('<span class="buttonsRight" id="sb_buttonsRight"><span class="star" onclick="event.stopPropagation(); toggleFavorite(\''+songbook._id+'\',\'fav_sbs\')"></span>'+
-      '<info style="margin-left: .7rem;" onclick="event.stopPropagation(); loadInfo(false);"></info></span>');
+function setSongbookInfo(songbook) {
+  const titleEl = document.getElementById('songbook_title');
+  const contentEl = document.getElementById('songbook_content');
+  
+  // Reset elements
+  titleEl.removeAttribute('contenteditable');
+  document.getElementById('sb_buttonsRight')?.remove();
+  const searchInput = contentEl.querySelector('.search');
+  searchInput.disabled = false; // editSongbook disables the input itself
+  searchInput.parentElement.removeAttribute('disabled');
+  contentEl.classList.remove('showStatus', 'showComments');
+  
+  // Set status/comment visibility
+  if (songbook.showStatus) contentEl.classList.add('showStatus');
+  if (songbook.showComments) contentEl.classList.add('showComments');
+
+  //remove disabled-hidden
+  document.querySelectorAll('.disabled-hidden').forEach(el => el.classList.remove('disabled-hidden'));
+  
+  // Update title
+  const isSpecial = ['sb-allSongs', 'sb-favoriteSongs'].includes(songbook._id);
+  titleEl.innerHTML = isSpecial ? `<i>${songbook.title}</i>` : songbook.title;
+  titleEl.dataset.rev = songbook._rev;
+  titleEl.dataset.songbookId = songbook._id;
+  
+  // Add buttons if not special songbook
+  if (!isSpecial) {
+    titleEl.closest('.title').insertAdjacentHTML('beforeend', 
+      `<span class="buttonsRight" id="sb_buttonsRight">
+        <span class="star" onclick="event.stopPropagation(); toggleFavorite('${songbook._id}','fav_sbs')"></span>
+        <info onclick="event.stopPropagation(); loadInfo(false);"></info>
+      </span>`);
   }
-  if(document.getElementById('dialog').style.display=="block" && !parseHash('s-') && document.getElementById('dialog').getAttribute('data-use')=="info"){  //prevents info view flicker when you click on songbooks in song info view.
+
+  // Update float menu
+  const editable = canEdit(songbook);
+  document.querySelector('#songList .float-menu').innerHTML = `
+    ${isSpecial ? '<a data-song-edit="new" class="float-menu-item"><span class="float-menu-icon">+</span>Add Song</a>' : ''}
+    ${editable ? `<button data-home onclick="deleteSongbook('${songbook._id}')" class="float-menu-item delete"><span class="float-menu-icon">&#128465;</span>Delete</button>` : ''}
+    <button data-songbook-present class="float-menu-item" id="present"><span class="float-menu-icon">&#128253;</span>Present</button>
+    <a data-songbook-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span>Export</a>
+    ${editable ? '<a data-songbook-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span>Edit</a>' : ''}
+    <span class="float-menu-item float-menu-toggle"><button class="float-menu-icon">+</button></span>`;
+
+  // Handle info dialog
+  const dialog = document.getElementById('dialog');
+  if (dialog.style.display === "block" && !parseHash('s-') && dialog.dataset.use === "info") {
     loadInfo(false);
   }
-
-  //Float menu
-  let editable = canEdit(songbook);
-  let float_menu = `${(songbook._id == 'sb-allSongs' ? '<a data-song-edit="new" class="float-menu-item"><span class="float-menu-icon">+</span>Add Song</a>' : '')}
-  ${(editable ? '<button data-home onclick="deleteSongbook(window.songbook._id)" class="float-menu-item delete"><span class="float-menu-icon">&#128465;</span>Delete</button>' : '')}
-  <button data-songbook-present class="float-menu-item" id="present"><span class="float-menu-icon">&#128253;</span>Present</button>
-  <a data-songbook-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span>Export</a>
-  ${(editable ? '<a data-songbook-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span>Edit</a>' : '')}
-  <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>`;
-
-  $('#songList .float-menu').html(float_menu);
 }
 
 function buildSongbookList(songs, target_class='songbook_content', 
-                                  template='song-item-template', 
-                                  edit=false) {
-  var options = {    
+                          template='song-item-template', edit=false) {
+  const options = {    
     valueNames: [
       { data: ['song-id'] },
       { data: ['song-rev'] },
@@ -1037,74 +1229,58 @@ function buildSongbookList(songs, target_class='songbook_content',
     ],
     item: template
   };
-  var values = [];   
-  var i;
-  for (i = 0; i < songs.length; i++) { 
-    //I tried to use saved_list as a standin variable for the window object we save below - it never worked out so I'm using this clunky bit of code here.
-    let saved_list;
-    if(edit != true) {
-      saved_list = window.songbook_list;
-    }
-    else {
-      saved_list = window.songbook_edit_togglesongs_list;
-    }
 
-    if(saved_list != undefined){
-      var songIdInList = saved_list.get('song-id',songs[i].id);
-      if(songIdInList.length > 0){
-        // we need to update if the revision is different.
-        var songRevInList = saved_list.get('song-rev', songs[i].value.rev);
-        if(songRevInList < 1){
-          songIdInList[0].values(mapSongRowToValue(songs[i]));
-          console.log('heya!');
-        }
-        return;
-      }
-    }
-    values.push(mapSongRowToValue(songs[i]));
-  }
-  db.get('categories').then(function(categories){
-    $('#category_filter select').html('<option value=""></option><option value="c:!c">No Category</option>'+categories.categories.map(cat => '<option value="c:'+cat+'">'+cat+'</option>').join("")); //Construct the options for the drop down from this list.
+  const values = songs.map(song => mapSongRowToValue(song));
+
+  // Load categories
+  db.get('categories').then(categories => {
+    const categoryFilter = document.getElementById('category_filter').querySelector('select');
+    categoryFilter.innerHTML = `
+      <option value=""></option>
+      <option value="c:!c">No Category</option>
+      ${categories.categories.map(cat => `<option value="c:${cat}">${cat}</option>`).join('')}`;
   });
 
-  //Creates list.min.js list for viewing the songbook
-  if(edit != true) {
+  // Create list
+  if (!edit) {
     window.songbook_list = new List(target_class, options, values);
     bindSearchToList(window.songbook_list, '#songbook_content');
-    $('#songbook_header input').trigger('change')[0].dispatchEvent(new KeyboardEvent("keyup"));
-  }
-  else{
+    const searchInput = document.querySelector('#songbook_content .search');
+    searchInput.dispatchEvent(new KeyboardEvent('keyup'));
+  } else {
+    if(window.songbook_edit_togglesongs_list) window.songbook_edit_togglesongs_list.clear(); //I don't know why I needed to add this to keep the list from duplicating on additional navigations
     window.songbook_edit_togglesongs_list = new List(target_class, options, values);
     bindSearchToList(window.songbook_edit_togglesongs_list, '#songListEdit');
   }
-  updateAllLinks();
-  return;
 }
-function dataxInBookUpdate(song, remove=false){
-  let song_id = $(song).attr('data-song-id');
-  if(song_id == 'section'){ //Skip the section header count
-    return;
-  }
-  var songA = $('#songListEdit li[data-song-id="'+song_id+'"]');
-  var number=null;
-  if(remove){
-    number = parseInt(songA.attr('data-xInBook'))-1;
-  }
-  else if(songA.attr('data-xInBook') === undefined) {
-    number = 1;
-  }
-  else {
-    number = parseInt(songA.attr('data-xInBook'))+1;
-  }
-  
-  if(number===0){
-    songA.removeAttr('data-xInBook');
-  }
-  else {
-    songA.attr('data-xInBook',  number);
-  }
-}
+function dataxInBookUpdate(song, remove = false) {
+   const songId = song.getAttribute('data-song-id');
+
+   // Skip section headers
+   if (songId === 'section') {
+     return;
+   }
+
+   const songElement = document.querySelector(`#songListEdit li[data-song-id="${songId}"]`);
+   if (!songElement) {
+     return;
+   }
+
+   let currentCount = parseInt(songElement.getAttribute('data-xInBook')) || 0;
+   let newCount = remove ? currentCount - 1 : currentCount + 1;
+
+   if (newCount <= 0) {
+     songElement.removeAttribute('data-xInBook');
+   } else {
+     songElement.setAttribute('data-xInBook', newCount);
+   }
+ }
+
 function editHash(e) {
+  if (window.songbookEditing && window.songbook.showStatus && e.offsetX < 20) {
+    e.preventDefault();
+    cycleStatus(this);
+  }
   e.preventDefault();
   if(window.innerWidth <= 1150 && !document.body.classList.contains('song') && e.target.closest('#songbook_edit_togglesongs')) {
     return;  //we're not popping open edit song from the add song window.
@@ -1131,470 +1307,662 @@ function bind_chunk_edit(chunk){
   chunk.addEventListener('drop', function(event){dragDrop(event,'.wrap');}, false);
   chunk.addEventListener('dragend', function(event){dragEnd(event,'.wrap');}, false);
 }
-function add_edit_pencil(song){
-  $(song).find('a').after('<button class="edit_pencil">✏️</button>');
-  $(song).find('button')[0].addEventListener('click', function( e ) {
-    let input = prompt("New Name for Section:");
-    if(input=== null || input == ""){
-      return;
-    }
-    $(e.target).parent().children('a').text(input);
-  });
-}
-function cycleStatus(e) {
-  if($(e).attr('data-song-status')=='n'){
-    $(e).attr('data-song-status','a');
-  }
-  else if($(e).attr('data-song-status')=='a'){
-    $(e).attr('data-song-status','r');
-  }
-  else if($(e).attr('data-song-status')=='r'){
-    $(e).attr('data-song-status','n');
-  }
-}
+function add_edit_pencil(song) {
+  // Create edit pencil button
+  const editBtn = document.createElement('button');
+  editBtn.className = 'edit_pencil';
+  editBtn.textContent = '✏️';
 
-function cancelSongbook(el) {
-  window.songbookEditing = false; 
-  let t = confirmWhenEditing();
-  if(!t) {
-    window.songbook._id= ''; 
-    window.location.hash=$(el).attr('href');
-    window.songEditing = false; 
+  // Add click handler for editing section name
+  editBtn.addEventListener('click', (e) => {
+    const sectionLink = song.querySelector('a');
+    const currentName = sectionLink.textContent;
+
+    const newName = prompt('New Name for Section:', currentName);
+    if (newName && newName.trim() !== '') {
+     sectionLink.textContent = newName.trim();
+    }
+  });
+
+  // Insert button after the link
+  const link = song.querySelector('a');
+  if (link) {
+    link.insertAdjacentElement('afterend', editBtn);
   }
-  else {
-    window.songbookEditing = true;
+}
+function cycleStatus(el) {
+  const status = el.getAttribute('data-song-status');
+  
+  switch(status) {
+    case 'n':
+      el.setAttribute('data-song-status', 'a');
+      break;
+    case 'a':
+      el.setAttribute('data-song-status', 'r');
+      break;
+    case 'r':
+      el.setAttribute('data-song-status', 'n');
+      break;
+    default:
+      el.setAttribute('data-song-status', 'n');
+  }
+}
+function cancelSongbook(el) {
+  if (window.songbookEditing) {
+    window.songbookEditing = false; // Reset editing state first
+    const confirmed = confirmWhenEditing(); // Then check for confirmation
+    if (!confirmed) {
+      window.songbook._id = '';
+      window.location.href = el.href; // Use native href instead of jQuery
+      window.songEditing = false;
+    } else {
+      window.songbookEditing = true; // Restore editing state if not confirmed
+    }
   }
 }
 function resetSongbook() {
-  window.songbookEditing = false; 
-  let t = confirmWhenEditing();
-  if(!t) {
-    window.songEditing = false; 
-    location.reload();
-  }
-  else {
-    window.songbookEditing = true;
+  if (window.songbookEditing || window.songEditing) {
+    window.songbookEditing = false; // Reset editing state first
+    window.songEditing = false; // Reset song editing state
+    const confirmed = confirmWhenEditing(); // Then check for confirmation
+    if (!confirmed) {
+      location.reload(); // Reload the page to reset state
+    } else {
+      window.songbookEditing = true; // Restore editing state if not confirmed
+      window.songEditing = true; // Restore song editing state
+    }
   }
 }
 
-function editSongbook() {
-  let buttons = '<div class="edit_buttons"><button data-songbook class="btn" style="background-color: var(--edit-color);" onclick="saveSongbook(parseHash(\'sb-\'));">Save</button>';
-  buttons += '<button data-songbook class="btn" style="background-color: var(--edit-color);" onclick="cancelSongbook(this);">Cancel</button>';
-  buttons += '<button data-songbook class="btn" style="background-color: var(--edit-color);" onclick="resetSongbook();">Reset</button></div>';
-  $('#songbook_content').prepend(buttons).append(buttons);
-  $('#songbook_content .search').val('')[0].dispatchEvent(new KeyboardEvent('keyup'));
-  updateAllLinks();
+async function editSongbook() {
+  // Create and append edit buttons
+  const createEditButtons = () => {
+    const buttons = document.createElement('div');
+    buttons.className = 'edit_buttons';
+    buttons.innerHTML = `
+      <button data-songbook class="btn" style="background-color: var(--edit-color);" onclick="saveSongbook(parseHash('sb-'));">Save</button>
+      <button data-songbook class="btn" style="background-color: var(--edit-color);" onclick="cancelSongbook(this);">Cancel</button>
+      <button data-songbook class="btn" style="background-color: var(--edit-color);" onclick="resetSongbook();">Reset</button>`;
+    const buttonsClone = buttons.cloneNode(true); // Create a deep copy
+    document.getElementById('songbook_content').prepend(buttons);
+    document.getElementById('songbook_content').append(buttonsClone);
+  };
 
-  $('#songList #songbook_title').attr('contenteditable', 'true');
-  $('#songList #songbook_content input.search').parent().addClass('disabled-hidden')[0].disabled=true;
-  $('#songList #songbook_content nav').addClass('disabled-hidden');
-  $('#songbook_header').append('<span class="edit_buttons">Song Status: <label id="showStatusID" class="switch" onchange="(this.firstElementChild.checked ? ($(\'#songbook_content\').addClass(\'showStatus\'), window.songbook.showStatus=true) : ($(\'#songbook_content\').removeClass(\'showStatus\'), window.songbook.showStatus=false) );"><input type="checkbox" id="statusON"' + (window.songbook.showStatus ? 'checked': '') +'><div class="slider"></div></label> ' +
-                              'Comments: <label class="switch" onchange="(this.firstElementChild.checked ? ($(\'#songbook_content\').addClass(\'showComments\'), window.songbook.showComments=true) : ($(\'#songbook_content\').removeClass(\'showComments\'), window.songbook.showComments=false) );"><input type="checkbox" id="commentsON"' + (window.songbook.showComments ? 'checked': '') + '><div class="slider"></div></label></span>');
-  $('.commentsContainer, .toggle_comment').remove();
-  //load all the songs into song adder
-  db.allDocs({
-    include_docs: true,
-    startkey: 's-',
-    endkey: 's-\ufff0',
-  }).then(function(result){
-    window.songbookEditing = true;
-    //this cleanwipe might not be performant!
-    if(window.songbook_edit_togglesongs_list != undefined){
-      window.songbook_edit_togglesongs_list.clear();
-    }
-    let list = result.rows.sort(function(a, b){
-      if(a.doc.title < b.doc.title) { return -1; }
-      if(a.doc.title > b.doc.title) { return 1; }
-      return 0;
+  // Enable editing for the songbook title
+  const enableTitleEditing = () => {
+    const titleElement = document.getElementById('songbook_title');
+    titleElement.setAttribute('contenteditable', 'true');
+  };
+
+  // Disable search input and navigation
+  const disableSearchAndNav = () => {
+    const searchInput = document.querySelector('#songbook_content .search');
+    // Clear any search first: List.js only keeps matching songs in the DOM, and saveSongbook saves what's there
+    searchInput.value = '';
+    searchInput.dispatchEvent(new KeyboardEvent('keyup'));
+    searchInput.parentElement.classList.add('disabled-hidden');
+    searchInput.disabled = true;
+    document.querySelector('#songbook_content nav').classList.add('disabled-hidden');
+  };
+
+  // Add status and comments toggle buttons
+  const addStatusAndCommentsToggle = () => {
+    const header = document.getElementById('songbook_header');
+    const toggleButtons = document.createElement('span');
+    toggleButtons.className = 'edit_buttons';
+    toggleButtons.innerHTML = `
+      Song Status:
+      <label id="showStatusID" class="switch" onchange="(function(checkbox) {
+        const content = document.getElementById('songbook_content');
+        const isChecked = checkbox.checked;
+        if (isChecked) {
+          content.classList.add('showStatus');
+          window.songbook.showStatus = true;
+        } else {
+          content.classList.remove('showStatus');
+          window.songbook.showStatus = false;
+        }
+      })(this.firstElementChild)">
+        <input type="checkbox" id="statusON" ${window.songbook.showStatus ? 'checked' : ''}>
+        <div class="slider"></div>
+      </label>
+      Comments:
+      <label class="switch" onchange="(function(checkbox) {
+        const content = document.getElementById('songbook_content');
+        const isChecked = checkbox.checked;
+        if (isChecked) {
+          content.classList.add('showComments');
+          window.songbook.showComments = true;
+        } else {
+          content.classList.remove('showComments');
+          window.songbook.showComments = false;
+        }
+      })(this.firstElementChild)">
+        <input type="checkbox" id="commentsON" ${window.songbook.showComments ? 'checked' : ''}>
+        <div class="slider"></div>
+      </label>`;
+    header.appendChild(toggleButtons);
+  };
+
+  // Load all songs into the song adder
+  async function loadSongsIntoAdder() {
+    const result = await db.allDocs({
+      include_docs: true,
+      startkey: 's-',
+      endkey: 's-\ufff0'
     });
-    list.unshift({"id":"section","title":"New Section","search":"new section"});
 
-    return buildSongbookList(list, 
-      'songbook_edit_togglesongs', 
-      'song-item-template-edit', 
-      true);
-  }).then(function(result) {
-    $('.song-highlight').removeClass('song-highlight');
-    //remove all counts
-    $('[data-xInBook]').removeAttr('data-xInBook');
-    //bind events to the songbook list
-    [].forEach.call(document.querySelectorAll('#songList #songbook_content ul li'), function (song) {
+    const songs = result.rows.sort((a, b) => (a.doc?.title || '').localeCompare(b.doc?.title || ''));
+    songs.unshift({ id: 'section', title: 'New Section', search: 'new section' });
+
+    buildSongbookList(songs, 'songbook_edit_togglesongs', 'song-item-template-edit', true);
+  }
+
+  // Bind events to the songbook list
+  const bindSongbookListEvents = () => {
+    const songList = document.querySelectorAll('#songList #songbook_content ul li');
+    songList.forEach((song) => {
       bind_songbook_edit(song);
       dataxInBookUpdate(song);
-      if($(song).attr('data-song-id')=="section"){
+      if (song.getAttribute('data-song-id') === 'section') {
         add_edit_pencil(song);
       }
-      $(song).find('a').after('<button>&#128465;</button>');
-      $(song).find('button')[0].addEventListener('click', function( e ) {
+      const deleteButton = document.createElement('button');
+      deleteButton.innerHTML = '&#128465;';
+      deleteButton.addEventListener('click', () => {
         dataxInBookUpdate(song, true);
         scaleRemove(song);
       });
+      song.appendChild(deleteButton);
     });
-    [].forEach.call(document.querySelectorAll('#songList #songbook_edit_togglesongs ul li'), function (song) {
+
+    const toggleSongList = document.querySelectorAll('#songList #songbook_edit_togglesongs ul li');
+    toggleSongList.forEach((song) => {
       bind_songbook_edit(song);
-      song.addEventListener('click', function( e ) {
-        var copySong = $(e.target).closest('li')[0].cloneNode(true);
+      song.addEventListener('click', () => {
+        const copySong = song.cloneNode(true);
         bind_songbook_edit(copySong);
         dataxInBookUpdate(copySong);
-        if($(copySong).attr('data-song-id')=="section"){
+        if (copySong.getAttribute('data-song-id') === 'section') {
           add_edit_pencil(copySong);
         }
-        $(copySong).find('a').after('<button>&#128465;</button>');
-        $(copySong).find('button')[0].addEventListener('click', function( e ) {
+        const deleteButton = document.createElement('button');
+        deleteButton.innerHTML = '&#128465;';
+        deleteButton.addEventListener('click', () => {
           dataxInBookUpdate(copySong, true);
           scaleRemove(copySong);
         });
-        $(copySong).attr('data-song-status','n')[0].addEventListener('click', function(e) {
-          if(window.songbookEditing && window.songbook.showStatus && e.offsetX < 20){
-            e.preventDefault();
-            cycleStatus(this);
-          }
-        });
-        $('#songbook_content .list').append(copySong);
+        copySong.appendChild(deleteButton);
+        copySong.setAttribute('data-song-status', 'n');
+        document.querySelector('#songbook_content .list').appendChild(copySong);
         scrollIntoViewIfNeed(copySong);
         copySong.classList.add('highlightBg');
-        setTimeout(function(){copySong.classList.remove('highlightBg')},3000);
+        setTimeout(() => copySong.classList.remove('highlightBg'), 3000);
       });
     });
-    $('#songList ul.list').each(function(){
-      this.addEventListener('drop', dragDrop, false);
-      this.addEventListener('dragover', dragOver, false);
-    });
-    $('#songbook_content li').each(function(){
-      this.addEventListener('click', function(e) {
-        if(window.songbookEditing && window.songbook.showStatus && e.offsetX < 20){
-          e.preventDefault();
-          cycleStatus(this);
-        }
-      })
-    })
-    $('#songList #songbook_title').parent().removeAttr('href');
-  }).catch(function(err){
-    console.log(err);
-  });
+  };
+
+  // Main logic
+  createEditButtons();
+  enableTitleEditing();
+  disableSearchAndNav();
+  addStatusAndCommentsToggle();
+  await loadSongsIntoAdder();
+  bindSongbookListEvents();
 }
 
-async function editSong() {
+async function editSong() { 
   await loadSong(window.song._id);
-  let buttons = '<div class="edit_buttons"><button data-song class="btn" style="background-color: var(--edit-color);" onclick="prepSaveSong($(this))">Save</button>';
-  buttons += `<button data-song${(window.song._id == 's-new-song' ? 'book' : '')} class="btn" style="background-color: var(--edit-color);" onclick="window.songEditing=false; delete window.song; window.location.hash=$(this).attr(\'href\');">Cancel</button>`;
-  buttons += '<button data-song class="btn" style="background-color: var(--edit-color);" onclick="window.songEditing=false; location.reload()">Reset</button></div>';
-  $('song').prepend(buttons).append(buttons);
 
-  $('chunk').each(function(index){
-    var content = [];
-    $(this).children('line').each(function(index){
-      if(is_chord_line($(this).html())){
-        content.push(expand_chord($(this).html()));
-      }
-      else {
-        content.push($(this).html());
-      }
-    });
-    $(this).html(content.join('\n')).addClass('pre');
-    var type = $(this).attr('type');
-    $(this).wrap('<div class="wrap"></div>').parent().prepend('<select name="types" size="1"><option value="verse">Verse</option><option value="chorus">Chorus</option><optgroup label="Misc"><option value="pre-chorus">Pre-Chorus</option><option value="final chorus">Final Chorus</option><option value="bridge">Bridge</option><option value="ending">Ending</option><option value="no label">No Label</option><option value="indented no label">Indented No Label</option><option value="comment">Comment</option></optgroup></select>');
-    $(this).parent().find('select').val(type.toLowerCase());
-    bind_chunk_edit($(this).closest('.wrap')[0]);
+  // Create and add edit buttons
+  const buttonsHTML = `
+    <div class="edit_buttons">
+      <button data-song class="btn" style="background-color: var(--edit-color);" onclick="prepSaveSong(this)">Save</button>
+      <a ${window.song._id === 's-new-song' ? 'data-songbook' : 'data-song'} 
+              class="btn" style="background-color: var(--edit-color);" 
+              onclick="window.songEditing=false; delete window.song; window.location.hash=this.getAttribute('href');">
+        Cancel
+      </a>
+      <button data-song class="btn" style="background-color: var(--edit-color);" 
+              onclick="window.songEditing=false; location.reload()">
+        Reset
+      </button>
+    </div>`;
+  
+  const songElement = document.getElementsByTagName('song')[0]
+
+  songElement.insertAdjacentHTML('afterbegin', buttonsHTML);
+  songElement.insertAdjacentHTML('beforeend', buttonsHTML);
+
+  // Process chunks
+  const chunks = Array.from(songElement.getElementsByTagName('chunk'));
+  chunks.forEach(chunk => {
+    const content = Array.from(chunk.getElementsByTagName('line'))
+      .map(line => is_chord_line(line.innerHTML) ? expand_chord(line.innerHTML) : line.innerHTML)
+      .join('\n');
+    
+    chunk.innerHTML = content;
+    chunk.classList.add('pre');
+
+    // Create wrapper and select element
+    const wrapper = document.createElement('div');
+    wrapper.className = 'wrap';
+    
+    const select = document.createElement('select');
+    select.name = 'types';
+    select.size = 1;
+    select.innerHTML = `
+      <option value="verse">Verse</option>
+      <option value="chorus">Chorus</option>
+      <optgroup label="Misc">
+        <option value="pre-chorus">Pre-Chorus</option>
+        <option value="final chorus">Final Chorus</option>
+        <option value="bridge">Bridge</option>
+        <option value="ending">Ending</option>
+        <option value="no label">No Label</option>
+        <option value="indented no label">Indented No Label</option>
+        <option value="comment">Comment</option>
+      </optgroup>`;
+    
+    select.value = chunk.getAttribute('type').toLowerCase();
+    wrapper.appendChild(select);
+    chunk.parentNode.insertBefore(wrapper, chunk);
+    wrapper.appendChild(chunk);
+    
+    bind_chunk_edit(wrapper);
   });
 
-  $('#song authors').html($('#song author').map(function(){return $(this).text();}).get().join(', '));
-  $('#song categories').html($('#song cat').map(function(){return $(this).text();}).get().join(', '));
-  $('#song scripture_ref').html($('#song scrip_ref').map(function(){return $(this).text();}).get().join(', '));
-  $('#song').first('.subcolumn').find('stitle .title_link,authors,scripture_ref,introduction,key,chunk,copyright,cclis').toTextarea({
-    allowHTML: false,//allow HTML formatting with CTRL+b, CTRL+i, etc.
-    allowImg: false,//allow drag and drop images
-    doubleEnter: true,//have double enter create a second field
-    singleLine: false,//make a single line so it will only expand horizontally
-    pastePlainText: true,//paste text without styling as source
-    placeholder: false//a placeholder when no text is entered. This can also be set by a placeholder="..." or data-placeholder="..." attribute
+  // Update metadata fields
+  const updateField = (selector, joinChar = ', ') => {
+    const elements = Array.from(songElement.querySelectorAll(selector));
+    return elements.map(el => el.textContent).join(joinChar);
+  };
+
+  songElement.querySelector('authors').textContent = updateField('author');
+  songElement.querySelector('scripture_ref').textContent = updateField('scrip_ref');
+
+  //categories
+  const songCategories = songElement.querySelector('categories');
+  songCategories.textContent = updateField('cat');
+  songCategories.classList.add('contenteditable-disabled');
+  songCategories.tabIndex = 0;
+
+  songCategories.addEventListener('click', function() {
+    const songEdit = document.getElementById('song-edit');
+    songEdit.classList.toggle('sidebar-open');
+
+    setTimeout(() => {
+      const searchElement = songEdit.querySelector('.search');
+      if (searchElement) {
+        searchElement.focus();
+      }
+    }, 400);
   });
-  $('#song categories').addClass('contenteditable-disabled').prop('tabindex',"0")
-    .on('click', function(){
-      $('#song-edit').toggleClass('sidebar-open')
-      setTimeout(() => {
-        document.getElementById('song-edit').querySelector('.search').focus();
-      }, 400);
-    });
-  let cclis_text = $('cclis').text().replace('CCLI Song #: ', '');
-  $('#song cclis').wrap('<div style="margin-bottom: 1rem;"></div>')
-  $('#song cclis').before('<label>CCLIS: <input id="cclis_checkbox" onchange="$(\'cclis\').toggle();"'+(cclis_text ? 'checked' : '')+' type="checkbox"></input> </label>');  
-  if(cclis_text){
-    $('cclis').show();
-    if(isNaN(cclis_text.replace('CCLIS: ',''))){
-      cclis_text = '';
-    }
-    $('cclis').text(cclis_text);
+
+  // Handle CCLI
+  const cclisElement = songElement.querySelector('cclis'); // Find the cclis element.
+
+  if (cclisElement) {
+    const cclisText = cclisElement.textContent.replace('CCLI Song #: ', '').trim(); // Extract CCLI text.
+
+    const wrapper = document.createElement('div'); // Create wrapper div.
+    wrapper.style.marginBottom = '1rem'; // Add margin to wrapper.
+
+    const checkbox = document.createElement('input'); // Create checkbox.
+    checkbox.type = 'checkbox';
+    checkbox.id = 'ccli-checkbox';
+    checkbox.checked = !!cclisText; // Set checkbox state.
+
+    const label = document.createElement('label'); // Create label.
+    label.textContent = 'CCLI: ';
+    label.htmlFor = 'ccli-checkbox'; // Associate label with checkbox.
+
+    // Insert wrapper before the original cclisElement.
+    cclisElement.parentNode.insertBefore(wrapper, cclisElement);
+
+    wrapper.append(label, checkbox, cclisElement); // Add label, checkbox, and cclis to wrapper.
+
+    cclisElement.textContent = isNaN(cclisText) ? '' : cclisText; // Update CCLI text.
+    cclisElement.style.display = checkbox.checked ? 'inline-block' : 'none'; // Set CCLI display.
+
+    checkbox.onchange = () => cclisElement.style.display = checkbox.checked ? 'inline-block' : 'none'; // Add checkbox change handler.
   }
-  else {
-    $('cclis').hide();
+
+  // Load categories
+  try {
+    const categories = await db.get('categories');
+    const options = { valueNames: ['name'], item: 'category-template' };
+    const values = categories.categories
+      .filter(cat => !window.categories_list?.get('name', cat).length)
+      .map(cat => ({ name: cat }));
+    
+    window.categories_list = new List('categories', options, values);
+    bindSearchToList(window.categories_list, '#categories');
+
+    // Set checkboxes based on current categories
+    const currentCategories = songElement.querySelector('categories').textContent.split(',').map(c => c.trim());
+    document.querySelectorAll('#categories [type="checkbox"]').forEach(checkbox => {
+      checkbox.checked = currentCategories.includes(checkbox.nextElementSibling.textContent.trim());
+    });
+  } catch (err) {
+    console.error('Error loading categories:', err);
   }
 
   window.songEditing = true;
-
-  //load categories
-  db.get('categories').then(function(categories) {
-    var options = {valueNames: ['name'], item: 'category-template'};
-    var values = [];   
-    categories.categories.map(function (cat) {
-      if(window.categories_list != undefined){
-        var catInList = window.categories_list.get('name',cat);
-        if(catInList.length > 0){
-          return;
-        }
-      }
-      values.push({ 'name': cat});
-    });
-    window.categories_list = new List('categories', options, values);
-    bindSearchToList(window.categories_list, '#categories');
-    //set checkboxes
-    $('#categories [type="checkbox"]').prop("checked", false);
-    $('categories').text().split(',').forEach(function(cat){
-      if(cat.trim()!= ''){
-        $('label span:contains("'+cat.trim()+'")').prev().prop("checked", true);
-      }
-    });
-    $('#song .title_link').removeAttr('href');
-
-  }).catch(function (err) {
-    console.log(err);
-    reject('got an error while working on categories');
-    //should load the songbook and explain what's up.
-  });  
-
   updateAllLinks();
+
+  const elements = songElement.querySelectorAll('stitle .title_link, authors, scripture_ref, introduction, key, chunk, copyright, cclis');
+  convertChunksToEditable(elements);
 }
-function prepSaveSong(element) {
-  if($('stitle').text().trim() == ''){
+async function prepSaveSong() {
+  if(document.getElementsByTagName('stitle')[0].textContent.trim() === ''){
     alert('Please add a title before you save');
     return;
   }
   else{
     window.songEditing=false;
   }
-  return new Promise(function(resolve, reject) {
-    $('#song song').hide();
-    $('#song').first('.subcolumn').find('song').children().attr('contenteditable', 'false');
-    $('song chunk').each(function(index){
-      var lines = $(this).html().split('\n');
-      var prev_is_chord = false;
-      var content = '';
-      $(lines).each(function(index){
-        if(prev_is_chord){
-          content += '<line>'+combine(lines[index-1],this)+'</line>';
-          prev_is_chord = false;
-        }
-        else if(isChord(this)){
-          prev_is_chord = true;
-        }
-        else if(this.length > 0){  //we have a line
-          content += '<line>'+this+'</line>';
-        }
-      });
-      $(this).html(content);
-    });
-    if($('#cclis_checkbox')[0].checked){
-      if(!$('cclis').text()){
-        $('cclis').text('on');
+  // Get elements using vanilla JS
+  const songElement = document.querySelector('#song song');
+  const ccliCheckbox = document.getElementById('ccli-checkbox');
+  const ccliElement = document.querySelector('cclis');
+
+  // Hide song and disable editing
+  if (songElement) {
+    songElement.style.display = 'none';
+    const editableElements = songElement.querySelectorAll('[contenteditable]');
+    editableElements.forEach(el => el.setAttribute('contenteditable', 'false'));
+  }
+
+  // Process chunks
+  const chunks = document.querySelectorAll('song chunk');
+  chunks.forEach(chunk => {
+    // Use innerHTML (not textContent) so &lt; and &amp; stay escaped like the old .html() did.
+    // Browsers may turn typed newlines into <br> or <div>, so turn those back into \n first.
+    const lines = chunk.innerHTML
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/(div|p)>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .split('\n');
+    let prevIsChord = false;
+    let content = '';
+
+    lines.forEach((line, index) => {
+      if (prevIsChord) {
+        content += `<line>${combine(lines[index - 1], line)}</line>`;
+        prevIsChord = false;
+      } else if (isChord(line)) {
+        prevIsChord = true;
+      } else if (line.length > 0) { //we have a line
+        content += `<line>${line}</line>`;
       }
+    });
+
+    chunk.innerHTML = content;
+  });
+
+  // Handle CCLI checkbox
+  if (ccliCheckbox?.checked && ccliElement) {
+    if (!ccliElement.textContent.trim()) {
+      ccliElement.textContent = 'on';
     }
-    else {
-      $('cclis').text('');
-    }
-    resolve('song is prepped for saving');
-  }).then(function() {
-    let id = window.song._id;
+  } else if (ccliElement) {
+    ccliElement.textContent = '';
+  }
+
+  // Save the song
+  try {
+    const songId = window.song._id;
     delete window.song;
-    return saveSong(id);
-  }).catch(function (err) {
-    console.log(err);
-  });
-}
-async function prepExport(){
-  document.getElementById('pdf_progress').style.width = '0%';
-  document.getElementById('pdf_progress_text').innerHTML = '0%';
-
-  $('#display_chords').trigger('change');
-
-  $('#pdf')[0].src = "pdfjs-2.8.335-dist/web/viewer.html?file=";
- 
-  //webworker stuff
-  if(typeof(window.pdfFormatter) == 'undefined') {
-    window.pdfFormatter = await new Worker('pdfformatter.js');
-    pdfFormatter.onmessage = function(e) {
-      if(e.data[0] == 'pdf'){
-        document.getElementById('downloadPDF').innerHTML = `<a class="btn" href="${e.data[1]}" style="margin-top:0; " target='_blank' download="${window.exportObject.title}.pdf">Download ⭳</button>`;
-        document.getElementById('pdf').contentWindow.yourMethod(e.data[1]);
-        console.log('Message received from worker');
-        logData('exported', window.exportObject._id + ": " + JSON.stringify(read_config_form()));
-      }
-      else if(e.data[0] == 'progress'){
-        window.document.getElementById('pdf_progress').style.width = e.data[1];
-        window.document.getElementById('pdf_progress_text').innerHTML = e.data[1];
-      }
-    }
+    await saveSong(songId);
+  } catch (error) {
+    console.error('Error saving song:', error);
+    alert('An error occurred while saving the song');
   }
-  db.allDocs({
-    include_docs: true,
-    startkey: 'cfg-'+window.exportObject._id,
-    endkey: 'cfg-'+window.exportObject._id+'\ufff0',
-  }).then(function(result){
-    let innerhtml = '';
-    let user_id_cfg = 'cfg-'+window.exportObject._id+window.user._id; //must keep in sync with db.js
-    document.getElementById('cfg_buttons').innerHTML = '';
-    result.rows.map(function (row) {
-      if(row.doc._id.match(user_id_cfg)) {
-        if(row.doc._id != user_id_cfg){
-          document.getElementById('cfg_buttons').insertAdjacentHTML("beforeend",`<button class="btn" onclick="blueHighlight(this);"><span onclick="saveExport('${encodeURIComponent(row.doc.name || 'Default').replace(/'/g, "\\\'")}');">Save as ${(row.doc.name || 'Default')}</span><span class="export_close" onclick="event.preventDefault(); deleteExportCfg('${row.doc._id}');">×</span></button>`);
-        }
-        innerhtml = `<option value='${JSON.stringify(row.doc.cfg)}'>Your ${(row.doc.name || 'Default')}</option>` + innerhtml;
+}
+async function prepExport() { 
+  // Reset progress bar
+  const progressBar = document.getElementById('pdf_progress');
+  const progressText = document.getElementById('pdf_progress_text');
+  progressBar.style.width = '0%';
+  progressText.textContent = '0%';
+
+  // Trigger chords display change
+  const chordsDisplay = document.getElementById('display_chords');
+  chordsDisplay.dispatchEvent(new Event('change', { bubbles: true }));
+
+  // Reset PDF viewer
+  const pdfViewer = document.getElementById('pdf');
+  pdfViewer.src = "pdfjs-2.8.335-dist/web/viewer.html?file=";
+
+  // Initialize web worker if not already created
+  if (typeof window.pdfFormatter === 'undefined') {
+    window.pdfFormatter = await new Worker('pdfformatter.js');
+    
+    pdfFormatter.onmessage = function(e) {
+      if (e.data[0] === 'pdf') {
+        const downloadLink = document.getElementById('downloadPDF');
+        downloadLink.innerHTML = `
+          <a class="btn" href="${e.data[1]}" style="margin-top:0;" target="_blank" download="${window.exportObject.title}.pdf">
+            Download ⭳
+          </a>`;
+        
+        pdfViewer.contentWindow.yourMethod(e.data[1]);
+        console.log('Message received from worker');
+        logData('exported', `${window.exportObject._id}: ${JSON.stringify(read_config_form())}`);
+      } else if (e.data[0] === 'progress') {
+        progressBar.style.width = e.data[1];
+        progressText.textContent = e.data[1];
       }
-      else {
-        innerhtml += `<option value='${JSON.stringify(row.doc.cfg)}'>${window.users[row.doc._id.match(/u\-.*/)[0]]}'s ${(row.doc.name || 'Default')}</option>`;
+    };
+  }
+
+  // Load export configurations
+  try {
+    const result = await db.allDocs({
+      include_docs: true,
+      startkey: `cfg-${window.exportObject._id}`,
+      endkey: `cfg-${window.exportObject._id}\ufff0`,
+    });
+
+    let innerHTML = '';
+    const userIdCfg = `cfg-${window.exportObject._id}${window.user._id}`;
+    const cfgButtons = document.getElementById('cfg_buttons');
+    cfgButtons.innerHTML = '';
+
+    result.rows.forEach(row => {
+      if (row.doc._id.match(userIdCfg)) {
+        if (row.doc._id !== userIdCfg) {
+          cfgButtons.insertAdjacentHTML('beforeend', `
+            <button class="btn" onclick="blueHighlight(this);">
+              <span onclick="saveExport('${encodeURIComponent(row.doc.name || 'Default').replace(/'/g, "\\'")}');">
+                Save as ${row.doc.name || 'Default'}
+              </span>
+              <span class="export_close" onclick="event.preventDefault(); deleteExportCfg('${row.doc._id}');">×</span>
+            </button>`);
+        }
+        innerHTML = `<option value='${JSON.stringify(row.doc.cfg)}'>Your ${row.doc.name || 'Default'}</option>${innerHTML}`;
+      } else {
+        const userId = row.doc._id.match(/u\-.*/)[0];
+        innerHTML += `<option value='${JSON.stringify(row.doc.cfg)}'>${window.users[userId]}'s ${row.doc.name || 'Default'}</option>`;
       }
     });
-    document.getElementById('cfg_buttons').insertAdjacentHTML("afterbegin",`<button class="btn" onclick="blueHighlight(this);"><span onclick="saveExport('');">Save as Default</span></button>`);
 
-    let opts = window.export.def_configs;
-    for(opt in opts) {
-      innerhtml += "<option value='"+JSON.stringify(opts[opt])+"'>"+opt+"</option>";
+    // Add default button
+    cfgButtons.insertAdjacentHTML('afterbegin', `
+      <button class="btn" onclick="blueHighlight(this);">
+        <span onclick="saveExport('');">Save as Default</span>
+      </button>`);
+
+    // Add predefined options
+    const opts = window.export.def_configs;
+    for (const opt in opts) {
+      innerHTML += `<option value='${JSON.stringify(opts[opt])}'>${opt}</option>`;
     }
-    innerhtml += "<option value='[]'>Custom</option>";
-    $('#format').html(innerhtml);
-    $('#font_face').trigger('change')
-    if(window.songbook.showStatus){
-      $('#export').addClass('showStatus');
+    innerHTML += `<option value='[]'>Custom</option>`;
+
+    // Update format select
+    const formatSelect = document.getElementById('format');
+    formatSelect.innerHTML = innerHTML;
+
+    // Trigger font face change
+    document.getElementById('font_face').dispatchEvent(new Event('change', { bubbles: true }));
+
+    // Handle status visibility
+    const exportContainer = document.getElementById('export');
+    if (window.songbook.showStatus) {
+      exportContainer.classList.add('showStatus');
+    } else {
+      exportContainer.classList.remove('showStatus');
     }
-    else { 
-      $('#export').removeClass('showStatus'); 
+
+  } catch (error) {
+    console.error('Error loading export configurations:', error);
+  }
+}
+function export_form_summary_update() {
+  // Helper function to get element value
+  const getValue = (id) => {
+    const el = document.getElementById(id);
+    return el.type === 'checkbox' ? el.checked : el.value;
+  };
+
+  // Helper function to compare arrays
+  const arraysEqual = (a, b) => {
+    if (a.length !== b.length) return false;
+    return a.every((val, i) => val === b[i]);
+  };
+  const arraysOfObjectsEqual = (a, b) => {
+    if (a.length !== b.length) return false;
+
+    // Use every() to check all objects
+    return a.every((objA, i) => {
+      const objB = b[i];
+      // Check if the name and value strings are strictly equal
+      return objA.name === objB.name && objA.value === objB.value;
+    });
+  };
+
+  // Update format select
+  const formatSelect = document.getElementById('format');
+  formatSelect.value = JSON.stringify([]);
+  Array.from(formatSelect.options).forEach(option => {
+    const values = JSON.parse(option.value);
+    if (values.length === 0) return;
+
+    const opts = values.map(item => ({
+      name: item.name,
+      value: getValue(item.name)
+    }));
+    if (arraysOfObjectsEqual(opts, values)) {
+      formatSelect.value = option.value;
     }
   });
-}
-let timeout;
-function export_form_summary_update() {
-  document.getElementById('format').value = JSON.stringify([]);
-  for(option of $('#format option')) {
-    let opts = [];
-    let values = JSON.parse(option.value);
-    if(isEqual(values,[])){
-      continue // this is empty!
-    }
-    for(item of values) {
-      let element = document.getElementById(item.name);
-      opts.push({name: item.name, value: (element.type =='checkbox' ? element.checked : element.value)});
-    }
-    if(isEqual(opts, values)){
-      document.getElementById('format').value = JSON.stringify(values);
-      break // we've found a match
-    }
-  }
 
-  $('#page_icon').html('<span class="col"></span>'.repeat($('#columns').val()));
-  document.getElementById('page_icon').className = document.getElementById('page_layout').value.replace('-','_');
-  document.getElementById('page_icon').classList.add(document.getElementById('paper_orientation').value);
-  let margin_icon = document.getElementById('margin_icon');
-  let margins = [document.getElementById('paper_margin_top').value,
-                 document.getElementById('paper_margin_right').value,
-                 document.getElementById('paper_margin_bottom').value,
-                 document.getElementById('paper_margin_left').value,
-                 document.getElementById('column_gutter').value,
-                 document.getElementById('paper_margin_gutter').value]
+  // Update page icon
+  const columns = document.getElementById('columns').value;
+  const pageIcon = document.getElementById('page_icon');
+  pageIcon.innerHTML = '<span class="col"></span>'.repeat(columns);
+  pageIcon.className = `${document.getElementById('page_layout').value.replace('-', '_')} ${document.getElementById('paper_orientation').value}`;
 
-  let margin_name;
-  if(margins.equals(window.export.margins['normal'])){
-    margin_name = 'normal';
-  }
-  else if(margins.equals(window.export.margins['narrow'])){
-    margin_name = 'narrow';
-  }
-  else if(margins.equals(window.export.margins['wide'])){
-    margin_name = 'wide';
-  }
-  else {
-    margin_name = 'custom';
-  }
-  document.getElementById('margin').value = margin_name;
-  margin_icon.className = margin_name;
-  margin_icon.classList.add(document.getElementById('paper_orientation').value);
-  document.getElementById('margin_summary').innerHTML = margin_name;
-  document.getElementById('margin_summary_nums').innerHTML = margins[3] + "\"";
-  document.getElementById('margin_gutter').innerHTML = "Gutter: " + document.getElementById('paper_margin_gutter').value + "\"";
-  document.getElementById('page_size_summary').innerHTML = document.getElementById('paper_size').value;
+  // Update margin summary
+  const margins = [
+    parseFloat(document.getElementById('paper_margin_top').value),
+    parseFloat(document.getElementById('paper_margin_right').value),
+    parseFloat(document.getElementById('paper_margin_bottom').value),
+    parseFloat(document.getElementById('paper_margin_left').value),
+    parseFloat(document.getElementById('column_gutter').value),
+    parseFloat(document.getElementById('paper_margin_gutter').value)
+  ];
+  
+  const marginName = Object.entries(window.export.margins).find(([name, values]) => 
+    arraysEqual(values, margins)
+  )?.[0] || 'custom';
 
-  document.getElementById('font_summary').innerHTML = document.getElementById('font_face').value;
+  document.getElementById('margin').value = marginName;
+  const marginIcon = document.getElementById('margin_icon');
+  marginIcon.className = `${marginName} ${document.getElementById('paper_orientation').value}`;
+  document.getElementById('margin_summary').textContent = marginName;
+  document.getElementById('margin_summary_nums').textContent = `${margins[3]}"`;
+  document.getElementById('margin_gutter').textContent = `Gutter: ${margins[5]}"`;
 
-  let text = [];
-  for(item of window.export.text['default']) {
-    text.push({name: item.name, value: document.getElementById(item.name).value});
-  }
-  let text_name;
-  if(isEqual(text, window.export.text['default'])){
-    text_name = 'default';
-  }
-  else if(isEqual(text, window.export.text['small'])){
-    text_name = 'small';
-  }
-  else if(isEqual(text, window.export.text['large'])){
-    text_name = 'large';
-  }
-  else {
-    text_name = 'custom';
-  }
-  document.getElementById('text').value = text_name;
-  document.getElementById('text_summary').innerHTML = text_name;
-  let song_title_format = document.getElementById('songtitle_format').value.replace('${num}', '1') + 'Arise';
-  if(document.getElementById('scripture_location').value == 'in-title'){
-    song_title_format += ' (Jude 1)';
-  }
-  document.getElementById('song_title_summary').innerHTML = song_title_format;
-  document.getElementById('ccli_summary').innerHTML = 'CCLI: ' + (document.getElementById('ccli').value || 'none');
-  let print_summary = '';
-  if(document.getElementById('print_a').checked){
-    print_summary += '✓';
-  }
-  if(document.getElementById('print_n').checked){
-    print_summary += '~';
-  }
-  if(document.getElementById('print_r').checked){
-    print_summary += '✗';
-  }
-  if(print_summary == ''){
-    print_summary = 'all';
-  }
-  document.getElementById('print_summary').innerHTML = 'Print: ' + print_summary;
-  document.getElementById('chords_summary').innerHTML = 'Chords: ' + document.getElementById('display_chords').value;
+  // Update page size summary
+  document.getElementById('page_size_summary').textContent = document.getElementById('paper_size').value;
 
-  document.getElementById('alphabetical_summary').innerHTML = 'Index: ' + document.getElementById('display_index').options[document.getElementById('display_index').selectedIndex].text;
-  document.getElementById('category_summary').innerHTML = 'Category: ' + document.getElementById('display_cat_index').options[document.getElementById('display_cat_index').selectedIndex].text;
-  document.getElementById('scripture_summary').innerHTML = 'Scripture: ' + document.getElementById('display_scrip_index').options[document.getElementById('display_scrip_index').selectedIndex].text;
-  let index = [];
-  for(item of window.export.index['default']) {
-    index.push({name: item.name, value:document.getElementById(item.name).value});
-  }
+  // Update font summary
+  document.getElementById('font_summary').textContent = document.getElementById('font_face').value;
 
-  let index_name;
-  if(isEqual(index, window.export.index['default'])){
-    index_name = 'default';
-  }
-  else if(isEqual(index, window.export.index['small'])){
-    index_name = 'small';
-  }
-  else if(isEqual(index, window.export.index['large'])){
-    index_name = 'large';
-  }
-  else {
-    index_name = 'custom';
-  }
-  document.getElementById('index').value = index_name;
-  document.getElementById('index_summary').innerHTML = index_name;
+  // Update text summary
+  const textValues = window.export.text.default.map(item => ({
+    name: item.name,
+    value: getValue(item.name)
+  }));
 
-  if($('#auto_refresh').is(":checked")){
-    clearTimeout(timeout);
-    timeout = setTimeout(() => {pdfFormatter.postMessage([window.exportObject,read_config_form()])}, 200); //hack to prevent multiple sends to the formatter
+  const textName = Object.entries(window.export.text).find(([name, values]) => 
+    arraysOfObjectsEqual(values, textValues)
+  )?.[0] || 'custom';
+
+
+  document.getElementById('text').value = textName;
+  document.getElementById('text_summary').textContent = textName;
+
+  // Update song title summary
+  var songTitleFormat = document.getElementById('songtitle_format').value
+    .replace('${num}', '1') + 'Arise';
+  
+  if (document.getElementById('scripture_location').value === 'in-title') {
+    songTitleFormat += ' (Jude 1)';
+  }
+  document.getElementById('song_title_summary').textContent = songTitleFormat;
+
+  // Update CCLI summary
+  document.getElementById('ccli_summary').textContent = `CCLI: ${document.getElementById('ccli').value || 'none'}`;
+
+  // Update print summary
+  const printSummary = [
+    document.getElementById('print_a').checked ? '✓' : '',
+    document.getElementById('print_n').checked ? '~' : '',
+    document.getElementById('print_r').checked ? '✗' : ''
+  ].join('') || 'all';
+
+  document.getElementById('print_summary').textContent = `Print: ${printSummary}`;
+
+  // Update chords summary
+  document.getElementById('chords_summary').textContent = `Chords: ${document.getElementById('display_chords').value}`;
+
+  // Update index summaries
+  const updateIndexSummary = (id, selectId) => {
+    const select = document.getElementById(selectId);
+    document.getElementById(id).textContent = select.options[select.selectedIndex].text;
+  };
+
+  updateIndexSummary('alphabetical_summary', 'display_index');
+  updateIndexSummary('category_summary', 'display_cat_index');
+  updateIndexSummary('scripture_summary', 'display_scrip_index');
+
+  // Update index settings
+  const indexValues = window.export.index.default.map(item => ({
+    name: item.name,
+    value: getValue(item.name)
+  }));
+
+  const indexName = Object.entries(window.export.index).find(([name, values]) => 
+    arraysOfObjectsEqual(values, indexValues)
+  )?.[0] || 'custom';
+
+  document.getElementById('index').value = indexName;
+  document.getElementById('index_summary').textContent = indexName;
+
+  // Auto refresh
+  if (document.getElementById('auto_refresh').checked) {
+    clearTimeout(window.exportTimeout);
+    window.exportTimeout = setTimeout(() => {
+      pdfFormatter.postMessage([window.exportObject, read_config_form()]);
+    }, 200);
   }
 }
 function read_config_form(){
-  let opts = $('#export_form').serializeArray();
+  let opts = serializeForm('export_form');
   let new_opts = {};
   for(let opt of opts) {
     new_opts[opt.name] = opt.value;
@@ -1618,262 +1986,272 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
   let width = 0;
   let height = 0;
   let active;
+  let dragTop = false;
+  let slideout = false;
+  let slideoutEl;
+  let slideback = false;
+  let navigate = false;
 
-  dragEl.addEventListener('touchstart', function(e){
-    //document.documentElement.classList.add('no-overscroll');
-    var touchobj = e.changedTouches[0]; // reference first touch point (ie: first finger)
+  dragEl.addEventListener('touchstart', function(e) {
+    var touchobj = e.changedTouches[0];
     startx = parseInt(touchobj.clientX);
     starty = parseInt(touchobj.clientY);
-    width = getTranslate3d(dragEl)[4]; // get original translateX value
-    height = getTranslate3d(dragEl)[5]
+    width = getTranslate3d(dragEl)[4];
+    height = getTranslate3d(dragEl)[5];
     active = document.getElementsByClassName('active')[0];
     dragTop = false;
     slideout = false;
-    slideoutEl = (!document.body.classList.contains('song') && document.body.classList.contains('export') ? dragEl.previousElementSibling.previousElementSibling : dragEl.previousElementSibling);
+    slideoutEl = (!document.body.classList.contains('song') && 
+                 document.body.classList.contains('export') ? 
+                 dragEl.previousElementSibling.previousElementSibling : 
+                 dragEl.previousElementSibling);
     slideback = false;
     navigate = false;
 
-    // only do stuff if in right place
-    if(dragSide == 'right' && screen.width < 640){
-      if((window.songEditing && e.target.closest('#song')) || (window.songbookEditing && e.target.closest('#songList')) || e.target.closest('#export')) { 
+    if (dragSide === 'right' && screen.width < 640) {
+      if ((window.songEditing && e.target.closest('#song')) || 
+          (window.songbookEditing && e.target.closest('#songList')) || 
+          e.target.closest('#export')) {
         dragEl.style.transition = 'all 0s';
-        //e.preventDefault();
-      }
-      else {
+      } else {
         startx = false;
       }
-    }
-    else if(dragSide == 'top' && screen.width < 640){
-      if(starty < remToPx(7.5)) { 
-        if(active == dragEl){
+    } else if (dragSide === 'top' && screen.width < 640) {
+      if (starty < remToPx(7.5)) {
+        if (active === dragEl) {
           active = 0;
-        }
-        else {
+        } else {
           active.style.transition = 'all 0s';
         }
         dragEl.style.transition = 'all 0s';
         dragTop = true;
-        //e.preventDefault();
-      }
-      else if(!window.songEditing && !window.songbookEditing) {
-        if(dragEl.classList.contains('slidout')){
+      } else if (!window.songEditing && !window.songbookEditing) {
+        if (dragEl.classList.contains('slidout')) {
           slideback = true;
           dragEl.style.transition = 'all 0s';
-        }
-        else if(startx < screen.width/5) {
-          //possible slide out going on
+        } else if (startx < screen.width/5) {
           slideout = true;
           slideoutEl.style.transition = 'all 0s';
-        }
-        else if(screen.width * .25 < startx && startx < screen.width *.75 && document.body.classList.contains('song') && e.target.closest('.sidebar-open') == null) {
+        } else if (screen.width * .25 < startx && startx < screen.width *.75 && 
+                   document.body.classList.contains('song') && 
+                   e.target.closest('.sidebar-open') === null) {
           navigate = true;
           dragEl.getElementsByClassName('row')[0].style.transition = 'transform 0s';
-        }
-        else {
+        } else {
           startx = false;
         }
-      }
-      else {
+      } else {
         startx = false;
       }
-    }
-    else {
+    } else {
       startx = false;
     }
   }, {passive: true});
 
-  dragEl.addEventListener('touchmove', function(e){
-    if(startx){
-      var touchobj = e.changedTouches[0]; // reference first touch point for this event
+  dragEl.addEventListener('touchmove', function(e) {
+    if (startx) {
+      var touchobj = e.changedTouches[0];
       var dist = parseInt(width) + parseInt((touchobj.clientX) - startx);
       var disty = Math.max(parseInt(height) + parseInt((touchobj.clientY) - starty), 0);
 
-      if (dragSide == 'right'){
-        dragEl.style.transform = 'translate3d('+ Math.max(parseInt(dist),0) + 'px, 0, 0)';
-      }
-      else if (dragSide == 'top'){
-        if(slideout){
-          if(dist > 25) {
-            slideoutEl.style.transform = 'translate3d('+ -(parseInt(dist)-25)*4 + 'px, 0, 0)';
+      if (dragSide === 'right') {
+        dragEl.style.transform = 'translate3d(' + Math.max(parseInt(dist),0) + 'px, 0, 0)';
+      } else if (dragSide === 'top') {
+        if (slideout) {
+          if (dist > 25) {
+            slideoutEl.style.transform = 'translate3d(' + -(parseInt(dist)-25)*4 + 'px, 0, 0)';
           }
-        }
-        else if(slideback){
-          if(dist < -25) {
+        } else if (slideback) {
+          if (dist < -25) {
             dragEl.classList.remove('slidout');
-            dragEl.style.transform = 'translate3d('+ (parseInt(dist)+25)*4 + 'px, 8rem, 0)';
+            dragEl.style.transform = 'translate3d(' + (parseInt(dist)+25)*4 + 'px, 8rem, 0)';
             dragEl.style.width = 'min(80%, 300px)';
-            dragEl.style.height = 'calc(100vh - 8rem)'
-            if(dist < -100) {
+            dragEl.style.height = 'calc(100vh - 8rem)';
+            if (dist < -100) {
               dragEl.style['z-index'] = '2';
             } else {
               dragEl.style['z-index'] = '7';
             }
           }
-        }
-        else if(navigate){
-          if(Math.abs(dist) > 50) {
-            dragEl.getElementsByClassName('row')[0].style.transform = 'translate3d('+ (dist) + 'px, 0, 0)';
+        } else if (navigate) {
+          if (Math.abs(dist) > 50) {
+            dragEl.getElementsByClassName('row')[0].style.transform = 'translate3d(' + (dist) + 'px, 0, 0)';
             dragEl.getElementsByClassName('row')[0].style.opacity = '0.5';
           }
-        }
-        else {
-          dragEl.style.transform = 'translate3d(0,'+ parseInt(disty) + 'px, 0)';
-          if(active){
-            active.style.transform = 'translate3d(0, calc('+ parseInt(disty) + 'px + 4rem), 0)';
+        } else {
+          dragEl.style.transform = 'translate3d(0,' + parseInt(disty) + 'px, 0)';
+          if (active) {
+            active.style.transform = 'translate3d(0, calc(' + parseInt(disty) + 'px + 4rem), 0)';
           }
-          e.preventDefault();   
+          e.preventDefault();
         }
       }
     }
   }, false);
 
-  dragEl.addEventListener('touchend', function(e){
-    if(startx){
-      var touchobj = e.changedTouches[0]; // reference first touch point for this event
+  dragEl.addEventListener('touchend', function(e) {
+    if (startx) {
+      var touchobj = e.changedTouches[0];
       var dist = parseInt(touchobj.clientX) - startx;
       var disty = Math.abs(parseInt(touchobj.clientY) - starty);
-      if (startx && dragSide == 'right' && Math.abs(dist) > 50 ){ //make sure that distance isn't just accidental
-        dragAction(dragEl, 'sidebar-open');
-        e.preventDefault(); 
-      }
-      else if (slideback){
-        if(dist < -100) {
+      
+      if (startx && dragSide === 'right' && Math.abs(dist) > 50) {
+        dragAction(dragEl); // Call the provided callback
+        e.preventDefault();
+      } else if (slideback) {
+        if (dist < -100) {
           e.preventDefault();
-        }
-        else {
+        } else {
           dragEl.classList.add('slidout');
         }
         dragEl.removeAttribute('style');
-      }
-      else if (slideout) {
-        if( dist > 100) {
+      } else if (slideout) {
+        if (dist > 100) {
           e.preventDefault();
           slideoutEl.classList.add('slidout');
         }
         slideoutEl.removeAttribute('style');
-      }
-      else if (navigate) {
-        if(Math.abs(dist) > 100) {
+      } else if (navigate) {
+        if (Math.abs(dist) > 100) {
           e.preventDefault();
           let currentSong = document.querySelector("#songbook_content [data-song-id='"+window.song._id+"']");
-          if(currentSong && dist > 0 && currentSong.previousElementSibling) {
+          if (currentSong && dist > 0 && currentSong.previousElementSibling) {
             dragEl.getElementsByClassName('row')[0].style.transform = 'translate3d(-100%, 0, 0)';
-            location.hash = '#'+formatSbID(window.songbook._id)+'&'+
-                                currentSong.previousElementSibling.getAttribute('data-song-id'); 
-          }
-          else if(currentSong && dist < 0 && currentSong.nextElementSibling) {
+            location.hash = '#' + formatSbID(window.songbook._id) + '&' +
+                            currentSong.previousElementSibling.getAttribute('data-song-id');
+          } else if (currentSong && dist < 0 && currentSong.nextElementSibling) {
             dragEl.getElementsByClassName('row')[0].style.transform = 'translate3d(100%, 0, 0)';
-            location.hash = '#'+formatSbID(window.songbook._id)+'&'+
-                                currentSong.nextElementSibling.getAttribute('data-song-id'); 
-          }
-          else {
-            location.hash = '#'+formatSbID(window.songbook._id);
+            location.hash = '#' + formatSbID(window.songbook._id) + '&' +
+                            currentSong.nextElementSibling.getAttribute('data-song-id');
+          } else {
+            location.hash = '#' + formatSbID(window.songbook._id);
           }
         }
-        setTimeout(function(){dragEl.getElementsByClassName('row')[0].removeAttribute('style')},30);
-      }
-      else if (dragTop && disty > 200 ){
+        setTimeout(function() {
+          dragEl.getElementsByClassName('row')[0].removeAttribute('style');
+        }, 30);
+      } else if (dragTop && disty > 200) {
         dragAction();
         e.preventDefault();
-        return; // don't fix layout just yet - we'll do that after hashchange.
+        return;
       }
     }
-    if(active) {
+    
+    if (active) {
       active.style.removeProperty('transform');
       active.style.removeProperty('transition');
     }
     dragEl.style.removeProperty('transform');
     dragEl.style.removeProperty('transition');
-  }, false); 
+  }, false);
 }
 
-function dragToggleClass(el, toggleClass) {
-  $(el).toggleClass(toggleClass);
-}
-window.addEventListener('load', function(){
-  makeDraggable(document.getElementById('song-edit'), dragToggleClass);
-  makeDraggable(document.getElementById('songListEdit'), dragToggleClass);
-  makeDraggable(document.getElementById('exportPreview'), dragToggleClass);
+window.addEventListener('load', function() {
+  // For side panels that toggle open/closed
+  makeDraggable(document.getElementById('song-edit'), function(el) {
+    el.classList.toggle('sidebar-open');
+  });
+  makeDraggable(document.getElementById('songListEdit'), function(el) {
+    el.classList.toggle('sidebar-open');
+  });
+  makeDraggable(document.getElementById('exportPreview'), function(el) {
+    el.classList.toggle('sidebar-open');
+  });
 
-  makeDraggable(document.getElementById('songbookList'), 
-    function(){window.location.hash = '';}, 'top');
-  makeDraggable(document.getElementById('songList'),
-    function(){window.location.hash = '#songbooks';}, 'top');
-  makeDraggable(document.getElementById('song'),
-    function(){window.location.hash = '#'+formatSbID(window.songbook._id);}, 'top');
-  makeDraggable(document.getElementById('export'),
-    function(){window.location.hash = window.location.hash.replace('?export','');}, 'top');
+  // For main panels that navigate on drag
+  makeDraggable(document.getElementById('songbookList'), function() {
+    window.location.hash = '';
+  }, 'top');
+  makeDraggable(document.getElementById('songList'), function() {
+    window.location.hash = '#songbooks';
+  }, 'top');
+  makeDraggable(document.getElementById('song'), function() {
+    window.location.hash = '#' + formatSbID(window.songbook._id);
+  }, 'top');
+  makeDraggable(document.getElementById('export'), function() {
+    window.location.hash = window.location.hash.replace('?export','');
+  }, 'top');
 }, false);
 
 
 function bindSearch(element, search_prefix) {
-  $('body').on('click', element, function() {
-    if(window.songEditing ||window.songbookEditing || $('body').hasClass('export')) {
-      return;
+  document.body.addEventListener('click', function(event) {
+    // Check if clicked element matches selector and we're not in edit/export modes
+    const target = event.target.closest(element); // the click may land on a <mark> inside it
+    if (target) {
+      if (window.songEditing || window.songbookEditing || document.body.classList.contains('export')) {
+        return;
+      }
+      
+      // Get search input and set value
+      const searchInput = document.querySelector('#songbook_content .search');
+      if (searchInput) {
+        searchInput.value = `"${search_prefix + target.textContent}"`;
+        
+        // Trigger keyup event
+        const keyupEvent = new KeyboardEvent('keyup', {
+          bubbles: true,
+          cancelable: true
+        });
+        searchInput.dispatchEvent(keyupEvent);
+      }
     }
-    $('#songbook_content .search').val(`"${search_prefix+$(this).text()}"`)[0]
-      .dispatchEvent(new KeyboardEvent("keyup"));
   });
 }
 
 function confirmWhenEditing(oldHashList, newHashList) {
-  let confirmEditing = []; //length 0 = false;
-  if(!window.songEditing && !window.songbookEditing) {
+  // Early return if not editing
+  if (!window.songEditing && !window.songbookEditing) {
     return false;
   }
-  if(window.songEditing){
-    //check to be sure that oldHashList[1] and newHashList[1] are the same.
-    if(oldHashList){ //on fresh page load there is no oldhashlist
-      if(oldHashList[1]){ //did we have a song before?
-        if(oldHashList[1][1] == 'edit'){ //yes? ok, were we editing it?
-          confirmEditing.push(`songEditing`);
-        }
-      }
-    }
-    else {
-      confirmEditing.push('songEditing');
-    }
-  }
-  if(window.songbookEditing){
-    //check to be sure that oldHashList[0] and newHashList[0] are the same.
-    if(oldHashList){ //on fresh page load there is no oldhashlist
-      if(oldHashList[0]){ //did we have a songbook before?
-        if(oldHashList[0][1] == 'edit'){ //yes? were we editing it?
-          if(oldHashList[0].join() != newHashList[0].join()) {//is this a different songbook/edit config?
-            confirmEditing.push(`songbookEditing`);
-          }
-        }
-      }
-    }
-    else {
-      confirmEditing.push('songbookEditing');
+
+  const confirmMessages = [];
+  const changes = [];
+
+  // Check song editing state
+  if (window.songEditing) {
+    const songTitle = document.querySelector('stitle a')?.textContent || 'Current Song';
+    // No oldHashList means a direct call (e.g. logout), so always ask
+    if (!oldHashList || oldHashList[1]?.[1] === 'edit') {
+      confirmMessages.push('songEditing');
+      changes.push(`Song: ${songTitle}`);
     }
   }
-  if(confirmEditing.length) {
-    let queryList = [];
-    if(confirmEditing.indexOf('songEditing') > -1){
-      queryList.push('Song: '+$('stitle a').text());
+
+  // Check songbook editing state
+  if (window.songbookEditing) {
+    const songbookTitle = document.getElementById('songbook_title')?.textContent || 'Current Songbook';
+    if (!oldHashList || (oldHashList[0]?.[1] === 'edit' &&
+        oldHashList[0].join() !== newHashList?.[0]?.join())) {
+      confirmMessages.push('songbookEditing');
+      changes.push(`Songbook: ${songbookTitle}`);
     }
-    if(confirmEditing.indexOf('songbookEditing') > -1){
-      queryList.push('Songbook: '+$('#songbook_title').text());
-    }
-    if(confirm("If you leave this page you may lose changes to \n - "+queryList.join('\n- '))) {
-      for(con of confirmEditing) {
-        window[con] = false;
-        if(con == 'songEditing'){
+  }
+
+  // If there are changes to confirm
+  if (confirmMessages.length > 0) {
+    const message = `If you leave this page you may lose changes to:\n- ${changes.join('\n- ')}`;
+    
+    if (confirm(message)) {
+      // User confirmed - reset editing states
+      confirmMessages.forEach(state => {
+        window[state] = false;
+        if (state === 'songEditing') {
           window.song._id = '';
-        }
-        else if(con == 'songbookEditing') {
+        } else if (state === 'songbookEditing') {
           window.songbook._id = '';
         }
-      }
+      });
       return false;
-    } else { //we aren't leaving 
-      //reset the style elements on all columns
-      $('.column').removeAttr('style');
+    } else {
+      // User cancelled - reset column styles and return true to prevent navigation
+      document.querySelectorAll('.column').forEach(column => {
+        column.removeAttribute('style');
+      });
       return true;
     }
   }
+  return false;
 }
 
 //fun little function for counting syllables.  Need to create breaks in the line instead... if we were to use this for Chord positioning.
@@ -1910,40 +2288,88 @@ function formatDate(date) {
   });
 }
 
-async function loadInfo(song=true) {
-  document.getElementById('dialog').setAttribute('data-use','info');
-  if(song){
-    $('#dialog h5').text('Song');
-    let song_id = window.song._id;
-    let revs = window.song._revs_info.map(rev => rev.rev);
-    let rev_num = revs.indexOf(window.song_rev);
-    let content = `<small>Added by: ${window.users[window.song.addedBy] || window.song.addedBy}<br>${formatDate(window.song.added)}</small><br />
-      <small>Edited by: ${window.users[window.song.editedBy] || window.song.editedBy.slice(2)}<br>${formatDate(window.song.edited)}</small><br />
-      
+async function loadInfo(song = true) {
+  const dialog = document.getElementById('dialog');
+  dialog.setAttribute('data-use', 'info');
+
+  // Helper function to create info content
+  const createInfoContent = (title, addedBy, addedDate, editedBy, editedDate, extraContent = '') => {
+    return `
+      <small>Added by: ${addedBy}<br>${formatDate(addedDate)}</small><br>
+      <small>Edited by: ${editedBy}<br>${formatDate(editedDate)}</small><br>
+      ${extraContent}`;
+  };
+
+  // Helper function to show dialog
+  const showDialog = (title, content) => {
+    dialog.querySelector('.title').textContent = title;
+    dialog.querySelector('.content').innerHTML = content;
+    if (dialog.style.display === 'none') {
+      slideDown(dialog);
+    }
+  };
+
+  if (song) {
+    // Song info
+    const songId = window.song._id;
+    const revs = window.song._revs_info.map(rev => rev.rev);
+    const revNum = revs.indexOf(window.song_rev);
+
+    // Create revision controls
+    const revisionControls = `
       <div style="display: flex; align-items: center; justify-content: space-between;">
-      <button onclick="prevSongRev();" style="width:1.75rem" class="${(rev_num != revs.length - 1 ? 'btn btn-tiny': '')}">${( rev_num != revs.length - 1 ? '<<': '')}</button>
-      <small>Edit ${window.song._revs_info.length - rev_num} / ${window.song._revs_info.length}</small>
-      <button onclick="nextSongRev();" style="width:1.75rem" class="${(rev_num != 0 ? 'btn btn-tiny': 'btn-tiny')}">${( rev_num != 0 ? '>>': '')}</button></div>`;
-  
-    let sbs = await songInSongbooks(song_id);
-    if(sbs.length > 0){
-      content += '<div class="left"><br /><b>Used in:</b><br />' + sbs.map(sb => '<a href="#'+sb.doc._id+'&'+window.song._id+'">'+sb.doc.title+'</a>').join('<br />') + '</div>';
+        <button onclick="prevSongRev();" style="width:1.75rem" 
+          ${revNum !== revs.length - 1 ? 'class="btn btn-tiny"' : ''}>
+          ${revNum !== revs.length - 1 ? '<<' : ''}
+        </button>
+        <small>Edit ${window.song._revs_info.length - revNum} / ${window.song._revs_info.length}</small>
+        <button onclick="nextSongRev();" style="width:1.75rem" 
+          ${revNum !== 0 ? 'class="btn btn-tiny"' : 'class="btn-tiny"'}>
+          ${revNum !== 0 ? '>>' : ''}
+        </button>
+      </div>`;
+
+    // Get songbooks containing this song
+    const songbooks = await songInSongbooks(songId);
+    let songbookContent = '<div class="left"><br><b>Used in:</b><br>';
+    
+    if (songbooks.length > 0) {
+      songbookContent += songbooks.map(sb => 
+        `<a href="#${sb.doc._id}&${window.song._id}">${sb.doc.title}</a>`
+      ).join('<br>');
+    } else {
+      songbookContent += 'Not used in any songbook';
     }
-    else {
-      content += '<div class="left"><br /><b>Not used in any songbook</b></div>';
-    }
-    document.querySelector('#dialog .content').innerHTML = content;
-    document.querySelector('#dialog .title').innerHTML = window.song.title;
-    $('#dialog').slideDown('fast');
-  }
-  else{
-    $('#dialog h5').text('Songbook');
-    let content = `<small>Added: ${window.users[window.songbook.addedBy] || window.songbook.addedBy}, ${formatDate(window.songbook.added)}</small><br />
-      <small>Edited: ${window.users[window.songbook.editedBy] || window.songbook.editedBy}, ${formatDate(window.songbook.edited)}</small><br />
-      <small>${(window.songbook._rev.split('-')[0] - 1)} previous edits</small>`;
-    document.querySelector('#dialog .content').innerHTML = content;
-    document.querySelector('#dialog .title').innerHTML = window.songbook.title;
-    $('#dialog').slideDown('fast');
+    songbookContent += '</div>';
+
+    // Show dialog with song info
+    showDialog(
+      window.song.title,
+      createInfoContent(
+        window.song.title,
+        window.users[window.song.addedBy] || window.song.addedBy,
+        window.song.added,
+        window.users[window.song.editedBy] || window.song.editedBy.slice(2),
+        window.song.edited,
+        revisionControls + songbookContent
+      )
+    );
+  } else {
+    // Songbook info
+    const revisionInfo = `<small>${(window.songbook._rev.split('-')[0] - 1)} previous edits</small>`;
+
+    // Show dialog with songbook info
+    showDialog(
+      window.songbook.title,
+      createInfoContent(
+        window.songbook.title,
+        window.users[window.songbook.addedBy] || window.songbook.addedBy,
+        window.songbook.added,
+        window.users[window.songbook.editedBy] || window.songbook.editedBy,
+        window.songbook.edited,
+        revisionInfo
+      )
+    );
   }
 }
 
@@ -1956,46 +2382,12 @@ function nextSongRev() {
   loadSong(window.song._id, window.song._revs_info[nextRev].rev);
 }
 
-function loadSongPlayer(){
-  let yt_script_el = document.getElementById('yt_script');
-  if(!yt_script_el) {       //Load up youtube needed elements.
-    var tag = document.createElement('script');
-    tag.id = 'yt_script';
-    tag.src = "https://www.youtube.com/iframe_api";
-    var firstScriptTag = document.getElementsByTagName('script')[0];
-    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);  
-    tag.addEventListener('load', function() {
-      setTimeout(function(){
-        try{
-          setItUp();
-        }
-        catch{
-          console.log('second try')
-          setTimeout(function(){setItUp();},1000);
-        };  //setTimeout seems to be needed for new YT.Player() to be ready
-      },20);
-    });
-  }
-  else { 
-    setItUp();
-  }
-  function setItUp(){
-    $('#dialog h5').text('Playing');
-    document.getElementById('dialog').setAttribute('data-use','player');
-    document.querySelector('#dialog .title').innerHTML = window.song.title;
-    let song_id = window.song._id;
-    let content = '<br><br><div id="player"></div>';
-    content += '<span id="playlistnumber" style="margin: 1rem .5rem 1rem .5rem;"></span>'+
-               '<button class="btn emoji" onclick="window.player.previousVideo()">⏮<button>'+
-               '<button id="play" class="btn emoji" onclick="toggleVideo();">▶<button>'+
-               '<button class="btn emoji" onclick="window.player.nextVideo()">⏭<button>'+
-               '<button id="loop" class="btn emoji" onclick="toggleLoop();">🔁</button>'
-    document.querySelector('#dialog .content').innerHTML = content;
-    $('#dialog').slideDown('fast');
-    window.player = new YT.Player('player', {
+function loadSongPlayer() {
+  // Helper function to create YouTube player
+  const createYouTubePlayer = () => {
+    return new YT.Player('player', {
       height: '',
       width: '100%',
-      //videoId: id,
       host: 'http://www.youtube-nocookie.com',
       playerVars: { 'autoplay': 0, 'controls': 1 },
       events: {
@@ -2003,66 +2395,120 @@ function loadSongPlayer(){
         'onStateChange': onPlayerStateChange
       }
     });
-  }
+  };
+
+  // Helper function to setup player UI
+  const setupPlayerUI = () => {
+    const dialog = document.getElementById('dialog');
+    dialog.querySelector('h5').textContent = 'Playing';
+    dialog.setAttribute('data-use', 'player');
+    dialog.querySelector('.title').textContent = window.song.title;
+
+    const content = `
+      <br><br>
+      <div id="player"></div>
+      <span id="playlistnumber" style="margin: 1rem .5rem 1rem .5rem;"></span>
+      <button class="btn emoji" onclick="window.player.previousVideo()">⏮</button>
+      <button id="play" class="btn emoji" onclick="toggleVideo();">▶</button>
+      <button class="btn emoji" onclick="window.player.nextVideo()">⏭</button>
+      <button id="loop" class="btn emoji" onclick="toggleLoop();">🔁</button>
+    `;
+
+    dialog.querySelector('.content').innerHTML = content;
+    if (dialog.style.display === 'none') {
+      slideDown(dialog);
+    }
+  };
+
+  // Load YouTube API if not already loaded
+  const loadYouTubeAPI = () => {
+    return new Promise((resolve) => {
+      if (!document.getElementById('yt_script')) {
+        const script = document.createElement('script');
+        script.id = 'yt_script';
+        script.src = "https://www.youtube.com/iframe_api";
+        document.head.appendChild(script);
+
+        script.onload = () => {
+          // Wait for YT.Player to be available
+          const checkYT = () => {
+            if (typeof YT !== 'undefined' && YT.Player) {
+              resolve();
+            } else {
+              setTimeout(checkYT, 100);
+            }
+          };
+          checkYT();
+        };
+      } else {
+        resolve();
+      }
+    });
+  };
+
+  // Main function logic
+  loadYouTubeAPI().then(() => {
+    setupPlayerUI();
+    window.player = createYouTubePlayer();
+  }).catch(error => {
+    console.error('Error loading YouTube player:', error);
+  });
 }
 
-function makeUserNameDraggable(){
-  let container = document.getElementById('username_d').parentElement;
-  let dragItem = container.parentElement;
+function makeUserNameDraggable() {
+  const container = document.getElementById('username_d').parentElement;
+  const dragItem = container.parentElement;
 
-  let active = false;
-  let currentY;
-  let initialY;
+  let isDragging = false;
+  let startY = 0;
+  let currentY = 0;
   let yOffset = 0;
 
-  container.addEventListener("touchstart", dragStart, false);
-  container.addEventListener("touchend", dragEnd, false);
-  container.addEventListener("touchmove", drag, false);
-
-  function dragStart(e) {
+  // Event handlers
+  const handleDragStart = (e) => {
     yOffset = 0;
-    active = false;
+    isDragging = false;
+    startY = getClientY(e);
+    dragItem.style.transition = 'none';
+  };
 
-    if (e.type === "touchstart") {
-      initialY = e.touches[0].clientY - yOffset;
-    } else {
-      initialY = e.clientY - yOffset;
-    }
-    dragItem.style.transition = "none";
-  }
-
-  function dragEnd(e) {
-    if(Math.abs(yOffset)> 30){
+  const handleDragEnd = () => {
+    if (Math.abs(yOffset) > 30) {
       window.location.hash = '#';
     }
-    dragItem.style.removeProperty("transition");
-    dragItem.style.removeProperty("transform");
-  }
+    dragItem.style.removeProperty('transition');
+    dragItem.style.removeProperty('transform');
+  };
 
-  function drag(e) {
-    if(window.location.hash == ''){
-      return;
-    }
+  const handleDrag = (e) => {
+    if (!window.location.hash) return;
     e.preventDefault();
-  
-    if (e.type === "touchmove") {
-      currentY = e.touches[0].clientY - initialY;
-    } else {
-      currentY = e.clientY - initialY;
-    }
+
+    currentY = getClientY(e) - startY;
     yOffset = currentY;
 
-    if(active) {
+    if (!isDragging && Math.abs(yOffset) > 10) {
+      isDragging = true;
+    }
+
+    if (isDragging) {
       setTranslate(currentY, dragItem);
     }
-    if(!active && Math.abs(yOffset) > 10) {
-      active = true;
-    }
-  }
+  };
 
-  function setTranslate(yPos, el) {
-    el.style.transform = "translate3d(0px, " + yPos + "px, 0)";
-  }
+  // Helper functions
+  const getClientY = (e) => {
+    return e.touches ? e.touches[0].clientY : e.clientY;
+  };
+
+  const setTranslate = (yPos, element) => {
+    element.style.transform = `translate3d(0px, ${yPos}px, 0)`;
+  };
+
+  // Add event listeners
+  container.addEventListener('touchstart', handleDragStart, { passive: false });
+  container.addEventListener('touchend', handleDragEnd, { passive: false });
+  container.addEventListener('touchmove', handleDrag, { passive: false });
 }
 makeUserNameDraggable();
 
@@ -2071,64 +2517,77 @@ function onPlayerReady(event) {
   window.player.cuePlaylist(ids);
   window.player.loop = false;
 }
+
 function onPlayerStateChange(event){
-  $('#playlistnumber').text((window.player.getPlaylistIndex()+1).toString()+'/'+window.player.getPlaylist().length.toString());
+  const playlistnum = document.getElementById('playlistnumber');
+  if (playlistnum && window.player && window.player.getPlaylist) {
+    playlistnum.textContent = (window.player.getPlaylistIndex() + 1) + '/' + window.player.getPlaylist().length;
+  }
+
+  // Find the play button scoped inside the dialog to match your old jQuery logic
+  const playButton = document.querySelector('#dialog #play') || document.getElementById('play');
+  if (!playButton) return;
+
   switch(window.player.getPlayerState()){
-    case 1:  //playing 
-      $('#dialog #play').text('⏸');
+    case 1:  // playing 
+      playButton.textContent = '⏸';
       break;
-    case -1:  //unstarted
-    case 0:   //ended
-    case 2:   //paused
-    case 5:   //queued
-      $('#dialog #play').text('▶');
+    case -1: // unstarted
+    case 0:  // ended
+    case 2:  // paused
+    case 5:  // queued
+      playButton.textContent = '▶';
       break;
-    default:
-      //console.log("Can't help ya...",window.player.getPlayerState());
   }
 }
+
 function toggleLoop(){
+  const loopEl = document.getElementById('loop');
   switch(window.player.loop) {
     case true: 
       window.player.loop = false;
-      $('#loop').removeClass('looping');
+      if (loopEl) loopEl.classList.remove('looping');
       break;
     case false: 
       window.player.loop = true;
-      $('#loop').addClass('looping');
+      if (loopEl) loopEl.classList.add('looping');
       break;
   }
   window.player.setLoop(window.player.loop);
-
 }
+
 function pauseVideo() {
   try {
     window.player.pauseVideo();
-  } 
-  catch(error) {
+  } catch(error) {
     console.log(error);
   }
 }
+
 function playVideo() {
-  window.player.playVideo();
-}
-function toggleVideo() {
-  switch(window.player.getPlayerState()){
-    case 1:  //playing 
-      pauseVideo();
-      break;
-    case -1:  //unstarted
-    case 0:   //ended
-    case 2:   //paused
-    case 5:   //queued
-      playVideo();
-      break;
-    default:
-      console.log("Can't help ya...",window.player.getPlayerState());
+  try {
+    window.player.playVideo();
+  } catch(error) {
+    console.log(error);
   }
 }
-//Keep the video playing even when it goes into the background.  -- I don't think this is doing anything.
-var hidden, visibilityChange; 
+
+function toggleVideo() {
+  switch(window.player.getPlayerState()){
+    case 1:  // playing 
+      pauseVideo();
+      break;
+    case -1: // unstarted
+    case 0:  // ended
+    case 2:  // paused
+    case 5:  // queued
+      playVideo();
+      break;
+  }
+}
+
+// Keep the video playing even when it goes into the background
+let hidden, visibilityChange; 
 if (typeof document.hidden !== "undefined") {  
   hidden = "hidden";
   visibilityChange = "visibilitychange";
@@ -2141,15 +2600,29 @@ if (typeof document.hidden !== "undefined") {
 }
 
 function handleVisibilityChange() {
-  if (document[hidden] && $('#dialog')[0].style.display != 'none') {
-    window.player.play();
+  const dialog = document.getElementById('dialog');
+  
+  // If the dialog element is missing or hidden, do absolutely nothing
+  if (!dialog || dialog.style.display === 'none') {
+    return;
+  }
+
+  // If the tab becomes hidden and the player exists, keep playing the video
+  if (document[hidden]) {
+    try {
+      if (window.player && typeof window.player.playVideo === 'function') {
+        window.player.playVideo();
+      }
+    } catch (error) {
+      console.error('Error maintaining background playback:', error);
+    }
   }
 }
 
-if (typeof document.addEventListener === "undefined" || hidden === undefined) {
-  console.log("Your browser doesn't support playing music in background");
-} else {
+if (typeof document.addEventListener !== "undefined" && visibilityChange) {
   document.addEventListener(visibilityChange, handleVisibilityChange, false);
+} else {
+  console.log("Your browser doesn't support playing music in background");
 }
 
 /* crc32.js (C) 2014-present SheetJS -- http://sheetjs.com */
@@ -2251,93 +2724,125 @@ function download(data, filename, type) {
   }
 }
 
-//TOOLTIP CODE
-$(function() {
-  var targets = $( '[rel~=tooltip]' ), 
-    target  = false,
-    tooltip = false,
-    title   = false;
+class Tooltip {
+  constructor() {
+    this.tooltip = null;
+    this.currentTarget = null;
+    this.init();
+  }
 
-  targets.bind( 'mouseenter', function() {
-    target  = $( this );
-    tip     = target.attr( 'title' );
-    tooltip = $( '<div id="tooltip"></div>' );
+  init() {
+    // Add event listeners to all elements with rel="tooltip"
+    document.querySelectorAll('[rel="tooltip"]').forEach(el => {
+      el.addEventListener('mouseenter', this.showTooltip.bind(this));
+      el.addEventListener('mouseleave', this.hideTooltip.bind(this));
+      el.addEventListener('click', this.hideTooltip.bind(this));
+    });
+  }
 
-    if( !tip || tip == '' ) {
-      return false;
+  showTooltip(e) {
+    const target = e.currentTarget;
+    const tip = target.getAttribute('title');
+    
+    if (!tip) return;
+
+    // Remove title to prevent native tooltip
+    target.removeAttribute('title');
+    
+    // Create tooltip element
+    this.tooltip = document.createElement('div');
+    this.tooltip.id = 'tooltip';
+    this.tooltip.textContent = tip;
+    document.body.appendChild(this.tooltip);
+
+    // Position tooltip
+    this.positionTooltip(target);
+    this.currentTarget = target;
+
+    // Add window resize listener
+    window.addEventListener('resize', this.handleResize.bind(this));
+  }
+
+  positionTooltip(target) {
+    const rect = target.getBoundingClientRect();
+    let posLeft = rect.left + (target.offsetWidth / 2) - (this.tooltip.offsetWidth / 2);
+    let posTop = rect.top - this.tooltip.offsetHeight - 20;
+
+    // Handle left edge
+    if (posLeft < 0) {
+      posLeft = rect.left + (target.offsetWidth / 2) - 20;
+      this.tooltip.classList.add('left');
+    } else {
+      this.tooltip.classList.remove('left');
     }
 
-    target.removeAttr( 'title' );
-    tooltip.css( 'opacity', 0 )
-           .html( tip )
-           .appendTo( 'body' );
+    // Handle right edge
+    if (posLeft + this.tooltip.offsetWidth > window.innerWidth) {
+      posLeft = rect.left - this.tooltip.offsetWidth + (target.offsetWidth / 2) + 20;
+      this.tooltip.classList.add('right');
+    } else {
+      this.tooltip.classList.remove('right');
+    }
 
-    function init_tooltip() {
-      if( $( window ).width() < tooltip.outerWidth() * 1.5 ) {
-        tooltip.css( 'max-width', $( window ).width() / 2 );
-      }
-      else {
-        tooltip.css( 'max-width', 340 );
-      }
+    // Handle top edge
+    if (posTop < 0) {
+      posTop = rect.top + target.offsetHeight;
+      this.tooltip.classList.add('top');
+    } else {
+      this.tooltip.classList.remove('top');
+    }
 
-      var pos_left = target.offset().left + ( target.outerWidth() / 2 ) - ( tooltip.outerWidth() / 2 );
-      var pos_top  = target.offset().top - tooltip.outerHeight() - 20;
+    // Apply styles
+    this.tooltip.style.left = `${posLeft}px`;
+    this.tooltip.style.top = `${posTop}px`;
+    this.tooltip.style.opacity = '1';
+  }
 
-      if( pos_left < 0 )
-      {
-        pos_left = target.offset().left + target.outerWidth() / 2 - 20;
-        tooltip.addClass( 'left' );
-      }
-      else {
-        tooltip.removeClass( 'left' );
-      }
+  handleResize() {
+    if (this.tooltip && this.currentTarget) {
+      this.positionTooltip(this.currentTarget);
+    }
+  }
 
-      if( pos_left + tooltip.outerWidth() > $( window ).width() ) {
-        pos_left = target.offset().left - tooltip.outerWidth() + target.outerWidth() / 2 + 20;
-        tooltip.addClass( 'right' );
-      }
-      else {
-        tooltip.removeClass( 'right' );
-      }
-
-      if( pos_top < 0 ) {
-        var pos_top  = target.offset().top + target.outerHeight();
-        tooltip.addClass( 'top' );
-      }
-      else {
-        tooltip.removeClass( 'top' );
+  hideTooltip() {
+    if (this.tooltip) {
+      // Restore title attribute
+      if (this.currentTarget) {
+        const tip = this.tooltip.textContent;
+        this.currentTarget.setAttribute('title', tip);
       }
 
-      tooltip.css( { left: pos_left, top: pos_top } ).animate( { top: '+=10', opacity: 1 }, 50 );
-    };
+      // Remove tooltip
+      this.tooltip.remove();
+      this.tooltip = null;
+      this.currentTarget = null;
 
-    init_tooltip();
-    $( window ).resize( init_tooltip );
+      // Remove resize listener
+      window.removeEventListener('resize', this.handleResize);
+    }
+  }
+}
 
-    function remove_tooltip() {
-      tooltip.animate( { top: '-=10', opacity: 0 }, 50, function() {
-        $( this ).remove();
-      });
-
-      target.attr( 'title', tip );
-    };
-
-    target.bind( 'mouseleave', remove_tooltip );
-    tooltip.bind( 'click', remove_tooltip );
-  });
+// Initialize tooltips when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  new Tooltip();
 });
 
 function scrollIntoViewIfNeed(el, partiallyVisible = true, behavior = "smooth") {
-  const rect = el.getBoundingClientRect();
-  const isVisible = partiallyVisible
-    ? rect.top < window.innerHeight && rect.bottom >= 0 // Partially visible
-    : rect.top >= 0 && rect.bottom <= window.innerHeight; // Completely visible
+  try {
+    const rect = el.getBoundingClientRect();
+    const isVisible = partiallyVisible
+      ? rect.top < window.innerHeight && rect.bottom >= 0 // Partially visible
+      : rect.top >= 0 && rect.bottom <= window.innerHeight; // Completely visible
 
-  if (!isVisible) {
-    el.scrollIntoView({
-      behavior: behavior,
-      block: "center",
-    });
+    if (!isVisible) {
+      el.scrollIntoView({
+        behavior: behavior,
+        block: "center",
+      });
+    }
+  } catch (err) {
+    console.error('Error scrolling into view if needed:', err);
   }
 }
 
@@ -2367,4 +2872,55 @@ function requestAccess() {
   let db_name = selectEl.options[ selectEl.selectedIndex ].text;
   let emailLink = `mailto:${'info.ycanta'}@${'gmail.com'}?subject=Requesting yCanta access${(db_name ? ' to '+ db_name : '')}&body=My name is: %0D%0A%0D%0AI'd like access to: ${db_name}`;
   window.open(emailLink,'_blank');
+}
+
+// Vanilla JS slideToggle helper
+function slideToggle(element, duration = 400) {
+  if (window.getComputedStyle(element).display === 'none') {
+    return slideDown(element, duration);
+  } else {
+    return slideUp(element, duration);
+  }
+}
+
+function slideUp(element, duration = 400) {
+  element.style.height = element.offsetHeight + 'px';
+  element.style.transition = `height ${duration}ms ease-out`;
+  element.style.overflow = 'hidden';
+  
+  setTimeout(() => {
+    element.style.height = '0';
+  }, 10);
+  
+  return new Promise(resolve => {
+    setTimeout(() => {
+      element.style.display = 'none';
+      element.style.height = '';
+      element.style.transition = '';
+      element.style.overflow = ''; // jQuery restored overflow after sliding too
+      resolve();
+    }, duration);
+  });
+}
+
+function slideDown(element, duration = 400) {
+  element.style.display = 'block';
+  element.style.height = ''; // measure the real height, not an inline height: 0
+  const height = element.offsetHeight;
+  element.style.height = '0';
+  element.style.transition = `height ${duration}ms ease-out`;
+  element.style.overflow = 'hidden';
+  
+  setTimeout(() => {
+    element.style.height = height + 'px';
+  }, 10);
+  
+  return new Promise(resolve => {
+    setTimeout(() => {
+      element.style.height = '';
+      element.style.transition = '';
+      element.style.overflow = ''; // jQuery restored overflow after sliding too
+      resolve();
+    }, duration);
+  });
 }

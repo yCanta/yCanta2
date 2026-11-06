@@ -11,18 +11,22 @@ function updateOnlineStatus(event) {
   logData('connection', condition);
 }
 window.addEventListener('load', function() {
-  //Update Online status
+  // Update Online status
   updateOnlineStatus(event);
-  window.addEventListener('online',  updateOnlineStatus);
+  window.addEventListener('online', updateOnlineStatus);
   window.addEventListener('offline', updateOnlineStatus);
   window.currentWakeLock = navigator.wakeLock.request();
 
-  //Login listener
-  document.getElementById('db_select').addEventListener('change', async function(e){
+  // Login listener
+  const dbSelect = document.getElementById('db_select');
+  dbSelect.addEventListener('change', async function(e) {
     const loginElement = document.getElementById('login');
-    const selectedValue = document.getElementById('db_select').value;
+    const selectedValue = e.target.value;
 
-    loginElement.removeAttribute('class'); // Remove all classes
+    // Clear all classes first
+    loginElement.className = '';
+    
+    // Add appropriate class based on selection
     if (selectedValue === 'create_local') {
       loginElement.classList.add('create_local');
     } else if (selectedValue === 'connect_remote') {
@@ -32,32 +36,41 @@ window.addEventListener('load', function() {
     } else if (selectedValue.endsWith('(remote)')) {
       loginElement.classList.add('login_remote');
     }
-    //All Demo login and import code happens here.
-    if(e.target.value == 'demo(local)') {
-      let databases = JSON.parse(localStorage.getItem('databases'));
-      if(databases && databases[e.target.value]) {
-        dbLogin('login_local', 'demo(local)','Johannes Gutenberg', 42);
-        notyf.info('<b>Login Info</b><br>Username: Johannes Gutenberg<br> Pin: 42', 'green');
-      }
-      else {
-        dbLogin('create_local', 'demo(local)','Johannes Gutenberg', 42);
-        notyf.info('<b>Login Info</b><br>Username: Johannes Gutenberg<br> Pin: 42', 'green');
-        //add import process to happen as soon as possible afterwards.
+
+    // Demo login handling
+    if (e.target.value === 'demo(local)') {
+      const databases = JSON.parse(localStorage.getItem('databases'));
+      const username = 'Johannes Gutenberg';
+      const pin = '42';
+      
+      notyf.info('<b>Login Info</b><br>Username: Johannes Gutenberg<br> Pin: 42', 'green');
+
+      if (databases && databases[e.target.value]) {
+        dbLogin('login_local', 'demo(local)', username, pin);
+      } else {
+        dbLogin('create_local', 'demo(local)', username, pin);
+
+        // Import the Public Domain songs only when the demo DB is first created
         try {
           const response = await fetch('https://ycanta.canaanf.org/Public Domain.json');
           const blob = await response.blob();
           const file = new File([blob], 'Public Domain.json', { type: 'TEXT/JSON' });
-          setTimeout(function(){
+
+          setTimeout(() => {
             handleFile(file);
             notyf.info('Imported Public Domain songs', 'green');
-          },500);
+          }, 500);
         } catch (error) {
           console.error('Error fetching file:', error);
         }
       }
     }
   });
-  setTimeout(function(){document.getElementById('db_select').dispatchEvent(new Event('change'));},50);
+
+  // Trigger initial change event
+  setTimeout(() => {
+    dbSelect.dispatchEvent(new Event('change'));
+  }, 50);
 });
 async function checkRemoteDBandSyncHandler(){
   if(!db) {
@@ -127,127 +140,181 @@ function dbChanges() {
     live: true,
     include_docs: true
   }).on('change', function (change) {
-    // received a change
+    // Handle deleted documents
+    // A deleted doc only has _id and _rev, so take it out of the lists instead of updating them
     if (change.deleted) {
-      // document was deleted
-      console.log('deleted: ' + change.doc._id);
-    } else {
-      // document was added/modified
+      const id = change.doc._id;
+      console.log('deleted: ' + id);
+      if (id.startsWith('s-')) {
+        loadRecentSongs();
+        window.songbook_list?.remove('song-id', id);
+        window.songbook_edit_togglesongs_list?.remove('song-id', id);
+      } else if (id.startsWith('sb-')) {
+        window.songbooks_list?.remove('songbook-id', id);
+      } else if (id.startsWith('cfg-') && id.includes(window.user._id)) {
+        notyf.info('Config deleted', 'var(--export-color)');
+      }
+      return;
     }
-    //what type?
-    //song?
-    if(change.doc._id.startsWith('s-')){
-      loadRecentSongs();  
-      //only load song if it's the one that's up.
-      if(window.song._id === change.doc._id && document.body.classList.contains('song')){ //if we're viewing this song.
+
+    // Song changes
+    if (change.doc._id.startsWith('s-')) {
+      loadRecentSongs();
+      
+      // If currently viewing this song
+      const isCurrentSong = window.song?._id === change.doc._id && 
+                          document.body.classList.contains('song');
+      
+      if (isCurrentSong) {
         delete window.song;
-        Promise.all([loadSong(change.doc._id)]) //little bit of a hack - had an issue where the url update reloads the songbook and song, then this triggers causing the edit buttons to not work... 
-          .then(function(values) {
+        Promise.all([loadSong(change.doc._id)])
+          .then(() => {
             updateAllLinks();
-          });         
+            highlightText();
+          });
         notyf.info('Song updated', 'var(--song-color)');
       } else {
-        notyf.info(`Song "${change.doc.title}" updated by ${window.users[change.doc.editedBy]}`,
-                 'var(--song-color)',
-                 `#${window.songbook._id}&${change.doc._id}`);
+        notyf.info(
+          `Song "${escapeHtml(change.doc.title)}" updated by ${escapeHtml(window.users[change.doc.editedBy])}`,
+          'var(--song-color)',
+          `#${window.songbook._id}&${change.doc._id}`
+        );
       }
-      //update all songs in songbooks
-      if(window.songbook_list != undefined ){
-        window.songbook_list.get('song-id',change.doc._id)
-          .forEach(function(song){
-            let new_change = mapSongRowToValue(change);
-            new_change['song-status'] = song.values()['song-status'];
-            song.values(new_change);
+
+      // Update song lists
+      const songData = mapSongRowToValue(change);
+      
+      // Update songbook list if exists
+      if (window.songbook_list) {
+        window.songbook_list.get('song-id', change.doc._id)
+          .forEach(song => {
+            const newValues = {...songData, 'song-status': song.values()['song-status']};
+            song.values(newValues);
           });
       }
-      if(window.songbook_edit_togglesongs_list != undefined){
-        window.songbook_edit_togglesongs_list.get('song-id',change.doc._id)
-          .forEach(function(song){song.values(mapSongRowToValue(change))});
+
+      // Update edit toggle songs list if exists
+      if (window.songbook_edit_togglesongs_list) {
+        window.songbook_edit_togglesongs_list.get('song-id', change.doc._id)
+          .forEach(song => song.values(songData));
       }
-      if(window.songbook._id == 'sb-allSongs') {
+
+      // Reload all songs view if needed
+      if (window.songbook?._id === 'sb-allSongs') {
         window.songbook._id = '';
         loadSongbook('sb-allSongs');
       }
-    }
-    //songbook?
-    else if(change.doc._id.startsWith('sb-')){
-      if(window.songbook._id === change.doc._id && (document.body.classList.contains('songList') || document.body.classList.contains('song'))){
+    } 
+    // Songbook changes
+    else if (change.doc._id.startsWith('sb-')) {
+      const isCurrentSongbook = window.songbook?._id === change.doc._id && 
+                              (document.body.classList.contains('songList') || 
+                               document.body.classList.contains('song'));
+
+      if (isCurrentSongbook) {
         window.songbook = '';
         loadSongbook(change.doc._id);
         notyf.info('Songbook updated', 'var(--songList-color)');
       } else {
-        notyf.info(`Songbook "${change.doc.title}" updated by ${window.users[change.doc.editedBy]}`,
-                 'var(--songList-color)',
-                 `#${change.doc._id}`);
+        notyf.info(
+          `Songbook "${escapeHtml(change.doc.title)}" updated by ${escapeHtml(window.users[change.doc.editedBy])}`,
+          'var(--songList-color)',
+          `#${change.doc._id}`
+        );
       }
-      //update the songbook entry in songbooks_list
-      if(window.songbooks_list != undefined){
-        window.songbooks_list.get('songbook-id',change.doc._id)
-          .forEach(function(songbook){songbook.values(mapSongbookRowToValue(change))});
+
+      // Update songbooks list if exists
+      if (window.songbooks_list) {
+        window.songbooks_list.get('songbook-id', change.doc._id)
+          .forEach(songbook => {
+            songbook.values(mapSongbookRowToValue(change));
+          });
         window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
       }
     }
-    else if(change.doc._id.startsWith('c_')){
-      let songbook_id = change.doc._id.match(/sb-.*?_/g)[0].replace('_','');
-      if(window.songbook._id == songbook_id && window.songbook.showComments){
-        let song_id = change.doc._id.match(/s-.*?$/g)[0];
-        $('li[data-song-id="'+song_id+'"] .toggle_comment').attr('data-comment-number', change.doc.comments.length);
-        let comments = '';
-        for(comment of change.doc.comments){
-          comments += `<div><b>${comment.user} </b>${new Date(comment.date).toLocaleTimeString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})}<pre>${comment.comment}</pre></div>`;
+    // Comment changes
+    else if (change.doc._id.startsWith('c_')) {
+      const songbookId = change.doc._id.match(/sb-.*?_/g)?.[0]?.replace('_','');
+      
+      if (songbookId && window.songbook?._id === songbookId && window.songbook.showComments) {
+        const songId = change.doc._id.match(/s-.*?$/g)?.[0];
+        if (songId) {
+          const songElement = document.querySelector(`li[data-song-id="${songId}"]`);
+          if (songElement) {
+            const toggleComment = songElement.querySelector('.toggle_comment');
+            const commentsContainer = songElement.querySelector('.comments');
+            
+            if (toggleComment) {
+              toggleComment.dataset.commentNumber = change.doc.comments.length;
+            }
+            
+            if (commentsContainer) {
+              commentsContainer.innerHTML = change.doc.comments.map(commentHtml).join('');
+            }
+            
+            notyf.info(
+              `Comment added to "${escapeHtml(songId)}" by ${escapeHtml(change.doc.comments.at(-1).user)}`,
+              'var(--songList-color)'
+            );
+          }
         }
-        $('li[data-song-id="'+song_id+'"] .comments').html(comments);
-        notyf.info(`Comment added to "${song_id}" by ${change.doc.comments[change.doc.comments.length - 1].user}`,
-                 'var(--songList-color)');
       }
     }
-    else if(change.doc._id.startsWith('u-')){
-      if(!window.users){window.users={};} //doesn't always exist.
+    // User changes
+    else if (change.doc._id.startsWith('u-')) {
+      if (!window.users) window.users = {};
       window.users[change.doc._id] = change.doc.name;
-      if(change.doc._id === window.user._id){
-        let fav_sbs = change.doc.fav_sbs;
-        //jquery remove all favs
-        $('#songbooks .list li').each(function(){
-          let fav = false;
-          if(fav_sbs.indexOf($(this).attr('data-songbook-id')) > -1) {
-            fav = true;
-          }
-          $(this).attr('data-user-fav', fav);
-        })
-        if(fav_sbs.indexOf(window.songbook._id) > -1) {
-          $('#songbook_header .title').attr('data-user-fav', 'true');
-        }
-        else {
-          $('#songbook_header .title').attr('data-user-fav', 'false'); 
-        }
+
+      if (change.doc._id === window.user._id) {
         window.user = change.doc;
-        if(window.songbook._id == 'sb-favoriteSongs') {
+        updateUser();
+        notyf.info(`User Updated "${change.doc.name}"`, 'var(--edit-color)');
+        
+        // Update favorites display
+        const favSongbooks = change.doc.fav_sbs || [];
+        
+        // Update songbook favorites
+        document.querySelectorAll('#songbooks .list li').forEach(li => {
+          li.dataset.userFav = favSongbooks.includes(li.dataset.songbookId);
+        });
+        
+        // Update current songbook favorite status
+        const songbookHeader = document.querySelector('#songbook_header .title');
+        if (songbookHeader) {
+          songbookHeader.dataset.userFav = favSongbooks.includes(window.songbook?._id);
+        }
+        
+        // Update current song favorite status
+        const currentSong = document.querySelector('#song song');
+        if (currentSong) {
+          currentSong.dataset.userFav = window.user.fav_songs.includes(currentSong.dataset.id);
+        }
+        
+        // Refresh lists if they exist
+        if (window.songbooks_list) {
+          window.songbooks_list.reIndex();
+          window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
+        }
+        
+        if (window.songbook?._id === 'sb-favoriteSongs') {
           window.songbook._id = '';
           loadSongbook('sb-favoriteSongs');
         }
-        updateUser();
-        notyf.info(`User Updated "${change.doc.name}"`, 'var(--edit-color)');
-        window.songbooks_list.reIndex();
-        window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
-        $('#song song').attr('data-user-fav', (window.user.fav_songs.indexOf($('#song song').attr('data-id'))> -1 ? 'true': 'false'))
       }
     }
-    //New default config saved
-    else if(change.doc._id.startsWith('cfg-') && change.doc._id.match(window.user._id)){ //Change to be more specific.
-      if(change.deleted){
-        notyf.info((change.doc.name || 'Default') + ' config deleted','var(--export-color)');
-      }
-      else {
-        notyf.info((change.doc.name || 'Default') + ' config saved','var(--export-color)');
-      }
+    // Config changes
+    else if (change.doc._id.startsWith('cfg-') && change.doc._id.includes(window.user._id)) {
+      notyf.info(
+        (change.doc.name || 'Default') + ' config ' + (change.deleted ? 'deleted' : 'saved'),
+        'var(--export-color)'
+      );
     }
-    //else... let it go! for now
+    // Other changes
     else {
       console.log('changed:', change.doc._id);
     }
   }).on('error', function (err) {
-    // handle errors
-    console.log('Error in db.changes('+err);
+    console.error('Error in db.changes:', err);
   });
 }
 
@@ -263,283 +330,313 @@ async function destroyDb(dbName){
 }
 
 async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false, remote_url=false) {
-  let keep_logged_in = document.getElementById('keep_logged_in').checked + (remote_url != false);
-  dbName = dbName || document.getElementById('db_select').value;
-  if(type=="login"){
-    if(dbName.endsWith('(local)')){type+='_local'}
-    else if(dbName.endsWith('(remote)')){type+='_remote'}
-  }
-  username = username || document.getElementById('username').value.trim();
-  pin = pin || document.getElementById('pin').value.trim();
-  pwd = pwd || document.getElementById('pwd').value.trim();
-
-  if(!remote_url && type == 'connect_remote'){
-    remote_url = $('#remote_url').val();
-  }
-  else if(!remote_url && type == 'login_remote'){
-    remote_url = $('#db_select :selected').attr('data-url');
-  }
-
-  if(type=="create_local"){
-    dbName = (dbName  == 'create_local' ? document.getElementById('newDbName').value.trim() + '(local)' : dbName);
-    console.log('New local DB: '+dbName);
-    //initialize local database;
-    db = new PouchDB(dbName);
+  try {
+    // Get form values
+    const keepLoggedIn = document.getElementById('keep_logged_in').checked;
+    // Use disk storage if "keep me logged in" is checked, or on auto-login
+    // (a remote_url is only stored when the user chose to stay logged in)
+    const usePersistentStorage = keepLoggedIn || remote_url !== false;
+    dbName = dbName || document.getElementById('db_select').value;
     
-    //UPDATE LOCAL STORAGE DATABASES
-    addDBtoLocalStorage(dbName, 'local');
-    window.roles = {'_admin':true,'editor':true};
+    // Determine login type
+    if (type === "login") {
+      type += dbName.endsWith('(local)') ? '_local' : '_remote';
+    }
 
-    takeNextStep(username,dbName);
-  }
-  else if(type=="login_local"){
-    console.log('Logging in locally');
-    db = new PouchDB(dbName);
-    //check if pin matches
-    db.get('_local/u-'+username).then(function(localUser){
-      if(localUser.pin == pin) {
-        console.log('Pin is correct!');
-        window.roles = {'_admin':true,'editor':true};
-        takeNextStep(username,dbName);
+    username = username || document.getElementById('username').value.trim();
+    pin = pin || document.getElementById('pin').value.trim();
+    pwd = pwd || document.getElementById('pwd').value.trim();
+
+    // Get remote URL if needed
+    if (!remote_url) {
+      if (type === 'connect_remote') {
+        remote_url = document.getElementById('remote_url').value;
+      } else if (type === 'login_remote') {
+        const selectedOption = document.getElementById('db_select').selectedOptions[0];
+        remote_url = selectedOption.dataset.url;
       }
-      else { //if not then close the db
-        console.log('Username or pin was incorrect');
-        alert('Username or pin was incorrect');
-        dbLogout();
-      }
-    }).catch(function(err){
-      console.log(err);
-      alert('Username or pin was incorrect');
-      dbLogout();
-    });
-  }
-  else if(type=="connect_remote"){
-    console.log('Connecting to remote db');
-    remote_url = parseUrl(remote_url, username, pwd);
-    try {
-      loginRemoteDb(remote_url, username, pwd);
+    }
 
-      //UPDATE LOCAL STORAGE DATABASES
-      addDBtoLocalStorage(dbName, 'remote', remote_url); //shouldn't we move this into the going on disk block?
-
-      if(!keep_logged_in){
-        console.log('going with memory!')
-        db = new PouchDB(dbName, {adapter: 'memory'});
-      } else {
-        console.log('going with on disk!')
+    // Handle different login types
+    switch(type) {
+      case "create_local":
+        dbName = (dbName === 'create_local' 
+          ? document.getElementById('newDbName').value.trim() + '(local)' 
+          : dbName);
+        
         db = new PouchDB(dbName);
-      }
-      takeNextStep(username,dbName);
-    }
-    catch(error) {
-      dbLogout();
-      if(error.name == 'unauthorized' || error.name == 'forbidden'){
-        alert('Username or Password are incorrect');
-      }
-      else {
-        alert('there was an error, please check your login information');
-        console.log('Log in error:', error);
-      }
-    }
-  }
-  else if(type=="login_remote"){
-    console.log('Logging in to remote db');
-    
-    if(!keep_logged_in){
-      console.log('going with memory!')
-      db = new PouchDB(dbName, {adapter: 'memory'});
-    } else {
-      console.log('going with on disk!')
-      db = new PouchDB(dbName);
-    }
-    try {
-      if(navigator.onLine) {
-        remote_url = parseUrl(remote_url, username, pwd);
-        await loginRemoteDb(remote_url, username, pwd);
-        takeNextStep(username,dbName);
-      }
-      else {
-        console.log('attempting offline login');
-        let localUser = await db.get('_local/u-'+username);
-        console.log(localUser)
-        if(localUser.pwd == pwd) {
-          console.log('offline login successful');
-          window.roles = localUser.roles;
-          notyf.info('Offline login successful', 'green');
-          takeNextStep(username, dbName);
+        addDBtoLocalStorage(dbName, 'local');
+        window.roles = { '_admin': true, 'editor': true };
+        await takeNextStep(username, dbName);
+        break;
+
+      case "login_local":
+        db = new PouchDB(dbName);
+        try {
+          const localUser = await db.get('_local/u-'+username);
+          if (localUser.pin == pin) { // loose compare: old demo DBs stored the number 42
+            window.roles = { '_admin': true, 'editor': true };
+            await takeNextStep(username, dbName);
+          } else {
+            throw new Error('Invalid credentials');
+          }
+        } catch (err) {
+          console.error('Local login error:', err);
+          alert('Username or PIN was incorrect');
+          dbLogout();
+          return false;
         }
-      }
-    } catch (error) {
-      if(error.name == 'unauthorized' || error.name == 'forbidden'){
-        console.log(error)
-        alert('Username or Password are incorrect');
-        dbLogout();
-      }
-      else {
-        console.log('Log in error:', error);
-        dbLogout();
-        alert('you are offline and pwd or username are incorrect');
-      }
+        break;
+
+      case "connect_remote":
+        remote_url = parseUrl(remote_url, username, pwd);
+        try {
+          await loginRemoteDb(remote_url, username, pwd);
+          addDBtoLocalStorage(dbName, 'remote', remote_url);
+          
+          db = new PouchDB(dbName, {
+            adapter: usePersistentStorage ? undefined : 'memory'
+          });
+          await takeNextStep(username, dbName);
+        } catch (error) {
+          console.error('Remote connection error:', error);
+          dbLogout();
+          const message = error.name === 'unauthorized' || error.name === 'forbidden'
+            ? 'Username or password are incorrect'
+            : 'Please check your login information';
+          alert(message);
+          return false;
+        }
+        break;
+
+      case "login_remote":
+        db = new PouchDB(dbName, {
+          adapter: usePersistentStorage ? undefined : 'memory'
+        });
+
+        if (navigator.onLine) {
+          remote_url = parseUrl(remote_url, username, pwd);
+          await loginRemoteDb(remote_url, username, pwd);
+          await takeNextStep(username, dbName);
+        } else {
+          const localUser = await db.get('_local/u-'+username);
+          if (localUser.pwd === pwd) {
+            window.roles = localUser.roles;
+            notyf.info('Offline login successful', 'green');
+            await takeNextStep(username, dbName);
+          } else {
+            throw new Error('Offline login failed');
+          }
+        }
+        break;
+
+      default:
+        throw new Error('Invalid login type');
     }
-  }
-  else {
+
+    // Clear login inputs on success
+    document.querySelectorAll('#login input').forEach(input => {
+      input.value = '';
+    });
+    
+    return true;
+  } catch (error) {
+    console.error('Login error:', error);
     dbLogout();
-    console.log('not sure what you want to login to');
+    
+    if(error.name === 'unauthorized' || error.name === 'forbidden') {
+      alert('Username or Password are incorrect');
+    } else {
+      alert(error.message || 'There was an error during login');
+    }
+    
+    return false;
   }
 
-  async function takeNextStep(username, dbName) {  //after login
-    //initialized
+  async function takeNextStep(username, dbName) {
+    // Initialize window objects
     window.songbook = {};
     window.song = {};
-    let categories = {
+    
+    const categories = {
       _id: 'categories',
       categories: ["Adoration", "Aspiration/Desire", "Assurance", "Atonement", "Awe", "Bereavement", "Brokenness", "Calvary", "Christ as Bridegroom", "Christ as King", "Christ as Lamb", "Christ as Redeemer", "Christ as Savior", "Christ as Shepherd", "Christ as Son", "Christ's Blood", "Christ's Return", "Church as Christ's Body", "Church as Christ's Bride", "Church as God's House", "Cleansing", "Comfort", "Commitment", "Compassion", "Condemnation", "Consecration", "Conviction of Sin", "Courage", "Creation", "The Cross", "Dedication/Devotion", "Dependence on God", "Encouragement", "Endurance", "Eternal Life", "Evangelism", "Faith", "Faithfulness", "Fear", "Fear of God", "Fellowship", "Forgiveness", "Freedom", "God as Creator", "God as Father", "God as Friend", "God as Refuge", "God's Creation", "God's Faithfulness", "God's Glory", "God's Goodness", "God's Guidance", "God's Harvest", "God's Holiness", "God's Love", "God's Mercy", "God's Power", "God's Presence", "God's Strength", "God's Sufficiency", "God's Timelessness", "God's Victory", "God's Wisdom", "God's Word", "Godly Family", "Grace", "Gratefulness", "Healing", "Heaven", "Holiness", "Holy Spirit", "Hope", "Humility", "Hunger/Thirst for God", "Incarnation", "Invitation", "Jesus as Messiah", "Joy", "Kingdom of God", "Knowing Jesus", "Lordship of Christ", "Love for God", "Love for Jesus", "Love for Others", "Majesty", "Meditation", "Mercy", "Missions", "Mortality", "Neediness", "New Birth", "Obedience", "Oneness in Christ", "Overcoming Sin", "Patience", "Peace", "Persecution", "Praise", "Prayer", "Proclamation", "Provision", "Purity", "Purpose", "Quietness", "Redemption", "Refreshing", "Repentance", "Rest", "Resurrection", "Revival", "Righteousness", "Salvation", "Sanctification", "Security", "Seeking God", "Service", "Servanthood", "Sorrow", "Spiritual Warfare", "Submission to God", "Suffering for Christ", "Surrender", "Temptation", "Trials", "Trust", "Victorious Living", "Waiting on God", "Worship", "-----", "Christmas", "Easter", "Good Friday", "Thanksgiving", "-----", "Baptism", "Birth", "Closing Worship", "Communion", "Death", "Engagement", "Opening Worship", "Table Songs", "Wedding", "-----", "Children's Songs", "Rounds", "Scripture Reading", "Scripture Songs", "-----", "Needs Work", "Needs Chord Work", "Needs Categorical Work", "Duplicate", "-----", "Norway", "Secular", "Delete", "Spanish words", "Celebration", "Add category", "Palm Sunday", "God's Holiness"]
-    }
-    let info;
-    //setup user
-    let user = {
+    };
+
+    // Setup user document
+    const user = {
       _id: 'u-'+username,
       name: username,
       fav_sbs: [],
       fav_songs: []
-    }
-    if(remoteDb) {
-      await remoteDb.putIfNotExists(user)
-      await remoteDb.putIfNotExists(categories);
-      user = await remoteDb.get('u-'+username);
-      info = await remoteDb.info();
-    }
-    else {
-      await db.putIfNotExists(user)
-      await db.putIfNotExists(categories);
-      user = await db.get('u-'+username);
-    }
-    window.user = user;
-    
-    //User Preferences
-    let userId = window.user._id;
-    let fontSize = localStorage.getItem(userId+'fontSize') || 16;
-    let darkMode = localStorage.getItem(userId+'darkMode') || 'auto';
-    let analytics = localStorage.getItem(userId+'analytics');
-    //check dark mode and set for app
-    document.getElementById(darkMode+'Radio').checked = true;
-    handleDarkMode();
-    //set font size;
-    document.documentElement.style.fontSize = fontSize+'px';
-    document.getElementById('fontSize').value = fontSize;
-    document.getElementById('fontSizeOutput').value = fontSize + 'px';
-    //set analytics
-    if(analytics == 'false') {
-      document.getElementById('analytics').checked = false;
-    } else {
-      document.getElementById('analytics').checked = true;
-    }
-    document.body.classList.remove('loading');
-
-    //Store logged in status: pin for local, for remote we store pwd.
-    localStorage.setItem('defaultdbName', dbName);
-    let userData = {
-      dbName,
-      username,
-      roles: window.roles,
     };
-    if (dbName.endsWith("(local)")) {
-      userData.pin = pin;
-    } else if (keep_logged_in && dbName.endsWith("(remote)")) {
-      userData.pwd = pwd;
-      userData.remote_url = remote_url;
-    }
-    localStorage.setItem('loggedin',JSON.stringify(userData));
-    //update local user document
-    db.upsert('_local/u-'+username, function(doc){
-      for(key of Object.keys(userData)) {
-        if( key != 'username' && key != 'dbName'){ //don't want to store username and dbName
-          doc[key] = userData[key];
-        }
-      }
-      return doc;
-    }).then(function () {
-      console.log("updated user's data");
-    }).catch(function (err) {
-      console.log(err);
-    });
-    setLoginState();
-    //Setup sync for remote database connections
-    if(navigator.onLine && db.name.endsWith('(remote)')){
-      console.log('doing a onetime sync...');
-      let startTime = new Date();
-      let firstSync = await db.sync(remoteDb).on('change', function (change) {
-        let percentage = parseInt(parseInt(change.change.last_seq.split('-')[0].replace('-',''))/parseInt(info.update_seq.replace('-',''))*100);
 
-        if (!document.documentElement.classList.contains('barLoading')) {
-          document.documentElement.classList.add('barLoading');
-        }
-        if(new Date() - startTime > 4000 && !document.documentElement.classList.contains('circleLoading')) {
-          document.documentElement.classList.add('circleLoading');
-        }
-        if((new Date() - startTime) > 10000) {
-          document.documentElement.classList.remove('circleLoading');
-          startTime = false;
-        }
-        document.documentElement.style.setProperty('--status-text',`"Downloading song files to your device . . . ${percentage}%${(startTime ? ' \\a If this happens every time you log in, try clicking \\"Keep me logged in\\" :)' : '')}"`);
-        document.documentElement.style.setProperty('--animation',`3s loading infinite`);
-      }).catch(function (error) {
-        //alert(error.message || 'error in one time sync');
-        console.log(error);
+    try {
+      // Put user and categories documents
+      if(remoteDb) {
+        await remoteDb.putIfNotExists(user);
+        await remoteDb.putIfNotExists(categories);
+        window.user = await remoteDb.get('u-'+username);
+        window.info = await remoteDb.info();
+      } else {
+        await db.putIfNotExists(user);
+        await db.putIfNotExists(categories);
+        window.user = await db.get('u-'+username);
+      }
+
+      // Set user preferences
+      const userId = window.user._id;
+      const fontSize = localStorage.getItem(userId+'fontSize') || 16;
+      const darkMode = localStorage.getItem(userId+'darkMode') || 'auto';
+      const analytics = localStorage.getItem(userId+'analytics');
+
+      document.getElementById(darkMode+'Radio').checked = true;
+      handleDarkMode();
+      document.documentElement.style.fontSize = fontSize + 'px';
+      document.getElementById('fontSize').value = fontSize;
+      document.getElementById('fontSizeOutput').textContent = fontSize + 'px';
+      document.getElementById('analytics').checked = analytics !== 'false';
+
+      document.body.classList.remove('loading');
+
+      // Store login status
+      localStorage.setItem('defaultdbName', dbName);
+      const userData = {
+        dbName,
+        username,
+        roles: window.roles
+      };
+
+      const pwdInput = document.getElementById('pwd');
+      const keepLoggedIn = document.getElementById('keep_logged_in').checked;
+
+      if (dbName.endsWith("(local)")) {
+        userData.pin = pin; // the input box is empty on auto-login and demo login
+      } else if (keepLoggedIn && dbName.endsWith("(remote)")) {
+        userData.pwd = pwdInput.value;
+        userData.remote_url = remote_url;
+      }
+
+      if(!localStorage.getItem('loggedin')){
+        localStorage.setItem('loggedin', JSON.stringify(userData));
+      }
+
+      // Update local user document
+      await db.upsert('_local/u-'+username, (doc) => {
+        Object.keys(userData).forEach(key => {
+          if(key !== 'username' && key !== 'dbName') {
+            doc[key] = userData[key];
+          }
+        });
+        return doc;
       });
-      document.documentElement.classList.remove('circleLoading');
-      document.documentElement.classList.remove('barLoading');
-      document.documentElement.style.setProperty('--status-text',`""`);
-      document.documentElement.style.setProperty('--animation',`"unset"`);
-      console.log('sync complete');
-      //now set up the live sync
-      setUpSyncHandler();
-      setLoginState();
-    }
-    //Update ui when db changes]s
-    dbChanges();
-    window.dbName = db.name.replace(/\(.+?\)/,''); //this is used for permissions/roles.
-    //wipe login cause we were successfull!
-    $('#login :input').each(function(){$(this).val('')});
 
-//ANalytics - could be nice to move this elsewhere...?
-    //DeviceInfo(deviceID, os, screen dimensions, touch capable, )
-    if(!localStorage.getItem('analyticID')){
-      localStorage.setItem('analyticID',self.crypto.randomUUID()); //random anyonymous id
-      logData('platform', getOS()); 
-      logData('screenSize', getScreenSize());
-      logData('touch', isTouchCapable());
-      logData('darkMode', localStorage.getItem(window.user._id+'darkMode') || 'def');
-      logData('fontSize', localStorage.getItem(window.user._id+'fontSize') || 'def');
-      dysmyssable.info('yCanta has been updated to send information to help improve how it works.  You can toggle this in settings.', 'var(--song-color)', '#');
-    }
-    else {
-      console.log(localStorage.getItem('analyticID'));
-    }
-    logData('username', window.user._id);
-    let condition = navigator.onLine ? "online" : "offline";
-    logData('connection', condition); //Condition?
-    if(window.loadData){
-      logData('loadTime', window.performance.timing.domContentLoadedEventEnd - window.performance.timing.navigationStart);
-      logData('installed', isInstalled());
-      
-      let analytics = localStorage.getItem(window.user._id+'analytics');
-      console.log(analytics);
-      if(analytics != 'false') {
-        fetch('https://ipapi.co/json/')
-          .then(function(response) {
-            return response.json();
-          })
-          .then(function(data) {
-            logData('location', `${data.country_name}, ${data.region}, ${data.city}`);
+      setLoginState();
+
+      // Setup sync for remote databases
+      if(navigator.onLine && db.name.endsWith('(remote)')) {
+        const remoteInfo = await remoteDb.info();
+        const localInfo = await db.info();
+
+        // Number of docs
+        const remoteDocs = remoteInfo.doc_count; 
+        const localDocs = localInfo.doc_count;
+
+        // Calculate the actual "Work" to be done
+        const docsToDownload = remoteDocs - localDocs;
+
+        console.log(`Actual Documents to Sync: ${docsToDownload}`);
+
+        // Logic: Show the bar if we are missing more than 100 actual documents
+        if (docsToDownload > 100) {
+            console.log("This is a big one. Showing progress bar.");
+            // Run your sync with the UI
+        }
+
+
+        console.log('doing a onetime sync...');
+        let startTime = new Date();
+        
+        try {
+          await db.sync(remoteDb).on('change', (change) => {
+            const percentage = parseInt(parseInt(change.change.last_seq.split('-')[0].replace('-',''))/parseInt(window.info.update_seq.replace('-',''))*100);
+            
+            document.documentElement.classList.add('barLoading');
+            
+            if(new Date() - startTime > 4000 && !document.documentElement.classList.contains('circleLoading')) {
+              document.documentElement.classList.add('circleLoading');
+            }
+            
+            if((new Date() - startTime) > 10000) {
+              document.documentElement.classList.remove('circleLoading');
+              startTime = false;
+            }
+            
+            document.documentElement.style.setProperty('--status-text', `"Downloading song files to your device . . . ${percentage}%${(startTime ? ' \\a If this happens every time you log in, try clicking \\"Keep me logged in\\" :)' : '')}"`);
+            document.documentElement.style.setProperty('--animation', `3s loading infinite`);
           });
+        } catch (error) {console.log(error)}
+        console.log('finished');
+
+        document.documentElement.classList.remove('circleLoading', 'barLoading');
+        document.documentElement.style.setProperty('--status-text', '""');
+        document.documentElement.style.setProperty('--animation', '"unset"');
+        
+        console.log('sync complete');
+        await setUpSyncHandler();
+        setLoginState();
       }
-      delete window.loadData;
+
+      // Setup db changes listener
+      dbChanges();
+      window.dbName = db.name.replace(/\(.+?\)/,'');
+
+      // Clear login inputs
+      document.querySelectorAll('#login input').forEach(input => {
+        input.value = '';
+      });
+
+      // Role classes show the edit controls, so set them before analytics can fail
+      document.documentElement.classList.add(...Object.keys(window.roles));
+
+      // Analytics: a failure here must never break login
+      try {
+        if(!localStorage.getItem('analyticID')) {
+          localStorage.setItem('analyticID', crypto.randomUUID());
+          logData('platform', getOS());
+          logData('screenSize', getScreenSize());
+          logData('touch', isTouchCapable());
+          logData('darkMode', localStorage.getItem(window.user._id+'darkMode') || 'def');
+          logData('fontSize', localStorage.getItem(window.user._id+'fontSize') || 'def');
+          notyf.info('yCanta has been updated to send information to help improve how it works. You can toggle this in settings.', 'var(--song-color)', '#');
+        }
+
+        logData('username', window.user._id);
+        logData('connection', navigator.onLine ? "online" : "offline");
+
+        if(window.loadData) {
+          logData('loadTime', performance.timing.domContentLoadedEventEnd - performance.timing.navigationStart);
+          logData('installed', isInstalled());
+
+          if(localStorage.getItem(window.user._id+'analytics') !== 'false') {
+            // Not awaited, so login doesn't wait on a third-party lookup
+            fetch('https://ipapi.co/json/')
+              .then(response => response.json())
+              .then(data => logData('location', `${data.country_name}, ${data.region}, ${data.city}`))
+              .catch(error => console.error('Error fetching location:', error));
+          }
+          delete window.loadData;
+        }
+      } catch (error) {
+        console.error('Analytics error during login:', error);
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error in takeNextStep:', error);
+      return false;
     }
-    document.documentElement.classList.add(...Object.keys(window.roles));
-    return true;
   }
-  return false;
 }
 function setUpSyncHandler() {
   try {
@@ -609,39 +706,64 @@ function loadUsersObject() {
   });
 }
 
-function loadRecentSongs(days=1000, number=15){
+function loadRecentSongs(days = 1000, number = 15) {
   db.changes({
     include_docs: true,
     startkey: 's-',
     endkey: 's-\ufff0',
     since: 0,
-    filter: function (doc) {
-      return (doc.edited > (new Date().getTime() - days*24*60*60*1000))*!doc._id.includes('sb');
+    filter: function(doc) {
+      return (doc.edited > (new Date().getTime() - days * 24 * 60 * 60 * 1000)) * !doc._id.includes('sb');
     }
-  }).then(function(result){
-    result.results.sort(function(a, b){
-      if(a.doc){
-        if(a.doc.edited > b.doc.edited) { return -1; }
-        if(a.doc.edited < b.doc.edited) { return 1; }
-        return 0;
-      }
-      else {
-        return 0;
-      }
+  }).then(function(result) {
+    // Sort by edit date (newest first)
+    result.results.sort((a, b) => {
+      if (!a.doc || !b.doc) return 0;
+      return b.doc.edited - a.doc.edited;
     });
-    let songs = result.results.slice(0, number);
-    let ul_list = '', date_hour, old_date_hour;
-    for(rec_song of songs) {
-      old_date_hour = date_hour;
-      date_hour = new Date(rec_song.doc.edited).toLocaleTimeString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit'});
-      if(date_hour != old_date_hour){
-        ul_list += `<div style="margin-top: 1rem; font-weight: bold;">${date_hour}</div>`
+
+    // Get top N songs
+    const recentSongs = result.results.slice(0, number);
+    const listElement = document.querySelector('.updatedSongs .list');
+    
+    // Clear existing content
+    listElement.innerHTML = '';
+
+    // Build HTML for each song
+    let lastDateHour = '';
+    recentSongs.forEach(song => {
+      if (!song.doc) return;
+      
+      const date = new Date(song.doc.edited);
+      const dateHour = date.toLocaleTimeString(undefined, { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric', 
+        hour: '2-digit'
+      });
+
+      // Add date header if changed
+      if (dateHour !== lastDateHour) {
+        const dateHeader = document.createElement('div');
+        dateHeader.style.marginTop = '1rem';
+        dateHeader.style.fontWeight = 'bold';
+        dateHeader.textContent = dateHour;
+        listElement.appendChild(dateHeader);
+        lastDateHour = dateHour;
       }
-      ul_list += `<li><a class="link" href="#sb-allSongs&${rec_song.doc._id}">${rec_song.doc.title}</a></li>`
-    }
-    $('.updatedSongs .list').html(ul_list);
-  }).catch(function(err){
-    console.log(err);
+
+      // Create song list item
+      const listItem = document.createElement('li');
+      const link = document.createElement('a');
+      link.className = 'link';
+      link.href = `#sb-allSongs&${song.doc._id}`;
+      link.textContent = song.doc.title;
+      
+      listItem.appendChild(link);
+      listElement.appendChild(listItem);
+    });
+  }).catch(function(err) {
+    console.error('Error loading recent songs:', err);
   });
 }
 
@@ -914,19 +1036,19 @@ async function changeUserPassword(username) {
 }
 
 async function deleteUser(username) {
-    const response = confirm(`Are you sure you want to remove ${username}?`);
-    if (!response) return; 
+  const response = confirm(`Are you sure you want to remove ${username}?`);
+  if (!response) return; 
 
-    try {
-        const userJS = await remoteDb.getUser(username);
-        const roles = userJS.roles.filter(e => !e.includes(window.dbName)); // Create a new array
+  try {
+      const userJS = await remoteDb.getUser(username);
+      const roles = userJS.roles.filter(e => !e.includes(window.dbName)); // Create a new array
 
-        await remoteDb.putUser(username, { roles });
-        loadAllUsers();
-        notyf.info(`Removed user: ${username}`, 'red');
-    } catch (err) {
-        handleError(err);
-    }
+      await remoteDb.putUser(username, { roles });
+      loadAllUsers();
+      notyf.info(`Removed user: ${username}`, 'red');
+  } catch (err) {
+      handleError(err);
+  }
 }
 
 function handleError(err){
@@ -944,302 +1066,367 @@ function handleError(err){
   }
 }
 
-function saveSong(song_id, song_html=$('#song song'), change_url=true) {
-  return new Promise(function(resolve, reject) {
-    var new_song = false;
-    function loadSongContent(song) {
-      if(song._rev != undefined) {
-        song._rev       = song_html.attr('data-rev'); //need a _rev if updating a document
-      }
-      var stitle = song_html.find('stitle').text().trim();
-      if (stitle == "" || stitle == undefined){
-        stitle = "New Song";
-      }
-      let regex = /(https?:\/\/)?(?:www\.)?(youtu(?:\.be\/([-\w]+)|be\.com\/watch\?v=([-\w]+)))\w/g;
-      song.title        = stitle;
-      song.authors      = song_html.find('authors').text().replace(/\|/g,',').split(',').map(Function.prototype.call, String.prototype.trim);
-      song.scripture_ref= song_html.find('scripture_ref').text().split(',').map(Function.prototype.call, String.prototype.trim);
-      song.introduction = song_html.find('introduction').text();
-      song.key          = song_html.find('key').text();
-      song.categories   = song_html.find('categories').text().split(',').map(Function.prototype.call, String.prototype.trim);
-      song.cclis        = song_html.find('cclis').text();
-      song.yt           = (regex.test(song_html.find('line').text()) ? song_html.find('line').text().match(regex).length : '');
-      song.chords       = (song_html.find('c').length > 0 ? 'chords' : '');
+function saveSong(song_id, songElement = document.querySelector('#song song'), change_url = true) {
 
-      if(song.cclis & isNaN(song.cclis)){
-        song.cclis = 'on';
+  return new Promise(async (resolve, reject) => {
+    let new_song = false;
+    
+    async function loadSongContent(song) {
+      if (song._rev !== undefined) {
+        song._rev = songElement.dataset.rev;
       }
-      //Compile Song Content, a list of lists.  Chunks and lines
-      var chunks = [];
-      song_html.find('chunk').each(function(){
-        var lines = [];
-        $(this).children().each(function(){ //add line contents
-          if($(this).html().trim().length != 0) {
-            lines.push($(this).html().replace(/\n/g, ""));
-          }
-        });
-        chunks.push([{'type': $(this).attr('type').toLowerCase()}, lines]);
+
+      // Missing tags (e.g. empty tags stripped on V1 import) read as ''
+      const fieldText = selector => songElement.querySelector(selector)?.textContent ?? '';
+      // The editor flattens <author>, <scrip_ref> and <cat> into comma text, so split the parent text
+      const fieldList = (selector, separators = /,/) => fieldText(selector).split(separators).map(item => item.trim());
+
+      const stitle = fieldText('stitle').trim();
+      song.title = stitle || "New Song";
+      song.authors = fieldList('authors', /[,|]/);
+      song.scripture_ref = fieldList('scripture_ref');
+      song.introduction = fieldText('introduction');
+      song.key = fieldText('key');
+      song.categories = fieldList('categories').sort();
+
+      const cclis = fieldText('cclis');
+      song.cclis = (cclis && !isNaN(cclis)) ? cclis : (cclis ? 'on' : false);
+
+      // Check for YouTube links
+      const regex = /(https?:\/\/)?(?:www\.)?(youtu(?:\.be\/([-\w]+)|be\.com\/watch\?v=([-\w]+)))\w/g;
+      const lineText = Array.from(songElement.querySelectorAll('line')).map(line => line.textContent).join('\n');
+      song.yt = (regex.test(lineText) ? lineText.match(regex).length : '');
+
+      song.chords = (songElement.querySelectorAll('c').length > 0 ? 'chords' : '');
+      song.copyright = fieldText('copyright').replace(/\([cC]\)/, '©');
+
+      // Compile song content
+      song.content = Array.from(songElement.querySelectorAll('chunk')).map(chunk => {
+        return [
+          { type: (chunk.getAttribute('type') || 'verse').toLowerCase() },
+          Array.from(chunk.querySelectorAll('line'))
+            .filter(line => line.innerHTML.trim().length != 0)
+            .map(line => line.innerHTML.replace(/\n/g, ""))
+        ];
       });
-      song.content      = chunks;
-      song.copyright    = song_html.find('copyright').text().replace(/\([cC]\)/,'©');
 
-  //Put together Search field.
-      let punctuation = /[^a-zA-Z0-9\s:-]/g;
-      let duplicateWhitespace = /\s{2,}/g;
-      let returnCharacters = /[\n\r]/g;
-
-      function formatArray(array, letter){
-        return (array != '' ? array.join(' '+letter+':') : '!'+letter).replace(duplicateWhitespace, ' ');
+      // Build search field
+      const punctuation = /[^a-zA-Z0-9\s:-]/g;
+      const duplicateWhitespace = /\s{2,}/g;
+      
+      function formatArray(array, letter) {
+        return (array.length ? array.join(` ${letter}:`) : `!${letter}`).replace(duplicateWhitespace, ' ');
       }
-      function formatText(text, letter){
-        return (text != '' ? text : '!'+letter).replace(duplicateWhitespace, ' ');
+      
+      function formatText(text, letter) {
+        return (text ? text : `!${letter}`).replace(duplicateWhitespace, ' ');
       }
-      function formatNumber(number, letter){
-        return (number != '' ? letter + number : '!'+letter).replace(duplicateWhitespace, ' ');
+      
+      function formatNumber(number, letter) {
+        return (number ? `${letter}${number}` : `!${letter}`).replace(duplicateWhitespace, ' ');
       }
-      function formatSongContent(content){
-        var song_content = '';
-
-        var i, j;
-        for (i = 0; i < content.length; i++) {
-          for (j = 0; j < content[i][1].length; j++ ) {
-            let new_line = escapeRegExp(
-              remove_chords(content[i][1][j])
-              .replace(duplicateWhitespace,' ')
-              .replace(punctuation,'')
-              .replace(returnCharacters, ' ')
-              .trim() + '\n'
+      
+      function formatSongContent(content) {
+        let song_content = '';
+        const seenLines = new Set();
+        
+        content.forEach(chunk => {
+          chunk[1].forEach(line => {
+            const cleanLine = escapeRegExp(
+              remove_chords(line)
+                .replace(duplicateWhitespace, ' ')
+                .replace(punctuation, '')
+                .trim()
             );
-            if(song_content.search(new_line) === -1) {
-              //this content is not in the search, add it!
-              song_content += new_line;
-            }
-          }
-        }
-        return song_content;
-      }
-      song.search =  't:' + song.title + '\0'
-                   + 'a:' + formatArray(song.authors, 'a') + '\0'
-                   + 's:' + formatArray(song.scripture_ref, 's') + '\0'
-                   + 'i:' + formatText(song.introduction, 'i') + '\0'
-                   + 'k:' + formatText(song.key, 'k') + '\0'
-                   + 'c:' + formatArray(song.categories, 'c') + '\0'
-                   + 'cp:' + formatText(song.copyright, 'cp') + '\0'
-                   + 'yt:' + formatNumber(song.yt, 'yt') + '\0'
-                   + 'cclis:' + formatNumber(song.cclis, 'cclis') + '\0'
-                   + 'chords:' + formatText(song.chords, 'chords') + '\0'
-                   + 'addedBy:' + formatText(song.addedBy.slice(2), 'addedBy') + '\0'
-                   + 'editedBy:' + formatText(song.editedBy.slice(2), 'editedBy') + '\0'
-                   + formatSongContent(song.content) + '\0';
-
-      db.put(song, function callback(err, result) {
-        if (!err) {
-          console.log('saved: ', song.title);
-        }
-      }).then(function(){
-        if(change_url){
-          window.location.hash = '#'+formatSbID(window.songbook._id)+'&'+song._id;
-        }
-        resolve(song._id);
-        console.log(song_id);
-        logData('edited', song_id);
-      }).catch(function (err) {
-        //I think we can get rid of this import hack now that we're not changing song_id
-        if(new_song){
-          song._id += Math.random().toString(36).substring(7).substring(0,2);  
-          console.log(song._id);
-          db.put(song, function callback(err, result){
-            if (!err) {
-              console.log('saved song really quickly! ', song.title);
+            
+            if (!seenLines.has(cleanLine)) {
+              song_content += cleanLine + '\n';
+              seenLines.add(cleanLine);
             }
           });
+        });
+        return song_content;
+      }
+
+      song.search = [
+        `t:${song.title}\0`,
+        `a:${formatArray(song.authors, 'a')}\0`,
+        `s:${formatArray(song.scripture_ref, 's')}\0`,
+        `i:${formatText(song.introduction, 'i')}\0`,
+        `k:${formatText(song.key, 'k')}\0`,
+        `c:${formatArray(song.categories, 'c')}\0`,
+        `cp:${formatText(song.copyright, 'cp')}\0`,
+        `yt:${formatNumber(song.yt, 'yt')}\0`,
+        `cclis:${formatNumber(song.cclis, 'cclis')}\0`,
+        `chords:${formatText(song.chords, 'chords')}\0`,
+        `addedBy:${formatText(song.addedBy?.slice(2) || '', 'addedBy')}\0`,
+        `editedBy:${formatText(song.editedBy?.slice(2) || '', 'editedBy')}\0`,
+        formatSongContent(song.content),
+        '\0'
+      ].join('');
+
+      try {
+        const result = await db.put(song);
+        console.log('saved:', song.title);
+        
+        if (change_url) {
+          window.location.hash = `#${formatSbID(window.songbook._id)}&${song._id}`;
+        }
+        
+        resolve(song._id);
+        logData('edited', song._id);
+      } catch (err) {
+        if (new_song) {
+          song._id += Math.random().toString(36).substring(7, 9);
+          console.log(song._id);
+          await db.put(song);
         }
         console.log(err, song.title);
         resolve(song._id);
-      });
+      }
     }
-    //we've got a new song folks!
-    if(song_id == 's-new-song') {
+
+    // Handle new song case
+    if (song_id === 's-new-song') {
       new_song = true;
-      let time = new Date().getTime();
-      song_id = 's-' + time;
-      let song = {_id: song_id, added: time, addedBy: window.user._id, edited: time, editedBy: window.user._id};
-      loadSongContent(song);
-      addSongToSongbook(song._id);
+      const time = new Date().getTime();
+      song_id = `s-${time}`;
+      const song = {
+        _id: song_id,
+        added: time,
+        addedBy: window.user._id,
+        edited: time,
+        editedBy: window.user._id
+      };
+      try {
+        await loadSongContent(song);
+        addSongToSongbook(song._id);
+      } catch (err) {
+        console.error(err);
+        reject(err);
+      }
+      return;
     }
-    //we've got a non standard songurl, let's clean it up.
-    else if(!song_id.startsWith('s-')){
-      let time = new Date().getTime();
-      song_id = 's-' + song_id;
-      let song = {_id: song_id, added: time, addedBy: window.user._id, edited: time, editedBy: window.user._id};
-      loadSongContent(song);
+
+    // Handle non-standard song ID
+    if (!song_id.startsWith('s-')) {
+      const time = new Date().getTime();
+      song_id = `s-${song_id}`;
+      const song = {
+        _id: song_id,
+        added: time,
+        addedBy: window.user._id,
+        edited: time,
+        editedBy: window.user._id
+      };
+      try {
+        await loadSongContent(song);
+      } catch (err) {
+        console.error(err);
+        reject(err);
+      }
+      return;
     }
-    else {  //existing song hopefully - need to make robust
-      db.get(song_id).then(function(song){
-        song.edited = new Date().getTime();
-        song.editedBy = window.user._id;
-        loadSongContent(song);
-      }).catch(function (err) {
-        console.log(err);
-        resolve(song._id);
-      });  
+
+    // Existing song case
+    try {
+      const song = await db.get(song_id);
+      song.edited = new Date().getTime();
+      song.editedBy = window.user._id;
+      await loadSongContent(song);
+    } catch (err) {
+      console.log(err);
+      resolve(song_id);
     }
-  })
+  });
 }
 
-function loadSong(song_id, song_rev=false) {
+function loadSong(song_id, song_rev = false) {
   // Validate song_id format
-  if (song_id && !song_id.startsWith('s-') && song_id !== 's-new-song') {
+  if (song_id && !song_id.startsWith('s-')) {
     console.error('Invalid song ID format:', song_id);
     return Promise.reject(new Error('Invalid song ID format'));
   }
 
-  return new Promise(function(resolve, reject) {
-    function createSongHtml(song, deleted = false) {
+  return new Promise(async (resolve, reject) => {
+    async function createSongHtml(song, deleted = false) {
       window.song_rev = song._rev;
-      document.querySelectorAll('.current_rev').forEach(element => {
-        element.classList.remove('current_rev'); 
-      });
-      if(!song_rev){
+      document.querySelectorAll('.current_rev').forEach(el => el.classList.remove('current_rev'));
+      
+      if (!song_rev) {
         window.song = song;
         window.song._revs_info = song._revs_info ? song._revs_info.filter(rev => rev.status === 'available') : [];
       }
 
-      let songElClassList = ''
-      if(deleted) {
-        songElClassList += 'deleted' // no way for this to ever activate.
-      }
-      if(song_rev) {
-        songElClassList += ' revision current_rev'
+      // Build song element class list
+      const songElClassList = [];
+      if (deleted) songElClassList.push('deleted');
+      if (song_rev) {
+        songElClassList.push('revision', 'current_rev');
         document.body.classList.add('revision');
-      } 
-
-      if(!song_rev){
-        let editable = canEdit(song);
-        let float_menu = `${(editable ? '<button data-songbook onclick="deleteSong(window.song._id)" class="float-menu-item deleteSong"><span class="float-menu-icon">&#128465;</span>Delete</button>' : '')}
-        <a data-song-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span>Export</a>
-        ${(editable ? '<a data-song-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span>Edit</a>' : '')}
-        <span class="float-menu-item  float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>`;
-        $('#song .float-menu').html(float_menu);
       }
 
-      var song_html = 
-      `<song class="${songElClassList}" data-rev="${song._rev}" rev-info="${(window.users[song.editedBy] || song.editedBy.slice(2))}: ${formatDate(song.edited)}"
-            data-id="${song._id}" data-user-fav="${(window.user.fav_songs.indexOf(song._id) > -1 ? 'true' : 'false')}">
-        <div class="column_header title" id="song_header">
-          <stitle><a data-song class="title_link">${song.title}</a></stitle>
+      // Build float menu if not a revision
+      let floatMenu = '';
+      if (!song_rev) {
+        const editable = canEdit(song);
+        floatMenu = `
+          ${editable ? '<button data-songbook onclick="deleteSong(window.song._id)" class="float-menu-item deleteSong"><span class="float-menu-icon">&#128465;</span>Delete</button>' : ''}
+          <a data-song-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span>Export</a>
+          ${editable ? '<a data-song-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span>Edit</a>' : ''}
+          <span class="float-menu-item float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>
+        `;
+        document.querySelector('#song .float-menu').innerHTML = floatMenu;
+      }
 
-          <span class="buttonsRight">
-            ${song_rev ? `<button onclick="this.closest('song').remove()" class="close-icon">&times;</button>` : 
-            ` <span class="star" onclick="event.stopPropagation(); toggleFavorite($(this).closest('song').attr('data-id'),'fav_songs')"></span>
-              <info onclick="event.stopPropagation(); loadInfo();"></info>
-              <span class="fsButton" onclick="toggleFullscreen(this)"></span>`
-            }
-          </span>
-        </div>
-        <authors><author>${song.authors.join('</author>, <author>')}</author></authors>
-        <scripture_ref><scrip_ref>${song.scripture_ref.join('</scrip_ref>, <scrip_ref>')}</scrip_ref></scripture_ref>
-        ${(!song_rev ? `<span id="keyToggleContainer"><span id="keyToggleFilter">` : '')}<key>${song.key}</key>${(!song_rev ? `<button id="keyToggle" onclick="this.parentElement.parentElement.classList.toggle(\'active\')">↑↓</button></span></span>`:'')}
-        <categories><cat>${song.categories.sort().join('</cat>, <cat>')}</cat></categories>
-        <cclis>${(song.cclis != false ? (!isNaN(song.cclis) ? 'CCLI Song #: '+song.cclis: 'In CCLI') : '')}</cclis>
-        <introduction>${song.introduction}</introduction>`;
+      // Build song HTML
+      let songHtml = `
+        <song class="${songElClassList.join(' ')}" 
+              data-rev="${song._rev}" 
+              rev-info="${window.users[song.editedBy] || song.editedBy.slice(2)}: ${formatDate(song.edited)}"
+              data-id="${song._id}" 
+              data-user-fav="${window.user.fav_songs.includes(song._id) ? 'true' : 'false'}">
+          <div class="column_header title" id="song_header">
+            <stitle><a data-song class="title_link">${song.title}</a></stitle>
+            <span class="buttonsRight">
+              ${song_rev ? `<button onclick="this.closest('song').remove()" class="close-icon">&times;</button>` : `
+                <span class="star" onclick="event.stopPropagation(); toggleFavorite(this.closest('song').dataset.id,'fav_songs')"></span>
+                <info onclick="event.stopPropagation(); loadInfo();"></info>
+                <span class="fsButton" onclick="toggleFullscreen(this)"></span>
+              `}
+            </span>
+          </div>
+          <authors><author>${song.authors.join('</author>, <author>')}</author></authors>
+          <scripture_ref><scrip_ref>${song.scripture_ref.join('</scrip_ref>, <scrip_ref>')}</scrip_ref></scripture_ref>
+          ${!song_rev ? `<span id="keyToggleContainer"><span id="keyToggleFilter">` : ''}<key>${song.key}</key>${!song_rev ? `<button id="keyToggle" onclick="this.parentElement.parentElement.classList.toggle('active')">↑↓</button></span></span>` : ''}
+          <categories><cat>${song.categories.sort().join('</cat>, <cat>')}</cat></categories>
+          <cclis>${(song.cclis ? (!isNaN(song.cclis) ? 'CCLI Song #: '+song.cclis : 'In CCLI') : '')}</cclis>
+          <introduction>${song.introduction}</introduction>
+      `;
 
-      song.content.forEach(function(chunk){
-        song_html += '<chunk type="' + chunk[0].type + '">';
-        chunk[1].forEach(function(line){
-          song_html += '<line>' + line + '</line>';
+      // Add song content chunks
+      song.content.forEach(chunk => {
+        songHtml += `<chunk type="${chunk[0].type.toLowerCase()}">`;
+        chunk[1].forEach(line => {
+          songHtml += `<line>${line}</line>`;
         });
-        song_html += '</chunk>';
+        songHtml += '</chunk>';
       });
-      song_html +=  '<copyright>' + song.copyright + '</copyright>' +
-                  '</song>';
 
-      if((song_rev && document.querySelector(`[data-rev="${song_rev}"]`)) == null){
-        document.querySelector('#song .content').insertAdjacentHTML('beforeend', song_html);
-      }
-      else if(!song_rev) {
-        document.querySelector('#song .content').innerHTML = song_html;
-      }
-      else {
-        document.querySelectorAll('song[data-rev="'+song._rev+'"').forEach(element => {
-          element.classList.add('current_rev');
+      songHtml += `<copyright>${song.copyright}</copyright></song>`;
+
+      // Insert song HTML
+      const songContainer = document.querySelector('#song .content');
+      if (song_rev && !document.querySelector(`[data-rev="${song_rev}"]`)) {
+        songContainer.insertAdjacentHTML('beforeend', songHtml);
+      } else if (!song_rev) {
+        songContainer.innerHTML = songHtml;
+      } else {
+        document.querySelectorAll(`song[data-rev="${song._rev}"]`).forEach(el => {
+          el.classList.add('current_rev');
         });
-        if(document.getElementById('dialog').style.display=="block" && document.getElementById('dialog').getAttribute('data-use')=="info") {loadInfo()}
+        if (document.getElementById('dialog').style.display === "block" && document.getElementById('dialog').dataset.use === "info") {
+          loadInfo();
+        }
         return;
       }
       
-      //add hrefs to comments
-      let regex = /(https?:\/\/)?(?:www\.)?(youtu(?:\.be\/([-\w]+)|be\.com\/watch\?v=([-\w]+)))\w/g;
-      $(`song[data-rev="${song._rev}"] chunk[type="comment"]`).each(function(){
-        $(this).html($(this).html().replace(/(((http|https|ftp):\/\/)*[\w?=&.\/-;#~%-]+\.[\w?=&.\/-;#~%-]+(?![\w\s?&.\/;#~%"=-]*>))/g, '<a href="$1" target="_blank">$1</a> '));
+      const urlRegex = /(((http|https|ftp):\/\/)*[\w?=&.\/-;#~%-]+\.[\w?=&.\/-;#~%-]+(?![\w\s?&.\/;#~%"=-]*>))/g;
+      const commentChunks = document.querySelectorAll(`song[data-rev="${song._rev}"] chunk[type="comment"]`);
+
+      commentChunks.forEach(function(chunk) {
+        chunk.innerHTML = chunk.innerHTML.replace(urlRegex, '<a href="$1" target="_blank">$1</a> ');
       });
-      
-      //set youtube_links
-      ($(`song[data-rev="${song._rev}"] line`).text().match(regex) != null ? window.youtube_links = [...$("song line").text().match(regex)] : window.youtube_links = []);
-      if(window.youtube_links.length > 0 && !song_rev) {
-        $(`#song song[data-rev="${song._rev}"] key`).before('<button class="btn" style="padding: 5px 8px; margin-top: 0; margin-bottom: 0; background-color:var(--highlight-color);" onclick="loadSongPlayer();">▶</button>')
+
+      // Set YouTube links
+      const songEl = document.querySelector(`song[data-rev="${song._rev}"]`);
+      let regex = /(https?:\/\/)?(?:www\.)?(youtu(?:\.be\/([-\w]+)|be\.com\/watch\?v=([-\w]+)))\w/g;
+      const textContent = songEl.textContent;
+      window.youtube_links = textContent.match(regex) || [];
+      if (window.youtube_links.length > 0 && !song_rev) {
+        const keyElement = songEl.querySelector('key');
+        const youtubeButton = document.createElement('button');
+        youtubeButton.className = 'btn';
+        youtubeButton.style.cssText = 'padding: 5px 8px; margin-top: 0; margin-bottom: 0; background-color: var(--highlight-color);';
+        youtubeButton.textContent = '▶';
+        youtubeButton.onclick = loadSongPlayer;
+        keyElement.before(youtubeButton);
       }
-      //Update songplacement
-      setTimeout(function(){ //needed as we don't know when the songbook will get loaded...
-        let songPlacement = window.songbook_list.visibleItems.findIndex(el => el._values['song-id'] == window.song._id) + 1;
-        $('#songbook_content .search + span').attr('data-number-visible',`${songPlacement ? songPlacement+'/' : ''}${window.songbook_list.visibleItems.length}`);
-      },300);
+
+      // Update song placement in songbook
+      if (window.songbook_list) {
+        setTimeout(() => {
+          const songPlacement = [...window.songbook_list.visibleItems].findIndex(
+            el => el._values['song-id'] === window.song._id
+          ) + 1;
+          const placementElement = document.querySelector('#songbook_content .search + span');
+          if (placementElement) {
+            placementElement.dataset.numberVisible = songPlacement ? 
+              `${songPlacement}/${window.songbook_list.visibleItems.length}` : '';
+          }
+        }, 300);
+      }
 
       resolve("song_loaded");
-      $('#song .edit_buttons').remove();
+      document.querySelector('#song .edit_buttons')?.remove();
 
-      if(!song_rev) { $('#keyToggle').transpose(); }
-      if(document.getElementById('dialog').style.display=="block" && document.getElementById('dialog').getAttribute('data-use')=="info") {loadInfo()}
-      highlightText();
+      if (!song_rev) {
+        Transposer(document.querySelector('#keyToggle'));
+      }
+      if (document.getElementById('dialog').style.display === "block" && 
+          document.getElementById('dialog').dataset.use === "info") {
+        loadInfo();
+      }
     }
-    if(song_id === 's-new-song'){
+
+    // Handle new song case
+    if (song_id === 's-new-song') {
       const timestamp = Date.now();
-      const newSong = {
-        _id: `s-new-song`,
-        title: 'New Song',
-        authors: [],
-        scripture_ref: [],
+      const song = {
+        _id: 's-new-song',
+        title: '',
+        authors: [''],
+        scripture_ref: [''],
         introduction: '',
         key: '',
-        categories: [],
-        cclis: '',
-        content: [[{type: 'verse'}, ['']]],
+        categories: [""],
+        cclis: false,
+        content: [[{type: 'verse'}, [""]]],
         copyright: '',
         added: timestamp,
         addedBy: window.user._id,
         edited: timestamp,
-        editedBy: window.user._id,
-        search: '' // Initialize empty search field
+        editedBy: window.user._id
       };
-      createSongHtml(newSong);
-      return; // Exit early after new song creation
+      await createSongHtml(song);
+      return;
     }
-    else {
-      let options = {revs_info: true}
-      if(song_rev){ options.rev = song_rev }
-      db.get(song_id, options).then(function(song){
-        if(song._deleted == true) {
-          if (window.song._revs_info) {
-            window.song._revs_info = window.song._revs_info.filter(rev => rev.rev != song._rev); //remove deleted revision
-          }
-          prevSongRev();
+
+    // Existing song case
+    try {
+      const options = { revs_info: true };
+      if (song_rev) options.rev = song_rev;
+      
+      const song = await db.get(song_id, options);
+      if (song._deleted) {
+        if (window.song?._revs_info) {
+          window.song._revs_info = window.song._revs_info.filter(rev => rev.rev !== song._rev); //remove deleted revision
         }
-        else {
-          createSongHtml(song);
-        }
-      }).catch(function (err) {
-        console.error("Error loading song:", err);
-        if (err.status === 404) {
-          // Song not found - show error message and redirect
-          notyf.error(`Song not found (ID: ${song_id})`, 'red');
-          window.location.hash = '#' + formatSbID(window.songbook._id);
-        } else {
-          // Other errors
-          notyf.error('Error loading song', 'red');
-          reject(err);
-        }
-      });
-    }  
+        prevSongRev();
+      } else {
+        await createSongHtml(song);
+      }
+    } catch (err) {
+      console.error("Error loading song:", err);
+      if (err.status === 404) {
+        // Song not found - show error message and redirect
+        notyf.error(`Song not found (ID: ${song_id})`, 'red');
+        window.location.hash = '#' + formatSbID(window.songbook._id);
+      } else {
+        notyf.error('Error loading song', 'red');
+        reject(err);
+      }
+    }
   });
 }
 async function deleteSong(song_id) {
@@ -1275,298 +1462,341 @@ async function deleteSongbook(songbook_id) {
   }
 }
 
-function saveSongbook(songbook_id, songbook_html=$('#songbook_content'), change_url=true) {
-  if($('#songbook_title').text().trim() == ''){
+function saveSongbook(songbook_id, songbook_html = document.getElementById('songbook_content'), change_url = true) {
+    if(document.getElementById('songbook_title').textContent.trim() === ''){
     alert('Please add a title before you save');
-    return
+    return;
   }
   else{
     window.songbookEditing=false;
   }
   var new_songbook = false;
-  return new Promise(function(resolve, reject) {
-    function loadSongbookContent(songbook) {
-      if(songbook._rev != undefined) {
-        songbook._rev = songbook_html.find('#songbook_title').attr('data-rev'); //need a _rev if updating a document
-      }
-      if (songbook_html.find('#songbook_title').length > 0){
-        songbook.title  = songbook_html.find('#songbook_title').text().trim();
-        (songbook_html.hasClass('showStatus') ? songbook.showStatus = true : songbook.showStatus = false);
-        (songbook_html.hasClass('showComments') ? songbook.showComments = true : songbook.showComments = false);
-      }
-      else{
-        songbook.title = songbook_html.find('title').text().trim(); //V1 Import
-      }
-      if (songbook.title == "" || songbook.title == undefined){
-        songbook.title = "New Songbook";
+  return new Promise(async (resolve, reject) => {
+    let new_songbook = false;
+    
+    async function loadSongbookContent(songbook) {
+      // Set revision if updating
+      if (songbook._rev !== undefined) {
+        const titleElement = songbook_html.querySelector('#songbook_title');
+        songbook._rev = titleElement ? titleElement.dataset.rev : undefined;
       }
 
-      //Compile Songbook songrefs, a list of lists
-      var songs = [];
-      if(songbook_html.find('.list li').length > 0){
-        songbook_html.find('.list li').each(function(){
-          let song_id = $(this).attr('data-song-id');
-          if(song_id == 'section') {
-            songs.push({id: song_id, title: $(this).children("a").text()});
-          }
-          else{
-            songs.push({id: song_id, status: $(this).attr('data-song-status'), key: 'Am'});
-          }
-        });
+      // Get title and settings
+      const titleElement = songbook_html.querySelector('#songbook_title');
+      if (titleElement) {
+        songbook.title = titleElement.textContent.trim() || "New Songbook";
+        songbook.showStatus = songbook_html.classList.contains('showStatus');
+        songbook.showComments = songbook_html.classList.contains('showComments');
+      } else {
+        // Fallback for V1 import
+        const v1Title = songbook_html.querySelector('title');
+        songbook.title = v1Title ? v1Title.textContent.trim() : "New Songbook";
       }
-      else {  //Saving a V1 songref
-        songbook_html.find('songref, section').each(function(){
-          if(this.nodeName.toLowerCase() == "section"){
-            songs.push({id: "section", title: $(this).attr('title')});
-          }
-          else {
-            songs.push({id: $(this).attr('ref'), status: $(this).attr('status'), key: 'Am'});
-            if($(this).attr('status') != 'n'){
+
+      // Compile song references
+      const songItems = songbook_html.querySelectorAll('.list li');
+      songbook.songrefs = [];
+
+      songItems.forEach(item => {
+        const songId = item.dataset.songId;
+        if (songId === "section") {
+          const link = item.querySelector('a');
+          songbook.songrefs.push({
+            id: songId,
+            title: link ? link.textContent : ""
+          });
+        } else {
+          songbook.songrefs.push({
+            id: songId,
+            status: item.dataset.songStatus || 'n',
+            key: 'Am'
+          });
+        }
+      });
+
+      // Handle V1 songrefs if no list items found
+      if (songItems.length === 0) {
+        const v1Songrefs = songbook_html.querySelectorAll('songref, section');
+        v1Songrefs.forEach(ref => {
+          if (ref.nodeName.toLowerCase() === "section") {
+            songbook.songrefs.push({
+              id: "section",
+              title: ref.getAttribute('title') || ""
+            });
+          } else {
+            songbook.songrefs.push({
+              id: ref.getAttribute('ref'),
+              status: ref.getAttribute('status') || 'n',
+              key: 'Am'
+            });
+            if (ref.getAttribute('status') !== 'n') {
               songbook.showStatus = true;
             }
           }
         });
       }
-      songbook.songrefs = songs;
 
-      db.put(songbook, function callback(err, result) {
-        if (!err) {
-          window.songbook = songbook;
-          console.log('saved: '+ songbook.title);
-        }
-        else {
-          console.log(err);
-        }
-      }).then(function(){
-        if(change_url){
-          window.location.hash = '#'+formatSbID(window.songbook._id);
-          $('.edit_buttons').remove();
+      try {
+        const result = await db.put(songbook);
+        window.songbook = songbook;
+        console.log('saved:', songbook.title);
+
+        if (change_url) {
+          window.location.hash = `#${window.songbook._id}`;
+          document.querySelectorAll('.edit_buttons').forEach(el => el.remove());
           initializeSongbooksList();
         }
+
         resolve(window.songbook._id);
-      }).catch(function (err) {
-        console.log(err);
-        if(new_songbook){
-          songbook._id += Math.random().toString(36).substring(7).substring(0,2);  
-          console.log(songbook._id);
-          db.put(songbook, function callback(err, result){
-            if (!err) {
-              console.log('saved songbook really quickly! ', songbook.title);
-            }
-          });
+        logData('edited', songbook._id);
+      } catch (err) {
+        console.error('Error saving songbook:', err);
+        
+        if (new_songbook) {
+          // Retry with modified ID if new songbook fails
+          songbook._id += Math.random().toString(36).substring(7, 9);
+          console.log('Retrying with new ID:', songbook._id);
+          try {
+            await db.put(songbook);
+            resolve(window.songbook._id);
+          } catch (retryErr) {
+            console.error('Retry failed:', retryErr);
+            resolve('save_failed');
+          }
+        } else {
+          resolve('save_failed');
         }
-        resolve('not all good!');
-      });
+      }
     }
-    //we've got a new songbook folks!
-    if(songbook_id == 'sb-new-songbook') {
+
+    // Handle new songbook case
+    if (songbook_id === 'sb-new-songbook') {
       new_songbook = true;
-      let time = new Date().getTime();
-      songbook_id = 'sb-' + time;
-      var songbook = {_id: songbook_id, added: time, addedBy: window.user._id, edited: time, editedBy: window.user._id};
-      loadSongbookContent(songbook);
+      const time = new Date().getTime();
+      songbook_id = `sb-${time}`;
+      const songbook = {
+        _id: songbook_id,
+        added: time,
+        addedBy: window.user._id,
+        edited: time,
+        editedBy: window.user._id
+      };
+      await loadSongbookContent(songbook);
+      return;
     }
-    //we've got a non-standard songbook_id
-    else if(!songbook_id.startsWith('sb-')){
-      let time = new Date().getTime();
-      songbook_id = 'sb-' + songbook_id;
-      var songbook = {_id: songbook_id, added: time, addedBy: window.user._id, edited: time, editedBy: window.user._id};
-      loadSongbookContent(songbook); 
+
+    // Handle non-standard songbook ID
+    if (!songbook_id.startsWith('sb-')) {
+      const time = new Date().getTime();
+      songbook_id = `sb-${songbook_id}`;
+      const songbook = {
+        _id: songbook_id,
+        added: time,
+        addedBy: window.user._id,
+        edited: time,
+        editedBy: window.user._id
+      };
+      await loadSongbookContent(songbook);
+      return;
     }
-    else {  //existing songbook hopefully - need to make robust 
-      db.get(songbook_id).then(function(songbook){
-        songbook.edited = new Date().getTime();
-        songbook.editedBy = window.user._id;
-        loadSongbookContent(songbook);
-      }).catch(function (err) {
-        console.log(err);
-        resolve('not all good!');
-      });  
+
+    // Existing songbook case
+    try {
+      const songbook = await db.get(songbook_id);
+      songbook.edited = new Date().getTime();
+      songbook.editedBy = window.user._id;
+      await loadSongbookContent(songbook);
+    } catch (err) {
+      console.error('Error loading songbook:', err);
+      resolve('load_failed');
     }
-  }).then(function(songbook_id) {
-    console.log(songbook_id);
-    logData('edited', songbook_id);
   });
 }
 
-function loadSongbook(songbook_id) {
-  var dateBefore = new Date();
+async function loadSongbook(songbook_id, forceReload=false) {
+  try {
+    // Early return if already loaded
+    if (songbook_id === window.songbook._id && !forceReload) {
+      return 'songbook already loaded';
+    }
 
-  return new Promise(function(resolve, reject) {
-    if(songbook_id == window.songbook._id){
-      resolve('songbook already loaded');
+    if (window.songbook_list) {
+      window.songbook_list.clear();
     }
-    else if(songbook_id == undefined || songbook_id == 'sb-allSongs' || songbook_id == 'sb-favoriteSongs') {
-      let options;
-      if(songbook_id == 'sb-favoriteSongs') {
-        window.songbook.title = "Favorite Songs";
-        options = {
-          include_docs: true,
-          keys: window.user.fav_songs, //we need error handling for missing ids
-        }
-      }
-      else {
-        songbook_id = 'sb-allSongs';
-        window.songbook.title = "All Songs";
-        options = {
-          include_docs: true,
-          startkey: 's-',
-          endkey: 's-\ufff0',
-        }  
-      }
-      window.songbook._id = songbook_id;  
-      window.songbook._rev = '';
-       
-      db.allDocs(options).then(function(result){
-        result.rows = result.rows.filter(row => row.key !== ''); //remove missing ids.
-        var sb_song_ids = result.rows.map(function (row) {
-          return row.id
-        });
 
-        //first delete any songs no longer in the songbook
-        if(window.songbook_list != undefined){
-          /*window.songbook_list.items.forEach(function(old_song){
-            if(!sb_song_ids.includes(old_song.values()['song-id'])){
-              window.songbook_list.remove('song-id',old_song.values()['song-id']);
-            }
-          });*/
-          //^may be faster than the full wipe, but I need to figure out how to update urls
-          window.songbook_list.clear();
-        }
-        //Sort then add and update the new ones
-        result.rows.sort(function(a, b){
-          if(a.doc){
-            if(a.doc.title < b.doc.title) { return -1; }
-            if(a.doc.title > b.doc.title) { return 1; }
-            return 0;
-          }
-          else {
-            return 0;
-          }
-        });
-        window.songbook.songrefs = result.rows.map(function (row) {
-          return {id: row.id, status: 'n'};
-        });
-        buildSongbookList(result.rows);        
-        setSongbookInfo(window.songbook);
-        var dateAfter = new Date();
-        console.log(dateAfter-dateBefore);
-        resolve('loaded songbook');
-        $('#songList .edit_buttons').remove();
-      }).catch(function(err){
-        console.log(err);
-      });
+    // Handle special songbooks (All Songs/Favorites)
+    if (!songbook_id || songbook_id === 'sb-allSongs' || songbook_id === 'sb-favoriteSongs') {
+      return await handleSpecialSongbooks(songbook_id);
     }
-    else if(songbook_id === 'sb-new-songbook'){
-      if(window.songbook_list != undefined) {
-        window.songbook_list.clear();
-      }
-      setSongbookInfo({title: '', _id: 'sb-new-songbook'});
-      resolve('loaded blank new songbook');
-      $('#songList .edit_buttons').remove();
-    }
-    else {
-      db.get(songbook_id).then(function(result){
-        var sb_song_ids = result.songrefs.map(function (row) {
-          return row.id
-        });
-        if(window.songbook_list != undefined){
-          window.songbook_list.clear();
-        }
-        db.allDocs({
-          include_docs: true,
-          keys: sb_song_ids, //we need error handling for missing ids
-        }).then(function (song_ref_result) {
-          let songbook_build = [];
-          for(item of result.songrefs){
-            if(item.id=="section"){
-              songbook_build.push(item);
-            }
-            else {
-              let to_push = song_ref_result.rows.filter(obj => obj.id === item.id)[0];
-              to_push.status = item.status;
-              songbook_build.push(to_push);
-            }
-          }
-          buildSongbookList(songbook_build);
-          //Load comments
-          if(window.songbook.showComments && location.hash.search('edit') == -1){
-            loadSongbookComments();
-          }
-        }).catch(function (err) {
-          console.log(err);
-        });
-        window.songbook = result;
-        setSongbookInfo(result);
 
-        var dateAfter = new Date();
-        console.log(dateAfter-dateBefore);
-        if(window.user.fav_sbs.indexOf(window.songbook._id) > -1) {
-          $('#songbook_header .title').attr('data-user-fav', 'true');
-        }
-        else {
-          $('#songbook_header .title').attr('data-user-fav', 'false'); 
-        }
-        resolve('loaded songbook');
-        $('#songList .edit_buttons').remove();
-      }).catch(function(err){
-        console.log(err);
-      });
+    // Handle new songbook case
+    if (songbook_id === 'sb-new-songbook') {
+      handleNewSongbook();
+      return 'loaded blank new songbook';
     }
-  });
+
+    // Regular songbook loading
+    return await loadRegularSongbook(songbook_id);
+  } catch (err) {
+    console.error('Error loading songbook:', err);
+    throw err;
+  } finally {
+    document.querySelectorAll('#songList .edit_buttons').forEach(el => el.remove());
+  }
+
+  async function handleSpecialSongbooks(sbId) {
+    sbId = sbId || 'sb-allSongs';
+    const options = {
+      include_docs: true,
+      startkey: sbId === 'sb-favoriteSongs' ? undefined : 's-',
+      endkey: sbId === 'sb-favoriteSongs' ? undefined : 's-\ufff0',
+      keys: sbId === 'sb-favoriteSongs' ? window.user.fav_songs : undefined
+    };
+
+    window.songbook = {
+      _id: sbId,
+      title: sbId === 'sb-favoriteSongs' ? "Favorite Songs" : "All Songs", 
+      _rev: ''
+    };
+
+    const result = await db.allDocs(options);
+    result.rows = result.rows.filter(row => row.key !== '');
+    
+    // Sort songs alphabetically by title
+    result.rows.sort((a, b) => {
+      if (!a.doc || !b.doc) return 0;
+      return a.doc.title?.localeCompare(b.doc.title);
+    });
+
+    window.songbook.songrefs = result.rows.map(row => ({id: row.id, status: 'n'}));
+    
+    buildSongbookList(result.rows);
+    setSongbookInfo(window.songbook);
+    return 'loaded special songbook';
+  }
+
+  function handleNewSongbook() {
+    setSongbookInfo({title: '', _id: 'sb-new-songbook'});
+  }
+
+  async function loadRegularSongbook(sbId) {
+    const result = await db.get(sbId);
+    window.songbook = result;
+
+    const songIds = result.songrefs.map(row => row.id);
+
+    const songResult = await db.allDocs({
+      include_docs: true,
+      keys: songIds
+    });
+
+    const songbookData = result.songrefs.map(item => {
+      if (item.id === "section") return item;
+      
+      const songDoc = songResult.rows.find(row => row.id === item.id);
+      if (songDoc) {
+        songDoc.status = item.status;
+        return songDoc;
+      }
+      return null;
+    }).filter(Boolean);
+
+    buildSongbookList(songbookData);
+
+    if (result.showComments && !window.songbookEditing) {
+      await loadSongbookComments();
+    }
+    
+    setSongbookInfo(result);
+    
+    const titleEl = document.querySelector('#songbook_header .title');
+    if (titleEl) {
+      titleEl.dataset.userFav = window.user.fav_sbs.includes(result._id) ? 'true' : 'false';
+    }
+    
+    return 'loaded songbook';
+  }
 }
 
 function loadSongbookComments() {
-  let options = {
+  db.allDocs({
     include_docs: true,
-    startkey: 'c_'+window.songbook._id,
-    endkey: 'c_'+window.songbook._id+'\ufff0',
-  }  
-  db.allDocs(options).then(function(result){
-    let songs_with_comments = result.rows.map(item => item.doc);
-    $('#songbook_content .list li:not([data-song-id="section"])').append('<div class="commentsContainer"><div class="comments"></div><textarea class="comment" style="width:100%"></textarea><button class="btn" onclick="addComment(this)">Add comment</button></div>');
-    $('#songbook_content .list li:not([data-song-id="section"]) a').after('<button class="toggle_comment" onclick="$(this).next(\'.commentsContainer\').toggle();">💬</button>')
-    for(song of songs_with_comments) {
-      let song_id = song._id.match(/s-.*/g)[0];
-      let comments = [];
-      for(comment of song.comments){
-        comments.push(`<div><b>${comment.user} </b>${new Date(comment.date).toLocaleTimeString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})}<pre>${comment.comment}</pre></div>`);
+    startkey: `c_${window.songbook._id}`,
+    endkey: `c_${window.songbook._id}\ufff0`
+  }).then(({rows}) => {
+    // Add comment UI to all songs
+    document.querySelectorAll('#songbook_content .list li:not([data-song-id="section"])').forEach(li => {
+      if (!li.querySelector('.commentsContainer')) {
+        li.insertAdjacentHTML('beforeend', `
+          <div class="commentsContainer">
+            <div class="comments"></div>
+            <textarea class="comment" style="width:100%"></textarea>
+            <button class="btn" onclick="addComment(this)">Add comment</button>
+          </div>
+        `);
       }
-      $('li[data-song-id="'+song_id+'"] .comments').append(comments.join(''));
-      $('li[data-song-id="'+song_id+'"] .toggle_comment').attr('data-comment-number', comments.length);
-    }
-  }).catch(function(err){
-    console.log(err);
-  });
-}
-function addComment(element) {
-  let commentText = $(element).prev('textarea').val().trim();
-  if(commentText == ""){
-    alert('Please add some text! :)');
-    return;
-  }
-  else {
-    let comment_object = {date: new Date().getTime(), user: window.user._id, comment: commentText};
-    let comment_id = 'c_'+window.songbook._id+'_'+$(element).closest('li').attr('data-song-id');
-    db.get(comment_id).then(function(comment){
-      comment.comments.push(comment_object);
-      db.put(comment).then(function(result){
-        if(result.ok != true) {
-          console.log(result);
-        }
-      });
-      $(element).prev('textarea').val('');
-    }).catch(function(err){
-      if(err.status = 404){
-        db.put({_id: comment_id, comments: [comment_object]}).then(function(result){
-          $(element).prev('textarea').val('');
-        }).catch(function(err){
-          console.log(err);
-        });
-      }else{
-        console.log(err);
+      if (!li.querySelector('.toggle_comment') && li.querySelector('a')) {
+        li.querySelector('a').insertAdjacentHTML('afterend', 
+          '<button class="toggle_comment" onclick="this.nextElementSibling.style.display=getComputedStyle(this.nextElementSibling).display===\'none\'?\'block\':\'none\'">💬</button>');
       }
     });
+
+    // Populate existing comments
+    rows.forEach(({doc: song}) => {
+      const songId = song._id.match(/s-.*/)?.[0];
+      const li = document.querySelector(`li[data-song-id="${songId}"]`);
+      if (!li) return;
+
+      li.querySelector('.comments').innerHTML = song.comments.map(commentHtml).join('');
+      li.querySelector('.toggle_comment')?.setAttribute('data-comment-number', song.comments.length);
+    });
+  }).catch(console.error);
+}
+// One comment as HTML; user and comment text are escaped since anyone with DB access can write them
+function commentHtml(comment) {
+  const when = new Date(comment.date).toLocaleTimeString(undefined, {
+    weekday: 'long', year: 'numeric', month: 'short',
+    day: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+  return `<div><b>${escapeHtml(comment.user)} </b>${when}<pre>${escapeHtml(comment.comment)}</pre></div>`;
+}
+async function addComment(btn) {
+  try {
+    const comment = btn.previousElementSibling.value.trim();
+    if (!comment) return alert('Please add some text! :)');
+
+    const li = btn.closest('li');
+    const commentId = `c_${window.songbook._id}_${li.dataset.songId}`;
+    const newComment = {
+      date: Date.now(),
+      user: window.user._id,
+      comment
+    };
+
+    try {
+      const doc = await db.get(commentId);
+      await db.put({...doc, comments: [...doc.comments, newComment]});
+    } catch (err) {
+      if (err.status === 404) {
+        await db.put({_id: commentId, comments: [newComment]});
+      } else {
+        throw err;
+      }
+    }
+
+    // Update UI
+    btn.previousElementSibling.value = '';
+    const commentsDiv = li.querySelector('.comments');
+    if (commentsDiv) {
+      commentsDiv.insertAdjacentHTML('beforeend', commentHtml(newComment));
+      const toggle = li.querySelector('.toggle_comment');
+      if (toggle) toggle.dataset.commentNumber = 
+        (parseInt(toggle.dataset.commentNumber || 0) + 1);
+    }
+
+  } catch (err) {
+    console.error('Failed to save comment:', err);
+    notyf.error('Failed to save comment');
   }
 }
 
@@ -1600,76 +1830,114 @@ function addSongToSongbook(song_id, songbook_id=window.songbook._id) {
   }
 }
 
-function loadRawDbObject(rawDb_id, element_drop, onclick) {
-  console.log(rawDb_id);
-  if(rawDb_id != 'categories' && rawDb_id != window.user._id){
-    alert('yo! Stop it!');
+async function loadRawDbObject(rawDbId, elementDrop, onclick) {
+  // Security check
+  if (rawDbId !== 'categories' && rawDbId !== window.user._id) {
+    alert('Unauthorized access!');
     return;
   }
-  db.get(rawDb_id).then(function(json_object){
-    const keys = Object.keys(json_object);
 
-    let html_string = '<div id="rawObRoot" data-id="'+json_object['_id']+'" data-rev="'+json_object['_rev']+'"><h3>Editing: '+json_object['_id']+'</h3></div>';
+  try {
+    const jsonObject = await db.get(rawDbId);
+    const keys = Object.keys(jsonObject);
+    const element = document.getElementById(elementDrop.id || elementDrop);
 
-    keys.forEach((key, index) => {
-      if(key != '_id' && key != '_rev'){
-        let key_content;
-        let key_content_type = typeof(json_object[key]);
-        //Array in the key, then
-        if(Array.isArray(json_object[key])) {
-          key_content = json_object[key].join('\n');
-          key_content_type = 'array';
+    if (!element) {
+      console.error('Target element not found');
+      return;
+    }
+
+    // Build HTML structure
+    let html = `
+      <div id="rawObRoot" data-id="${jsonObject._id}" data-rev="${jsonObject._rev}">
+        <h3>Editing: ${jsonObject._id}</h3>
+    `;
+
+    // Add fields for each key
+    keys.forEach(key => {
+      if (key !== '_id' && key !== '_rev') {
+        let content = jsonObject[key];
+        let contentType = typeof content;
+        
+        if (Array.isArray(content)) {
+          content = content.join('\n');
+          contentType = 'array';
         }
-        else if(key_content_type == "string" || key_content_type == "number") {
-          key_content = json_object[key];
-        }
-        html_string += `<fieldset class="key" data-name="${key}"><legend>${key}</legend><pre class="key_content" data-content-type="${key_content_type}">${key_content}</pre></fieldset>`;
+
+        html += `
+          <fieldset class="key" data-name="${key}">
+            <legend>${key}</legend>
+            <pre class="key_content toTextarea" data-content-type="${contentType}">${content}</pre>
+          </fieldset>
+        `;
       }
     });
-    html_string += '<button class="btn" onclick="'+onclick+'" style="background-color: var(--background-color);">Cancel</button><button class="btn" onclick="saveRawDbObject($(\'#'+element_drop[0].id+'\'));" style="background-color: var(--background-color);">Save</button>'
 
-    element_drop.html(html_string);
-    $('.key_content').toTextarea({
-    allowHTML: false,//allow HTML formatting with CTRL+b, CTRL+i, etc.
-    allowImg: false,//allow drag and drop images
-    doubleEnter: false,//have double enter create a second field
-    singleLine: false,//make a single line so it will only expand horizontally
-    pastePlainText: true,//paste text without styling as source
-    placeholder: false//a placeholder when no text is entered. This can also be set by a placeholder="..." or data-placeholder="..." attribute
-  });
-  }).catch(function (err) {
-    console.log(err);
-    reject('got an error!');
-  });
+    // Add action buttons
+    html += `
+      </div>
+      <button class="btn" onclick="${onclick}" style="background-color: var(--background-color);">Cancel</button>
+      <button class="btn" onclick="saveRawDbObject(document.getElementById('${element.id}'));" style="background-color: var(--background-color);">Save</button>
+    `;
+
+    // Update DOM
+    element.innerHTML = html;
+
+    // Convert pre elements to editable textareas using toTextarea.js
+    const chunks = Array.from(element.querySelectorAll('.toTextarea'));
+    convertChunksToEditable(chunks);
+
+  } catch (err) {
+    console.error('Error loading raw object:', err);
+    alert('Failed to load object');
+  }
 }
-function saveRawDbObject(html) {
-  let json_object = {};
-  json_object._id = html.find('#rawObRoot').attr('data-id');
-  json_object._rev = html.find('#rawObRoot').attr('data-rev');
-
-  if(json_object._id != 'categories' && json_object._id != window.user._id){
-    alert('yo! Stop it!');
-    return;
-  }
-
-  let keys = html.find('.key')
-  
-  for(i = 0; i < keys.length; i++){
-    let key_content = $(keys[i]).find('.key_content').text();
-    let key_content_type = $(keys[i]).find('.key_content').attr('data-content-type');
-    console.log(key_content_type);
-    if(key_content_type == 'array'){
-      key_content = key_content.split('\n');
+async function saveRawDbObject(element) {
+  try {
+    const rootElement = element.querySelector('#rawObRoot');
+    if (!rootElement) {
+      throw new Error('Invalid element structure');
     }
-    json_object[keys[i].getAttribute('data-name')] = key_content;
-  }
 
-  db.put(json_object).then(function(result) {
-    console.log('Successfully updated: ', result);
-  }).catch(function(result){
-    console.log("Error - couldn't make it work", result);
-  });
-  html.html('');
+    // Security check
+    const dbId = rootElement.dataset.id;
+    if (dbId !== 'categories' && dbId !== window.user._id) {
+      alert('Unauthorized access!');
+      return;
+    }
+
+    // Build the object to save
+    const jsonObject = {
+      _id: dbId,
+      _rev: rootElement.dataset.rev
+    };
+
+    // Process each key field
+    const keyElements = element.querySelectorAll('.key');
+    keyElements.forEach(keyElement => {
+      const keyName = keyElement.dataset.name;
+      const contentElement = keyElement.querySelector('.key_content');
+      const contentType = contentElement.dataset.contentType;
+      
+      let content = contentElement.textContent;
+      if (contentType === 'array') {
+        content = content.split('\n').filter(line => line.trim() !== '');
+      }
+
+      jsonObject[keyName] = content;
+    });
+
+    // Save to database
+    await db.put(jsonObject);
+    console.log('Successfully updated:', jsonObject._id);
+    
+    // Clear the container
+    element.innerHTML = '';
+
+  } catch (error) {
+    console.error("Error saving raw object:", error);
+    alert('Failed to save object');
+  }
 }
 
 function createExportCfg(){
