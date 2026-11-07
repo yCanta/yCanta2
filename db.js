@@ -1420,6 +1420,31 @@ function loadSong(song_id, song_rev = false) {
     }
   });
 }
+// A delete that keeps the title, so lists can still name what was deleted (#69). CouchDB keeps the fields
+// of a deleted doc, unlike db.remove(), which keeps only _id and _rev.
+function deletedDoc(doc) {
+  return { _id: doc._id, _rev: doc._rev, _deleted: true, title: doc.title };
+}
+
+// The title of a deleted doc: from the delete itself (deletedDoc), or else from the revision just before it.
+// That revision is gone once the database is compacted, so this can return null.
+async function deletedTitle(id, rev) {
+  for (const source of [db, window.remoteDb].filter(Boolean)) {
+    try {
+      const tombstone = await source.get(id, { rev, revs: true });
+      if (tombstone.title) return tombstone.title;
+      const { start, ids } = tombstone._revisions;
+      if (ids.length > 1) {
+        const before = await source.get(id, { rev: `${start - 1}-${ids[1]}` });
+        if (before.title) return before.title;
+      }
+    } catch (err) {
+      // not on this copy of the database; try the next
+    }
+  }
+  return null;
+}
+
 async function deleteSong(song_id) {
   let sbs = await songInSongbooks(song_id);
   if(sbs.length) {
@@ -1429,7 +1454,7 @@ async function deleteSong(song_id) {
     try {
       const doc = await db.get(song_id);
       window.deletingId = song_id; // our own delete: the change feed should not warn about it
-      await db.remove(doc);
+      await db.put(deletedDoc(doc));
       window.location.hash = "#" + formatSbID(window.songbook._id);
       console.log("Deleted:", window.song.title);
     } catch (err) {
@@ -1444,7 +1469,7 @@ async function deleteSongbook(songbook_id) {
     try {
       const doc = await db.get(songbook_id);
       window.deletingId = songbook_id;
-      await db.remove(doc);
+      await db.put(deletedDoc(doc));
       initializeSongbooksList();
       window.location.hash = '#songbooks';
       console.log("Deleted:", window.songbook.title);
@@ -1694,6 +1719,11 @@ async function loadSongbook(songbook_id, forceReload=false) {
       }
       return null;
     }).filter(Boolean);
+
+    // A deleted song keeps its place in the book, named by its old title when that can be found (#69)
+    await Promise.all(songbookData.filter(row => row.value?.deleted).map(async row => {
+      row.deletedTitle = await deletedTitle(row.id, row.value.rev);
+    }));
 
     buildSongbookList(songbookData);
 

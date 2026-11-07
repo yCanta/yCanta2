@@ -833,16 +833,17 @@ async function updateUser() {
         keys: favSongs
       });
       
-      profileHtml += result.rows.sort((a, b) => {
-          if (a.doc && b.doc) {
-            return (a.doc?.title || '').localeCompare(b.doc?.title || '');
-          }
-          return 0;
-        }).map(favSong => {
-          if (favSong.doc) {
-            return `<li><a class="link" href="#sb-favoriteSongs&${favSong.doc._id}">${favSong.doc.title}</a></li>`;
-          }
-          return `<li><a class="link" href="#sb-favoriteSongs&${favSong.id}">[deleted song]</a></li>`;
+      // A deleted favorite shows its old title when that can be found (#69)
+      const favorites = await Promise.all(result.rows.map(async row => ({
+        id: row.key,
+        title: row.doc ? row.doc.title : (row.value?.deleted && await deletedTitle(row.key, row.value.rev)),
+        deleted: !row.doc
+      })));
+      profileHtml += favorites
+        .sort((a, b) => (a.title || '').localeCompare(b.title || ''))
+        .map(fav => {
+          const label = fav.deleted ? `<s>${fav.title || 'deleted song'}</s> (deleted)` : fav.title;
+          return `<li><a class="link" href="#sb-favoriteSongs&${fav.id}">${label}</a></li>`;
         }).join('');
     } catch (err) {
       console.error('Error loading favorite songs:', err);
@@ -1144,7 +1145,7 @@ function mapSongRowToValue(row) {
     } 
     search = "";
     status = status;
-    title = "Deleted";
+    title = row.deletedTitle ? `${row.deletedTitle} (deleted)` : "Deleted";
   }
   else {
     id = row.doc._id;
