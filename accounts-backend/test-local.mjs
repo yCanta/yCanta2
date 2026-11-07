@@ -1,41 +1,13 @@
 // Runs Code.gs unchanged in Node, with stand-ins for the Apps Script services, against the LOCAL test
 // CouchDB. Run couchdb/test-rule.mjs and couchdb/probe-account-helper.mjs first (they make church_a,
 // church_b, the fake users and the accounts-only "maker" admin).
-import { readFileSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
-import vm from 'node:vm';
+import { loadHelper } from './local-shim.mjs';
 import { req, as, pw, BASE } from '../couchdb/lib.mjs';
 
 const props = { COUCH_URL: BASE + '/', MAKER_NAME: 'maker', MAKER_PASS: pw('maker') };
 const logRows = [];
-
-// UrlFetchApp is synchronous; do each request in a child Node process
-const fetchChild = `
-const [url, init] = JSON.parse(process.argv[1]);
-fetch(url, init).then(async r => {
-  const headers = {}; r.headers.forEach((v, k) => { headers[k === 'set-cookie' ? 'Set-Cookie' : k] = v; });
-  process.stdout.write(JSON.stringify({ status: r.status, text: await r.text(), headers }));
-});`;
-const sandbox = {
-  PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] ?? null }) },
-  Utilities: { base64Encode: s => Buffer.from(s, 'utf8').toString('base64'), Charset: { UTF_8: 'UTF-8' } },
-  UrlFetchApp: {
-    fetch(url, p) {
-      const headers = { ...(p.headers || {}) };
-      if (p.contentType) headers['Content-Type'] = p.contentType;
-      const out = JSON.parse(execFileSync(process.execPath, ['-e', fetchChild, JSON.stringify([url, { method: p.method.toUpperCase(), headers, body: p.payload }])]).toString());
-      return { getResponseCode: () => out.status, getContentText: () => out.text, getAllHeaders: () => out.headers };
-    },
-  },
-  ContentService: { createTextOutput: t => ({ text: t, setMimeType() { return this; } }), MimeType: { JSON: 'json' } },
-  SpreadsheetApp: { getActiveSpreadsheet: () => ({
-    getSheetByName: () => ({ getLastRow: () => logRows.length, appendRow: r => logRows.push(r) }),
-    insertSheet: () => null,
-  }) },
-};
-vm.createContext(sandbox);
-vm.runInContext(readFileSync(new URL('./Code.gs', import.meta.url), 'utf8'), sandbox);
-const call = body => JSON.parse(sandbox.doPost({ postData: { contents: JSON.stringify(body) } }).text);
+const sentMail = [];
+const { call } = loadHelper(props, { logRows, sentMail });
 const canLogIn = async (name, password) => (await req(null, 'POST', '/_session', { name, password })).status === 200;
 
 let pass = 0, fail = 0;
@@ -91,7 +63,84 @@ check('odd database names refused', !r.ok, r);
 r = call(admin('alice', { action: 'deleteEverything', name: 'vera' }));
 check('unknown requests refused', !r.ok, r);
 
-const secrets = ['first-pass-1', 'new-eddie-pass', 'new-leo-pass', 'hijack-bob', pw('alice'), pw('vera')];
+// ---- recovery email and forgotten passwords
+const codeIn = mail => (mail?.body.match(/code[^:]*: ([A-Z2-9]{8})/i) || [])[1];
+const lastMail = () => sentMail[sentMail.length - 1];
+const userDoc = async name => (await req(as('admin'), 'GET', '/_users/org.couchdb.user:' + name)).json;
+for (const n of ['vera', 'eddie']) { const d = await userDoc(n); delete d.email; await req(as('admin'), 'PUT', '/_users/org.couchdb.user:' + n, d); }
+for (const k of Object.keys(props)) if (/^(sent|reset|verify):/.test(k)) delete props[k];
+const own = (name, extra) => ({ name, ownPassword: pw(name), ...extra });
+const usedCodes = [];
+
+r = call({ ...own('vera'), ownPassword: 'wrong', action: 'startEmail', email: 'vera@example.test' });
+check('adding an email needs your own password', !r.ok && sentMail.length === 0, r);
+r = call(own('vera', { action: 'startEmail', email: 'Vera@Example.test' }));
+const verifyCode = codeIn(lastMail());
+usedCodes.push(verifyCode);
+check('a code goes to the new address first', r.ok && lastMail()?.to === 'vera@example.test' && !!verifyCode, { r, to: lastMail()?.to });
+check('the email is not saved before the code', !(await userDoc('vera')).email);
+r = call(own('vera', { action: 'confirmEmail', code: 'AAAAAAAA' }));
+check('a wrong code does not save it', !r.ok, r);
+r = call(own('vera', { action: 'confirmEmail', code: verifyCode.toLowerCase().replace(/(.{4})/, '$1-') }));
+check('the right code saves it (any case, dash ok)', r.ok && (await userDoc('vera')).email === 'vera@example.test', r);
+const peek = await req(as('vic'), 'GET', '/_users/org.couchdb.user:vera');
+check("others can't read the email", peek.status >= 400 && !JSON.stringify(peek.json).includes('example.test'), peek.status);
+
+let mails = sentMail.length;
+r = call({ action: 'requestReset', who: 'vera' });
+const resetCode = codeIn(lastMail());
+usedCodes.push(resetCode);
+check('forgot password by name sends a code', r.ok && sentMail.length === mails + 1 && !!resetCode, r);
+const sameReply = r.message;
+mails = sentMail.length;
+r = call({ action: 'requestReset', who: 'nobody-here' });
+check('unknown name: same reply, no email', r.ok && r.message === sameReply && sentMail.length === mails, r);
+r = call({ action: 'requestReset', who: 'eddie' });
+check('account without an email: same reply, no email', r.ok && r.message === sameReply && sentMail.length === mails, r);
+r = call({ action: 'requestReset', who: 'nobody@example.test' });
+check('unknown email: same reply, no email', r.ok && r.message === sameReply && sentMail.length === mails, r);
+
+for (let i = 0; i < 4; i++) call({ action: 'confirmReset', name: 'vera', code: 'WRONG' + i, password: 'hacked-pass' });
+r = call({ action: 'confirmReset', name: 'vera', code: resetCode, password: 'recovered-pass' });
+check('right code still works after 4 wrong tries', r.ok && await canLogIn('vera', 'recovered-pass'), r);
+r = call({ action: 'confirmReset', name: 'vera', code: resetCode, password: 'again-pass' });
+check('a code works only once', !r.ok && await canLogIn('vera', 'recovered-pass'), r);
+
+mails = sentMail.length;
+r = call({ action: 'requestReset', who: 'VERA@example.test' });
+const code2 = codeIn(lastMail());
+usedCodes.push(code2);
+check('forgot password by email (any case) sends a code', r.ok && sentMail.length === mails + 1 && lastMail().body.includes('vera'), r);
+for (let i = 0; i < 5; i++) call({ action: 'confirmReset', name: 'vera', code: 'WRONG' + i, password: 'hacked-pass' });
+r = call({ action: 'confirmReset', name: 'vera', code: code2, password: 'hacked-pass' });
+check('5 wrong tries throw the code away', !r.ok && await canLogIn('vera', 'recovered-pass'), r);
+
+mails = sentMail.length;
+r = call({ action: 'requestReset', who: 'vera' });
+check('3 emails an hour per account (4th is quiet)', r.ok && r.message === sameReply && sentMail.length === mails, r);
+props['sent:vera'] = '[]';
+call({ action: 'requestReset', who: 'vera' });
+const code3 = codeIn(lastMail());
+usedCodes.push(code3);
+const entry = JSON.parse(props['reset:vera']);
+props['reset:vera'] = JSON.stringify({ ...entry, expires: Date.now() - 1 });
+r = call({ action: 'confirmReset', name: 'vera', code: code3, password: 'late-pass' });
+check('an expired code fails', !r.ok && await canLogIn('vera', 'recovered-pass'), r);
+check('codes are stored only as a hash', !Object.values(props).some(v => usedCodes.some(c => String(v).includes(c))));
+r = call({ ...own('vera'), ownPassword: 'recovered-pass', action: 'getEmail' });
+check('you can see your own email', r.ok && r.email === 'vera@example.test', r);
+r = call({ ...own('vic'), ownPassword: 'wrong', action: 'getEmail' });
+check("you can't see it without your password", !r.ok, r);
+r = call(own('vic', { action: 'changeOwnPassword', password: 'vic-new-pass' }));
+check('you can change your own password', r.ok && await canLogIn('vic', 'vic-new-pass'), r);
+call({ ...own('vic'), ownPassword: 'vic-new-pass', action: 'changeOwnPassword', password: pw('vic') });
+r = call({ ...own('vic'), ownPassword: 'wrong', action: 'changeOwnPassword', password: 'hijack-vic' });
+check("not without your current password", !r.ok && await canLogIn('vic', pw('vic')), r);
+r = call({ ...own('vera'), ownPassword: 'recovered-pass', action: 'clearEmail' });
+check('you can remove your email', !(await userDoc('vera')).email, r);
+const doc = await userDoc('vera'); doc.password = pw('vera'); await req(as('admin'), 'PUT', '/_users/org.couchdb.user:vera', doc);
+
+const secrets = ['first-pass-1', 'new-eddie-pass', 'new-leo-pass', 'hijack-bob', pw('alice'), pw('vera'), 'recovered-pass', 'hacked-pass', ...usedCodes];
 const leaked = logRows.flat().some(cell => secrets.some(s => String(cell).includes(s)));
 check(`log has ${logRows.length} rows and no passwords`, logRows.length > 10 && !leaked);
 rows.push('\nlast log rows:\n' + logRows.slice(-4).map(r => r.slice(1).join(' | ')).join('\n'));

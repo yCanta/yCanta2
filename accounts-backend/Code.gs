@@ -10,11 +10,27 @@
  *   MAKER_NAME  a CouchDB account that is an admin of the _users database ONLY (not a server admin)
  *   MAKER_PASS  its password
  *
- * Every request must carry the church admin's own name and password. The helper checks them with CouchDB,
- * then checks that the name is on that church's admin list, before it does anything.
+ * Church admin requests (createAccount, resetPassword) carry the church admin's own name and password. The
+ * helper checks them with CouchDB, then checks that the name is on that church's admin list.
+ *
+ * Password recovery by email (anyone):
+ *   startEmail / confirmEmail  a signed-in person adds a recovery email to their own account. The helper
+ *                              emails a code to that address first, so only an inbox they control is saved.
+ *   clearEmail                 removes it.
+ *   requestReset               "forgot password": emails a one-time code to the account's recovery email.
+ *                              The reply is the same whether or not the account exists.
+ *   confirmReset               the code plus a new password.
+ * Codes are 8 characters, last 20 minutes, allow 5 tries, and are kept only as a hash in Script Properties.
+ * Each account gets at most 3 emails an hour.
  */
 
 const MIN_PASSWORD = 6;
+const CODE_MINUTES = 20;
+const CODE_TRIES = 5;
+const EMAILS_PER_HOUR = 3;
+const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 32 letters, none that look alike
+const SAME_REPLY = 'If that account has a recovery email, a code is on its way. It lasts ' + CODE_MINUTES + ' minutes.';
+const BAD_CODE = 'That code is wrong or has expired. Please ask for a new one.';
 
 function doGet() {
   return reply({ ok: true, service: 'yCanta accounts' });
@@ -33,18 +49,49 @@ function doPost(e) {
   return reply(result);
 }
 
-function handle(body) {
-  const action = body.action;
-  const db = String(body.db || '');
-  const name = String(body.name || '');
-  if (!/^[a-z][a-z0-9_$()+\/-]*$/.test(db)) throw new Error('That is not a church database name.');
+function checkName(name) {
   if (!name || name.length > 64 || name.charAt(0) === '_' || /[:\u0000-\u001f]/.test(name)) {
     throw new Error('Please use a different user name.');
   }
-  if (action === 'createAccount' || action === 'resetPassword') {
-    if (String(body.password || '').length < MIN_PASSWORD) {
-      throw new Error('The password needs at least ' + MIN_PASSWORD + ' characters.');
+}
+function checkPassword(password) {
+  if (String(password || '').length < MIN_PASSWORD) {
+    throw new Error('The password needs at least ' + MIN_PASSWORD + ' characters.');
+  }
+}
+
+function handle(body) {
+  const action = body.action;
+  const name = String(body.name || '').trim();
+
+  // Recovery email and forgotten passwords: no church admin involved
+  if (action === 'requestReset') return requestReset(String(body.who || '').trim());
+  if (action === 'confirmReset') {
+    checkName(name);
+    checkPassword(body.password);
+    return confirmReset(name, String(body.code || ''), String(body.password));
+  }
+  // Your own account. CouchDB 3 closes the account list to regular users, so they can't read or change
+  // their own account record directly; the helper does it after checking their password.
+  const ownActions = ['startEmail', 'confirmEmail', 'clearEmail', 'getEmail', 'changeOwnPassword'];
+  if (ownActions.indexOf(action) !== -1) {
+    checkName(name);
+    checkOwnPassword(name, String(body.ownPassword || ''));
+    if (action === 'startEmail') return startEmail(name, String(body.email || ''));
+    if (action === 'confirmEmail') return confirmEmail(name, String(body.code || ''));
+    if (action === 'getEmail') return getEmail(name);
+    if (action === 'changeOwnPassword') {
+      checkPassword(body.password);
+      return setPassword(name, String(body.password));
     }
+    return clearEmail(name);
+  }
+
+  const db = String(body.db || '');
+  if (!/^[a-z][a-z0-9_$()+\/-]*$/.test(db)) throw new Error('That is not a church database name.');
+  checkName(name);
+  if (action === 'createAccount' || action === 'resetPassword') {
+    checkPassword(body.password);
   } else {
     throw new Error('Unknown request.');
   }
@@ -107,6 +154,187 @@ function resetPassword(church, name, password) {
   return { ok: true };
 }
 
+// ---- Recovery email and forgotten passwords ----
+
+function userPath(name) {
+  return '_users/' + encodeURIComponent('org.couchdb.user:' + name);
+}
+
+// The person proves who they are with their own password (the app sends the one they signed in with)
+function checkOwnPassword(name, password) {
+  if (!password) throw new Error('Please sign in again first.');
+  const login = couch('post', '_session', { body: { name: name, password: password } });
+  if (login.status !== 200) throw new Error('Your name or password was not right.');
+}
+
+function newCode() {
+  // Apps Script's UUIDs come from a secure random source; skip their fixed version/variant digits
+  const hex = (Utilities.getUuid() + Utilities.getUuid()).replace(/-/g, '');
+  const random = hex.slice(0, 12) + hex.slice(20, 32) + hex.slice(32, 44) + hex.slice(52, 64);
+  let code = '';
+  for (let i = 0; i < 8; i++) code += CODE_ALPHABET.charAt(parseInt(random.substr(i * 2, 2), 16) % 32);
+  return code;
+}
+
+function hashCode(name, code) {
+  const bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, 'ycanta|' + name + '|' + code, Utilities.Charset.UTF_8);
+  return bytes.map(function (b) { return ('0' + ((b + 256) % 256).toString(16)).slice(-2); }).join('');
+}
+
+function normalCode(code) {
+  return String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+// Script Properties hold pending codes and email counts, keyed by account name
+function readProp(key) {
+  const text = PropertiesService.getScriptProperties().getProperty(key);
+  return text ? JSON.parse(text) : null;
+}
+function writeProp(key, value) {
+  const props = PropertiesService.getScriptProperties();
+  if (value === null) props.deleteProperty(key);
+  else props.setProperty(key, JSON.stringify(value));
+}
+
+// At most EMAILS_PER_HOUR emails per account, and stop well before Google's daily email limit
+function mayEmail(name) {
+  if (MailApp.getRemainingDailyQuota() < 5) return false;
+  const now = Date.now();
+  const sent = (readProp('sent:' + name) || []).filter(function (t) { return now - t < 3600 * 1000; });
+  if (sent.length >= EMAILS_PER_HOUR) return false;
+  sent.push(now);
+  writeProp('sent:' + name, sent);
+  return true;
+}
+
+function sendCode(to, subject, lines) {
+  MailApp.sendEmail({ to: to, subject: subject, name: 'yCanta', body: lines.join('\n') });
+}
+
+// Store a code for this account and purpose; returns the code to email
+function issueCode(purpose, name, extra) {
+  const code = newCode();
+  const entry = { hash: hashCode(name, code), expires: Date.now() + CODE_MINUTES * 60 * 1000, tries: 0 };
+  for (const key in (extra || {})) entry[key] = extra[key];
+  writeProp(purpose + ':' + name, entry);
+  return code;
+}
+
+// Check a code; the entry is used up on success, and dropped after too many wrong tries
+function useCode(purpose, name, code) {
+  const key = purpose + ':' + name;
+  const entry = readProp(key);
+  if (!entry || Date.now() > entry.expires) {
+    writeProp(key, null);
+    throw new Error(BAD_CODE);
+  }
+  if (hashCode(name, normalCode(code)) !== entry.hash) {
+    entry.tries += 1;
+    writeProp(key, entry.tries >= CODE_TRIES ? null : entry);
+    throw new Error(BAD_CODE);
+  }
+  writeProp(key, null);
+  return entry;
+}
+
+function withLock(fn) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try { return fn(); } finally { lock.releaseLock(); }
+}
+
+function startEmail(name, email) {
+  email = email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 200) throw new Error('That does not look like an email address.');
+  return withLock(function () {
+    if (!mayEmail(name)) throw new Error('Too many emails for this account. Please try again in an hour.');
+    const code = issueCode('verify', name, { email: email });
+    sendCode(email, 'Your yCanta email code', [
+      'Someone signed in as "' + name + '" asked to use this address to recover their yCanta password.',
+      '',
+      'To confirm, enter this code in yCanta: ' + code,
+      '',
+      'It lasts ' + CODE_MINUTES + ' minutes. If this was not you, ignore this email and nothing changes.',
+    ]);
+    return { ok: true };
+  });
+}
+
+function confirmEmail(name, code) {
+  return withLock(function () {
+    const entry = useCode('verify', name, code);
+    const user = couch('get', userPath(name), { maker: true });
+    if (user.status !== 200) throw new Error('Could not find your account.');
+    const doc = user.json;
+    doc.email = entry.email;
+    const saved = couch('put', userPath(name), { maker: true, body: doc });
+    if (saved.status !== 201 && saved.status !== 202) throw new Error('Could not save the email (' + saved.status + ').');
+    return { ok: true, email: entry.email };
+  });
+}
+
+function getEmail(name) {
+  const user = couch('get', userPath(name), { maker: true });
+  if (user.status !== 200) throw new Error('Could not find your account.');
+  return { ok: true, email: user.json.email || '' };
+}
+
+function setPassword(name, password) {
+  const user = couch('get', userPath(name), { maker: true });
+  if (user.status !== 200) throw new Error('Could not find your account.');
+  const doc = user.json;
+  doc.password = password;
+  const saved = couch('put', userPath(name), { maker: true, body: doc });
+  if (saved.status !== 201 && saved.status !== 202) throw new Error('Could not change the password (' + saved.status + ').');
+  return { ok: true };
+}
+
+function clearEmail(name) {
+  const user = couch('get', userPath(name), { maker: true });
+  if (user.status !== 200) throw new Error('Could not find your account.');
+  const doc = user.json;
+  delete doc.email;
+  const saved = couch('put', userPath(name), { maker: true, body: doc });
+  if (saved.status !== 201 && saved.status !== 202) throw new Error('Could not remove the email (' + saved.status + ').');
+  return { ok: true };
+}
+
+// "Forgot password": who is an account name or a recovery email. Same reply either way.
+function requestReset(who) {
+  if (!who || who.length > 200) throw new Error('Please enter your name or email.');
+  let accounts = [];
+  if (who.indexOf('@') !== -1) {
+    const found = couch('post', '_users/_find', { maker: true, body: { selector: { type: 'user', email: who.toLowerCase() }, fields: ['name', 'email'], limit: 5 } });
+    accounts = (found.json && found.json.docs) || [];
+  } else if (who.charAt(0) !== '_' && !/[:\u0000-\u001f]/.test(who)) {
+    const user = couch('get', userPath(who), { maker: true });
+    if (user.status === 200 && user.json.email) accounts = [user.json];
+  }
+  withLock(function () {
+    accounts.slice(0, 3).forEach(function (account) {
+      if (!mayEmail(account.name)) return;
+      const code = issueCode('reset', account.name);
+      sendCode(account.email, 'Your yCanta password reset code', [
+        'Someone asked to reset the yCanta password for "' + account.name + '".',
+        '',
+        'Your name: ' + account.name,
+        'Your code: ' + code,
+        '',
+        'Enter both in yCanta under "Forgot password?". The code lasts ' + CODE_MINUTES + ' minutes.',
+        'If this was not you, ignore this email and your password stays the same.',
+      ]);
+    });
+  });
+  return { ok: true, message: SAME_REPLY };
+}
+
+function confirmReset(name, code, password) {
+  return withLock(function () {
+    useCode('reset', name, code);
+    return setPassword(name, password);
+  });
+}
+
 // One CouchDB request. opts: body, cookie, maker (sign in as the accounts-only admin).
 function couch(method, path, opts) {
   opts = opts || {};
@@ -141,7 +369,7 @@ function logRequest(body, result) {
     if (sheet.getLastRow() === 0) sheet.appendRow(['When', 'Church admin', 'Church', 'Request', 'For', 'Result']);
     sheet.appendRow([
       new Date(), String(body.adminName || ''), String(body.db || ''), String(body.action || ''),
-      String(body.name || ''), result.ok ? (result.existed ? 'ok (account already existed)' : 'ok') : 'refused: ' + result.error,
+      String(body.name || body.who || ''), result.ok ? (result.existed ? 'ok (account already existed)' : 'ok') : 'refused: ' + result.error,
     ]);
   } catch (err) {
     // logging must never stop the request

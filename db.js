@@ -986,22 +986,101 @@ function askNewPassword(forWhom) {
 
 // Church admins who aren't server admins go through the account helper, which checks they are a
 // church admin before it creates an account or resets a password.
-async function callAccountsHelper(body) {
+async function postToHelper(body) {
   if (!window.accountsURL) {
-    throw new Error("Adding accounts and resetting passwords isn't turned on yet. Ask Carl or Evan.");
+    throw new Error("This isn't turned on yet. Ask Carl or Evan.");
   }
-  let adminPassword = sessionPwd;
-  if (!adminPassword) {
-    adminPassword = prompt('Please enter your own password to confirm:');
-    if (!adminPassword) throw new Error('Cancelled');
-  }
-  const res = await fetch(window.accountsURL, {
-    method: 'POST',
-    body: JSON.stringify({ ...body, db: window.church.db, adminName: window.user._id.slice(2), adminPassword }),
-  });
+  // a plain-text body keeps this a "simple" request, which Apps Script web apps accept from any page
+  const res = await fetch(window.accountsURL, { method: 'POST', body: JSON.stringify(body) });
   const reply = await res.json();
   if (!reply.ok) throw new Error(reply.error || 'The account helper refused');
   return reply;
+}
+
+function ownPassword() {
+  const password = sessionPwd || prompt('Please enter your own password to confirm:');
+  if (!password) throw new Error('Cancelled');
+  return password;
+}
+
+async function callAccountsHelper(body) {
+  const adminPassword = ownPassword();
+  return postToHelper({ ...body, db: window.church.db, adminName: window.user._id.slice(2), adminPassword });
+}
+
+// Your own account (CouchDB 3 doesn't let regular users read or change their own account record)
+async function callOwnAccount(body) {
+  return postToHelper({ ...body, name: window.user._id.slice(2), ownPassword: ownPassword() });
+}
+
+// ---- Recovery email (profile) and "Forgot password?" (login page) ----
+
+async function loadRecoveryEmail() {
+  const box = document.getElementById('recovery_email');
+  if (!box) return;
+  if (!window.accountsURL) {
+    box.innerHTML = '<p>Password recovery by email isn\'t turned on yet.</p>';
+    return;
+  }
+  if (!navigator.onLine) {
+    box.innerHTML = '<p>Connect to the internet to see or change it.</p>';
+    return;
+  }
+  try {
+    const { email } = await callOwnAccount({ action: 'getEmail' });
+    box.innerHTML = email
+      ? `<p>${escapeHtml(email)}</p><button class="btn" onclick="setRecoveryEmail()">Change</button> <button class="btn" onclick="clearRecoveryEmail()">Remove</button>`
+      : `<p>None yet. Add one so you can reset your password if you forget it.</p><button class="btn" onclick="setRecoveryEmail()">Add email</button>`;
+  } catch (err) {
+    box.textContent = err.message === 'Cancelled' ? '' : err.message;
+  }
+}
+
+async function setRecoveryEmail() {
+  const email = prompt('Email address for password recovery:')?.trim();
+  if (!email) return;
+  try {
+    await callOwnAccount({ action: 'startEmail', email });
+    const code = prompt(`We emailed a code to ${email}. Enter it here (it lasts 20 minutes):`)?.trim();
+    if (!code) return;
+    const { email: saved } = await callOwnAccount({ action: 'confirmEmail', code });
+    notyf.info(`Recovery email saved: ${escapeHtml(saved)}`, 'green');
+  } catch (err) {
+    if (err.message !== 'Cancelled') alert(err.message);
+  }
+  loadRecoveryEmail();
+}
+
+async function clearRecoveryEmail() {
+  if (!confirm("Remove your recovery email? You won't be able to reset a forgotten password yourself.")) return;
+  try {
+    await callOwnAccount({ action: 'clearEmail' });
+    notyf.info('Recovery email removed', 'olive');
+  } catch (err) {
+    if (err.message !== 'Cancelled') alert(err.message);
+  }
+  loadRecoveryEmail();
+}
+
+async function forgotPassword() {
+  try {
+    const typed = document.getElementById('username').value.trim();
+    const who = prompt('Your yCanta name, or your recovery email:', typed)?.trim();
+    if (!who) return;
+    const { message } = await postToHelper({ action: 'requestReset', who });
+    const name = who.includes('@') ? prompt(`${message}\n\nYour yCanta name (it's in the email):`)?.trim() : who;
+    if (!name) return;
+    const code = prompt(`${who.includes('@') ? '' : message + '\n\n'}The code from the email:`)?.trim();
+    if (!code) return;
+    const password = askNewPassword(name);
+    if (!password) return;
+    await postToHelper({ action: 'confirmReset', name, code, password });
+    document.getElementById('username').value = name;
+    document.getElementById('pwd').value = '';
+    alert('Your password is changed. Please sign in with it.');
+  } catch (err) {
+    alert(err.message);
+  }
 }
 
 async function addChurchPerson() {
@@ -1219,11 +1298,17 @@ async function changeUserPassword(username) {
   }
 
   try {
-    await remoteDb.changePassword(username, password);
+    if ('u-' + username === window.user._id && window.accountsURL && !window.church?.serverAdmin) {
+      await callOwnAccount({ action: 'changeOwnPassword', password }); // see callOwnAccount
+    } else {
+      await remoteDb.changePassword(username, password);
+    }
     if ('u-' + username === window.user._id) {  // Check against the passed currentUser also check if we are on memory version
       let localStorageUser = JSON.parse(localStorage.getItem('loggedin'));
       localStorageUser.pwd = password;
       localStorage.setItem('loggedin',JSON.stringify(localStorageUser));
+      // "Keep me logged in" reconnects with the password saved on this device; keep it current
+      await db.upsert('_local/' + window.user._id, doc => (doc.pwd ? { ...doc, pwd: password } : false));
       location.reload();
     }
     notyf.info(`Password changed for ${username}`, "olive");

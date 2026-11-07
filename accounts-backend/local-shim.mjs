@@ -23,7 +23,7 @@ export function loadHelper(props, { logRows = [], sentMail = [] } = {}) {
     hideSheet() {},
   });
   const sandbox = {
-    PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] ?? null, setProperty: (k, v) => { props[k] = v; } }) },
+    PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] ?? null, setProperty: (k, v) => { props[k] = String(v); }, deleteProperty: k => { delete props[k]; } }) },
     Utilities: {
       base64Encode: s => Buffer.from(s, 'utf8').toString('base64'),
       Charset: { UTF_8: 'UTF-8' },

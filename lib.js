@@ -860,6 +860,7 @@ async function updateUser() {
   ].join(': ');
   
   profileHtml += `<h4>Permissions</h4><ul>${permissions}</ul>`;
+  if (remoteDb) profileHtml += '<h4>Recovery email</h4><div id="recovery_email">…</div>';
 
   // Buttons
   profileHtml += `
@@ -871,6 +872,7 @@ async function updateUser() {
     </button>`;
 
   userContent.innerHTML = profileHtml;
+  if (remoteDb) loadRecoveryEmail();
 }
 
 async function loadCategories() {

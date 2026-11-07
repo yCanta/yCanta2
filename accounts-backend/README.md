@@ -15,6 +15,26 @@ Every request is written to the sheet's **Log** tab, without passwords.
      name to the church's list itself.
    - `resetPassword`: only for people on that church's list who are not church admins.
 
+## Your own account and forgotten passwords
+
+CouchDB 3 closes the account list to regular users, so they can't read or change their own account record.
+These requests carry the person's own name and password (the app sends the one they signed in with):
+
+- `getEmail`, `changeOwnPassword`
+- `startEmail` then `confirmEmail`: adds a **recovery email**. A code goes to that address first, so only an
+  inbox the person controls is saved. Church admins can't set someone else's email.
+- `clearEmail`
+
+"Forgot password?" on the login page needs no sign-in:
+
+- `requestReset` with a name or recovery email: emails a one-time code from info.ycanta@gmail.com. The reply is
+  the same whether or not the account exists, so it can't be used to find out who has an account.
+- `confirmReset` with the name, code and new password.
+
+Codes are 8 characters, last 20 minutes, allow 5 tries and work once. Only a hash of each code is kept, in
+Script Properties. Each account gets at most 3 emails an hour, and the helper stops well before Google's daily
+email limit.
+
 The accounts-only account is an admin of the `_users` database and nothing else. It can't read any church,
 change any church's list, see server settings, or make a server admin. It **can** reset any non-server-admin's
 password, so its password belongs only in Script Properties.
@@ -33,9 +53,12 @@ In the Apps Script project, signed in as info.ycanta@gmail.com:
 
 4. Project Settings > Script Properties: `COUCH_URL` (the app's CouchDB address, ending in `/`),
    `MAKER_NAME`, `MAKER_PASS`.
-5. Deploy > New deployment > Web app, execute as **me**, access **Anyone**. Authorize it, and put the web app URL
-   in the app.
+5. Deploy > New deployment > Web app, execute as **me**, access **Anyone**. Authorize it (it asks to reach other
+   websites, send email as you, and edit this sheet), and put the web app URL in `window.accountsURL` in `db.js`.
 
 ## Testing
 
-`test-local.mjs` runs `Code.gs` unchanged in Node against the local test CouchDB (see `../couchdb/`).
+- `test-local.mjs` runs `Code.gs` unchanged in Node against the local test CouchDB (see `../couchdb/`), with
+  stand-ins for the Apps Script services in `local-shim.mjs`.
+- `serve-local.mjs` serves it at `http://localhost:8790` for the app's local test page. Emails it would send
+  are kept at `http://localhost:8790/mail` instead.
