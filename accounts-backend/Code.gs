@@ -64,6 +64,9 @@ function handle(body) {
   const action = body.action;
   const name = String(body.name || '').trim();
 
+  // Setup check: can the helper reach CouchDB, and does its account work? Shows no secrets.
+  if (action === 'status') return status();
+
   // Recovery email and forgotten passwords: no church admin involved
   if (action === 'requestReset') return requestReset(String(body.who || '').trim());
   if (action === 'confirmReset') {
@@ -152,6 +155,20 @@ function resetPassword(church, name, password) {
   const saved = couch('put', path, { maker: true, body: doc });
   if (saved.status !== 201 && saved.status !== 202) throw new Error('Could not change the password (' + saved.status + ').');
   return { ok: true };
+}
+
+function status() {
+  const server = couch('get', '');
+  const session = couch('get', '_session', { maker: true });
+  const sec = couch('get', '_users/_security', { maker: true });
+  const admins = (sec.json && sec.json.admins && sec.json.admins.names) || [];
+  return {
+    ok: true,
+    couchdb: (server.json && server.json.version) || ('not reached (' + server.status + ')'),
+    helperSignedIn: !!(session.json && session.json.userCtx && session.json.userCtx.name),
+    helperManagesAccounts: admins.indexOf(PropertiesService.getScriptProperties().getProperty('MAKER_NAME')) !== -1,
+    emailsLeftToday: MailApp.getRemainingDailyQuota(),
+  };
 }
 
 // ---- Recovery email and forgotten passwords ----
