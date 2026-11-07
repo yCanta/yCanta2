@@ -242,7 +242,27 @@ html, body, main{
   color: var(--text-color);
 }
 html .admin {display: none;}
-html._admin .admin {display: revert;}
+html._admin .admin, html.churchAdmin .admin {display: revert;}
+.people-list {
+  padding: 0;
+  list-style: none;
+}
+.people-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+}
+.people-list .person-name {
+  flex: 1 1 6rem;
+  overflow-wrap: anywhere;
+}
+.people-list button {
+  white-space: nowrap;
+}
+html .editor-only {display: none;}
+html.churchEditor .editor-only {display: revert;}
 
 button[disabled] {
   filter: saturate(0) contrast(0.5);

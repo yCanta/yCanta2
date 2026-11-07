@@ -853,10 +853,11 @@ async function updateUser() {
   profileHtml += '</ul>';
 
   // Permissions
-  const permissions = Object.keys(window.roles)
-    .filter(role => role.startsWith(window.dbName))
-    .map(role => role.replace(window.dbName + "-", "").toUpperCase())
-    .join(', ');
+  const access = window.church || {};
+  const permissions = [
+    access.serverAdmin ? 'Server admin' : access.admin ? 'Church admin' : access.editor ? 'Editor' : 'Member',
+    access.editor ? 'can change any song or songbook' : 'can change the songs and songbooks you add',
+  ].join(': ');
   
   profileHtml += `<h4>Permissions</h4><ul>${permissions}</ul>`;
 
@@ -880,7 +881,7 @@ async function loadCategories() {
     const result = await db.get('categories');
     
     // Build HTML content
-    let html = `<h3>Ordered List <a href="#" onclick="loadRawDbObject('categories', document.getElementById('category_content'), 'loadCategories();')" class="mirror admin">&#9998;</a>
+    let html = `<h3>Ordered List <a href="#" onclick="loadRawDbObject('categories', document.getElementById('category_content'), 'loadCategories();')" class="mirror editor-only">&#9998;</a>
       </h3><ul>`;
     
     // Add each category as a list item
@@ -900,105 +901,13 @@ async function loadCategories() {
   }
 }
 
-async function getAllUsers(purpose = false){
-  let loggedIn = JSON.parse(localStorage.getItem('loggedin'));
-  let username = loggedIn.username;
-  let password = loggedIn.pwd;
-  var myHeaders = new Headers();
-  myHeaders.append("Accept", "application/json");
-  myHeaders.append("Content-Type", "application/json");
-  myHeaders.append('Authorization', 'Basic ' + btoa(username + ':' + password));
-
-  var requestOptions = {
-    method: 'GET',
-    headers: myHeaders,
-    redirect: 'follow'
-  };
-  try { 
-    let url = remoteDb.getUsersDatabaseUrl().replace('_users','');
-    let admin_response = await fetch(url+"_node/couchdb@127.0.0.1/_config", requestOptions);
-    let admin = await admin_response.text();
-    admin = JSON.parse(admin);
-    let response = await fetch(url+"/_users/_all_docs?include_docs=true&startkey=\"org.couchdb.user:\"", requestOptions)
-    let non_admin = await response.text();
-    non_admin = JSON.parse(non_admin);
-    let security = await fetch(url+window.dbName+"/_security", requestOptions);
-    security = await security.text();
-    security = JSON.parse(security)
-    
-    let users = non_admin.rows.filter(user => user.doc.roles.filter(role => security.members.roles.includes(role)).length > 0);
-    if(purpose == 'adminSignup') { //only when creating an admin do we care that there is no existing username
-      users = non_admin.rows;
-    }
-    function adminFilter(admin) {
-      return non_admin.rows.some(user => user.doc.name === admin && user.doc.roles.includes(window.dbName + "-admin"));
-    }
-    let admins = Object.keys(admin.admins).filter(adminFilter);  //need to filter this against the users table list for those that have the dbname in an admin role.
-    if(purpose) { //if there is any purpose other than display (default = false) then we want to check against all admins
-      admins = Object.keys(admin.admins);
-    }
-
-    return {"admins": admins, "users": users};
-  }
-  catch(error) {
-    console.log(error)
-    console.log(error.message);
-    return error;
-  }
+// Mirrors couchdb/validate.js: editors and church admins change anything; everyone else what they added
+function canEdit(doc) {
+  if (!doc || doc._id == 'sb-allSongs' || doc._id == 'sb-favoriteSongs') return false; // not real docs
+  if (window.church?.editor) return true;
+  return !!doc.addedBy && !!window.user?._id && doc.addedBy.trim() === window.user._id.trim();
 }
 
-function canEdit(doc){
-  let result = false;
-  try {
-    if(window.roles._admin){
-      result = true;
-    }
-    else if(window.roles[window.dbName+"-editor"]){
-      result = true;
-    }
-    else if(doc.addedBy.trim() == window.user._id.trim()){
-      result = true;
-    }
-    if(doc._id == 'sb-allSongs' || doc._id == 'sb-favoriteSongs'){ //docs that are just not editable.
-      result = false;
-    }
-  }
-  catch(error) {
-    console.log(error.message);
-  }
-  return result;
-}
-
-async function loadAllUsers(){
-  html = '';
-  if(remoteDb){
-    let users = await getAllUsers();
-
-    if(users instanceof Error) {
-      alert(users.message);
-      return;
-    }
-    let editorName = window.dbName+"-editor";
-    html = '<b>Admins <button class="circle" onclick="addAdminUser();">+</button></b><ul>'
-    html += users.admins.map(admin => `<li><span style="width: 30%; display:inline-block;">${admin}</span>
-                         <label title="All admins are editors"><input type="checkbox" checked disabled> Editor</label><button onclick="changeAdminPassword('${admin}')">↻ Password</button>
-                         <button onclick="deleteAdminUser('${admin}')">🗑 Delete<button></li>`).join('');
-    html += '</ul><h4>Users <button class="circle" onclick="addUser();">+</button></h4><ul>'
-    html += users.users.filter(user => user.doc.roles.indexOf(editorName) > -1)
-                       .map(user => `<li><span style="width: 30%; display:inline-block;">${user.doc.name}</span>
-                        <label><input type="checkbox" checked onclick="event.preventDefault(); toggleUserEditor('${user.doc.name}')"> Editor</label><button onclick="changeUserPassword('${user.doc.name}')">↻ Password</button>
-                        <button onclick="deleteUser('${user.doc.name}')">🗑 Remove<button></li>`).join('');
-    html += users.users.filter(user => user.doc.roles.indexOf(editorName) == -1)
-                       .map(user => `<li><span style="width: 30%; display:inline-block;">${user.doc.name}</span>
-                        <label><input type="checkbox" onclick="event.preventDefault(); toggleUserEditor('${user.doc.name}', true)"> Editor</label><button onclick="changeUserPassword('${user.doc.name}')">↻ Password</button>
-                        <button onclick="deleteUser('${user.doc.name}')">🗑 Remove<button></li>`).join('');
-    html += '</ul>'
-  }
-  else {
-    console.log('RemoteDB does not exist');
-  }
-  document.getElementById('all_users').innerHTML = html;
-}
 function searchSBfor(text) {
   const searchInput = document.querySelector('#songbook_header .search');
   if (searchInput) {
@@ -1079,6 +988,8 @@ function setLogoutState() {
   // Clear user and roles
   window.user = '';
   window.roles = '';
+  window.church = null;
+  sessionPwd = null;
   
   // Remove loggedin state from localStorage
   localStorage.removeItem('loggedin');
