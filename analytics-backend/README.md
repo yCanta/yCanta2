@@ -9,10 +9,10 @@ These are two files from the "yCanta - Analytics" Apps Script project. `Config.g
 
 | Tab | One row per | Columns |
 |---|---|---|
-| Sessions | visit (page load) | Start, Install, Session, User, Database, Platform, Screen, Touch, Installed, Dark mode, Font size, Load ms, Online, Location, Last seen |
-| Events | thing that happened | Time, Install, Session, User, Event, Value |
+| Sessions | visit (page load) | Start, Install, Session, User, Database, Platform, Screen, Touch, Installed, Dark mode, Font size, Load ms, Online, Location, Last seen, Minutes, Views, Pages |
+| Events | rare thing that happened | Time, Install, Session, User, Event, Value |
 
-Events are named the same as before: `hashchanged`, `edited`, `exported`, `timing` (now `hidden`/`visible`), `connection`, `analytics`.
+Pages lists every page viewed in the visit, in order and without the `#`, in one cell. Minutes counts time with the tab visible. For data from the old app, it's Last seen minus Start. Events are `edited`, `exported`, `analytics` (turned on or off) and `connection` (went offline or back online).
 
 ## Deploy
 
