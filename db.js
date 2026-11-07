@@ -856,7 +856,8 @@ function initializeSongbooksList(){
 // mirrors it for the buttons. Older accounts may still carry "<db>-viewer"/"<db>-editor"/"<db>-admin"
 // tags, and both the server and the app still honor them.
 
-window.accountsURL = ''; // the yCanta Accounts web app (accounts-backend/), once it is deployed
+// the yCanta Accounts web app (accounts-backend/), deployed from info.ycanta@gmail.com
+window.accountsURL = 'https://script.google.com/macros/s/AKfycbzQvNIHM0lvuhT-yXVEjSKHvO9nHGMmithevWRmNgiFlZhFj-8T7MDY4DxuP3M7vDai9A/exec';
 
 // What this person may do in this church, from its security lists and their account tags
 function churchAccessFrom(sec, roles, name, dbId) {

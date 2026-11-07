@@ -158,7 +158,7 @@ function resetPassword(church, name, password) {
 }
 
 function status() {
-  const server = couch('get', '');
+  const server = couch('get', '', { maker: true }); // the live server refuses signed-out requests
   const session = couch('get', '_session', { maker: true });
   const sec = couch('get', '_users/_security', { maker: true });
   const admins = (sec.json && sec.json.admins && sec.json.admins.names) || [];
