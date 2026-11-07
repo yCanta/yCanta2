@@ -1286,10 +1286,16 @@ async function _handleSongbookRoute(piece, oldHashOb) { // bodyClassList removed
 
       // Load all songs for export
       const sb_song_ids = window.songbook.songrefs.map(row => row.id);
-      const result = await db.allDocs({
-        include_docs: true,
-        keys: sb_song_ids
-      });
+      let result;
+      try {
+        result = await db.allDocs({
+          include_docs: true,
+          keys: sb_song_ids
+        });
+      } catch (err) {
+        reportDbError(err, 'load the songs to export');
+        return false;
+      }
 
       window.exportObject = window.songbook;
       // Each song carries its own status, since sections and deleted or empty songs are dropped here
@@ -1316,10 +1322,16 @@ async function _handleSongbookRoute(piece, oldHashOb) { // bodyClassList removed
 
       // Load all songs for presentation
       const sb_song_ids = window.songbook.songrefs.map(row => row.id);
-      const result = await db.allDocs({
-        include_docs: true,
-        keys: sb_song_ids
-      });
+      let result;
+      try {
+        result = await db.allDocs({
+          include_docs: true,
+          keys: sb_song_ids
+        });
+      } catch (err) {
+        reportDbError(err, 'load the songs to present');
+        return false;
+      }
 
       const songs = result.rows.filter(song => song.key != "section" && song.doc); // no doc: deleted song
       const myString = JSON.stringify({

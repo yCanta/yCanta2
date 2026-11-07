@@ -141,6 +141,12 @@ async function importSongV1(f){
                   updateProgress();
                   window.import.progressText.innerHTML = zipEntry.name;
                   resolve('done');
+                })
+                .catch(function(err){ //don't let one bad songbook stop the whole import
+                  console.error('Could not import ' + zipEntry.name, err);
+                  window.import.n_other++;
+                  updateProgress();
+                  resolve('done');
                 });
               }
               //Comments -- CRASHES iOS / SAFARI due to positive look behind.
@@ -186,11 +192,11 @@ async function importSongV1(f){
         for(sb_id of songbook_with_comments){
           db.get(sb_id).then(function(result) {
             result.showComments = true;
-            db.put(result).then(function(result){
-              console.log(result);
-            });
+            return db.put(result);
+          }).then(function(result){
+            console.log(result);
           }).catch(function(err){
-            console.log(err);
+            reportDbError(err, 'turn on comments for an imported songbook');
           });
         }
         initializeSongbooksList();

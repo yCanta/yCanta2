@@ -72,27 +72,6 @@ window.addEventListener('load', function() {
     dbSelect.dispatchEvent(new Event('change'));
   }, 50);
 });
-async function checkRemoteDBandSyncHandler(){
-  if(!db) {
-    console.log('no db!')
-    notyf.info('Logging out, something broke!', 'red');
-    dbLogout();
-  }
-  //get user from local db, pwd, and remote url...
-  let user = await db.get('_local/'+window.user._id);
-  let pwd = user.pwd;
-  let username = user._id.slice(9);
-  let remote_url = user.remote_url;
-
-  if(!remoteDb && remote_url) {
-    console.log('setting up remoteDb')
-    await loginRemoteDb(remote_url, username, pwd);
-  }
-  if(!syncHandler && remote_url) {
-    console.log('setting up sync handler')
-    await setUpSyncHandler();
-  }
-}
 async function loginRemoteDb(remote_url, username, pwd) {
   remoteDb = new PouchDB(remote_url, {skip_setup: true});
   const ajaxOpts = {
@@ -108,9 +87,10 @@ async function loginRemoteDb(remote_url, username, pwd) {
   let info = await remoteDb.info();
   const userJS = await remoteDb.getUser(username);
   if(!userJS.roles.some((role) => role.startsWith(info.db_name))) {
-    dbLogout();
-    alert('you do not have access to this database');
-    return;
+    // Throw, so the login stops here: the caller logs out and shows this message
+    const err = new Error('You do not have access to this database');
+    err.name = 'no_access';
+    throw err;
   }
   window.roles = batman.roles.reduce((a, v) => ({ ...a, [v]: true}), {});
   notyf.info('Connected to server', 'green');
@@ -183,7 +163,8 @@ function dbChanges() {
           .then(() => {
             updateAllLinks();
             highlightText();
-          });
+          })
+          .catch(() => {}); // a failure is already reported
         notyf.info('Song updated', 'var(--song-color)');
       } else {
         notyf.info(
@@ -214,7 +195,7 @@ function dbChanges() {
       // Reload all songs view if needed
       if (window.songbook?._id === 'sb-allSongs') {
         window.songbook._id = '';
-        loadSongbook('sb-allSongs');
+        loadSongbook('sb-allSongs').catch(() => {}); // a failure is already reported
       }
     } 
     // Songbook changes
@@ -225,7 +206,7 @@ function dbChanges() {
 
       if (isCurrentSongbook) {
         window.songbook = '';
-        loadSongbook(change.doc._id);
+        loadSongbook(change.doc._id).catch(() => {}); // a failure is already reported
         notyf.info('Songbook updated', 'var(--songList-color)');
       } else {
         notyf.info(
@@ -309,7 +290,7 @@ function dbChanges() {
         
         if (window.songbook?._id === 'sb-favoriteSongs') {
           window.songbook._id = '';
-          loadSongbook('sb-favoriteSongs');
+          loadSongbook('sb-favoriteSongs').catch(() => {}); // a failure is already reported
         }
       }
     }
@@ -392,6 +373,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
             throw new Error('Invalid credentials');
           }
         } catch (err) {
+          if (err.duringSetup) throw err; // the PIN was right; loading the data failed, and the outer catch says so
           console.error('Local login error:', err);
           alert('Username or PIN was incorrect');
           dbLogout();
@@ -412,7 +394,9 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
         } catch (error) {
           console.error('Remote connection error:', error);
           dbLogout();
-          const message = error.name === 'unauthorized' || error.name === 'forbidden'
+          const message = error.name === 'no_access' ? error.message
+            : error.duringSetup ? `Couldn't finish logging in: ${error.message}`
+            : error.name === 'unauthorized' || error.name === 'forbidden'
             ? 'Username or password are incorrect'
             : 'Please check your login information';
           alert(message);
@@ -455,7 +439,9 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     console.error('Login error:', error);
     dbLogout();
     
-    if(error.name === 'unauthorized' || error.name === 'forbidden') {
+    if(error.duringSetup) {
+      alert(`Couldn't finish logging in: ${error.message || error.name}`);
+    } else if(error.name === 'unauthorized' || error.name === 'forbidden') {
       alert('Username or Password are incorrect');
     } else {
       alert(error.message || 'There was an error during login');
@@ -566,7 +552,10 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
             document.documentElement.style.setProperty('--status-text', `"Downloading song files to your device . . . ${percentage}%${(startTime ? ' \\a If this happens every time you log in, try clicking \\"Keep me logged in\\" :)' : '')}"`);
             document.documentElement.style.setProperty('--animation', `3s loading infinite`);
           });
-        } catch (error) {console.log(error)}
+        } catch (error) {
+          // Not fatal: the app goes on with the copy on this device, and the live sync below keeps trying
+          reportDbError(error, 'download the latest songs');
+        }
         console.log('finished');
 
         document.documentElement.classList.remove('circleLoading', 'barLoading');
@@ -622,8 +611,10 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
 
       return true;
     } catch (error) {
+      // Throw, so dbLogin logs out and shows it (it used to return false, which nothing checked: login hung)
       console.error('Error in takeNextStep:', error);
-      return false;
+      error.duringSetup = true;
+      throw error;
     }
   }
 }
@@ -642,17 +633,22 @@ function setUpSyncHandler() {
     }).on('complete', function (err) {
       //replication canceled
       console.log('complete');
+    }).on('denied', function (err) {
+      // the server refused one document, for example an edit this user isn't allowed to make
+      reportDbError(err, 'send a change to the server');
+    }).on('error', function (err) {
+      // Sync gave up. Lost connections don't come here (retry: true waits and tries again).
+      if (err.name == 'unauthorized' || err.name == 'forbidden') {
+        alert('Your login has expired. Please log in again.');
+        dbLogout();
+      } else {
+        reportDbError(err, 'keep syncing with the server');
+      }
     });
     notyf.info('Sync established', 'green');
   }
   catch(err) {
-    if(err.name == 'unauthorized' || err.name == 'forbidden'){
-      console.log(err)
-      alert('Username or Password are incorrect');
-    }
-    else {
-      console.log(err) // totally unhandled error (shouldn't happen)
-    }
+    reportDbError(err, 'start syncing with the server');
     dbLogout();
   }
 }
@@ -824,7 +820,7 @@ function initializeSongbooksList(){
     }
     buildSongbooksList(result.rows);
   }).catch(function(err){
-    console.log(err);
+    reportDbError(err, 'load the songbooks');
   });
 }
 
@@ -971,9 +967,11 @@ async function addUser() {
         alert("This user already exists but did not have access to this database. They have been added. Their password was not changed.");
       } catch (updateErr) {
         handleError(updateErr); // Handle errors during role update
+        return; // not added: don't say it was
       }
     } else {
       handleError(err); // Handle other errors
+      return;
     }
   }
   notyf.info(`Added ${username}`, 'green');
@@ -1156,24 +1154,27 @@ function saveSong(song_id, songElement = document.querySelector('#song song'), c
         '\0'
       ].join('');
 
-      try {
-        const result = await db.put(song);
+      const saved = () => {
         console.log('saved:', song.title);
-        
         if (change_url) {
           window.location.hash = `#${formatSbID(window.songbook._id)}&${song._id}`;
         }
-        
         resolve(song._id);
         logData('edited', song._id);
+      };
+      // A failed save rejects (#1). It used to resolve as if it had worked, so the edit was lost without a word.
+      try {
+        await db.put(song);
+        saved();
       } catch (err) {
-        if (new_song) {
+        if (new_song && err.name === 'conflict') {
+          // another song got this id in the same millisecond: take a slightly different one
           song._id += Math.random().toString(36).substring(7, 9);
-          console.log(song._id);
           await db.put(song);
+          saved();
+        } else {
+          throw err;
         }
-        console.log(err, song.title);
-        resolve(song._id);
       }
     }
 
@@ -1191,9 +1192,8 @@ function saveSong(song_id, songElement = document.querySelector('#song song'), c
       };
       try {
         await loadSongContent(song);
-        addSongToSongbook(song._id);
+        await addSongToSongbook(song._id);
       } catch (err) {
-        console.error(err);
         reject(err);
       }
       return;
@@ -1213,7 +1213,6 @@ function saveSong(song_id, songElement = document.querySelector('#song song'), c
       try {
         await loadSongContent(song);
       } catch (err) {
-        console.error(err);
         reject(err);
       }
       return;
@@ -1226,8 +1225,7 @@ function saveSong(song_id, songElement = document.querySelector('#song song'), c
       song.editedBy = window.user._id;
       await loadSongContent(song);
     } catch (err) {
-      console.log(err);
-      resolve(song_id);
+      reject(err);
     }
   });
 }
@@ -1408,20 +1406,26 @@ function loadSong(song_id, song_rev = false) {
         await createSongHtml(song);
       }
     } catch (err) {
-      console.error("Error loading song:", err);
       if (err.status === 404) {
         // Song not found - show error message and redirect
+        console.error("Error loading song:", err);
         notyf.error(`Song not found (ID: ${song_id})`, 'red');
         window.location.hash = '#' + formatSbID(window.songbook._id);
       } else {
-        notyf.error('Error loading song', 'red');
-        reject(err);
+        reportDbError(err, 'open the song');
       }
+      reject(err); // already reported: callers only need to stop (a 404 used to leave them waiting forever)
     }
   });
 }
 async function deleteSong(song_id) {
-  let sbs = await songInSongbooks(song_id);
+  let sbs;
+  try {
+    sbs = await songInSongbooks(song_id);
+  } catch (err) {
+    reportDbError(err, 'check which songbooks use this song, so it was not deleted'); // never delete without checking
+    return;
+  }
   if(sbs.length) {
     alert(`"${window.song.title}" cannot be deleted it is in the following songbooks:\n - ${sbs.map(sb => sb.doc.title).join('\n -')}`);
   }
@@ -1529,8 +1533,7 @@ function saveSongbook(songbook_id, songbook_html = document.getElementById('song
         });
       }
 
-      try {
-        const result = await db.put(songbook);
+      const saved = () => {
         window.songbook = songbook;
         console.log('saved:', songbook.title);
 
@@ -1542,22 +1545,19 @@ function saveSongbook(songbook_id, songbook_html = document.getElementById('song
 
         resolve(window.songbook._id);
         logData('edited', songbook._id);
+      };
+      // A failed save rejects (#1). It used to resolve 'save_failed', which no caller checked.
+      try {
+        await db.put(songbook);
+        saved();
       } catch (err) {
-        console.error('Error saving songbook:', err);
-        
-        if (new_songbook) {
-          // Retry with modified ID if new songbook fails
+        if (new_songbook && err.name === 'conflict') {
+          // another songbook got this id in the same millisecond: take a slightly different one
           songbook._id += Math.random().toString(36).substring(7, 9);
-          console.log('Retrying with new ID:', songbook._id);
-          try {
-            await db.put(songbook);
-            resolve(window.songbook._id);
-          } catch (retryErr) {
-            console.error('Retry failed:', retryErr);
-            resolve('save_failed');
-          }
+          await db.put(songbook);
+          saved();
         } else {
-          resolve('save_failed');
+          throw err;
         }
       }
     }
@@ -1574,7 +1574,7 @@ function saveSongbook(songbook_id, songbook_html = document.getElementById('song
         edited: time,
         editedBy: window.user._id
       };
-      await loadSongbookContent(songbook);
+      await loadSongbookContent(songbook).catch(reject);
       return;
     }
 
@@ -1589,7 +1589,7 @@ function saveSongbook(songbook_id, songbook_html = document.getElementById('song
         edited: time,
         editedBy: window.user._id
       };
-      await loadSongbookContent(songbook);
+      await loadSongbookContent(songbook).catch(reject);
       return;
     }
 
@@ -1600,8 +1600,7 @@ function saveSongbook(songbook_id, songbook_html = document.getElementById('song
       songbook.editedBy = window.user._id;
       await loadSongbookContent(songbook);
     } catch (err) {
-      console.error('Error loading songbook:', err);
-      resolve('load_failed');
+      reject(err);
     }
   });
 }
@@ -1631,7 +1630,7 @@ async function loadSongbook(songbook_id, forceReload=false) {
     // Regular songbook loading
     return await loadRegularSongbook(songbook_id);
   } catch (err) {
-    console.error('Error loading songbook:', err);
+    reportDbError(err, 'open the songbook'); // callers only need to stop
     throw err;
   } finally {
     document.querySelectorAll('#songList .edit_buttons').forEach(el => el.remove());
@@ -1802,13 +1801,14 @@ function addSongToSongbook(song_id, songbook_id=window.songbook._id) {
   }
 
   if(songbook_id == 'sb-favoriteSongs') {
-    toggleFavorite(song_id, 'fav_songs');
+    return toggleFavorite(song_id, 'fav_songs');
   }
   else if(songbook_id == 'sb-allSongs') {
     // do nothing because the db.changes function should update the allSongs songbook
   }
   else {
-    db.get(songbook_id).then(function(songbook){
+    // Never throws: the song itself is saved by now, so a failure here is only reported
+    return db.get(songbook_id).then(function(songbook){
       songbook.songrefs.push({
         "id": song_id,
         "status":"n",
@@ -1817,11 +1817,11 @@ function addSongToSongbook(song_id, songbook_id=window.songbook._id) {
           "Hi"
         ]
       });
-      db.put(songbook).then(function(result) {
+      return db.put(songbook).then(function(result) {
         console.log('Successfully added song to '+songbook.title+'!');
       });
     }).catch(function(err){
-      console.log(err);
+      reportDbError(err, 'add the new song to this songbook');
     });
   }
 }
@@ -1968,24 +1968,25 @@ function serializeForm(formId) {
   }
   return serializedArray;
 }
-function saveExport(name) {
+async function saveExport(name) {
   let opts = serializeForm('export_form');
   let cfg = {
     _id: 'cfg-'+window.exportObject._id+window.user._id+(name != '' ? ':'+name.replaceAll(/[^A-Za-z0-9 -]/g, "") : ''),
     cfg: opts,
     name: name
   }
-  db.get(cfg._id).then(function(_doc) {
-    console.log('updating');
-    cfg._rev = _doc._rev;
-    return db.put(cfg);
-  }).catch( function (error) {
-    console.log('adding');
-    return db.put(cfg);
-  }).then(function(info){
+  try {
+    try {
+      cfg._rev = (await db.get(cfg._id))._rev; // updating a saved config
+    } catch (err) {
+      if (err.status !== 404) throw err; // 404: a new config
+    }
+    const info = await db.put(cfg);
     console.log("id of record: " + info.id);
     prepExport();
-  });
+  } catch (err) {
+    reportDbError(err, 'save this export setup');
+  }
 }
 
 async function toggleFavorite(itemId, favoriteType) { // Make it more generic
@@ -2005,7 +2006,7 @@ async function toggleFavorite(itemId, favoriteType) { // Make it more generic
     await db.put(user);
     console.log(`Successfully updated favorite ${(favoriteType == 'fav_sbs' ? 'Songbook' :'Song')}s!`);
   } catch (err) {
-    console.log(err);
+    reportDbError(err, 'change your favorites');
   }
 }
 
