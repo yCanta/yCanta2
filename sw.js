@@ -1,4 +1,6 @@
-const CACHE_VERSION = 'v2';
+// Bump this on every release. A new service worker reloads every file at once; without it, files
+// refresh one at a time and a browser can keep running old scripts next to a new index.html.
+const CACHE_VERSION = 'v3';
 const CACHE = `cache-and-update-${CACHE_VERSION}`;
 
 var prefetchedURLs = [

@@ -1114,7 +1114,7 @@ async function _handleLoginRoute(piece) { // bodyClassList removed
   let defaultLogin = localStorage.getItem('defaultdbName');
 
   // A remote login saved without "Keep me logged in" has no password, so it would only fail with an alert
-  const canAutoLogin = loggedIn && (loggedIn.dbName.endsWith('(local)') || loggedIn.pwd);
+  const canAutoLogin = loggedIn?.dbName && (loggedIn.dbName.endsWith('(local)') || loggedIn.pwd);
   if (loggedIn && !canAutoLogin) {
     localStorage.removeItem('loggedin'); // dbLogin only saves a new one when none is there
   } else if (canAutoLogin) {

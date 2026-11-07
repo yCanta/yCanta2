@@ -121,9 +121,11 @@ function setSessionInfo(fields, page) {
   if (page !== undefined) {
     // Without the "#"; a page repeated straight after itself is counted but not listed again
     page = String(page).replace(/^#/, '') || 'home';
-    if (session.pages.at(-1) !== page && session.pages.length < MAX_PAGES) session.pages.push(page);
+    if (session.pages[session.pages.length - 1] !== page && session.pages.length < MAX_PAGES) session.pages.push(page); // not .at(): Safari 15.4+
     session.views += 1;
   }
+  // A page view can start the visit before login has created the install id on a new device
+  session.install = session.install || localStorage.getItem('analyticID');
   Object.assign(session, fields, { lastSeen: Date.now(), activeMin: activeMinutes(), rev: (session.rev || 0) + 1 });
   queue.sessions[analyticsSessionId] = session;
   // Same idea as MAX_QUEUED_EVENTS: keep only the newest visits while the backend can't be reached

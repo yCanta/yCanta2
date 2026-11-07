@@ -1112,8 +1112,8 @@ function mapSongbookRowToValue(row) {
   return { 'songbook-id':           row.doc._id,
     'songbook-rev':                 row.doc._rev,
     'songbook-title':        't:' + stripAccents(row.doc.title) + '\0'
-  + 'addedBy:' + row.doc.addedBy.slice(2) + '\0'
-  + 'editedBy:' + row.doc.editedBy.slice(2) + '\0',
+  + 'addedBy:' + stripAccents(row.doc.addedBy.slice(2)) + '\0'
+  + 'editedBy:' + stripAccents(row.doc.editedBy.slice(2)) + '\0',
     'link': '#'+row.doc._id,
     'name': row.doc.title
   };
@@ -1648,10 +1648,11 @@ async function editSong() {
   // Load categories
   try {
     const categories = await db.get('categories');
-    const options = { valueNames: ['name'], item: 'category-template' };
+    // search: the name without accents, which is what list.min.js compares the query with
+    const options = { valueNames: ['name', { data: ['search'] }], item: 'category-template' };
     const values = categories.categories
       .filter(cat => !window.categories_list?.get('name', cat).length)
-      .map(cat => ({ name: cat }));
+      .map(cat => ({ name: cat, search: stripAccents(cat) }));
     
     window.categories_list = new List('categories', options, values);
     bindSearchToList(window.categories_list, '#categories');
