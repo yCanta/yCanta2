@@ -49,25 +49,40 @@ function isInstalled() {
 
 /*
  * Analytics, version 2.
- * Each page load is a session: one record of the device and settings (setSessionInfo), plus a list
- * of events, like pages viewed, edits and exports (logData). Both wait in localStorage until the
- * backend says it saved them, so nothing is lost offline. The backend writes sessions to the
- * Sessions tab (one row each) and events to the Events tab.
+ * Each page load is a session: one record of the device, location, settings, active minutes and
+ * the pages viewed (setSessionInfo), plus a short list of rarer events like edits and exports
+ * (logData). Both wait in localStorage until the backend says it saved them, so nothing is lost
+ * offline. The backend writes each session as one row of the Sessions tab, and events to Events.
  */
 const ANALYTICS_QUEUE = 'analyticsQueue';
 const MAX_QUEUED_EVENTS = 500; // so the queue can't grow forever if sending keeps failing
 const MAX_QUEUED_SESSIONS = 50;
 const MAX_POST_CHARS = 60000; // fetch keepalive allows 64KB
 const LOCATION_MAX_AGE = 30 * 24 * 60 * 60 * 1000; // look the location up once a month, not every load
+const MAX_PAGES = 300;         // pages listed for one visit; Views still counts them all
 const SESSION_FIELDS = ['darkMode', 'fontSize']; // logData names that update the session instead of adding an event
 const analyticsSessionId = crypto.randomUUID();
+
+// Active time: only while the page is visible, so a tab left open overnight isn't a 9 hour visit
+let activeMs = 0;
+let visibleSince = document.visibilityState === 'visible' ? Date.now() : null;
+function activeMinutes() {
+  const ms = activeMs + (visibleSince ? Date.now() - visibleSince : 0);
+  return Math.round(ms / 6000) / 10;
+}
 
 window.addEventListener("load", (event) => {
   window.loadData = true;
 });
 window.addEventListener("visibilitychange", (event)=> {
-  logData('timing', document.visibilityState); // 'hidden' / 'visible', so visits have a length
-  if (document.visibilityState === 'hidden') submitLogData();
+  if (document.visibilityState === 'hidden') {
+    if (visibleSince) activeMs += Date.now() - visibleSince;
+    visibleSince = null;
+    setSessionInfo({}); // record the minutes so far
+    submitLogData();
+  } else if (!visibleSince) {
+    visibleSince = Date.now();
+  }
 });
 
 function analyticsAllowed() {
@@ -89,16 +104,25 @@ function writeAnalyticsQueue(queue) {
   }
 }
 
-// Add facts about this visit (user, device, settings). They're sent again whenever they change.
-function setSessionInfo(fields) {
+// Add facts about this visit (user, device, settings), and a page viewed if there is one.
+// The whole visit is sent again whenever it changes.
+function setSessionInfo(fields, page) {
   if (!analyticsAllowed()) return;
   const queue = readAnalyticsQueue();
   const session = queue.sessions[analyticsSessionId] || {
     id: analyticsSessionId,
     install: localStorage.getItem('analyticID'),
-    start: Date.now()
+    start: Date.now(),
+    pages: [],
+    views: 0
   };
-  Object.assign(session, fields, { lastSeen: Date.now(), rev: (session.rev || 0) + 1 });
+  if (page !== undefined) {
+    // Without the "#"; a page repeated straight after itself is counted but not listed again
+    page = String(page).replace(/^#/, '') || 'home';
+    if (session.pages.at(-1) !== page && session.pages.length < MAX_PAGES) session.pages.push(page);
+    session.views += 1;
+  }
+  Object.assign(session, fields, { lastSeen: Date.now(), activeMin: activeMinutes(), rev: (session.rev || 0) + 1 });
   queue.sessions[analyticsSessionId] = session;
   // Same idea as MAX_QUEUED_EVENTS: keep only the newest visits while the backend can't be reached
   const oldest = Object.values(queue.sessions).sort((a, b) => b.start - a.start).slice(MAX_QUEUED_SESSIONS);
@@ -106,7 +130,7 @@ function setSessionInfo(fields) {
   writeAnalyticsQueue(queue);
 }
 
-// Capture function: one event, e.g. logData('hashchanged', location.hash)
+// Capture function: one event, e.g. logData('edited', song._id). Page views and settings go on the visit.
 function logData(header, information, time = new Date().getTime()) {
   if (!analyticsAllowed()) return;
 
@@ -115,6 +139,10 @@ function logData(header, information, time = new Date().getTime()) {
     return
   }
 
+  if (header === 'hashchanged') {
+    setSessionInfo({}, information);
+    return;
+  }
   if (SESSION_FIELDS.includes(header)) {
     setSessionInfo({ [header]: information });
     return;
