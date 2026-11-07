@@ -55,8 +55,10 @@ self.addEventListener('fetch', function(evt) {
   }
   // Only cache the app's own files. Database requests (cross-origin, or /couch/ on this host)
   // must hit the network, or ignoreSearch would hand sync stale _changes results.
+  // The server save rules (/couchdb/validate.js) must be fresh too, or "Install or update the save
+  // rules" would install an old copy.
   const url = new URL(evt.request.url);
-  if (url.origin !== self.location.origin || url.pathname.includes('/couch/')) {
+  if (url.origin !== self.location.origin || url.pathname.includes('/couch/') || url.pathname.includes('/couchdb/')) {
     return;
   }
 
