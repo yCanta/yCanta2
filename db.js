@@ -817,9 +817,11 @@ function initializeSongbooksList(){
         values.push(sb_vals);
       });
       //Creates list.min.js list for viewing all the songbooks
-      window.songbooks_list = new List('songbooks_container', options, values);
+      // index.html renamed it from "songbooks"; accept both for the one load where the browser has an old copy cached
+      const containerId = document.getElementById('songbooks_container') ? 'songbooks_container' : 'songbooks';
+      window.songbooks_list = new List(containerId, options, values);
       window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
-      bindSearchToList(window.songbooks_list, '#songbooks_container');
+      bindSearchToList(window.songbooks_list, '#' + containerId);
       return 
     }
     buildSongbooksList(result.rows);
