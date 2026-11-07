@@ -593,7 +593,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       // Analytics: a failure here must never break login
       try {
         if(!localStorage.getItem('analyticID')) {
-          localStorage.setItem('analyticID', crypto.randomUUID());
+          localStorage.setItem('analyticID', newAnalyticsId());
           dysmyssable.info('yCanta has been updated to send information to help improve how it works. You can toggle this in settings.', 'var(--song-color)', '#'); // stays until closed, like production
         }
 

@@ -61,7 +61,9 @@ const MAX_POST_CHARS = 60000; // fetch keepalive allows 64KB
 const LOCATION_MAX_AGE = 30 * 24 * 60 * 60 * 1000; // look the location up once a month, not every load
 const MAX_PAGES = 300;         // pages listed for one visit; Views still counts them all
 const SESSION_FIELDS = ['darkMode', 'fontSize']; // logData names that update the session instead of adding an event
-const analyticsSessionId = crypto.randomUUID();
+// crypto.randomUUID is missing before Safari 15.4, and a throw here would leave logData undefined everywhere
+const newAnalyticsId = () => crypto.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+const analyticsSessionId = newAnalyticsId();
 
 // Active time: only while the page is visible, so a tab left open overnight isn't a 9 hour visit
 let activeMs = 0;
@@ -150,7 +152,7 @@ function logData(header, information, time = new Date().getTime()) {
 
   const queue = readAnalyticsQueue();
   queue.events.push({
-    id: crypto.randomUUID(), // so a send can remove exactly what it sent, even with two tabs open
+    id: newAnalyticsId(), // so a send can remove exactly what it sent, even with two tabs open
     t: time,
     s: analyticsSessionId,
     u: window.user._id,
