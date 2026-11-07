@@ -411,17 +411,18 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
 
         if (navigator.onLine) {
           remote_url = parseUrl(remote_url, username, pwd);
-          await loginRemoteDb(remote_url, username, pwd);
+          try {
+            await loginRemoteDb(remote_url, username, pwd);
+          } catch (err) {
+            // "Online" doesn't mean the server answers (hotel wifi, the server down): use this device's copy
+            if (!serverUnreachable(err)) throw err;
+            console.warn("Can't reach the server, logging in from this device's copy:", err);
+            await loginFromDevice(username, pwd);
+            break;
+          }
           await takeNextStep(username, dbName);
         } else {
-          const localUser = await db.get('_local/u-'+username);
-          if (localUser.pwd === pwd) {
-            window.roles = localUser.roles;
-            notyf.info('Offline login successful', 'green');
-            await takeNextStep(username, dbName);
-          } else {
-            throw new Error('Offline login failed');
-          }
+          await loginFromDevice(username, pwd);
         }
         break;
 
@@ -448,6 +449,29 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     }
     
     return false;
+  }
+
+  // Logs in from the copy saved on this device, when the server can't be reached. Only a login made
+  // with "Keep me logged in" saves that copy and the password to check against. reconnectSync starts
+  // syncing once the server answers again.
+  async function loginFromDevice(username, pwd) {
+    remoteDb = null; // drop the half-made connection from a failed attempt, so nothing tries to use it
+    let localUser = null;
+    try {
+      localUser = await db.get('_local/u-'+username);
+    } catch (err) {
+      if (err.status !== 404) throw err;
+    }
+    if (!localUser?.pwd) {
+      throw new Error("Can't reach the server, and this device has no saved copy to use offline. " +
+        'To use yCanta offline, log in once while connected, with "Keep me logged in" checked.');
+    }
+    if (localUser.pwd !== pwd) {
+      throw new Error('Wrong password (checked against the copy saved on this device).');
+    }
+    window.roles = localUser.roles;
+    notyf.info('Offline: using the songs saved on this device', 'green');
+    await takeNextStep(username, dbName);
   }
 
   async function takeNextStep(username, dbName) {
@@ -530,7 +554,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       setLoginState();
 
       // Setup sync for remote databases
-      if(navigator.onLine && db.name.endsWith('(remote)')) {
+      if(remoteDb && navigator.onLine && db.name.endsWith('(remote)')) { // no remoteDb: logged in from this device's copy
         console.log('doing a onetime sync...');
         let startTime = new Date();
         
@@ -624,7 +648,7 @@ function setUpSyncHandler() {
       live: true,
       retry: true
     }).on('change', function (change) {
-      console.log('Synced some stuff', parseInt(parseInt(change.change.last_seq.split('-')[0].replace('-',''))/parseInt(info.update_seq.replace('-',''))*100)+'%');
+      console.log('Synced some stuff', window.info ? parseInt(parseInt(change.change.last_seq.split('-')[0].replace('-',''))/parseInt(window.info.update_seq.replace('-',''))*100)+'%' : '');
       // yo, something changed!
     }).on('paused', function (info) {
       // replication was paused, usually because of a lost connection
@@ -643,6 +667,7 @@ function setUpSyncHandler() {
         dbLogout();
       } else {
         reportDbError(err, 'keep syncing with the server');
+        syncHandler = null; // so reconnectSync can start it again
       }
     });
     notyf.info('Sync established', 'green');
@@ -652,9 +677,42 @@ function setUpSyncHandler() {
     dbLogout();
   }
 }
+
+// True for a failure to reach the server at all, as opposed to the server saying no
+function serverUnreachable(err) {
+  return err?.status === 0 || err?.name === 'unknown_error' || err instanceof TypeError ||
+    err?.status >= 500 || /failed to fetch|networkerror|load failed/i.test(err?.message || '');
+}
+
+// A login from this device's copy (offline, or the server didn't answer) starts without sync.
+// Connect and start syncing when the browser comes back online, and every minute meanwhile,
+// so edits made offline reach the server without a reload.
+let reconnecting = false;
+async function reconnectSync() {
+  if (reconnecting || syncHandler || !window.loggedin || !navigator.onLine || !db?.name?.endsWith('(remote)')) return;
+  reconnecting = true;
+  try {
+    const username = window.user._id.replace(/^u-/, '');
+    const localUser = await db.get('_local/u-'+username);
+    if (!localUser.pwd || !localUser.remote_url) return; // no saved login to reconnect with
+    await loginRemoteDb(localUser.remote_url, username, localUser.pwd);
+    window.info = await remoteDb.info();
+    setUpSyncHandler(); // says "Sync established"
+  } catch (err) {
+    remoteDb = null;
+    console.warn('Still no connection to the server; trying again in a minute:', err?.message || err);
+  } finally {
+    reconnecting = false;
+  }
+}
+window.addEventListener('online', reconnectSync);
+setInterval(reconnectSync, 60 * 1000);
 async function dbLogout() {
   if (!confirmWhenEditing()) {
     try {
+      // Stop sync first: closing the database under a live sync makes it report an error
+      syncHandler?.cancel();
+      syncHandler = null;
       await db.close();
       console.log("Closed local database");
       if (remoteDb) { // Check if remoteDb is initialized
