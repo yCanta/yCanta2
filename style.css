@@ -1760,7 +1760,7 @@ only screen and (max-height: 31.25rem) {
   body.song #songbookList #songbooks_header {
     background-color: var(--songbookList-color);
   }
-  #songbooks {
+  #songbooks_container {
     width: 18.75rem;
   }
   #export .content {

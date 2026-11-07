@@ -149,11 +149,11 @@
         </div>
         <div class="row">
           <div class="subcolumn">
-            <div id="songbooks">
+            <div id="songbooks_container"> <!-- not "songbooks": a #songbooks link would jump to it and lose the scroll position (issue #127) -->
               <div id="songbooks_header" class="column_header">
                 <div>
                   <h3><a class="title_link" href="#songbooks">Songbooks</a></h3>
-                  <input aria-label="Search" class="search deletable" type="text" data-target="#songbooks" data-trigger="change" placeholder="Search">
+                  <input aria-label="Search" class="search deletable" type="text" data-target="#songbooks_container" data-trigger="change" placeholder="Search">
                 </div>
               </div>
               <ul class="list"></ul>
