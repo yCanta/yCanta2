@@ -594,30 +594,28 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       try {
         if(!localStorage.getItem('analyticID')) {
           localStorage.setItem('analyticID', crypto.randomUUID());
-          logData('platform', getOS());
-          logData('screenSize', getScreenSize());
-          logData('touch', isTouchCapable());
-          logData('darkMode', localStorage.getItem(window.user._id+'darkMode') || 'def');
-          logData('fontSize', localStorage.getItem(window.user._id+'fontSize') || 'def');
           dysmyssable.info('yCanta has been updated to send information to help improve how it works. You can toggle this in settings.', 'var(--song-color)', '#'); // stays until closed, like production
         }
 
-        logData('username', window.user._id);
-        logData('connection', navigator.onLine ? "online" : "offline");
+        // One row in the Sessions tab per visit
+        setSessionInfo({
+          user: window.user._id,
+          db: db.name,
+          platform: getOS(),
+          screen: getScreenSize(),
+          touch: isTouchCapable(),
+          installed: isInstalled(),
+          online: navigator.onLine,
+          darkMode: localStorage.getItem(window.user._id+'darkMode') || 'def',
+          fontSize: localStorage.getItem(window.user._id+'fontSize') || 'def'
+        });
 
         if(window.loadData) {
-          logData('loadTime', performance.timing.domContentLoadedEventEnd - performance.timing.navigationStart);
-          logData('installed', isInstalled());
-
-          if(localStorage.getItem(window.user._id+'analytics') !== 'false') {
-            // Not awaited, so login doesn't wait on a third-party lookup
-            fetch('https://ipapi.co/json/')
-              .then(response => response.json())
-              .then(data => logData('location', `${data.country_name}, ${data.region}, ${data.city}`))
-              .catch(error => console.error('Error fetching location:', error));
-          }
+          setSessionInfo({ loadMs: performance.timing.domContentLoadedEventEnd - performance.timing.navigationStart });
           delete window.loadData;
         }
+        updateAnalyticsLocation(); // not awaited, so login doesn't wait on a third-party lookup
+        submitLogData(); // send the visit now; the rest goes when the page is hidden
       } catch (error) {
         console.error('Analytics error during login:', error);
       }
