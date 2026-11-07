@@ -1069,9 +1069,12 @@ async function forgotPassword() {
     const who = prompt('Your yCanta name, or your recovery email:', typed)?.trim();
     if (!who) return;
     const { message } = await postToHelper({ action: 'requestReset', who });
-    const name = who.includes('@') ? prompt(`${message}\n\nYour yCanta name (it's in the email):`)?.trim() : who;
+    alert(message + '\n\nCheck your email, then come back here.');
+    const name = who.includes('@')
+      ? prompt('Your yCanta NAME (the email shows it next to "Your name"):')?.trim()
+      : who;
     if (!name) return;
-    const code = prompt(`${who.includes('@') ? '' : message + '\n\n'}The code from the email:`)?.trim();
+    const code = prompt('The 8-character CODE from the email (next to "Your code"):')?.trim();
     if (!code) return;
     const password = askNewPassword(name);
     if (!password) return;
