@@ -118,16 +118,24 @@ function fromV1_(entries) {
   items.forEach(item => {
     let session = open[item.install];
     const field = V1_SESSION_FIELDS[item.type];
-    if (!session || item.time - session.lastSeen > SESSION_GAP_MS || (item.type === 'username' && session.user)) {
+    const relogin = item.type === 'username' && session && session.loggedIn; // a copied user isn't a login
+    if (!session || item.time - session.lastSeen > SESSION_GAP_MS || relogin) {
+      const previous = session;
       session = open[item.install] = {
         id: item.install + '-' + item.time, install: item.install, start: item.time, lastSeen: item.time,
         pages: [], views: 0, continuation: true
       };
+      // Back to the tab after a break: no new login, so the same device, user and settings
+      if (previous && !relogin) {
+        copyFacts_(previous, session);
+        session.continuation = false;
+      }
       sessions.push(session);
     }
     session.lastSeen = Math.max(session.lastSeen, item.time);
     if (field) {
-      session[field] = item.value;
+      session[field] = field === 'platform' ? platformName_(item.value) : item.value;
+      if (item.type === 'username') session.loggedIn = true;
       session.continuation = false;
     } else if (item.type === 'connection') {
       session.online = item.value === 'online'; // logged at every login; a later change just updates it
@@ -147,6 +155,27 @@ function fromV1_(entries) {
     delete e.sessionRef;
   });
   return { sessions, events };
+}
+
+// Facts about the device and login that carry over to the next visit when there was no new login
+const FACT_KEYS = ['user', 'db', 'platform', 'screen', 'touch', 'installed', 'darkMode', 'fontSize', 'location', 'online'];
+function copyFacts_(from, to) {
+  FACT_KEYS.forEach(key => {
+    if (to[key] === undefined && from[key] !== undefined && from[key] !== '') to[key] = from[key];
+  });
+}
+
+// The old app logged the whole user agent when it didn't know the platform
+function platformName_(value) {
+  const text = String(value);
+  if (text.length < 25) return value;
+  if (/CrOS/.test(text)) return 'ChromeOS';
+  if (/iPhone|iPad|iPod/.test(text)) return 'iOS';
+  if (/Android/.test(text)) return 'Android';
+  if (/Macintosh|Mac OS X/.test(text)) return 'Mac OS';
+  if (/Windows/.test(text)) return 'Windows';
+  if (/Linux/.test(text)) return 'Linux';
+  return value;
 }
 
 // Pages are kept without the "#", and a page repeated straight after itself is counted but not listed again
@@ -170,7 +199,9 @@ function writeBatch_(batch, appendOnly) {
     const sessionSheet = getOrCreateSheet_(ss, SESSIONS_SHEET, SESSION_COLUMNS.map(([name]) => name));
     const eventSheet = getOrCreateSheet_(ss, EVENTS_SHEET, EVENT_COLUMNS);
 
-    const newSessions = appendOnly ? batch.sessions : updateExistingSessions_(sessionSheet, batch.sessions);
+    const knownUsers = {}; // install -> user, from rows already in the sheet
+    const newSessions = appendOnly ? batch.sessions : updateExistingSessions_(sessionSheet, batch.sessions, knownUsers);
+    batch.events.forEach(e => { if (!e.user && knownUsers[e.install]) e.user = knownUsers[e.install]; });
     appendRows_(sessionSheet, newSessions.map(sessionRow_));
     appendRows_(eventSheet, batch.events.map(eventRow_));
     SpreadsheetApp.flush();
@@ -183,8 +214,10 @@ function writeBatch_(batch, appendOnly) {
  * Updates the rows of visits the tab already has, and returns the visits that still need a row.
  *   Version 2 visit: found by its Session id. The app sends the whole visit each time, so new values win.
  *   Version 1 continuation: added to the install's latest row if that one ended less than 30 minutes before.
+ *     Otherwise it is a visit of its own, with the user and device facts of that latest row.
+ * knownUsers gets install -> user for each row looked at, for events that came without a user.
  */
-function updateExistingSessions_(sheet, sessions) {
+function updateExistingSessions_(sheet, sessions, knownUsers) {
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return sessions;
   const width = SESSION_COLUMNS.length;
@@ -194,7 +227,10 @@ function updateExistingSessions_(sheet, sessions) {
     if (session.continuation) {
       const matches = sheet.getRange(2, col_('install') + 1, lastRow - 1, 1)
         .createTextFinder(String(session.install)).matchEntireCell(true).findAll();
-      found = matches.length ? matches[matches.length - 1] : null;
+      // The install's latest visit by Last seen (rows without a time sort to the end)
+      const ends = matches.length ? sheet.getRange(2, col_('lastSeen') + 1, lastRow - 1, 1).getValues() : [];
+      const endOf = m => (ends[m.getRow() - 2][0] instanceof Date ? ends[m.getRow() - 2][0].getTime() : 0);
+      found = matches.reduce((best, m) => (!best || endOf(m) > endOf(best) ? m : best), null);
     } else {
       found = sheet.getRange(2, col_('id') + 1, lastRow - 1, 1)
         .createTextFinder(String(session.id)).matchEntireCell(true).findNext();
@@ -203,9 +239,15 @@ function updateExistingSessions_(sheet, sessions) {
 
     const rowRange = sheet.getRange(found.getRow(), 1, 1, width);
     const row = rowRange.getValues()[0];
+    if (row[col_('user')]) knownUsers[session.install] = row[col_('user')];
     const oldEnd = row[col_('lastSeen')];
     if (session.continuation && !(oldEnd instanceof Date && session.start - oldEnd.getTime() <= SESSION_GAP_MS)) {
-      return true; // too long after that visit: a visit of its own
+      // Too long after that visit: a visit of its own, on the same device and login
+      FACT_KEYS.forEach(key => {
+        const value = row[col_(key)];
+        if (session[key] === undefined && value !== '') session[key] = value;
+      });
+      return true;
     }
 
     const update = sessionRow_(session);
