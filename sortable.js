@@ -172,6 +172,7 @@ target.addEventListener("dragover", (e) => {
 
 target.addEventListener("drop", (e) => {
   e.preventDefault();
+  if (!selected) return; // a file or text dragged in from outside the app
   location.hash = `${location.hash.replace('#','').split('&')[0]}&${selected.getAttribute('data-song-id')}`;
 });
 

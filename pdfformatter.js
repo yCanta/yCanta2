@@ -326,7 +326,7 @@ function parse(export_object, cfg) {
 
   // iterate through all songs in the songbook
   for(let i = 0; i < export_object.songs.length; i++) {
-    if(cfg.SONGS_TO_PRINT.indexOf(export_object.songrefs[i].status)==-1){
+    if(cfg.SONGS_TO_PRINT.indexOf(export_object.songs[i].status)==-1){
       continue;
     }
 

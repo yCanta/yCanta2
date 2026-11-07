@@ -1104,15 +1104,27 @@ function _handleDefaultRoute(piece) { // bodyClassList removed
 
 // Handles the 'login' route
 async function _handleLoginRoute(piece) { // bodyClassList removed
+  // Already logged in (the Back button, or a #login? link): don't log in a second time, go where the link points
+  if (window.loggedin) {
+    location.hash = location.hash.startsWith('#login?') ? location.hash.split('?').slice(1).join('?') : '#';
+    return true;
+  }
+
   let loggedIn = JSON.parse(localStorage.getItem('loggedin'));
   let defaultLogin = localStorage.getItem('defaultdbName');
 
-  try {
-    await dbLogin('login', loggedIn.dbName, loggedIn.username, loggedIn.pin, loggedIn.pwd, loggedIn.remote_url);
-    console.log("still logged in!");
-    return true; // Return true to stop ALL execution (matches original 'return')
-  } catch {
-    console.log("Not logged in yet");
+  // A remote login saved without "Keep me logged in" has no password, so it would only fail with an alert
+  const canAutoLogin = loggedIn && (loggedIn.dbName.endsWith('(local)') || loggedIn.pwd);
+  if (loggedIn && !canAutoLogin) {
+    localStorage.removeItem('loggedin'); // dbLogin only saves a new one when none is there
+  } else if (canAutoLogin) {
+    try {
+      await dbLogin('login', loggedIn.dbName, loggedIn.username, loggedIn.pin, loggedIn.pwd, loggedIn.remote_url);
+      console.log("still logged in!");
+      return true; // Return true to stop ALL execution (matches original 'return')
+    } catch {
+      console.log("Not logged in yet");
+    }
   }
 
   document.body.classList.remove('loading', 'song', 'songList', 'songbookList', 'export', 'present', 'present+new'); // a cold deep link adds these before the redirect to login
@@ -1280,15 +1292,18 @@ async function _handleSongbookRoute(piece, oldHashOb) { // bodyClassList removed
       });
 
       window.exportObject = window.songbook;
-      window.exportObject.songs = result.rows.filter(song => {
-        // Remove all comments
-        if (song.key != "section") {
+      // Each song carries its own status, since sections and deleted or empty songs are dropped here
+      // and the list no longer lines up with songrefs
+      window.exportObject.songs = result.rows
+        .map((song, i) => ({...song, status: window.songbook.songrefs[i].status || 'n'}))
+        .filter(song => {
+          if (song.key == "section" || !song.doc) return false;
+          // Remove all comments
           song.doc.content = song.doc.content.filter(chunk =>
             chunk[0].type !== 'comment'
           );
-        }
-        return song.doc.content.length > 0;
-      });
+          return song.doc.content.length > 0;
+        });
 
       await prepExport();
     }
@@ -1306,7 +1321,7 @@ async function _handleSongbookRoute(piece, oldHashOb) { // bodyClassList removed
         keys: sb_song_ids
       });
 
-      const songs = result.rows.filter(song => song.key != "section");
+      const songs = result.rows.filter(song => song.key != "section" && song.doc); // no doc: deleted song
       const myString = JSON.stringify({
         songs,
         title: window.songbook.title

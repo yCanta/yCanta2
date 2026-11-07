@@ -285,11 +285,6 @@ function dbChanges() {
         // Update favorites display
         const favSongbooks = change.doc.fav_sbs || [];
         
-        // Update songbook favorites
-        document.querySelectorAll('#songbooks .list li').forEach(li => {
-          li.dataset.userFav = favSongbooks.includes(li.dataset.songbookId);
-        });
-        
         // Update current songbook favorite status
         const songbookHeader = document.querySelector('#songbook_header .title');
         if (songbookHeader) {
@@ -304,7 +299,11 @@ function dbChanges() {
         
         // Refresh lists if they exist
         if (window.songbooks_list) {
-          window.songbooks_list.reIndex();
+          // Set it on the List.js items, not the li elements: a search takes the hidden rows out of the page,
+          // so reIndex dropped them from the list until a reload (issue #132)
+          window.songbooks_list.items.forEach(item => {
+            item.values({'user-fav': String(favSongbooks.includes(item.values()['songbook-id']))});
+          });
           window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
         }
         
@@ -1670,7 +1669,9 @@ async function loadSongbook(songbook_id, forceReload=false) {
   }
 
   function handleNewSongbook() {
-    setSongbookInfo({title: '', _id: 'sb-new-songbook'});
+    // A fresh object, so the new book doesn't start with the last book's status and comment switches
+    window.songbook = {title: '', _id: 'sb-new-songbook', songrefs: []};
+    setSongbookInfo(window.songbook);
   }
 
   async function loadRegularSongbook(sbId) {
@@ -1689,8 +1690,7 @@ async function loadSongbook(songbook_id, forceReload=false) {
       
       const songDoc = songResult.rows.find(row => row.id === item.id);
       if (songDoc) {
-        songDoc.status = item.status;
-        return songDoc;
+        return {...songDoc, status: item.status}; // a copy, so a song in the book twice keeps both statuses
       }
       return null;
     }).filter(Boolean);

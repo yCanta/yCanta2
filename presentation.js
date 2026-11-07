@@ -261,7 +261,8 @@ function searchDatabase(){
     return;
   }
 
-  var re = new RegExp('(' + text + ')([^\0\n]*)', 'i');
+  // Escape the text, so typing ( or [ searches for it instead of throwing
+  var re = new RegExp('(' + text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')([^\0\n]*)', 'i');
   var match_object = []
   var total_matches = 0;
   var matches = window.songbook.songs.filter(function(item) { 

@@ -1,6 +1,10 @@
 String.prototype.count=function(s1) { 
     return (this.length - this.replace(new RegExp(s1,"g"), '').length) / s1.length;
 };
+// Search text without accents, so "jesus" finds "Jesús" (issue #124). list.min.js strips them from the query.
+function stripAccents(text) {
+  return String(text ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
 function escapeRegExp(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
 }
@@ -449,15 +453,9 @@ function combine(chord, text) {
   return line;
 }
 function parseHash(part) {
-  //this is not failsafe
-  if(part == 's-') {
-    return location.hash.match(/(s-.*?)(\?|\&|$)/)[1];
-  }
-  else if (part == 'sb-') {
-    return location.hash.match(/(sb-.*?)(\?|\&|$)/)[1];
-  }
-  else {
-    return parts;
+  // The first id in the hash that starts with part ('s-' or 'sb-'), or undefined if there is none
+  if (part == 's-' || part == 'sb-') {
+    return location.hash.match(new RegExp(`(?:^#|&)(${part}.*?)(\\?|&|$)`))?.[1];
   }
 }
 function sortFavSongbooks(a,b){
@@ -792,7 +790,7 @@ async function updateUser() {
 
   // Update username display
   let html = '';
-  for (const word of name.split(/\W+/)) {
+  for (const word of name.split(/\W+/).filter(Boolean)) {
     html += `${word[0]}<span class="closing">${word.substring(1)} </span>`;
   }
   usernameContainer.innerHTML = html;
@@ -813,6 +811,7 @@ async function updateUser() {
       
       profileHtml += result.rows
         .sort((a, b) => (a.doc?.title || '').localeCompare(b.doc?.title || ''))
+        .filter(sb => sb.doc)
         .map(sb => `<li><a class="link" href="#${sb.doc._id}">${sb.doc.title}</a></li>`)
         .join('');
     } catch (err) {
@@ -1112,7 +1111,7 @@ function setLogoutState() {
 function mapSongbookRowToValue(row) {
   return { 'songbook-id':           row.doc._id,
     'songbook-rev':                 row.doc._rev,
-    'songbook-title':        't:' + row.doc.title + '\0' 
+    'songbook-title':        't:' + stripAccents(row.doc.title) + '\0'
   + 'addedBy:' + row.doc.addedBy.slice(2) + '\0'
   + 'editedBy:' + row.doc.editedBy.slice(2) + '\0',
     'link': '#'+row.doc._id,
@@ -1156,7 +1155,7 @@ function mapSongRowToValue(row) {
   }
   return { 'song-id':           id,
     'song-rev':                 rev,
-    'song-search':              search,
+    'song-search':              stripAccents(search),
     'song-status':              status,
     'song-deleted':             deleted,
     'link': '#'+window.songbook._id+'&'+id,
@@ -1252,6 +1251,15 @@ function buildSongbookList(songs, target_class='songbook_content',
   } else {
     if(window.songbook_edit_togglesongs_list) window.songbook_edit_togglesongs_list.clear(); //I don't know why I needed to add this to keep the list from duplicating on additional navigations
     window.songbook_edit_togglesongs_list = new List(target_class, options, values);
+    // Keep "New Section" in the add-song list during a search (issue #82). List.js runs handlers last-added
+    // first, so adding this before bindSearchToList leaves the section out of the count.
+    window.songbook_edit_togglesongs_list.on('searchComplete', list => {
+      const section = list.get('song-id', 'section')[0];
+      if (section && !section.found) {
+        section.found = true;
+        list.update();
+      }
+    });
     bindSearchToList(window.songbook_edit_togglesongs_list, '#songListEdit');
   }
   // A list rebuilt by a sync change has no hrefs or current-song highlight yet
@@ -1784,16 +1792,16 @@ async function prepExport() {
         if (row.doc._id !== userIdCfg) {
           cfgButtons.insertAdjacentHTML('beforeend', `
             <button class="btn" onclick="blueHighlight(this);">
-              <span onclick="saveExport('${encodeURIComponent(row.doc.name || 'Default').replace(/'/g, "\\'")}');">
-                Save as ${row.doc.name || 'Default'}
+              <span data-name="${escapeHtml(row.doc.name || 'Default')}" onclick="saveExport(this.dataset.name);">
+                Save as ${escapeHtml(row.doc.name || 'Default')}
               </span>
               <span class="export_close" onclick="event.preventDefault(); deleteExportCfg('${row.doc._id}');">×</span>
             </button>`);
         }
-        innerHTML = `<option value='${JSON.stringify(row.doc.cfg)}'>Your ${row.doc.name || 'Default'}</option>${innerHTML}`;
+        innerHTML = `<option value="${escapeHtml(JSON.stringify(row.doc.cfg))}">Your ${escapeHtml(row.doc.name || 'Default')}</option>${innerHTML}`;
       } else {
         const userId = row.doc._id.match(/u\-.*/)[0];
-        innerHTML += `<option value='${JSON.stringify(row.doc.cfg)}'>${window.users[userId]}'s ${row.doc.name || 'Default'}</option>`;
+        innerHTML += `<option value="${escapeHtml(JSON.stringify(row.doc.cfg))}">${escapeHtml(window.users[userId])}'s ${escapeHtml(row.doc.name || 'Default')}</option>`;
       }
     });
 
@@ -1806,7 +1814,7 @@ async function prepExport() {
     // Add predefined options
     const opts = window.export.def_configs;
     for (const opt in opts) {
-      innerHTML += `<option value='${JSON.stringify(opts[opt])}'>${opt}</option>`;
+      innerHTML += `<option value="${escapeHtml(JSON.stringify(opts[opt]))}">${opt}</option>`;
     }
     innerHTML += `<option value='[]'>Custom</option>`;
 
