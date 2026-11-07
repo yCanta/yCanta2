@@ -140,6 +140,10 @@ function dbChanges() {
     live: true,
     include_docs: true
   }).on('change', function (change) {
+    // A song or songbook was deleted or restored: keep an open Trash current (#138)
+    if (/^(s|sb)-/.test(change.id) && document.querySelector('#trash:not(.closed)')) {
+      loadTrash();
+    }
     // Handle deleted documents
     // A deleted doc only has _id and _rev, so take it out of the lists instead of updating them
     if (change.deleted) {

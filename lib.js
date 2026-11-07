@@ -970,6 +970,43 @@ function canEdit(doc){
   return result;
 }
 
+// The Trash in the user menu: deleted songs and songbooks this user may restore (#138)
+async function loadTrash() {
+  const box = document.getElementById('trash_content');
+  let items;
+  try {
+    items = await listTrash();
+  } catch (err) {
+    console.error('Error loading the trash:', err);
+    box.textContent = 'Could not load the trash.';
+    return;
+  }
+  if (!items.length) {
+    box.innerHTML = '<i>Nothing in the trash.</i>';
+    return;
+  }
+  box.innerHTML = '<ul class="trash-list">' + items.map(t => `
+    <li>
+      <span class="trash-title"><b>${escapeHtml(t.title)}</b> <small>(${t.type})</small><br>
+      <small>Deleted by ${escapeHtml(window.users?.[t.deletedBy] || t.deletedBy?.replace(/^u-/, ''))}, ${formatDate(t.deletedAt)}</small></span>
+      <button class="btn" data-id="${escapeHtml(t.id)}" data-rev="${escapeHtml(t.rev)}" onclick="restoreFromTrash(this)">↶ Restore</button>
+    </li>`).join('') + '</ul>';
+}
+
+async function restoreFromTrash(button) {
+  const { id, rev } = button.dataset;
+  const title = button.closest('li').querySelector('.trash-title b').textContent;
+  button.disabled = true;
+  try {
+    await restoreDeleted(id, rev);
+    notyf.info(`Restored "${escapeHtml(title)}"`, 'var(--song-color)', id.startsWith('sb-') ? `#${id}` : `#sb-allSongs&${id}`);
+  } catch (err) {
+    console.error('Error restoring:', err);
+    notyf.error(`Could not restore "${escapeHtml(title)}"`, 'red');
+  }
+  loadTrash();
+}
+
 async function loadAllUsers(){
   html = '';
   if(remoteDb){
