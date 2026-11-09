@@ -1254,7 +1254,9 @@ async function moveTaggedPeople() {
     return;
   }
   const done = await dialog.run({
-    text: `These ${moves.length} people get onto the list. Their accounts and tags stay as they are.`,
+    text: moves.length === 1
+      ? 'This person gets onto the list. Their account and tags stay as they are.'
+      : `These ${moves.length} people get onto the list. Their accounts and tags stay as they are.`,
     html: '<ul>' + moves.map(([name, level]) => `<li>${escapeHtml(name)}: ${levelLabels[level]}</li>`).join('') + '</ul>',
     submit: 'Move them',
     working: 'Saving the list…',

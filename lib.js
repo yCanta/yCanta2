@@ -119,6 +119,7 @@ class TaskDialog {
   // One step: show it, and when it is submitted run action(values). Resolves with what action returns
   // (true if nothing), or null if they cancel. If action throws, the error shows and they can retry.
   run(spec) {
+    this.setBusy(false); // a step after working() must start unlocked
     this.render(spec);
     return new Promise(resolve => {
       this.settle = resolve;
