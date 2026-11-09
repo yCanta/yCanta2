@@ -978,9 +978,11 @@ async function loadAllUsers() {
     html += `<p><small>Also let in by older account tags: ${oldTags.map(escapeHtml).join(', ')}.</small></p>`;
   }
   if (window.church.serverAdmin) {
-    html += `<p><b>Server admin tools</b><br>
-      ${oldTags.length ? '<button onclick="moveTaggedPeople()">Move tagged people onto the list</button>' : ''}
-      <button onclick="installSaveRules()">Install or update the save rules</button></p>`;
+    html += `<div class="server-tools"><b>Server admin tools</b>
+      <div>
+        ${oldTags.length ? '<button class="btn btn-small" onclick="moveTaggedPeople()">Move tagged people onto the list</button>' : ''}
+        <button class="btn btn-small" onclick="installSaveRules()">Install or update the save rules</button>
+      </div></div>`;
   }
   box.innerHTML = html;
 }
