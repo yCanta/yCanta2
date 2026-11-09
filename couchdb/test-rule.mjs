@@ -78,6 +78,10 @@ await put('viewer adds a comment as someone else', false, 'vic', { ...c, comment
 await put('viewer removes comments', false, 'vic', { ...c, comments: [c.comments[1]] });
 await put('viewer deletes the thread', false, 'vic', { ...c, _deleted: true });
 await put('editor edits a comment', true, 'eddie', { ...c, comments: [{ ...c.comments[0], comment: 'tidied' }, c.comments[1]] });
+c = await get('c_sb-x_s-y');
+await put('viewer turns comments into a non-list', false, 'vic', { ...c, comments: { length: 2, 0: c.comments[0], 1: c.comments[1] } });
+await put('viewer saves the built-in "All Songs" songbook', false, 'vera', { _id: 'sb-allSongs', title: 'x', addedBy: 'u-vera' });
+await put('church admin saves the built-in "Favorite Songs" songbook', false, 'alice', { _id: 'sb-favoriteSongs', title: 'x', addedBy: 'u-alice' });
 
 // --- saved export settings
 await put('viewer saves own export settings', true, 'vera', { _id: 'cfg-sb-x' + 'u-vera', cfg: [], name: '' });

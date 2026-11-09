@@ -11,7 +11,7 @@ fetch(url, init).then(async r => {
   process.stdout.write(JSON.stringify({ status: r.status, text: await r.text(), headers }));
 });`;
 
-export function loadHelper(props, { logRows = [], sentMail = [] } = {}) {
+export function loadHelper(props, { logRows = [], sentMail = [], cacheStore = new Map() } = {}) {
   const sheets = {};
   const sheet = name => (sheets[name] ||= {
     rows: name === 'Log' ? logRows : [],
@@ -30,7 +30,14 @@ export function loadHelper(props, { logRows = [], sentMail = [] } = {}) {
       DigestAlgorithm: { SHA_256: 'sha256' },
       computeDigest: (alg, text) => [...require_crypto().createHash('sha256').update(String(text), 'utf8').digest()].map(b => (b > 127 ? b - 256 : b)),
       getUuid: () => require_crypto().randomUUID(),
+      computeHmacSha256Signature: (value, key) => [...require_crypto().createHmac('sha256', key).update(String(value), 'utf8').digest()].map(b => (b > 127 ? b - 256 : b)),
     },
+    CacheService: { getScriptCache: () => ({
+      get: k => cacheStore.get(k) ?? null,
+      put: (k, v) => { cacheStore.set(k, String(v)); },
+      remove: k => { cacheStore.delete(k); },
+    }) },
+    console,
     UrlFetchApp: {
       fetch(url, p) {
         const headers = { ...(p.headers || {}) };
@@ -47,7 +54,7 @@ export function loadHelper(props, { logRows = [], sentMail = [] } = {}) {
   };
   vm.createContext(sandbox);
   vm.runInContext(readFileSync(new URL('./Code.gs', import.meta.url), 'utf8'), sandbox);
-  return { sandbox, sheets, call: body => JSON.parse(sandbox.doPost({ postData: { contents: JSON.stringify(body) } }).text) };
+  return { sandbox, sheets, cacheStore, call: body => JSON.parse(sandbox.doPost({ postData: { contents: JSON.stringify(body) } }).text) };
 }
 
 import { createRequire } from 'node:module';

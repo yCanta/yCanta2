@@ -11,9 +11,11 @@ Every request is written to the sheet's **Log** tab, without passwords.
 2. The helper signs in to CouchDB as that admin, then reads that church's `_security` list with their session.
 3. Only a church admin of that church (or a server admin) gets past this. Then the helper uses an
    **accounts-only** CouchDB account to:
-   - `createAccount`: make an account with no tags. An existing account is left alone. The app then adds the
-     name to the church's list itself.
-   - `resetPassword`: only for people on that church's list who are not church admins.
+   - `createAccount`: make an account with no tags, marked `created_for: <church>`. An existing account is left
+     alone. The app then adds the name to the church's list itself.
+   - `resetPassword`: a church admin can put any name on their own list, so the list alone isn't enough. The
+     account must also carry that church's older `<db>-viewer`/`<db>-editor` tag (only server admins set those)
+     or have been made for that church. Never for admins anywhere, the helper's own account, or anyone else.
 
 ## Your own account and forgotten passwords
 
@@ -22,7 +24,8 @@ These requests carry the person's own name and password (the app sends the one t
 
 - `getEmail`, `changeOwnPassword`
 - `startEmail` then `confirmEmail`: adds a **recovery email**. A code goes to that address first, so only an
-  inbox the person controls is saved. Church admins can't set someone else's email.
+  inbox the person controls is saved, and the saved email is signed (`email_sig`). People can edit their own
+  account record, so an email typed straight into it is ignored. Church admins can't set someone else's email.
 - `clearEmail`
 
 "Forgot password?" on the login page needs no sign-in:
@@ -31,9 +34,14 @@ These requests carry the person's own name and password (the app sends the one t
   the same whether or not the account exists, so it can't be used to find out who has an account.
 - `confirmReset` with the name, code and new password.
 
-Codes are 8 characters, last 20 minutes, allow 5 tries and work once. Only a hash of each code is kept, in
-Script Properties. Each account gets at most 3 emails an hour, and the helper stops well before Google's daily
-email limit.
+Codes are 8 characters, last 20 minutes, allow 5 tries and work once. Asking again while a code is on its way
+sends nothing new, so a stranger can't cancel it. Only a hash of each code is kept, in the script cache, which
+empties itself, as do the counters, so nothing builds up in Script Properties.
+
+Limits: 3 emails an hour per account, 5 recovery-email changes per 6 hours per account, 20 emails an hour in
+all, and only "forgot password" emails once Google's daily quota runs low. After 10 wrong passwords in an hour
+for one name, the helper stops checking that name's password for the rest of the hour, so it can't be used to
+guess passwords. Unknown requests aren't logged, and logged text can't become a sheet formula.
 
 The accounts-only account is an admin of the `_users` database and nothing else. It can't read any church,
 change any church's list, see server settings, or make a server admin. It **can** reset any non-server-admin's

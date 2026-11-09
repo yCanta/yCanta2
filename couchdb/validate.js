@@ -19,6 +19,9 @@ function (newDoc, oldDoc, userCtx, secObj) {
   function endsWith(text, end) { return text.length >= end.length && text.slice(-end.length) === end; }
   function no(message) { throw({ forbidden: message }); }
 
+  // "All Songs" and "Favorite Songs" are built into the app, never saved
+  if (id === 'sb-allSongs' || id === 'sb-favoriteSongs') no('That songbook is built in and can\'t be saved.');
+
   // Church admins: server admins, names in the church's admins list, or the older "<db>-admin" tag
   if (has(roles, '_admin') || inGroup(secObj.admins) || has(roles, db + '-admin')) return;
   if (!name) no('Please log in to save.');
@@ -39,6 +42,7 @@ function (newDoc, oldDoc, userCtx, secObj) {
   if (id.indexOf('c_') === 0) {
     if (isEditor) return;
     if (newDoc._deleted) no('Only editors can remove comments.');
+    if (!Array.isArray(newDoc.comments)) no('Comments have to be a list.');
     var before = (oldDoc && !oldDoc._deleted && oldDoc.comments) || [];
     var after = newDoc.comments || [];
     if (after.length < before.length) no('Only editors can remove comments.');

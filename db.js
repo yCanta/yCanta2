@@ -691,6 +691,8 @@ async function dbLogout() {
     } catch (err) {
       console.error("Error closing databases:", err); 
     }
+    remoteDb = null; // even if closing failed, so the next login doesn't reuse this connection
+    syncHandler = null;
     setLogoutState();
   }
 }
@@ -871,13 +873,20 @@ function churchAccessFrom(sec, roles, name, dbId) {
 
 async function loadChurchAccess(username) {
   const dbId = window.info?.db_name || window.dbName;
-  let sec = {};
   try {
-    sec = await getChurchSecurity();
+    return churchAccessFrom(await getChurchSecurity(), window.roles, username, dbId);
   } catch (err) {
-    console.warn("Could not read the church's people list:", err);
+    // Keep what the lists said at the last good sign-in on this device, rather than quietly taking
+    // someone's level away (and saving that) because one request failed
+    console.warn("Could not read the church's people list; using this device's last copy:", err);
+    try {
+      const saved = (await db.get('_local/u-' + username)).church;
+      if (saved?.db === dbId) return saved;
+    } catch (e) {
+      // no saved copy
+    }
+    return churchAccessFrom({}, window.roles, username, dbId);
   }
-  return churchAccessFrom(sec, window.roles, username, dbId);
 }
 
 async function getChurchSecurity() {
@@ -996,7 +1005,7 @@ async function loadAllUsers() {
   }).join('') + '</ul>';
   if (!people.length) html += '<p>Nobody is on the list yet.</p>';
   if (oldTags.length) {
-    html += `<p><small>Also let in by older account tags: ${oldTags.map(escapeHtml).join(', ')}.</small></p>`;
+    html += `<p class="old-tags"><small>Also let in by older account tags: ${oldTags.map(escapeHtml).join(', ')}. Someone with one of these tags keeps that access even if they're removed or set lower here, until the tag comes off their account.</small></p>`;
   }
   if (window.church.serverAdmin) {
     html += `<div class="server-tools"><b>Server admin tools</b>
@@ -1017,8 +1026,15 @@ async function postToHelper(body) {
     throw new Error("This isn't turned on yet. Ask Carl or Evan.");
   }
   // a plain-text body keeps this a "simple" request, which Apps Script web apps accept from any page
-  const res = await fetch(window.accountsURL, { method: 'POST', body: JSON.stringify(body) });
-  const reply = await res.json();
+  let reply;
+  try {
+    const res = await fetch(window.accountsURL, { method: 'POST', body: JSON.stringify(body), signal: AbortSignal.timeout(30000) });
+    reply = await res.json();
+  } catch (err) {
+    throw new Error(err?.name === 'TimeoutError'
+      ? "The account helper didn't answer. Please try again in a minute."
+      : "Couldn't reach the account helper. Check your connection and try again.");
+  }
   if (!reply.ok) throw new Error(reply.error || 'The account helper refused');
   return reply;
 }
@@ -1168,6 +1184,7 @@ async function forgotPassword() {
 async function addChurchPerson() {
   const dialog = new TaskDialog('Add someone');
   let added;
+  const madeHere = new Set(); // accounts this dialog created, in case saving the list failed and they retry
   const result = await dialog.run({
     text: "If they already have a yCanta account (for example from another church), it stays as it is and the password below isn't used.",
     fields: [
@@ -1182,7 +1199,7 @@ async function addChurchPerson() {
       let existed;
       if (window.church.serverAdmin) {
         try {
-          await remoteDb.signUp(values.name, values.password);
+          await remoteDb.signUp(values.name, values.password, { metadata: { created_for: window.church.db } });
           existed = false;
         } catch (err) {
           if (err.name !== 'conflict') throw err;
@@ -1191,9 +1208,10 @@ async function addChurchPerson() {
       } else {
         existed = (await callAccountsHelper({ action: 'createAccount', name: values.name, password: values.password })).existed;
       }
+      if (!existed) madeHere.add(values.name);
       await updateChurchPeople([[values.name, 'viewer']]);
       added = values.name;
-      return { existed };
+      return { existed: existed && !madeHere.has(values.name) };
     },
   });
   if (result === null) return;
@@ -1217,9 +1235,11 @@ async function setChurchPersonLevel(select) {
 
 async function removeChurchPerson(button) {
   const name = button.closest('li').dataset.name;
+  const hasOldTags = !!document.querySelector('#all_users .old-tags');
   const dialog = new TaskDialog(`Remove ${name}?`);
   const done = await dialog.run({
-    text: `${name} won't be able to open this church anymore. Their account stays, so another church can still use it.`,
+    text: `${name} won't be able to open this church anymore. Their account stays, so another church can still use it.` +
+      (hasOldTags ? '\n\nIf their account also has one of the older tags listed under the users, that tag still lets them in until Carl or Evan removes it.' : ''),
     submit: 'Remove',
     danger: true,
     working: 'Removing…',
@@ -1387,7 +1407,7 @@ async function changeOwnPassword(username, change) {
       await change(values.password);
       sessionPwd = values.password;
       const stored = JSON.parse(localStorage.getItem('loggedin') || 'null');
-      if (stored) {
+      if (stored?.pwd) { // only where "Keep me logged in" already keeps it
         stored.pwd = values.password;
         localStorage.setItem('loggedin', JSON.stringify(stored));
       }

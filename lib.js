@@ -55,6 +55,12 @@ class TaskDialog {
     // Esc: cancel, unless something is in progress
     this.dialog.addEventListener('cancel', event => { if (this.busy) event.preventDefault(); });
     this.dialog.addEventListener('close', () => {
+      // Browsers close a dialog on a second Esc even when the first was refused: while something is
+      // in progress, open it again, so the person still sees how it ends
+      if (this.busy) {
+        this.dialog.showModal();
+        return;
+      }
       this.resolveWith(null);
       this.dialog.remove();
     });
@@ -907,16 +913,16 @@ function parseUrl(url, username=false, pwd=false){
 
   if(username){ //we want to add username/pwd
     if(a['host']!=''){
-      url = `${a['protocol']}//${username}:${pwd}@${a['host']}${a['pathname']}`;
+      url = `${a['protocol']}//${encodeURIComponent(username)}:${encodeURIComponent(pwd)}@${a['host']}${a['pathname']}`;
     } else { //no protocol included
-      url = `http://${username}:${pwd}@${remote_url}`;
+      url = `http://${encodeURIComponent(username)}:${encodeURIComponent(pwd)}@${url}`;
     }
   }
   else {  //we want to strip out the username/pwd
     if(a['host']!=''){
       url = `${a['protocol']}//${a['host']}${a['pathname']}`;
     } else { //no protocol included
-      url = `http://${remote_url}`;
+      url = `http://${url}`;
     }
   }
   return url;
@@ -1025,7 +1031,7 @@ async function updateUser() {
     <button onclick="loadRawDbObject(window.user._id, document.getElementById('user_content'), 'updateUser();')" class="btn">
       <span class="mirror">&#9998;</span> Edit
     </button>
-    <button onclick="change${document.documentElement.classList.contains('_admin') ? 'Admin' : 'User'}Password('${window.user._id.replace('u-', '')}')" class="btn">
+    <button onclick="change${document.documentElement.classList.contains('_admin') ? 'Admin' : 'User'}Password(window.user._id.replace('u-', ''))" class="btn">
       ↻ Password
     </button>`;
 
@@ -2957,7 +2963,8 @@ function capEachWord(toCapitalize, dividingChar = " ") {
   return toCapitalize.split(dividingChar).map(word => word[0].toUpperCase()+word.substr(1)).join(" ");
 }
 function getBasicAuthHeader(username, password) {
-  return 'Basic ' + window.btoa(username + ':' + password); // Consider hashing password
+  const bytes = new TextEncoder().encode(username + ':' + password); // UTF-8, so any character works
+  return 'Basic ' + window.btoa(String.fromCharCode(...bytes));
 }
 function requestAccess() {
   let selectEl = document.getElementById('db_select');
