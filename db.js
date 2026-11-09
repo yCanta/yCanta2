@@ -935,7 +935,7 @@ function setPersonLevel(sec, name, level) {
   return sec;
 }
 
-const levelLabels = { viewer: 'Member', editor: 'Editor', admin: 'Church admin' };
+const levelLabels = { viewer: 'User', editor: 'Editor', admin: 'Church admin' };
 
 // The Admin panel: this church's people
 async function loadAllUsers() {
@@ -1166,8 +1166,8 @@ async function addChurchPerson() {
   if (result === null) return;
   loadAllUsers();
   await dialog.finish(result.existed
-    ? `${added} already had a yCanta account, so their password didn't change. They're now a member here.`
-    : `Added ${added} as a member. Let them know their sign-in name and password. They can add a recovery email in their profile.`);
+    ? `${added} already had a yCanta account, so their password didn't change. They're now a user in this church.`
+    : `Added ${added} as a user. Let them know their sign-in name and password. They can add a recovery email in their profile.`);
 }
 
 async function setChurchPersonLevel(select) {

@@ -1012,7 +1012,7 @@ async function updateUser() {
   // Permissions
   const access = window.church || {};
   const permissions = [
-    access.serverAdmin ? 'Server admin' : access.admin ? 'Church admin' : access.editor ? 'Editor' : 'Member',
+    access.serverAdmin ? 'Server admin' : access.admin ? 'Church admin' : access.editor ? 'Editor' : 'User',
     access.editor ? 'can change any song or songbook' : 'can change the songs and songbooks you add',
   ].join(': ');
   
