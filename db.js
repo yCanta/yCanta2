@@ -913,6 +913,23 @@ async function putChurchSecurity(sec) {
   }
 }
 
+// The CouchDB server admins' names (only server admins can read them). null if they can't be read.
+async function getServerAdminNames() {
+  try {
+    const url = new URL(remoteDb.getUsersDatabaseUrl().replace(/_users\/?$/, '_node/_local/_config/admins'));
+    url.username = '';
+    url.password = '';
+    const res = await fetch(url.href, {
+      cache: 'no-store',
+      headers: { Authorization: getBasicAuthHeader(window.user._id.slice(2), ownPassword()) },
+    });
+    return res.ok ? Object.keys(await res.json()) : null;
+  } catch (err) {
+    console.warn('Could not read the server admins:', err);
+    return null;
+  }
+}
+
 // name -> 'admin' | 'editor' | 'viewer', from the lists (not from account tags)
 function churchPeople(sec) {
   const people = new Map();
@@ -957,6 +974,10 @@ async function loadAllUsers() {
   }
   const me = window.user._id.slice(2);
   const people = [...churchPeople(sec)].sort((a, b) => a[0].localeCompare(b[0]));
+  // Server admins may reset a church admin's password too, unless that person is also a server admin
+  // (their sign-in lives in the server's settings, so resetting their account wouldn't change it)
+  const serverAdmins = window.church.serverAdmin ? await getServerAdminNames() : null;
+  const canReset = (name, level) => name !== me && (level !== 'admin' || (serverAdmins && !serverAdmins.includes(name)));
   const oldTags = (sec.members?.roles || []).concat(sec.admins?.roles || []).filter(role => role !== '_admin');
 
   let html = `<div class="people-header"><b>Users in this church</b><button class="btn btn-small" onclick="addChurchPerson()">+ Add</button></div>`;
@@ -968,7 +989,7 @@ async function loadAllUsers() {
     // so the level menus line up in every row
     return `<li data-name="${escapeHtml(name)}">
       <span class="person-name">${escapeHtml(name)}${self ? ' (you)' : ''}</span>
-      ${level === 'admin' || self ? '<span></span>' : '<button onclick="resetChurchPassword(this)">↻ Password</button>'}
+      ${canReset(name, level) ? '<button onclick="resetChurchPassword(this)">↻ Password</button>' : '<span></span>'}
       <select aria-label="Level for ${escapeHtml(name)}" onchange="setChurchPersonLevel(this)"${self && !window.church.serverAdmin ? ' disabled title="Ask another church admin to change your own level"' : ''}>${options}</select>
       ${self ? '<span></span>' : '<button onclick="removeChurchPerson(this)">🗑 Remove</button>'}
     </li>`;
@@ -1033,23 +1054,33 @@ function checkSignInName(name) {
 
 // ---- Recovery email (profile) and "Forgot password?" (login page) ----
 
-async function loadRecoveryEmail() {
+// The profile is drawn more than once at sign-in, so ask the helper once per person per session and
+// reuse the answer (or the request still on its way). Changing or removing the email asks again.
+let recoveryEmailLookup = null;
+async function loadRecoveryEmail({ fresh = false } = {}) {
   const box = document.getElementById('recovery_email');
   if (!box) return;
   if (!window.accountsURL) {
     box.innerHTML = '<p>Password recovery by email isn\'t turned on yet.</p>';
     return;
   }
-  if (!navigator.onLine) {
-    box.innerHTML = '<p>Connect to the internet to see or change it.</p>';
-    return;
+  const userId = window.user._id;
+  if (fresh || recoveryEmailLookup?.userId !== userId) {
+    if (!navigator.onLine) {
+      box.innerHTML = '<p>Connect to the internet to see or change it.</p>';
+      return;
+    }
+    recoveryEmailLookup = { userId, reply: callOwnAccount({ action: 'getEmail' }) };
   }
+  const lookup = recoveryEmailLookup;
   try {
-    const { email } = await callOwnAccount({ action: 'getEmail' });
+    const { email } = await lookup.reply;
+    if (!document.body.contains(box)) return; // the profile was redrawn meanwhile
     box.innerHTML = email
       ? `<p>${escapeHtml(email)}</p><button class="btn" onclick="setRecoveryEmail()">Change</button> <button class="btn" onclick="clearRecoveryEmail()">Remove</button>`
       : `<p>None yet. Add one so you can reset your password if you forget it.</p><button class="btn" onclick="setRecoveryEmail()">Add email</button>`;
   } catch (err) {
+    if (recoveryEmailLookup === lookup) recoveryEmailLookup = null; // try again next time
     box.textContent = err.message;
   }
 }
@@ -1076,7 +1107,7 @@ async function setRecoveryEmail() {
     action: values => callOwnAccount({ action: 'confirmEmail', code: values.code }),
   });
   if (saved === null) return;
-  loadRecoveryEmail();
+  loadRecoveryEmail({ fresh: true });
   await dialog.finish(`Your recovery email is now ${saved.email}.`);
 }
 
@@ -1092,7 +1123,7 @@ async function clearRecoveryEmail() {
   if (done === null) return;
   dialog.close();
   notyf.info('Recovery email removed', 'olive');
-  loadRecoveryEmail();
+  loadRecoveryEmail({ fresh: true });
 }
 
 async function forgotPassword() {
