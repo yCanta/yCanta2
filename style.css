@@ -247,14 +247,11 @@ html._admin .admin, html.churchAdmin .admin {display: revert;}
   padding: 0;
   list-style: none;
 }
-.server-tools div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .5rem;
-  margin-top: .5rem;
+.server-tools p {
+  margin: .5rem 0;
 }
 .server-tools .btn {
-  margin: 0 !important;
+  margin: 0 0 0 .5rem !important;
 }
 .people-header {
   display: flex;

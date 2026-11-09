@@ -1008,11 +1008,21 @@ async function loadAllUsers() {
     html += `<p class="old-tags"><small>Also let in by older account tags: ${oldTags.map(escapeHtml).join(', ')}. Someone with one of these tags keeps that access even if they're removed or set lower here, until the tag comes off their account.</small></p>`;
   }
   if (window.church.serverAdmin) {
+    const [rules, moves] = await Promise.all([saveRulesStatus(), oldTags.length ? findTaggedMoves().catch(() => null) : []]);
+    const rulesLine = {
+      latest: 'Save rules: up to date.',
+      outdated: 'Save rules: an update is available.',
+      missing: 'Save rules: not installed. The server lets members change anything.',
+      unknown: "Save rules: couldn't check.",
+    }[rules.state];
+    const rulesButton = rules.state === 'latest' ? '' :
+      `<button class="btn btn-small" onclick="installSaveRules()">${rules.state === 'outdated' ? 'Update' : 'Install'} the save rules</button>`;
+    let movesLine = '';
+    if (moves === null) movesLine = "<p>Couldn't check the older tags.</p>";
+    else if (moves.length) movesLine = `<p>${moves.length === 1 ? '1 person with an older tag isn\'t' : moves.length + ' people with older tags aren\'t'} on the list yet. <button class="btn btn-small" onclick="moveTaggedPeople()">Move them onto the list</button></p>`;
+    else if (oldTags.length) movesLine = '<p>Everyone with an older tag is on the list.</p>';
     html += `<div class="server-tools"><b>Server admin tools</b>
-      <div>
-        ${oldTags.length ? '<button class="btn btn-small" onclick="moveTaggedPeople()">Move tagged people onto the list</button>' : ''}
-        <button class="btn btn-small" onclick="installSaveRules()">Install or update the save rules</button>
-      </div></div>`;
+      <p>${rulesLine} ${rulesButton}</p>${movesLine}</div>`;
   }
   box.innerHTML = html;
 }
@@ -1270,37 +1280,44 @@ async function resetChurchPassword(button) {
   await dialog.finish(`Changed. Let ${name} know the new password.`);
 }
 
-// Server admins: put everyone who has this church's older account tags onto the lists, once.
-// Their accounts are not changed, so the tags keep working too.
+// Server admins: who has this church's older account tags but isn't on the lists at that level yet.
+// [[name, level], ...]. Accounts and tags aren't changed, so the tags keep working too.
+async function findTaggedMoves() {
+  const dbId = window.church.db;
+  const usersUrl = new URL(remoteDb.getUsersDatabaseUrl());
+  usersUrl.username = '';
+  usersUrl.password = '';
+  const res = await fetch(usersUrl.href + '/_all_docs?include_docs=true&startkey="org.couchdb.user:"&endkey="org.couchdb.user:\ufff0"', {
+    cache: 'no-store',
+    headers: { Authorization: getBasicAuthHeader(window.user._id.slice(2), ownPassword()) },
+  });
+  if (!res.ok) throw new Error(`Could not read the accounts (${res.status})`);
+  const rows = (await res.json()).rows.map(row => row.doc).filter(Boolean);
+  const people = churchPeople(await getChurchSecurity());
+  const rank = { viewer: 1, editor: 2, admin: 3 };
+  const moves = [];
+  for (const user of rows) {
+    const roles = user.roles || [];
+    const level = roles.includes(dbId + '-admin') ? 'admin'
+      : roles.includes(dbId + '-editor') ? 'editor'
+      : roles.includes(dbId + '-viewer') ? 'viewer' : null;
+    if (level && (rank[level] > (rank[people.get(user.name)] || 0))) moves.push([user.name, level]);
+  }
+  return moves;
+}
+
 async function moveTaggedPeople() {
   const dialog = new TaskDialog('Move tagged people onto the list');
   dialog.working('Reading the accounts…');
   let moves;
   try {
-    const dbId = window.church.db;
-    const usersUrl = new URL(remoteDb.getUsersDatabaseUrl());
-    usersUrl.username = '';
-    usersUrl.password = '';
-    const res = await fetch(usersUrl.href + '/_all_docs?include_docs=true&startkey="org.couchdb.user:"&endkey="org.couchdb.user:￰"', {
-      headers: { Authorization: getBasicAuthHeader(window.user._id.slice(2), ownPassword()) },
-    });
-    if (!res.ok) throw new Error(`Could not read the accounts (${res.status})`);
-    const rows = (await res.json()).rows.map(row => row.doc).filter(Boolean);
-    const people = churchPeople(await getChurchSecurity());
-    const rank = { viewer: 1, editor: 2, admin: 3 };
-    moves = [];
-    for (const user of rows) {
-      const roles = user.roles || [];
-      const level = roles.includes(dbId + '-admin') ? 'admin'
-        : roles.includes(dbId + '-editor') ? 'editor'
-        : roles.includes(dbId + '-viewer') ? 'viewer' : null;
-      if (level && (rank[level] > (rank[people.get(user.name)] || 0))) moves.push([user.name, level]);
-    }
+    moves = await findTaggedMoves();
   } catch (err) {
     await dialog.finish(err.message || String(err), { error: true });
     return;
   }
   if (!moves.length) {
+    loadAllUsers();
     await dialog.finish('Everyone with a tag is already on the list.');
     return;
   }
@@ -1315,38 +1332,51 @@ async function moveTaggedPeople() {
   });
   if (done === null) return;
   loadAllUsers();
-  await dialog.finish(`Moved ${moves.length} people onto the list.`);
+  await dialog.finish(`Moved ${moves.length} ${moves.length === 1 ? 'person' : 'people'} onto the list.`);
+}
+
+// Server admins: is couchdb/validate.js this church's save rules (_design/auth)?
+// { state: 'latest' | 'outdated' | 'missing' | 'unknown', source, rev }
+async function saveRulesStatus() {
+  const same = (a, b) => (a || '').replace(/\r\n/g, '\n').trim() === (b || '').replace(/\r\n/g, '\n').trim();
+  try {
+    const source = await (await fetch('couchdb/validate.js', { cache: 'no-store' })).text();
+    if (!source.trim().startsWith('function')) throw new Error('Could not load couchdb/validate.js');
+    // never a cached copy (the browser can hand back an old one, as with the people list)
+    const res = await remoteDb.fetch('_design/auth', { cache: 'no-store' });
+    if (res.status === 404) return { state: 'missing', source };
+    if (!res.ok) throw new Error(`Couldn't read the save rules (${res.status})`);
+    const current = await res.json();
+    return { state: same(current.validate_doc_update, source) ? 'latest' : 'outdated', source, rev: current._rev };
+  } catch (err) {
+    console.warn("Couldn't check the save rules:", err);
+    return { state: 'unknown', error: err };
+  }
 }
 
 // Server admins: install couchdb/validate.js as this church's save rules
 async function installSaveRules() {
   const dialog = new TaskDialog('Save rules');
   dialog.working('Checking…');
-  let source, rev;
-  try {
-    source = await (await fetch('couchdb/validate.js', { cache: 'no-store' })).text();
-    if (!source.trim().startsWith('function')) throw new Error('Could not load couchdb/validate.js');
-    try {
-      const current = await remoteDb.get('_design/auth');
-      if (current.validate_doc_update === source) {
-        await dialog.finish(`${window.church.db} already has the latest save rules.`);
-        return;
-      }
-      rev = current._rev;
-    } catch (err) {
-      if (err.status !== 404) throw err;
-    }
-  } catch (err) {
-    await dialog.finish(err.message || String(err), { error: true });
+  const rules = await saveRulesStatus();
+  if (rules.state === 'unknown') {
+    await dialog.finish(rules.error?.message || "Couldn't check the save rules.", { error: true });
     return;
   }
+  if (rules.state === 'latest') {
+    loadAllUsers();
+    await dialog.finish(`${window.church.db} already has the latest save rules.`);
+    return;
+  }
+  const update = rules.state === 'outdated';
   const done = await dialog.run({
-    text: `${rev ? 'Update' : 'Install'} the save rules for ${window.church.db}? From then on the server checks every save: editors and church admins can change anything, everyone else only what they added.`,
-    submit: rev ? 'Update' : 'Install',
+    text: `${update ? 'Update' : 'Install'} the save rules for ${window.church.db}? From then on the server checks every save: editors and church admins can change anything, everyone else only what they added.`,
+    submit: update ? 'Update' : 'Install',
     working: 'Installing…',
-    action: () => remoteDb.put({ _id: '_design/auth', ...(rev ? { _rev: rev } : {}), validate_doc_update: source }),
+    action: () => remoteDb.put({ _id: '_design/auth', ...(update ? { _rev: rules.rev } : {}), validate_doc_update: rules.source }),
   });
   if (done === null) return;
+  loadAllUsers();
   await dialog.finish('The save rules are installed.');
 }
 
