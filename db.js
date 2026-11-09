@@ -959,16 +959,18 @@ async function loadAllUsers() {
   const people = [...churchPeople(sec)].sort((a, b) => a[0].localeCompare(b[0]));
   const oldTags = (sec.members?.roles || []).concat(sec.admins?.roles || []).filter(role => role !== '_admin');
 
-  let html = `<b>People <button class="circle" title="Add someone" onclick="addChurchPerson()">+</button></b>`;
+  let html = `<div class="people-header"><b>Users in this church</b><button class="btn btn-small" onclick="addChurchPerson()">+ Add</button></div>`;
   html += '<ul class="people-list">' + people.map(([name, level]) => {
     const self = name === me;
     const options = Object.entries(levelLabels)
       .map(([value, label]) => `<option value="${value}"${value === level ? ' selected' : ''}>${label}</option>`).join('');
+    // Fixed columns (name, password, level, remove), with an empty spot where a button doesn't apply,
+    // so the level menus line up in every row
     return `<li data-name="${escapeHtml(name)}">
       <span class="person-name">${escapeHtml(name)}${self ? ' (you)' : ''}</span>
-      <select onchange="setChurchPersonLevel(this)"${self && !window.church.serverAdmin ? ' disabled title="Ask another church admin to change your own level"' : ''}>${options}</select>
-      ${level === 'admin' || self ? '' : '<button onclick="resetChurchPassword(this)">↻ Password</button>'}
-      ${self ? '' : '<button onclick="removeChurchPerson(this)">🗑 Remove</button>'}
+      ${level === 'admin' || self ? '<span></span>' : '<button onclick="resetChurchPassword(this)">↻ Password</button>'}
+      <select aria-label="Level for ${escapeHtml(name)}" onchange="setChurchPersonLevel(this)"${self && !window.church.serverAdmin ? ' disabled title="Ask another church admin to change your own level"' : ''}>${options}</select>
+      ${self ? '<span></span>' : '<button onclick="removeChurchPerson(this)">🗑 Remove</button>'}
     </li>`;
   }).join('') + '</ul>';
   if (!people.length) html += '<p>Nobody is on the list yet.</p>';

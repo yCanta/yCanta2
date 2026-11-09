@@ -247,16 +247,37 @@ html._admin .admin, html.churchAdmin .admin {display: revert;}
   padding: 0;
   list-style: none;
 }
-.people-list li {
+.people-header {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
+  gap: .75rem;
+}
+/* name | password | level | remove. The rows share the list's columns (subgrid), so the level menus
+   line up in every row whichever buttons a row has. */
+#all_users .people-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  column-gap: 0.75rem;
+}
+#all_users .people-list li {
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
+  align-items: center;
+  row-gap: 0.5rem;
   padding: 0.5rem;
 }
 .people-list .person-name {
-  flex: 1 1 6rem;
   overflow-wrap: anywhere;
+}
+@media (max-width: 75rem) { /* the settings column is narrow: the name on its own line, the controls under it */
+  #all_users .people-list {
+    grid-template-columns: auto auto auto;
+    justify-content: start;
+  }
+  .people-list .person-name {
+    grid-column: 1 / -1;
+  }
 }
 .people-list button {
   white-space: nowrap;
@@ -339,12 +360,9 @@ legend {
   padding: 0 1rem 0 1rem;
   box-shadow: var(--btn-shadow-var);
 }
-#all_users li {
-  display: flex;
-  justify-content: space-between;
+#all_users li { /* the row layout is #all_users .people-list li, above */
   border-bottom: 3px solid gray;
   padding: .5rem;
-  gap: 1rem;
 }
 #all_users li:first-child {
   border-top-left-radius: .7rem;
@@ -1771,9 +1789,6 @@ only screen and (max-height: 31.25rem) {
     margin-left: auto;
     overflow-y: overlay;
     padding-right: 1rem;
-  }
-  #all_users li {
-    gap: 2rem;
   }
 
   .header header {
