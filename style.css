@@ -402,6 +402,126 @@ legend {
 }
 
 
+/* TASK DIALOG (TaskDialog in lib.js): the browser's own modal <dialog> */
+.task-dialog {
+  border: none;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  width: min(26rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  overflow: auto;
+  box-sizing: border-box;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, .35);
+}
+.task-dialog::backdrop {
+  background: rgba(0, 0, 0, .45);
+}
+.task-dialog h2 {
+  margin: 0 0 1rem 0;
+  font-size: 1.3rem;
+}
+.task-dialog fieldset { /* undo the settings-menu fieldset look */
+  border: none;
+  padding: 0;
+  margin: 0;
+  width: auto;
+  min-width: 0;
+  box-shadow: none;
+  background: none;
+  overflow: visible;
+}
+.task-dialog p {
+  margin: 0 0 1rem 0;
+}
+.task-dialog label {
+  display: block;
+  margin: 0 0 1rem 0;
+  font-weight: bold;
+}
+.task-dialog label small {
+  display: block;
+  font-weight: normal;
+  opacity: .8;
+}
+.task-dialog input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: .35rem;
+  padding: .5rem .6rem;
+  border: 1px solid gray;
+  border-radius: .4rem;
+}
+.task-dialog ul {
+  margin: 0 0 1rem 0;
+  padding-left: 1.2rem;
+}
+.task-dialog .task-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: .5rem;
+}
+.task-dialog .btn {
+  margin: 0;
+}
+.task-dialog .btn.primary {
+  background-color: var(--song-color);
+  color: black;
+}
+.task-dialog .btn.danger {
+  background-color: crimson;
+  color: white;
+}
+.task-dialog :focus-visible {
+  outline: 3px solid var(--song-color);
+  outline-offset: 2px;
+}
+.task-dialog {
+  --task-error: #b3001b;
+}
+:root.dark .task-dialog {
+  --task-error: #ff8080;
+  background-color: #262626;
+  border: 1px solid #555;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) .task-dialog {
+    --task-error: #ff8080;
+    background-color: #262626;
+    border: 1px solid #555;
+  }
+}
+.task-dialog .task-error {
+  color: var(--task-error);
+  font-weight: bold;
+}
+.task-dialog .task-status:empty {
+  display: none;
+}
+.task-dialog .spinner {
+  display: inline-block;
+  width: .9em;
+  height: .9em;
+  margin-right: .5em;
+  vertical-align: -.1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: task-spin .8s linear infinite;
+}
+@keyframes task-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .task-dialog .spinner { animation-duration: 3s; }
+}
+.task-dialog fieldset:disabled .task-buttons {
+  opacity: .5;
+}
+
 /*DIALOG STYLING */
 #dialog {
   transition: none;
@@ -944,6 +1064,36 @@ span.deleteicon input {
 #login.connect_remote .connect_remote, /*Connect Remote*/
 #login.login_remote .login_remote { /*Login Remote*/
   display: initial;
+}
+/* "☐ Keep me logged in" on the left, "Forgot password?" on the right, under the password */
+#login.connect_remote .login-options,
+#login.login_remote .login-options {
+  display: flex;
+}
+.login-options {
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .5rem 1rem;
+}
+.login-options label {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  cursor: pointer;
+}
+.login-options input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+#login #forgot_pwd {
+  margin: 0;
+  text-decoration: underline;
+}
+#login #forgot_pwd:focus-visible,
+.login-options input:focus-visible {
+  outline: 2px solid var(--song-color);
+  outline-offset: 2px;
 }
 select:has(option[value=""]:checked) ~ :is(input) {
   display: none;

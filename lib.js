@@ -17,6 +17,163 @@ function escapeHtml(text) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
+// A step-by-step dialog for tasks that need input: adding people, passwords, recovery email.
+// It is the browser's own <dialog> and <form>: showModal() dims the page, keeps keyboard focus inside
+// and closes on Esc, and the inputs' required/minlength/type checks show the browser's own messages.
+// One dialog stays open through every step. While it waits it says what it is doing, an error shows
+// in place so the person can fix it and try again, and the last step stays until they close it.
+//
+//   const d = new TaskDialog('Add someone');
+//   const result = await d.run({ text, fields: [{ name, label, type }], submit: 'Add', action: async values => ... });
+//   if (result === null) return;          // cancelled
+//   await d.finish('Added.');             // shows the result until they close it
+//
+// (The floating #dialog is a different thing: song info and the YouTube player, beside the page.)
+class TaskDialog {
+  constructor(title) {
+    const titleId = 'task-title-' + Math.random().toString(36).slice(2);
+    this.dialog = document.createElement('dialog');
+    this.dialog.className = 'task-dialog';
+    this.dialog.setAttribute('aria-labelledby', titleId);
+    this.dialog.innerHTML = `<form method="dialog">
+        <h2 id="${titleId}">${escapeHtml(title)}</h2>
+        <fieldset>
+          <div class="task-body"></div>
+          <p class="task-error" role="alert" hidden></p>
+          <p class="task-status" role="status"></p>
+          <div class="task-buttons"></div>
+        </fieldset>
+      </form>`;
+    this.form = this.dialog.querySelector('form');
+    this.fieldset = this.dialog.querySelector('fieldset');
+    this.body = this.dialog.querySelector('.task-body');
+    this.errorLine = this.dialog.querySelector('.task-error');
+    this.statusLine = this.dialog.querySelector('.task-status');
+    this.buttons = this.dialog.querySelector('.task-buttons');
+    this.settle = null;
+    this.busy = false;
+    // Esc: cancel, unless something is in progress
+    this.dialog.addEventListener('cancel', event => { if (this.busy) event.preventDefault(); });
+    this.dialog.addEventListener('close', () => {
+      this.resolveWith(null);
+      this.dialog.remove();
+    });
+    document.body.append(this.dialog);
+    this.dialog.showModal();
+  }
+
+  resolveWith(value) {
+    const settle = this.settle;
+    this.settle = null;
+    if (settle) settle(value);
+  }
+
+  render({ text = '', html = '', fields = [], submit = '', cancel = 'Cancel', danger = false }) {
+    this.errorLine.hidden = true;
+    this.statusLine.textContent = '';
+    const paragraphs = text ? text.split('\n\n').map(p => `<p>${escapeHtml(p)}</p>`).join('') : '';
+    this.body.innerHTML = paragraphs + html + fields.map(field => {
+      const attrs = [
+        `name="${escapeHtml(field.name)}"`,
+        `type="${escapeHtml(field.type || 'text')}"`,
+        field.value ? `value="${escapeHtml(field.value)}"` : '',
+        field.required === false ? '' : 'required',
+        field.minlength ? `minlength="${field.minlength}"` : '',
+        field.maxlength ? `maxlength="${field.maxlength}"` : '',
+        `autocomplete="${escapeHtml(field.autocomplete || 'off')}"`,
+        field.inputmode ? `inputmode="${escapeHtml(field.inputmode)}"` : '',
+        field.type === 'text' || !field.type ? 'autocapitalize="off" spellcheck="false"' : '',
+      ].filter(Boolean).join(' ');
+      const help = field.help ? `<small>${escapeHtml(field.help)}</small>` : '';
+      return `<label>${escapeHtml(field.label)}${help}<input ${attrs}></label>`;
+    }).join('');
+    this.buttons.innerHTML =
+      (cancel ? `<button type="button" class="btn" data-cancel>${escapeHtml(cancel)}</button>` : '') +
+      (submit ? `<button type="submit" class="btn ${danger ? 'danger' : 'primary'}">${escapeHtml(submit)}</button>` : '');
+    this.buttons.querySelector('[data-cancel]')?.addEventListener('click', () => this.close());
+
+    // "Password again" fields must match the field they repeat
+    for (const field of fields.filter(f => f.match)) {
+      const again = this.form.elements[field.name];
+      const first = this.form.elements[field.match];
+      const check = () => again.setCustomValidity(again.value && again.value !== first.value ? "The passwords don't match." : '');
+      again.addEventListener('input', check);
+      first.addEventListener('input', check);
+    }
+    (this.body.querySelector('input:not([value]), input') || this.buttons.querySelector('[type="submit"]'))?.focus();
+  }
+
+  setBusy(message) {
+    this.busy = !!message;
+    this.fieldset.disabled = this.busy;
+    this.statusLine.innerHTML = message ? `<span class="spinner" aria-hidden="true"></span>${escapeHtml(message)}` : '';
+  }
+
+  showError(err) {
+    let message = err?.message || err?.reason || err?.name || String(err);
+    if (!navigator.onLine) message += ' You seem to be offline.';
+    this.errorLine.textContent = message;
+    this.errorLine.hidden = false;
+  }
+
+  // One step: show it, and when it is submitted run action(values). Resolves with what action returns
+  // (true if nothing), or null if they cancel. If action throws, the error shows and they can retry.
+  run(spec) {
+    this.render(spec);
+    return new Promise(resolve => {
+      this.settle = resolve;
+      this.form.onsubmit = async event => {
+        event.preventDefault();
+        const values = Object.fromEntries(new FormData(this.form)); // before the fieldset is disabled
+        for (const field of spec.fields || []) {
+          if (field.type !== 'password') values[field.name] = (values[field.name] || '').trim();
+        }
+        this.errorLine.hidden = true;
+        this.setBusy(spec.working || 'Working…');
+        try {
+          const result = await spec.action(values);
+          this.setBusy(false);
+          this.resolveWith(result === undefined ? true : result);
+        } catch (err) {
+          console.error(err);
+          this.setBusy(false);
+          this.showError(err);
+          this.body.querySelector('input')?.focus();
+        }
+      };
+    });
+  }
+
+  // Something is happening and there is nothing to fill in yet
+  working(message) {
+    this.render({ cancel: '' });
+    this.setBusy(message);
+  }
+
+  // The last step: a result that stays until they close it
+  finish(text, { html = '', error = false } = {}) {
+    this.setBusy(false);
+    this.render({ text, html, submit: 'Close', cancel: '' });
+    if (error) this.body.classList.add('task-error');
+    return new Promise(resolve => {
+      this.settle = resolve;
+      this.form.onsubmit = event => {
+        event.preventDefault();
+        this.close();
+      };
+    });
+  }
+
+  close() {
+    if (this.dialog.open) this.dialog.close();
+  }
+
+  // A one-step message, e.g. when a quick change fails
+  static async message(title, text) {
+    await new TaskDialog(title).finish(text);
+  }
+}
+
 const copyToClipboard = str => {
   const el = document.createElement('textarea');  // Create a <textarea> element
   el.value = str;                                 // Set its value to the string that you want copied
