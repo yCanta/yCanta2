@@ -982,7 +982,10 @@ async function loadAllUsers() {
     return;
   }
   const me = window.user._id.slice(2);
-  const people = [...churchPeople(sec)].sort((a, b) => a[0].localeCompare(b[0]));
+  // Church admins first, then editors, then users; A-Z within each (ignoring upper/lower case)
+  const levelOrder = { admin: 0, editor: 1, viewer: 2 };
+  const people = [...churchPeople(sec)].sort((a, b) =>
+    levelOrder[a[1]] - levelOrder[b[1]] || a[0].localeCompare(b[0], undefined, { sensitivity: 'base' }));
   // Server admins may reset a church admin's password too, unless that person is also a server admin
   // (their sign-in lives in the server's settings, so resetting their account wouldn't change it)
   const serverAdmins = window.church.serverAdmin ? await getServerAdminNames() : null;
