@@ -623,8 +623,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
 
       // Role classes show the edit controls, so set them before analytics can fail
       document.documentElement.classList.add(...Object.keys(window.roles));
-      document.documentElement.classList.toggle('churchAdmin', !!window.church?.admin);
-      document.documentElement.classList.toggle('churchEditor', !!window.church?.editor);
+      showChurchLevel();
 
       // Analytics: a failure here must never break login
       try {
@@ -712,15 +711,14 @@ async function reconnectSync() {
   if (reconnecting || syncHandler || !window.loggedin || !navigator.onLine || !db?.name?.endsWith('(remote)')) return;
   reconnecting = true;
   try {
-    const username = window.user._id.replace(/^u-/, '');
+    const username = ownName();
     const localUser = await db.get('_local/u-'+username);
     if (!localUser.pwd || !localUser.remote_url) return; // no saved login to reconnect with
     await loginRemoteDb(localUser.remote_url, username, localUser.pwd);
     window.info = await remoteDb.info();
     // the church's lists may have changed while this device was offline
     window.church = await loadChurchAccess(username);
-    document.documentElement.classList.toggle('churchAdmin', !!window.church.admin);
-    document.documentElement.classList.toggle('churchEditor', !!window.church.editor);
+    showChurchLevel();
     await db.upsert('_local/u-' + username, doc => ({ ...doc, church: window.church }));
     setUpSyncHandler(); // says "Sync established"
   } catch (err) {
@@ -783,6 +781,8 @@ function loadRecentSongs(days = 1000, number = 15) {
     endkey: 's-\ufff0',
     since: 0,
     filter: function(doc) {
+      // A deleted song keeps its title and edit date now (#138), so leave it out by name
+      if (doc._deleted) return false;
       return (doc.edited > (new Date().getTime() - days * 24 * 60 * 60 * 1000)) * !doc._id.includes('sb');
     }
   }).then(function(result) {
@@ -929,6 +929,12 @@ function churchAccessFrom(sec, roles, name, dbId) {
   return { db: dbId, serverAdmin, admin, editor };
 }
 
+// The churchAdmin and churchEditor classes show the Admin panel and the editor-only buttons
+function showChurchLevel() {
+  document.documentElement.classList.toggle('churchAdmin', !!window.church?.admin);
+  document.documentElement.classList.toggle('churchEditor', !!window.church?.editor);
+}
+
 async function loadChurchAccess(username) {
   const dbId = window.info?.db_name || window.dbName;
   try {
@@ -983,13 +989,7 @@ async function putChurchSecurity(sec) {
 // The CouchDB server admins' names (only server admins can read them). null if they can't be read.
 async function getServerAdminNames() {
   try {
-    const url = new URL(remoteDb.getUsersDatabaseUrl().replace(/_users\/?$/, '_node/_local/_config/admins'));
-    url.username = '';
-    url.password = '';
-    const res = await fetch(url.href, {
-      cache: 'no-store',
-      headers: { Authorization: getBasicAuthHeader(window.user._id.slice(2), ownPassword()) },
-    });
+    const res = await serverAdminFetch('_node/_local/_config/admins');
     return res.ok ? Object.keys(await res.json()) : null;
   } catch (err) {
     console.warn('Could not read the server admins:', err);
@@ -1039,7 +1039,7 @@ async function loadAllUsers() {
     box.textContent = err.message;
     return;
   }
-  const me = window.user._id.slice(2);
+  const me = ownName();
   // Church admins first, then editors, then users; A-Z within each (ignoring upper/lower case)
   const levelOrder = { admin: 0, editor: 1, viewer: 2 };
   const people = [...churchPeople(sec)].sort((a, b) =>
@@ -1131,19 +1131,36 @@ async function postToHelper(body) {
   return reply;
 }
 
+// The name this person signed in with ("u-carl hempel" -> "carl hempel")
+function ownName() {
+  return window.user._id.slice(2);
+}
+
 // The password this person signed in with (kept in memory only, see loginRemoteDb)
 function ownPassword() {
   if (!sessionPwd) throw new Error('Please sign out and sign in again first.');
   return sessionPwd;
 }
 
+// Server admins: read something outside this church's database, such as the accounts. path starts at
+// the server root ('_users/...'). Sends this person's own sign-in, not the one inside the database URL.
+function serverAdminFetch(path) {
+  const url = new URL(remoteDb.getUsersDatabaseUrl().replace(/_users\/?$/, path));
+  url.username = '';
+  url.password = '';
+  return fetch(url.href, {
+    cache: 'no-store',
+    headers: { Authorization: getBasicAuthHeader(ownName(), ownPassword()) },
+  });
+}
+
 async function callAccountsHelper(body) {
-  return postToHelper({ ...body, db: window.church.db, adminName: window.user._id.slice(2), adminPassword: ownPassword() });
+  return postToHelper({ ...body, db: window.church.db, adminName: ownName(), adminPassword: ownPassword() });
 }
 
 // Your own account (CouchDB 3 doesn't let regular users read or change their own account record)
 async function callOwnAccount(body) {
-  return postToHelper({ ...body, name: window.user._id.slice(2), ownPassword: ownPassword() });
+  return postToHelper({ ...body, name: ownName(), ownPassword: ownPassword() });
 }
 
 // The "new password" and "again" fields every password step uses
@@ -1366,13 +1383,7 @@ async function resetChurchPassword(button) {
 // [[name, level], ...]. Accounts and tags aren't changed, so the tags keep working too.
 async function findTaggedMoves() {
   const dbId = window.church.db;
-  const usersUrl = new URL(remoteDb.getUsersDatabaseUrl());
-  usersUrl.username = '';
-  usersUrl.password = '';
-  const res = await fetch(usersUrl.href + '/_all_docs?include_docs=true&startkey="org.couchdb.user:"&endkey="org.couchdb.user:\ufff0"', {
-    cache: 'no-store',
-    headers: { Authorization: getBasicAuthHeader(window.user._id.slice(2), ownPassword()) },
-  });
+  const res = await serverAdminFetch('_users/_all_docs?include_docs=true&startkey="org.couchdb.user:"&endkey="org.couchdb.user:\ufff0"');
   if (!res.ok) throw new Error(`Could not read the accounts (${res.status})`);
   const rows = (await res.json()).rows.map(row => row.doc).filter(Boolean);
   const people = churchPeople(await getChurchSecurity());
@@ -1530,21 +1541,6 @@ async function changeOwnPassword(username, change) {
   if (done === null) return;
   dialog.working('Changed. Signing you back in…');
   location.reload();
-}
-
-function handleError(err){
-  if (err.name === 'not_found') {
-    alert('You do not have permission to see this user');
-  } else if(err.name ==='conflict') {
-    alert('That already exists');
-  } else if(!navigator.onLine){
-    alert('you are offline, try again when you are reconnected');
-  } else {
-    console.error("An unexpected error occurred:", err); // Log detailed error
-    alert(
-      `Sorry, something went wrong: ${err.message}`
-    );
-  }
 }
 
 function saveSong(song_id, songElement = document.querySelector('#song song'), change_url = true) {

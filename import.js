@@ -314,10 +314,11 @@ async function importSongV2(f){
     doc.addedBy = existing ? existing.addedBy : me;
     doc.editedBy = me;
     if (typeof doc.search === 'string') { // the song search text includes who added and edited it
-      const name = id => (id || '').slice(2).replace(/\s+/g, ' ') || '!x';
+      // written the way saveSong writes it, "!addedBy" when nobody is named
+      const name = (id, label) => (id || '').slice(2).replace(/\s+/g, ' ') || `!${label}`;
       doc.search = doc.search
-        .replace(/addedBy:[^\0]*\0/, `addedBy:${name(doc.addedBy)}\0`)
-        .replace(/editedBy:[^\0]*\0/, `editedBy:${name(doc.editedBy)}\0`);
+        .replace(/addedBy:[^\0]*\0/, `addedBy:${name(doc.addedBy, 'addedBy')}\0`)
+        .replace(/editedBy:[^\0]*\0/, `editedBy:${name(doc.editedBy, 'editedBy')}\0`);
     }
   }
 
