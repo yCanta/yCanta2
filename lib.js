@@ -17,6 +17,19 @@ function escapeHtml(text) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
+// Tells the user a database call failed (#1), with the details in the console.
+// whatFailed finishes "Couldn't ...", for example 'save the song'.
+function reportDbError(err, whatFailed) {
+  console.error(`Couldn't ${whatFailed}:`, err);
+  let why;
+  if (err?.status === 409 || err?.name === 'conflict') why = 'someone else changed it at the same time. Reload and try again.';
+  else if (err?.status === 401 || err?.name === 'unauthorized') why = 'please log in again.';
+  else if (err?.status === 403 || err?.name === 'forbidden') why = "you don't have permission.";
+  else if (err?.status === 404 || err?.name === 'not_found') why = "it wasn't found.";
+  else if (!navigator.onLine || err?.status === 0 || err?.name === 'unknown_error') why = "the server can't be reached.";
+  else why = (err?.message || String(err)) + '.';
+  notyf.error(`Couldn't ${escapeHtml(whatFailed)}: ${escapeHtml(why)}`);
+}
 const copyToClipboard = str => {
   const el = document.createElement('textarea');  // Create a <textarea> element
   el.value = str;                                 // Set its value to the string that you want copied
@@ -1278,7 +1291,7 @@ function buildSongbookList(songs, target_class='songbook_content',
       <option value=""></option>
       <option value="c:!c">No Category</option>
       ${categories.categories.map(cat => `<option value="c:${cat}">${cat}</option>`).join('')}`;
-  });
+  }).catch(err => reportDbError(err, 'load the category filter'));
 
   // Create list
   if (!edit) {
@@ -1430,7 +1443,7 @@ async function editSongbook() {
     const buttons = document.createElement('div');
     buttons.className = 'edit_buttons';
     buttons.innerHTML = `
-      <button data-songbook class="btn" style="background-color: var(--edit-color);" onclick="saveSongbook(parseHash('sb-'));">Save</button>
+      <button data-songbook class="btn" style="background-color: var(--edit-color);" onclick="saveSongbookFromEditor();">Save</button>
       <button data-songbook class="btn" style="background-color: var(--edit-color);" onclick="cancelSongbook(this);">Cancel</button>
       <button data-songbook class="btn" style="background-color: var(--edit-color);" onclick="resetSongbook();">Reset</button>`;
     const buttonsClone = buttons.cloneNode(true); // Create a deep copy
@@ -1496,11 +1509,17 @@ async function editSongbook() {
 
   // Load all songs into the song adder
   async function loadSongsIntoAdder() {
-    const result = await db.allDocs({
-      include_docs: true,
-      startkey: 's-',
-      endkey: 's-\ufff0'
-    });
+    let result;
+    try {
+      result = await db.allDocs({
+        include_docs: true,
+        startkey: 's-',
+        endkey: 's-\ufff0'
+      });
+    } catch (err) {
+      reportDbError(err, 'load the songs you can add'); // the rest of the editor still works
+      return;
+    }
 
     const songs = result.rows.sort((a, b) => (a.doc?.title || '').localeCompare(b.doc?.title || ''));
     songs.unshift({ id: 'section', title: 'New Section', search: 'new section' });
@@ -1710,6 +1729,16 @@ async function editSong() {
   const elements = songElement.querySelectorAll('stitle .title_link, authors, scripture_ref, introduction, key, chunk, copyright, cclis');
   convertChunksToEditable(elements);
 }
+// The songbook editor's Save button. A failed save keeps the editor open and says why (#1).
+async function saveSongbookFromEditor() {
+  try {
+    await saveSongbook(parseHash('sb-'));
+  } catch (err) {
+    window.songbookEditing = true;
+    reportDbError(err, 'save the songbook');
+  }
+}
+
 async function prepSaveSong() {
   if(document.getElementsByTagName('stitle')[0].textContent.trim() === ''){
     alert('Please add a title before you save');
@@ -1718,20 +1747,17 @@ async function prepSaveSong() {
   else{
     window.songEditing=false;
   }
-  // Get elements using vanilla JS
-  const songElement = document.querySelector('#song song');
+  // Save from a copy of the editor, so a failed save leaves the editor and its edits in place (#1)
+  const editor = document.querySelector('#song song');
+  const songElement = editor.cloneNode(true);
   const ccliCheckbox = document.getElementById('ccli-checkbox');
-  const ccliElement = document.querySelector('cclis');
+  const ccliElement = songElement.querySelector('cclis');
 
-  // Hide song and disable editing
-  if (songElement) {
-    songElement.style.display = 'none';
-    const editableElements = songElement.querySelectorAll('[contenteditable]');
-    editableElements.forEach(el => el.setAttribute('contenteditable', 'false'));
-  }
+  // Hide the editor while saving; a successful save loads the saved song in its place
+  editor.style.display = 'none';
 
   // Process chunks
-  const chunks = document.querySelectorAll('song chunk');
+  const chunks = songElement.querySelectorAll('chunk');
   chunks.forEach(chunk => {
     // Use innerHTML (not textContent) so &lt; and &amp; stay escaped like the old .html() did.
     // Browsers may turn typed newlines into <br> or <div>, so turn those back into \n first.
@@ -1767,13 +1793,16 @@ async function prepSaveSong() {
   }
 
   // Save the song
+  const openSong = window.song;
   try {
-    const songId = window.song._id;
     delete window.song;
-    await saveSong(songId);
+    await saveSong(openSong._id, songElement);
   } catch (error) {
-    console.error('Error saving song:', error);
-    alert('An error occurred while saving the song');
+    // Back to the editor, edits intact
+    window.song = openSong;
+    window.songEditing = true;
+    editor.style.display = '';
+    reportDbError(error, 'save the song');
   }
 }
 async function prepExport() { 
@@ -1873,7 +1902,7 @@ async function prepExport() {
     }
 
   } catch (error) {
-    console.error('Error loading export configurations:', error);
+    reportDbError(error, 'load the export setups');
   }
 }
 function export_form_summary_update() {
@@ -2389,10 +2418,19 @@ async function loadInfo(song = true) {
       </div>`;
 
     // Get songbooks containing this song
-    const songbooks = await songInSongbooks(songId);
+    let songbooks = [];
+    let songbooksFailed = false;
+    try {
+      songbooks = await songInSongbooks(songId);
+    } catch (err) {
+      reportDbError(err, 'check which songbooks use this song');
+      songbooksFailed = true;
+    }
     let songbookContent = '<div class="left"><br><b>Used in:</b><br>';
-    
-    if (songbooks.length > 0) {
+
+    if (songbooksFailed) {
+      songbookContent += "Couldn't check";
+    } else if (songbooks.length > 0) {
       songbookContent += songbooks.map(sb => 
         `<a href="#${sb.doc._id}&${window.song._id}">${sb.doc.title}</a>`
       ).join('<br>');
@@ -2434,11 +2472,11 @@ async function loadInfo(song = true) {
 
 function prevSongRev() {
   let prevRev = window.song._revs_info.map(rev => rev.rev).indexOf(window.song_rev) + 1;
-  loadSong(window.song._id, window.song._revs_info[prevRev].rev);
+  loadSong(window.song._id, window.song._revs_info[prevRev].rev).catch(() => {}); // already reported
 }
 function nextSongRev() {
   let nextRev = window.song._revs_info.map(rev => rev.rev).indexOf(window.song_rev) - 1;
-  loadSong(window.song._id, window.song._revs_info[nextRev].rev);
+  loadSong(window.song._id, window.song._revs_info[nextRev].rev).catch(() => {}); // already reported
 }
 
 function loadSongPlayer() {
