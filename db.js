@@ -140,6 +140,10 @@ function dbChanges() {
     live: true,
     include_docs: true
   }).on('change', function (change) {
+    // A song or songbook was deleted or restored: keep an open Trash current (#138)
+    if (/^(s|sb)-/.test(change.id) && document.querySelector('#trash:not(.closed)')) {
+      loadTrash();
+    }
     // Handle deleted documents
     // A deleted doc only has _id and _rev, so take it out of the lists instead of updating them
     if (change.deleted) {
@@ -1420,6 +1424,61 @@ function loadSong(song_id, song_rev = false) {
     }
   });
 }
+// A delete that keeps the whole doc, so lists can still name what was deleted (#69) and the Trash can
+// restore it (#138). CouchDB keeps the fields of a deleted doc, unlike db.remove(), which keeps only _id
+// and _rev. A deleted doc still drops out of allDocs, lists and searches on its own.
+function deletedDoc(doc) {
+  return { ...doc, _deleted: true, deletedBy: window.user._id, deletedAt: Date.now() };
+}
+
+// Deleted songs and songbooks that can be restored: ones deleted with their body kept (deletedAt is set),
+// that this user is allowed to edit. Newest delete first. (#138)
+async function listTrash() {
+  const changes = await db.changes({ since: 0, include_docs: true, style: 'main_only' });
+  return changes.results
+    .filter(c => c.deleted && c.doc?.deletedAt && /^(s|sb)-/.test(c.id) && canEdit(c.doc))
+    .map(c => ({
+      id: c.id,
+      rev: c.doc._rev,
+      type: c.id.startsWith('sb-') ? 'songbook' : 'song',
+      title: c.doc.title,
+      deletedBy: c.doc.deletedBy,
+      deletedAt: c.doc.deletedAt,
+    }))
+    .sort((a, b) => b.deletedAt - a.deletedAt);
+}
+
+// Bring a deleted song or songbook back, exactly as it was, as a new revision on top of the delete. (#138)
+async function restoreDeleted(id, rev) {
+  const tombstone = await db.get(id, { rev });
+  if (!tombstone._deleted || !tombstone.deletedAt) throw new Error(`${id} has nothing to restore`);
+  if (!canEdit(tombstone)) throw new Error(`Not allowed to restore ${id}`);
+  const { _deleted, deletedBy, deletedAt, ...doc } = tombstone;
+  const result = await db.put(doc);
+  // the change feed only updates songbooks already in the list, so add it back here, as deleteSongbook does
+  if (id.startsWith('sb-')) initializeSongbooksList();
+  return result;
+}
+
+// The title of a deleted doc: from the delete itself (deletedDoc), or else from the revision just before it.
+// That revision is gone once the database is compacted, so this can return null.
+async function deletedTitle(id, rev) {
+  for (const source of [db, window.remoteDb].filter(Boolean)) {
+    try {
+      const tombstone = await source.get(id, { rev, revs: true });
+      if (tombstone.title) return tombstone.title;
+      const { start, ids } = tombstone._revisions;
+      if (ids.length > 1) {
+        const before = await source.get(id, { rev: `${start - 1}-${ids[1]}` });
+        if (before.title) return before.title;
+      }
+    } catch (err) {
+      // not on this copy of the database; try the next
+    }
+  }
+  return null;
+}
+
 async function deleteSong(song_id) {
   let sbs = await songInSongbooks(song_id);
   if(sbs.length) {
@@ -1429,7 +1488,7 @@ async function deleteSong(song_id) {
     try {
       const doc = await db.get(song_id);
       window.deletingId = song_id; // our own delete: the change feed should not warn about it
-      await db.remove(doc);
+      await db.put(deletedDoc(doc));
       window.location.hash = "#" + formatSbID(window.songbook._id);
       console.log("Deleted:", window.song.title);
     } catch (err) {
@@ -1444,7 +1503,7 @@ async function deleteSongbook(songbook_id) {
     try {
       const doc = await db.get(songbook_id);
       window.deletingId = songbook_id;
-      await db.remove(doc);
+      await db.put(deletedDoc(doc));
       initializeSongbooksList();
       window.location.hash = '#songbooks';
       console.log("Deleted:", window.songbook.title);
@@ -1694,6 +1753,11 @@ async function loadSongbook(songbook_id, forceReload=false) {
       }
       return null;
     }).filter(Boolean);
+
+    // A deleted song keeps its place in the book, named by its old title when that can be found (#69)
+    await Promise.all(songbookData.filter(row => row.value?.deleted).map(async row => {
+      row.deletedTitle = await deletedTitle(row.id, row.value.rev);
+    }));
 
     buildSongbookList(songbookData);
 

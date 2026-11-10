@@ -833,16 +833,17 @@ async function updateUser() {
         keys: favSongs
       });
       
-      profileHtml += result.rows.sort((a, b) => {
-          if (a.doc && b.doc) {
-            return (a.doc?.title || '').localeCompare(b.doc?.title || '');
-          }
-          return 0;
-        }).map(favSong => {
-          if (favSong.doc) {
-            return `<li><a class="link" href="#sb-favoriteSongs&${favSong.doc._id}">${favSong.doc.title}</a></li>`;
-          }
-          return `<li><a class="link" href="#sb-favoriteSongs&${favSong.id}">[deleted song]</a></li>`;
+      // A deleted favorite shows its old title when that can be found (#69)
+      const favorites = await Promise.all(result.rows.map(async row => ({
+        id: row.key,
+        title: row.doc ? row.doc.title : (row.value?.deleted && await deletedTitle(row.key, row.value.rev)),
+        deleted: !row.doc
+      })));
+      profileHtml += favorites
+        .sort((a, b) => (a.title || '').localeCompare(b.title || ''))
+        .map(fav => {
+          const label = fav.deleted ? `<s>${fav.title || 'deleted song'}</s> (deleted)` : fav.title;
+          return `<li><a class="link" href="#sb-favoriteSongs&${fav.id}">${label}</a></li>`;
         }).join('');
     } catch (err) {
       console.error('Error loading favorite songs:', err);
@@ -967,6 +968,43 @@ function canEdit(doc){
     console.log(error.message);
   }
   return result;
+}
+
+// The Trash in the user menu: deleted songs and songbooks this user may restore (#138)
+async function loadTrash() {
+  const box = document.getElementById('trash_content');
+  let items;
+  try {
+    items = await listTrash();
+  } catch (err) {
+    console.error('Error loading the trash:', err);
+    box.textContent = 'Could not load the trash.';
+    return;
+  }
+  if (!items.length) {
+    box.innerHTML = '<i>Nothing in the trash.</i>';
+    return;
+  }
+  box.innerHTML = '<ul class="trash-list">' + items.map(t => `
+    <li>
+      <span class="trash-title"><b>${escapeHtml(t.title)}</b> <small>(${t.type})</small><br>
+      <small>Deleted by ${escapeHtml(window.users?.[t.deletedBy] || t.deletedBy?.replace(/^u-/, ''))}, ${formatDate(t.deletedAt)}</small></span>
+      <button class="btn" data-id="${escapeHtml(t.id)}" data-rev="${escapeHtml(t.rev)}" onclick="restoreFromTrash(this)">↶ Restore</button>
+    </li>`).join('') + '</ul>';
+}
+
+async function restoreFromTrash(button) {
+  const { id, rev } = button.dataset;
+  const title = button.closest('li').querySelector('.trash-title b').textContent;
+  button.disabled = true;
+  try {
+    await restoreDeleted(id, rev);
+    notyf.info(`Restored "${escapeHtml(title)}"`, 'var(--song-color)', id.startsWith('sb-') ? `#${id}` : `#sb-allSongs&${id}`);
+  } catch (err) {
+    console.error('Error restoring:', err);
+    notyf.error(`Could not restore "${escapeHtml(title)}"`, 'red');
+  }
+  loadTrash();
 }
 
 async function loadAllUsers(){
@@ -1144,7 +1182,7 @@ function mapSongRowToValue(row) {
     } 
     search = "";
     status = status;
-    title = "Deleted";
+    title = row.deletedTitle ? `${row.deletedTitle} (deleted)` : "Deleted";
   }
   else {
     id = row.doc._id;

@@ -281,6 +281,23 @@ fieldset {
   background-color: var(--edit-color);
   margin-bottom: 1rem;
 }
+.trash-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.trash-list li {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+.trash-list .trash-title {
+  flex: 1;
+}
+.trash-list button {
+  flex-shrink: 0;
+}
 fieldset.closed {
   height: 1.857rem;
   padding: 0;
