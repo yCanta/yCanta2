@@ -333,6 +333,9 @@ function parse(export_object, cfg) {
     }
 
     let song = parse_song(export_object.songs[i].doc);
+    if (song.chunks.length == 0) {  // only comments, which aren't printed
+      continue;
+    }
     song.num = song_num;
     song_num += 1;
 
