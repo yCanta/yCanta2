@@ -993,6 +993,9 @@ async function loadAllUsers() {
   const oldTags = (sec.members?.roles || []).concat(sec.admins?.roles || []).filter(role => role !== '_admin');
 
   let html = `<div class="people-header"><b>Users in this church</b><button class="btn btn-small" onclick="addChurchPerson()">+ Add</button></div>`;
+  if (people.length > 5) {
+    html += `<input type="search" class="people-search" placeholder="Search users" aria-label="Search users" value="${escapeHtml(peopleSearch)}" oninput="filterChurchPeople(this.value)">`;
+  }
   html += '<ul class="people-list">' + people.map(([name, level]) => {
     const self = name === me;
     const options = Object.entries(levelLabels)
@@ -1007,6 +1010,7 @@ async function loadAllUsers() {
     </li>`;
   }).join('') + '</ul>';
   if (!people.length) html += '<p>Nobody is on the list yet.</p>';
+  else html += '<p class="people-none" hidden>No one matches that search.</p>';
   if (oldTags.length) {
     html += `<p class="old-tags"><small>Also let in by older account tags: ${oldTags.map(escapeHtml).join(', ')}. Someone with one of these tags keeps that access even if they're removed or set lower here, until the tag comes off their account.</small></p>`;
   }
@@ -1028,6 +1032,23 @@ async function loadAllUsers() {
       <p>${rulesLine} ${rulesButton}</p>${movesLine}</div>`;
   }
   box.innerHTML = html;
+  filterChurchPeople(people.length > 5 ? peopleSearch : '');
+}
+
+// The Admin list's search box: show only names containing what's typed (any case). Kept while the
+// list redraws after a change.
+let peopleSearch = '';
+function filterChurchPeople(text) {
+  peopleSearch = text;
+  const words = text.toLowerCase().trim();
+  let shown = 0;
+  document.querySelectorAll('#all_users .people-list li').forEach(li => {
+    const match = !words || li.dataset.name.toLowerCase().includes(words);
+    li.hidden = !match;
+    if (match) shown++;
+  });
+  const none = document.querySelector('#all_users .people-none');
+  if (none) none.hidden = shown > 0 || !words;
 }
 
 // ---- The account helper ----

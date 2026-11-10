@@ -253,6 +253,18 @@ html._admin .admin, html.churchAdmin .admin {display: revert;}
 .server-tools .btn {
   margin: 0 0 0 .5rem !important;
 }
+.people-search {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: .5rem 0;
+  padding: .4rem .6rem;
+  border: 1px solid gray;
+  border-radius: .4rem;
+}
+#all_users .people-list li[hidden] {
+  display: none;
+}
 .people-header {
   display: flex;
   align-items: center;
