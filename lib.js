@@ -1023,7 +1023,7 @@ async function updateUser() {
     access.editor ? 'can change any song or songbook' : 'can change the songs and songbooks you add',
   ].join(': ');
   
-  profileHtml += `<h4>Permissions</h4><ul>${permissions}</ul>`;
+  profileHtml += `<h4>Permissions</h4><ul class="fit-text">${permissions}</ul>`;
   if (remoteDb) profileHtml += '<h4>Recovery email</h4><div id="recovery_email">…</div>';
 
   // Buttons
