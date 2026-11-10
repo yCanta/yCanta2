@@ -242,7 +242,76 @@ html, body, main{
   color: var(--text-color);
 }
 html .admin {display: none;}
-html._admin .admin {display: revert;}
+html._admin .admin, html.churchAdmin .admin {display: revert;}
+.people-list {
+  padding: 0;
+  list-style: none;
+}
+.server-tools p {
+  margin: .5rem 0;
+}
+.server-tools .btn {
+  margin: 0 0 0 .5rem !important;
+}
+/* Long notes wrap to the width the rest of the box already has, instead of stretching the box (the
+   settings boxes size themselves to their widest content) */
+.fit-text,
+#all_users .old-tags,
+#all_users .people-none,
+.server-tools p,
+#recovery_email p {
+  width: 0;
+  min-width: 100%;
+}
+.people-search {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: .5rem 0;
+  padding: .4rem .6rem;
+  border: 1px solid gray;
+  border-radius: .4rem;
+}
+#all_users .people-list li[hidden] {
+  display: none;
+}
+.people-header {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+}
+/* name | password | level | remove. The rows share the list's columns (subgrid), so the level menus
+   line up in every row whichever buttons a row has. */
+#all_users .people-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  column-gap: 0.75rem;
+}
+#all_users .people-list li {
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
+  align-items: center;
+  row-gap: 0.5rem;
+  padding: 0.5rem;
+}
+.people-list .person-name {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 75rem) { /* the settings column is narrow: the name on its own line, the controls under it */
+  #all_users .people-list {
+    grid-template-columns: auto auto auto;
+    justify-content: start;
+  }
+  .people-list .person-name {
+    grid-column: 1 / -1;
+  }
+}
+.people-list button {
+  white-space: nowrap;
+}
+html .editor-only {display: none;}
+html.churchEditor .editor-only {display: revert;}
 
 button[disabled] {
   filter: saturate(0) contrast(0.5);
@@ -336,12 +405,9 @@ legend {
   padding: 0 1rem 0 1rem;
   box-shadow: var(--btn-shadow-var);
 }
-#all_users li {
-  display: flex;
-  justify-content: space-between;
+#all_users li { /* the row layout is #all_users .people-list li, above */
   border-bottom: 3px solid gray;
   padding: .5rem;
-  gap: 1rem;
 }
 #all_users li:first-child {
   border-top-left-radius: .7rem;
@@ -398,6 +464,126 @@ legend {
   background-color: var(--background-color);
 }
 
+
+/* TASK DIALOG (TaskDialog in lib.js): the browser's own modal <dialog> */
+.task-dialog {
+  border: none;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  width: min(26rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  overflow: auto;
+  box-sizing: border-box;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, .35);
+}
+.task-dialog::backdrop {
+  background: rgba(0, 0, 0, .45);
+}
+.task-dialog h2 {
+  margin: 0 0 1rem 0;
+  font-size: 1.3rem;
+}
+.task-dialog fieldset { /* undo the settings-menu fieldset look */
+  border: none;
+  padding: 0;
+  margin: 0;
+  width: auto;
+  min-width: 0;
+  box-shadow: none;
+  background: none;
+  overflow: visible;
+}
+.task-dialog p {
+  margin: 0 0 1rem 0;
+}
+.task-dialog label {
+  display: block;
+  margin: 0 0 1rem 0;
+  font-weight: bold;
+}
+.task-dialog label small {
+  display: block;
+  font-weight: normal;
+  opacity: .8;
+}
+.task-dialog input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: .35rem;
+  padding: .5rem .6rem;
+  border: 1px solid gray;
+  border-radius: .4rem;
+}
+.task-dialog ul {
+  margin: 0 0 1rem 0;
+  padding-left: 1.2rem;
+}
+.task-dialog .task-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: .5rem;
+}
+.task-dialog .btn {
+  margin: 0;
+}
+.task-dialog .btn.primary {
+  background-color: var(--song-color);
+  color: black;
+}
+.task-dialog .btn.danger {
+  background-color: crimson;
+  color: white;
+}
+.task-dialog :focus-visible {
+  outline: 3px solid var(--song-color);
+  outline-offset: 2px;
+}
+.task-dialog {
+  --task-error: #b3001b;
+}
+:root.dark .task-dialog {
+  --task-error: #ff8080;
+  background-color: #262626;
+  border: 1px solid #555;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) .task-dialog {
+    --task-error: #ff8080;
+    background-color: #262626;
+    border: 1px solid #555;
+  }
+}
+.task-dialog .task-error {
+  color: var(--task-error);
+  font-weight: bold;
+}
+.task-dialog .task-status:empty {
+  display: none;
+}
+.task-dialog .spinner {
+  display: inline-block;
+  width: .9em;
+  height: .9em;
+  margin-right: .5em;
+  vertical-align: -.1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: task-spin .8s linear infinite;
+}
+@keyframes task-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .task-dialog .spinner { animation-duration: 3s; }
+}
+.task-dialog fieldset:disabled .task-buttons {
+  opacity: .5;
+}
 
 /*DIALOG STYLING */
 #dialog {
@@ -941,6 +1127,36 @@ span.deleteicon input {
 #login.connect_remote .connect_remote, /*Connect Remote*/
 #login.login_remote .login_remote { /*Login Remote*/
   display: initial;
+}
+/* "☐ Keep me logged in" on the left, "Forgot password?" on the right, under the password */
+#login.connect_remote .login-options,
+#login.login_remote .login-options {
+  display: flex;
+}
+.login-options {
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .5rem 1rem;
+}
+.login-options label {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  cursor: pointer;
+}
+.login-options input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+#login #forgot_pwd {
+  margin: 0;
+  text-decoration: underline;
+}
+#login #forgot_pwd:focus-visible,
+.login-options input:focus-visible {
+  outline: 2px solid var(--song-color);
+  outline-offset: 2px;
 }
 select:has(option[value=""]:checked) ~ :is(input) {
   display: none;
@@ -1618,9 +1834,6 @@ only screen and (max-height: 31.25rem) {
     margin-left: auto;
     overflow-y: overlay;
     padding-right: 1rem;
-  }
-  #all_users li {
-    gap: 2rem;
   }
 
   .header header {

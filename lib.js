@@ -30,6 +30,170 @@ function reportDbError(err, whatFailed) {
   else why = (err?.message || String(err)) + '.';
   notyf.error(`Couldn't ${escapeHtml(whatFailed)}: ${escapeHtml(why)}`);
 }
+// A step-by-step dialog for tasks that need input: adding people, passwords, recovery email.
+// It is the browser's own <dialog> and <form>: showModal() dims the page, keeps keyboard focus inside
+// and closes on Esc, and the inputs' required/minlength/type checks show the browser's own messages.
+// One dialog stays open through every step. While it waits it says what it is doing, an error shows
+// in place so the person can fix it and try again, and the last step stays until they close it.
+//
+//   const d = new TaskDialog('Add someone');
+//   const result = await d.run({ text, fields: [{ name, label, type }], submit: 'Add', action: async values => ... });
+//   if (result === null) return;          // cancelled
+//   await d.finish('Added.');             // shows the result until they close it
+//
+// (The floating #dialog is a different thing: song info and the YouTube player, beside the page.)
+class TaskDialog {
+  constructor(title) {
+    const titleId = 'task-title-' + Math.random().toString(36).slice(2);
+    this.dialog = document.createElement('dialog');
+    this.dialog.className = 'task-dialog';
+    this.dialog.setAttribute('aria-labelledby', titleId);
+    this.dialog.innerHTML = `<form method="dialog">
+        <h2 id="${titleId}">${escapeHtml(title)}</h2>
+        <fieldset>
+          <div class="task-body"></div>
+          <p class="task-error" role="alert" hidden></p>
+          <p class="task-status" role="status"></p>
+          <div class="task-buttons"></div>
+        </fieldset>
+      </form>`;
+    this.form = this.dialog.querySelector('form');
+    this.fieldset = this.dialog.querySelector('fieldset');
+    this.body = this.dialog.querySelector('.task-body');
+    this.errorLine = this.dialog.querySelector('.task-error');
+    this.statusLine = this.dialog.querySelector('.task-status');
+    this.buttons = this.dialog.querySelector('.task-buttons');
+    this.settle = null;
+    this.busy = false;
+    // Esc: cancel, unless something is in progress
+    this.dialog.addEventListener('cancel', event => { if (this.busy) event.preventDefault(); });
+    this.dialog.addEventListener('close', () => {
+      // Browsers close a dialog on a second Esc even when the first was refused: while something is
+      // in progress, open it again, so the person still sees how it ends
+      if (this.busy) {
+        this.dialog.showModal();
+        return;
+      }
+      this.resolveWith(null);
+      this.dialog.remove();
+    });
+    document.body.append(this.dialog);
+    this.dialog.showModal();
+  }
+
+  resolveWith(value) {
+    const settle = this.settle;
+    this.settle = null;
+    if (settle) settle(value);
+  }
+
+  render({ text = '', html = '', fields = [], submit = '', cancel = 'Cancel', danger = false }) {
+    this.errorLine.hidden = true;
+    this.statusLine.textContent = '';
+    const paragraphs = text ? text.split('\n\n').map(p => `<p>${escapeHtml(p)}</p>`).join('') : '';
+    this.body.innerHTML = paragraphs + html + fields.map(field => {
+      const attrs = [
+        `name="${escapeHtml(field.name)}"`,
+        `type="${escapeHtml(field.type || 'text')}"`,
+        field.value ? `value="${escapeHtml(field.value)}"` : '',
+        field.required === false ? '' : 'required',
+        field.minlength ? `minlength="${field.minlength}"` : '',
+        field.maxlength ? `maxlength="${field.maxlength}"` : '',
+        `autocomplete="${escapeHtml(field.autocomplete || 'off')}"`,
+        field.inputmode ? `inputmode="${escapeHtml(field.inputmode)}"` : '',
+        field.type === 'text' || !field.type ? 'autocapitalize="off" spellcheck="false"' : '',
+      ].filter(Boolean).join(' ');
+      const help = field.help ? `<small>${escapeHtml(field.help)}</small>` : '';
+      return `<label>${escapeHtml(field.label)}${help}<input ${attrs}></label>`;
+    }).join('');
+    this.buttons.innerHTML =
+      (cancel ? `<button type="button" class="btn" data-cancel>${escapeHtml(cancel)}</button>` : '') +
+      (submit ? `<button type="submit" class="btn ${danger ? 'danger' : 'primary'}">${escapeHtml(submit)}</button>` : '');
+    this.buttons.querySelector('[data-cancel]')?.addEventListener('click', () => this.close());
+
+    // "Password again" fields must match the field they repeat
+    for (const field of fields.filter(f => f.match)) {
+      const again = this.form.elements[field.name];
+      const first = this.form.elements[field.match];
+      const check = () => again.setCustomValidity(again.value && again.value !== first.value ? "The passwords don't match." : '');
+      again.addEventListener('input', check);
+      first.addEventListener('input', check);
+    }
+    (this.body.querySelector('input:not([value]), input') || this.buttons.querySelector('[type="submit"]'))?.focus();
+  }
+
+  setBusy(message) {
+    this.busy = !!message;
+    this.fieldset.disabled = this.busy;
+    this.statusLine.innerHTML = message ? `<span class="spinner" aria-hidden="true"></span>${escapeHtml(message)}` : '';
+  }
+
+  showError(err) {
+    let message = err?.message || err?.reason || err?.name || String(err);
+    if (!navigator.onLine) message += ' You seem to be offline.';
+    this.errorLine.textContent = message;
+    this.errorLine.hidden = false;
+  }
+
+  // One step: show it, and when it is submitted run action(values). Resolves with what action returns
+  // (true if nothing), or null if they cancel. If action throws, the error shows and they can retry.
+  run(spec) {
+    this.setBusy(false); // a step after working() must start unlocked
+    this.render(spec);
+    return new Promise(resolve => {
+      this.settle = resolve;
+      this.form.onsubmit = async event => {
+        event.preventDefault();
+        const values = Object.fromEntries(new FormData(this.form)); // before the fieldset is disabled
+        for (const field of spec.fields || []) {
+          if (field.type !== 'password') values[field.name] = (values[field.name] || '').trim();
+        }
+        this.errorLine.hidden = true;
+        this.setBusy(spec.working || 'Working…');
+        try {
+          const result = await spec.action(values);
+          this.setBusy(false);
+          this.resolveWith(result === undefined ? true : result);
+        } catch (err) {
+          console.error(err);
+          this.setBusy(false);
+          this.showError(err);
+          this.body.querySelector('input')?.focus();
+        }
+      };
+    });
+  }
+
+  // Something is happening and there is nothing to fill in yet
+  working(message) {
+    this.render({ cancel: '' });
+    this.setBusy(message);
+  }
+
+  // The last step: a result that stays until they close it
+  finish(text, { html = '', error = false } = {}) {
+    this.setBusy(false);
+    this.render({ text, html, submit: 'Close', cancel: '' });
+    if (error) this.body.classList.add('task-error');
+    return new Promise(resolve => {
+      this.settle = resolve;
+      this.form.onsubmit = event => {
+        event.preventDefault();
+        this.close();
+      };
+    });
+  }
+
+  close() {
+    if (this.dialog.open) this.dialog.close();
+  }
+
+  // A one-step message, e.g. when a quick change fails
+  static async message(title, text) {
+    await new TaskDialog(title).finish(text);
+  }
+}
+
 const copyToClipboard = str => {
   const el = document.createElement('textarea');  // Create a <textarea> element
   el.value = str;                                 // Set its value to the string that you want copied
@@ -762,16 +926,16 @@ function parseUrl(url, username=false, pwd=false){
 
   if(username){ //we want to add username/pwd
     if(a['host']!=''){
-      url = `${a['protocol']}//${username}:${pwd}@${a['host']}${a['pathname']}`;
+      url = `${a['protocol']}//${encodeURIComponent(username)}:${encodeURIComponent(pwd)}@${a['host']}${a['pathname']}`;
     } else { //no protocol included
-      url = `http://${username}:${pwd}@${remote_url}`;
+      url = `http://${encodeURIComponent(username)}:${encodeURIComponent(pwd)}@${url}`;
     }
   }
   else {  //we want to strip out the username/pwd
     if(a['host']!=''){
       url = `${a['protocol']}//${a['host']}${a['pathname']}`;
     } else { //no protocol included
-      url = `http://${remote_url}`;
+      url = `http://${url}`;
     }
   }
   return url;
@@ -867,23 +1031,26 @@ async function updateUser() {
   profileHtml += '</ul>';
 
   // Permissions
-  const permissions = Object.keys(window.roles)
-    .filter(role => role.startsWith(window.dbName))
-    .map(role => role.replace(window.dbName + "-", "").toUpperCase())
-    .join(', ');
+  const access = window.church || {};
+  const permissions = [
+    access.serverAdmin ? 'Server admin' : access.admin ? 'Church admin' : access.editor ? 'Editor' : 'User',
+    access.editor ? 'can change any song or songbook' : 'can change the songs and songbooks you add',
+  ].join(': ');
   
-  profileHtml += `<h4>Permissions</h4><ul>${permissions}</ul>`;
+  profileHtml += `<h4>Permissions</h4><ul class="fit-text">${permissions}</ul>`;
+  if (remoteDb) profileHtml += '<h4>Recovery email</h4><div id="recovery_email">…</div>';
 
   // Buttons
   profileHtml += `
     <button onclick="loadRawDbObject(window.user._id, document.getElementById('user_content'), 'updateUser();')" class="btn">
       <span class="mirror">&#9998;</span> Edit
     </button>
-    <button onclick="change${document.documentElement.classList.contains('_admin') ? 'Admin' : 'User'}Password('${window.user._id.replace('u-', '')}')" class="btn">
+    <button onclick="change${document.documentElement.classList.contains('_admin') ? 'Admin' : 'User'}Password(window.user._id.replace('u-', ''))" class="btn">
       ↻ Password
     </button>`;
 
   userContent.innerHTML = profileHtml;
+  if (remoteDb) loadRecoveryEmail();
 }
 
 async function loadCategories() {
@@ -894,7 +1061,7 @@ async function loadCategories() {
     const result = await db.get('categories');
     
     // Build HTML content
-    let html = `<h3>Ordered List <a href="#" onclick="loadRawDbObject('categories', document.getElementById('category_content'), 'loadCategories();')" class="mirror admin">&#9998;</a>
+    let html = `<h3>Ordered List <a href="#" onclick="loadRawDbObject('categories', document.getElementById('category_content'), 'loadCategories();')" class="mirror editor-only">&#9998;</a>
       </h3><ul>`;
     
     // Add each category as a list item
@@ -914,142 +1081,13 @@ async function loadCategories() {
   }
 }
 
-async function getAllUsers(purpose = false){
-  let loggedIn = JSON.parse(localStorage.getItem('loggedin'));
-  let username = loggedIn.username;
-  let password = loggedIn.pwd;
-  var myHeaders = new Headers();
-  myHeaders.append("Accept", "application/json");
-  myHeaders.append("Content-Type", "application/json");
-  myHeaders.append('Authorization', 'Basic ' + btoa(username + ':' + password));
-
-  var requestOptions = {
-    method: 'GET',
-    headers: myHeaders,
-    redirect: 'follow'
-  };
-  try { 
-    let url = remoteDb.getUsersDatabaseUrl().replace('_users','');
-    let admin_response = await fetch(url+"_node/couchdb@127.0.0.1/_config", requestOptions);
-    let admin = await admin_response.text();
-    admin = JSON.parse(admin);
-    let response = await fetch(url+"/_users/_all_docs?include_docs=true&startkey=\"org.couchdb.user:\"", requestOptions)
-    let non_admin = await response.text();
-    non_admin = JSON.parse(non_admin);
-    let security = await fetch(url+window.dbName+"/_security", requestOptions);
-    security = await security.text();
-    security = JSON.parse(security)
-    
-    let users = non_admin.rows.filter(user => user.doc.roles.filter(role => security.members.roles.includes(role)).length > 0);
-    if(purpose == 'adminSignup') { //only when creating an admin do we care that there is no existing username
-      users = non_admin.rows;
-    }
-    function adminFilter(admin) {
-      return non_admin.rows.some(user => user.doc.name === admin && user.doc.roles.includes(window.dbName + "-admin"));
-    }
-    let admins = Object.keys(admin.admins).filter(adminFilter);  //need to filter this against the users table list for those that have the dbname in an admin role.
-    if(purpose) { //if there is any purpose other than display (default = false) then we want to check against all admins
-      admins = Object.keys(admin.admins);
-    }
-
-    return {"admins": admins, "users": users};
-  }
-  catch(error) {
-    console.log(error)
-    console.log(error.message);
-    return error;
-  }
+// Mirrors couchdb/validate.js: editors and church admins change anything; everyone else what they added
+function canEdit(doc) {
+  if (!doc || doc._id == 'sb-allSongs' || doc._id == 'sb-favoriteSongs') return false; // not real docs
+  if (window.church?.editor) return true;
+  return !!doc.addedBy && !!window.user?._id && doc.addedBy.trim() === window.user._id.trim();
 }
 
-function canEdit(doc){
-  let result = false;
-  try {
-    if(window.roles._admin){
-      result = true;
-    }
-    else if(window.roles[window.dbName+"-editor"]){
-      result = true;
-    }
-    else if(doc.addedBy.trim() == window.user._id.trim()){
-      result = true;
-    }
-    if(doc._id == 'sb-allSongs' || doc._id == 'sb-favoriteSongs'){ //docs that are just not editable.
-      result = false;
-    }
-  }
-  catch(error) {
-    console.log(error.message);
-  }
-  return result;
-}
-
-// The Trash in the user menu: deleted songs and songbooks this user may restore (#138)
-async function loadTrash() {
-  const box = document.getElementById('trash_content');
-  let items;
-  try {
-    items = await listTrash();
-  } catch (err) {
-    console.error('Error loading the trash:', err);
-    box.textContent = 'Could not load the trash.';
-    return;
-  }
-  if (!items.length) {
-    box.innerHTML = '<i>Nothing in the trash.</i>';
-    return;
-  }
-  box.innerHTML = '<ul class="trash-list">' + items.map(t => `
-    <li>
-      <span class="trash-title"><b>${escapeHtml(t.title)}</b> <small>(${t.type})</small><br>
-      <small>Deleted by ${escapeHtml(window.users?.[t.deletedBy] || t.deletedBy?.replace(/^u-/, ''))}, ${formatDate(t.deletedAt)}</small></span>
-      <button class="btn" data-id="${escapeHtml(t.id)}" data-rev="${escapeHtml(t.rev)}" onclick="restoreFromTrash(this)">↶ Restore</button>
-    </li>`).join('') + '</ul>';
-}
-
-async function restoreFromTrash(button) {
-  const { id, rev } = button.dataset;
-  const title = button.closest('li').querySelector('.trash-title b').textContent;
-  button.disabled = true;
-  try {
-    await restoreDeleted(id, rev);
-    notyf.info(`Restored "${escapeHtml(title)}"`, 'var(--song-color)', id.startsWith('sb-') ? `#${id}` : `#sb-allSongs&${id}`);
-  } catch (err) {
-    console.error('Error restoring:', err);
-    notyf.error(`Could not restore "${escapeHtml(title)}"`, 'red');
-  }
-  loadTrash();
-}
-
-async function loadAllUsers(){
-  html = '';
-  if(remoteDb){
-    let users = await getAllUsers();
-
-    if(users instanceof Error) {
-      alert(users.message);
-      return;
-    }
-    let editorName = window.dbName+"-editor";
-    html = '<b>Admins <button class="circle" onclick="addAdminUser();">+</button></b><ul>'
-    html += users.admins.map(admin => `<li><span style="width: 30%; display:inline-block;">${admin}</span>
-                         <label title="All admins are editors"><input type="checkbox" checked disabled> Editor</label><button onclick="changeAdminPassword('${admin}')">↻ Password</button>
-                         <button onclick="deleteAdminUser('${admin}')">🗑 Delete<button></li>`).join('');
-    html += '</ul><h4>Users <button class="circle" onclick="addUser();">+</button></h4><ul>'
-    html += users.users.filter(user => user.doc.roles.indexOf(editorName) > -1)
-                       .map(user => `<li><span style="width: 30%; display:inline-block;">${user.doc.name}</span>
-                        <label><input type="checkbox" checked onclick="event.preventDefault(); toggleUserEditor('${user.doc.name}')"> Editor</label><button onclick="changeUserPassword('${user.doc.name}')">↻ Password</button>
-                        <button onclick="deleteUser('${user.doc.name}')">🗑 Remove<button></li>`).join('');
-    html += users.users.filter(user => user.doc.roles.indexOf(editorName) == -1)
-                       .map(user => `<li><span style="width: 30%; display:inline-block;">${user.doc.name}</span>
-                        <label><input type="checkbox" onclick="event.preventDefault(); toggleUserEditor('${user.doc.name}', true)"> Editor</label><button onclick="changeUserPassword('${user.doc.name}')">↻ Password</button>
-                        <button onclick="deleteUser('${user.doc.name}')">🗑 Remove<button></li>`).join('');
-    html += '</ul>'
-  }
-  else {
-    console.log('RemoteDB does not exist');
-  }
-  document.getElementById('all_users').innerHTML = html;
-}
 function searchSBfor(text) {
   const searchInput = document.querySelector('#songbook_header .search');
   if (searchInput) {
@@ -1130,6 +1168,8 @@ function setLogoutState() {
   // Clear user and roles
   window.user = '';
   window.roles = '';
+  window.church = null;
+  sessionPwd = null;
   
   // Remove loggedin state from localStorage
   localStorage.removeItem('loggedin');
@@ -2962,7 +3002,8 @@ function capEachWord(toCapitalize, dividingChar = " ") {
   return toCapitalize.split(dividingChar).map(word => word[0].toUpperCase()+word.substr(1)).join(" ");
 }
 function getBasicAuthHeader(username, password) {
-  return 'Basic ' + window.btoa(username + ':' + password); // Consider hashing password
+  const bytes = new TextEncoder().encode(username + ':' + password); // UTF-8, so any character works
+  return 'Basic ' + window.btoa(String.fromCharCode(...bytes));
 }
 function requestAccess() {
   let selectEl = document.getElementById('db_select');

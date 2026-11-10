@@ -306,6 +306,21 @@ async function importSongV2(f){
     });
   }
 
+  // Who a song or songbook is credited to. Editors and church admins keep the original credit. Everyone
+  // else may only save what they added (the server's save rules), so their imports are credited to them.
+  function creditImport(doc, existing) {
+    if (window.church?.editor || !/^(s|sb)-/.test(doc._id)) return;
+    const me = window.user._id;
+    doc.addedBy = existing ? existing.addedBy : me;
+    doc.editedBy = me;
+    if (typeof doc.search === 'string') { // the song search text includes who added and edited it
+      const name = id => (id || '').slice(2).replace(/\s+/g, ' ') || '!x';
+      doc.search = doc.search
+        .replace(/addedBy:[^\0]*\0/, `addedBy:${name(doc.addedBy)}\0`)
+        .replace(/editedBy:[^\0]*\0/, `editedBy:${name(doc.editedBy)}\0`);
+    }
+  }
+
   function uploadIfNewer(doc){
     return new Promise(function(resolve, reject) {
       let doc_type = 'doc';
@@ -316,6 +331,7 @@ async function importSongV2(f){
         doc_type = 'song';
       }
 
+      creditImport(doc);
       db.put(doc, function callback(err, result) {
         if (!err) {
           console.log('imported: ', doc.title);
@@ -327,8 +343,16 @@ async function importSongV2(f){
         console.log('hmmm '+doc_type+' already exists');
         //let's check to see if ours is newer
         db.get(doc._id).then(function(exist_doc){
-          if(doc.edited>exist_doc.edited){
+          if(doc.edited>exist_doc.edited && !canEdit(exist_doc)){
+            // someone else's song: only an editor may replace it, so keep the one already here
+            resolve('n_'+doc_type+'s2');
+            window.import['n_'+doc_type+'s2']++;
+            updateProgress();
+            console.log("the existing " + doc_type + " belongs to someone else, so it stays as it is");
+          }
+          else if(doc.edited>exist_doc.edited){
             doc._rev = exist_doc._rev;
+            creditImport(doc, exist_doc);
 
             console.log('this '+doc_type+' is newer!');
             db.put(doc, function callback(err, result) {

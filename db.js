@@ -1,5 +1,6 @@
 //initialize global variable.
 var db, syncHandler, remoteDb;
+var sessionPwd = null; // the remote password, in memory only, for the account helper
 window.users = {}; // Initialize empty users object
 
 function updateOnlineStatus(event) {
@@ -83,16 +84,20 @@ async function loginRemoteDb(remote_url, username, pwd) {
   };
   const batman = await remoteDb.logIn(username, pwd, ajaxOpts);
   console.log("I'm Batman.", batman);
-  //check access, admin different than user
-  let info = await remoteDb.info();
-  const userJS = await remoteDb.getUser(username);
-  if(!userJS.roles.some((role) => role.startsWith(info.db_name))) {
-    // Throw, so the login stops here: the caller logs out and shows this message
-    const err = new Error('You do not have access to this database');
-    err.name = 'no_access';
+  // The server decides who may open a church: its own lists, or an older "<db>-..." tag.
+  // Someone on neither gets a 403 here.
+  try {
+    await remoteDb.info();
+  } catch (err) {
+    if (err.status === 403 || err.status === 401) {
+      const noAccess = new Error('You do not have access to this database. Ask your church admin to add you.');
+      noAccess.name = 'no_access';
+      throw noAccess;
+    }
     throw err;
   }
   window.roles = batman.roles.reduce((a, v) => ({ ...a, [v]: true}), {});
+  sessionPwd = pwd; // kept in memory only, for the account helper (see callAccountsHelper)
   notyf.info('Connected to server', 'green');
 }
 function clearAllData() { 
@@ -474,6 +479,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       throw new Error('Wrong password (checked against the copy saved on this device).');
     }
     window.roles = localUser.roles;
+    window.church = localUser.church; // what the church's lists said at the last online login
     notyf.info('Offline: using the songs saved on this device', 'green');
     await takeNextStep(username, dbName);
   }
@@ -500,13 +506,23 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       // Put user and categories documents
       if(remoteDb) {
         await remoteDb.putIfNotExists(user);
-        await remoteDb.putIfNotExists(categories);
+        try {
+          await remoteDb.putIfNotExists(categories);
+        } catch (err) {
+          // only editors may create the category list; a viewer can still log in to a church without one
+          if (err.status !== 403) throw err;
+        }
         window.user = await remoteDb.get('u-'+username);
         window.info = await remoteDb.info();
+        window.church = await loadChurchAccess(username);
       } else {
         await db.putIfNotExists(user);
         await db.putIfNotExists(categories);
         window.user = await db.get('u-'+username);
+        // a local database is all yours; an offline remote login keeps what the lists said last time
+        if (dbName.endsWith('(local)') || !window.church) {
+          window.church = churchAccessFrom({}, window.roles, username, dbName.replace(/\(.+?\)/, ''));
+        }
       }
 
       // Set user preferences
@@ -529,7 +545,8 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       const userData = {
         dbName,
         username,
-        roles: window.roles
+        roles: window.roles,
+        church: window.church
       };
 
       const keepLoggedIn = document.getElementById('keep_logged_in').checked;
@@ -563,7 +580,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
         let startTime = new Date();
         
         try {
-          await db.sync(remoteDb).on('change', (change) => {
+          await db.sync(remoteDb).on('denied', reportDenied).on('change', (change) => {
             const percentage = parseInt(parseInt(change.change.last_seq.split('-')[0].replace('-',''))/parseInt(window.info.update_seq.replace('-',''))*100);
             
             document.documentElement.classList.add('barLoading');
@@ -606,6 +623,8 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
 
       // Role classes show the edit controls, so set them before analytics can fail
       document.documentElement.classList.add(...Object.keys(window.roles));
+      document.documentElement.classList.toggle('churchAdmin', !!window.church?.admin);
+      document.documentElement.classList.toggle('churchEditor', !!window.church?.editor);
 
       // Analytics: a failure here must never break login
       try {
@@ -651,7 +670,7 @@ function setUpSyncHandler() {
     syncHandler = db.sync(remoteDb, {
       live: true,
       retry: true
-    }).on('change', function (change) {
+    }).on('denied', reportDenied).on('change', function (change) {
       console.log('Synced some stuff', window.info ? parseInt(parseInt(change.change.last_seq.split('-')[0].replace('-',''))/parseInt(window.info.update_seq.replace('-',''))*100)+'%' : '');
       // yo, something changed!
     }).on('paused', function (info) {
@@ -661,9 +680,6 @@ function setUpSyncHandler() {
     }).on('complete', function (err) {
       //replication canceled
       console.log('complete');
-    }).on('denied', function (err) {
-      // the server refused one document, for example an edit this user isn't allowed to make
-      reportDbError(err, 'send a change to the server');
     }).on('error', function (err) {
       // Sync gave up. Lost connections don't come here (retry: true waits and tries again).
       if (err.name == 'unauthorized' || err.name == 'forbidden') {
@@ -701,6 +717,11 @@ async function reconnectSync() {
     if (!localUser.pwd || !localUser.remote_url) return; // no saved login to reconnect with
     await loginRemoteDb(localUser.remote_url, username, localUser.pwd);
     window.info = await remoteDb.info();
+    // the church's lists may have changed while this device was offline
+    window.church = await loadChurchAccess(username);
+    document.documentElement.classList.toggle('churchAdmin', !!window.church.admin);
+    document.documentElement.classList.toggle('churchEditor', !!window.church.editor);
+    await db.upsert('_local/u-' + username, doc => ({ ...doc, church: window.church }));
     setUpSyncHandler(); // says "Sync established"
   } catch (err) {
     remoteDb = null;
@@ -728,6 +749,8 @@ async function dbLogout() {
     } catch (err) {
       console.error("Error closing databases:", err); 
     }
+    remoteDb = null; // even if closing failed, so the next login doesn't reuse this connection
+    syncHandler = null;
     setLogoutState();
   }
 }
@@ -886,220 +909,627 @@ function initializeSongbooksList(){
   });
 }
 
-async function addAdminUser() {
-  if (!remoteDb) {
-    console.log("There is no remoteDb");
-    return;
-  }
+// ---- Church access and people ----
+// Each church database lists its own people in its security settings: "admins" (church admins),
+// "members" (everyone who may open it) and "editors" (members who may change anyone's songs). The
+// server enforces the same lists on every save with _design/auth (couchdb/validate.js); canEdit()
+// mirrors it for the buttons. Older accounts may still carry "<db>-viewer"/"<db>-editor"/"<db>-admin"
+// tags, and both the server and the app still honor them.
 
-  let users = await getAllUsers('adminSignup');
-  if (users instanceof Error) {
-    alert('You are offline perhaps! Error: ' + users.message);
-    return;
-  }
+// the yCanta Accounts web app (accounts-backend/), deployed from info.ycanta@gmail.com
+window.accountsURL = 'https://script.google.com/macros/s/AKfycbzQvNIHM0lvuhT-yXVEjSKHvO9nHGMmithevWRmNgiFlZhFj-8T7MDY4DxuP3M7vDai9A/exec';
 
-  const username = prompt('What Admin username do you want to add?');
-  if (!username) return;
-
-  if (users.admins.includes(username) || users.users.some(usr => usr.doc.name === username)) {
-    alert(`${username} is already used by a user`);
-    return;
-  }
-
-  const password = prompt('What password?');
-  if (!password) return;
-  const passwordAgain = prompt('Please enter it again.');
-  if (password !== passwordAgain) {
-    alert('Passwords did not match, please try again');
-    return;
-  }
-
-  try {
-    await remoteDb.signUpAdmin(username, password);
-    await remoteDb.signUp(username, password, { roles: [window.dbName+"-admin"] });
-    loadAllUsers();
-    notyf.info(`Added Admin: ${username}`, 'green');
-  } catch (err) {
-    handleError(err);
-  }
+// What this person may do in this church, from its security lists and their account tags
+function churchAccessFrom(sec, roles, name, dbId) {
+  roles = roles || {};
+  const inGroup = group => !!group && ((group.names || []).includes(name) || (group.roles || []).some(role => roles[role]));
+  const serverAdmin = !!roles._admin;
+  const admin = serverAdmin || !!roles[dbId + '-admin'] || inGroup(sec.admins);
+  const editor = admin || !!roles[dbId + '-editor'] || inGroup(sec.editors);
+  return { db: dbId, serverAdmin, admin, editor };
 }
 
-async function changeAdminPassword(username) {  // Pass user explicitly
-  const password = prompt(`What do you want to change the password for ${username} to?`);
-  if (!password) return;
-  const passwordAgain = prompt('Please enter it again.');
-  if (password !== passwordAgain) {
-    alert('Passwords did not match, please try again');
-    return;
-  }
+async function loadChurchAccess(username) {
+  const dbId = window.info?.db_name || window.dbName;
   try {
-    if ('u-' + username === window.user._id) {  // Check against the passed currentUser
-      const tempAdminName = username + '-temp3';
-      const ajaxOpts = { ajax: { headers: { Authorization: null } } }; 
-
-      const tempAdmin = await remoteDb.signUpAdmin(tempAdminName, 'brucewayne');
-      
-      // Ensure temp admin login is successful BEFORE logging out the current user
-      ajaxOpts.ajax.headers.Authorization = getBasicAuthHeader(tempAdminName, 'brucewayne');
-      await remoteDb.logOut(); // Now logout the original user
-      await remoteDb.logIn(tempAdminName, 'brucewayne', ajaxOpts); 
-
-      await remoteDb.deleteAdmin(username);
-      await remoteDb.signUpAdmin(username, password); 
-      await remoteDb.logOut();
-
-      ajaxOpts.ajax.headers.Authorization = getBasicAuthHeader(username, password); // Use original username and new password
-      await remoteDb.logIn(username, password, ajaxOpts);
-      await remoteDb.deleteAdmin(tempAdminName);
-
-      let localStorageUser = JSON.parse(localStorage.getItem('loggedin'));
-      localStorageUser.pwd = password;
-      localStorage.setItem('loggedin',JSON.stringify(localStorageUser));
-    } else {
-      await remoteDb.deleteAdmin(username);
-      await remoteDb.signUpAdmin(username, password); 
+    return churchAccessFrom(await getChurchSecurity(), window.roles, username, dbId);
+  } catch (err) {
+    // Keep what the lists said at the last good sign-in on this device, rather than quietly taking
+    // someone's level away (and saving that) because one request failed
+    console.warn("Could not read the church's people list; using this device's last copy:", err);
+    try {
+      const saved = (await db.get('_local/u-' + username)).church;
+      if (saved?.db === dbId) return saved;
+    } catch (e) {
+      // no saved copy
     }
-    
-    loadAllUsers();
-    notyf.info(`Password changed for Admin: ${username}`, 'olive');
-
-  } catch (err) {
-    handleError(err); 
+    return churchAccessFrom({}, window.roles, username, dbId);
   }
 }
 
-async function deleteAdminUser(username) { // Pass current user explicitly
-  // Ensure the user isn't trying to delete themselves
-  if ('u-' + username === window.user._id) {
-    alert('You cannot delete your own admin account. Try logging in as a different admin.');
-    return;
-  }
+async function getChurchSecurity() {
+  // never a cached copy: saving a stale list would drop whoever was added since (the "b2" bug)
+  const res = await remoteDb.fetch('_security', { cache: 'no-store' });
+  if (!res.ok) throw new Error(`Could not read the church's people list (${res.status})`);
+  return res.json();
+}
 
-  // Confirm deletion
-  if (!confirm(`Are you sure you want to delete Admin: ${username}?`)) {
-    console.log('Decided not to delete them');
-    return;
-  }
+// Change people's levels: read the list fresh, change it, save it right away, then read it back to
+// make sure the change is really there. changes: [[name, 'admin'|'editor'|'viewer'|'none'], ...]
+async function updateChurchPeople(changes) {
+  const sec = await getChurchSecurity();
+  for (const [name, level] of changes) setPersonLevel(sec, name, level);
+  await putChurchSecurity(sec);
+  const saved = churchPeople(await getChurchSecurity());
+  const missed = changes.filter(([name, level]) => (saved.get(name) || 'none') !== level).map(([name]) => name);
+  if (missed.length) throw new Error(`The people list didn't save for ${missed.join(', ')}. Please try again.`);
+}
 
-  try {
-    await remoteDb.deleteAdmin(username);
-    await remoteDb.deleteUser(username);
-
-    loadAllUsers();
-    notyf.info(`Admin: ${username} deleted`, 'red');
-
-  } catch (err) {
-    handleError(err);
+async function putChurchSecurity(sec) {
+  // CouchDB opens a database to everyone when its member list is empty, so always keep a role there
+  sec.members = sec.members || { names: [], roles: [] };
+  sec.members.roles = Array.from(new Set([...(sec.members.roles || []), '_admin']));
+  const res = await remoteDb.fetch('_security', {
+    method: 'PUT',
+    headers: new Headers({ 'Content-Type': 'application/json' }), // PouchDB 7.0 calls headers.set()
+    body: JSON.stringify(sec),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.reason || `Could not save the church's people list (${res.status})`);
   }
 }
 
-async function addUser() {
-  let users = await getAllUsers("userSignup");
-  if (users instanceof Error) {
-    alert("You are offline perhaps! Error: " + users.message);
-    return;
-  }
-
-  const username = prompt("What username do you want to add?");
-  if (!username) return;
-
-  if (users.admins.includes(username) || users.users.some((usr) => usr.doc.name === username) ) {
-    alert(`${username} is already a user in your database`);
-    return;
-  }
-
-  const password = prompt("What password?");
-  if (!password) return;
-  const passwordAgain = prompt("Please enter it again.");
-  if (password !== passwordAgain) {
-    alert("Passwords did not match, please try again");
-    return;
-  }
-
-  const viewerName = window.dbName + "-viewer";
-
+// The CouchDB server admins' names (only server admins can read them). null if they can't be read.
+async function getServerAdminNames() {
   try {
-    await remoteDb.signUp(username, password, { roles: [viewerName] });
+    const url = new URL(remoteDb.getUsersDatabaseUrl().replace(/_users\/?$/, '_node/_local/_config/admins'));
+    url.username = '';
+    url.password = '';
+    const res = await fetch(url.href, {
+      cache: 'no-store',
+      headers: { Authorization: getBasicAuthHeader(window.user._id.slice(2), ownPassword()) },
+    });
+    return res.ok ? Object.keys(await res.json()) : null;
   } catch (err) {
-    if (err.name === "conflict") {
-      try {
-        const userJS = await remoteDb.getUser(username);
-        const roles = { roles: userJS.roles.concat([viewerName]) };
-        await remoteDb.putUser(username, roles);
-        alert("This user already exists but did not have access to this database. They have been added. Their password was not changed.");
-      } catch (updateErr) {
-        handleError(updateErr); // Handle errors during role update
-        return; // not added: don't say it was
-      }
-    } else {
-      handleError(err); // Handle other errors
+    console.warn('Could not read the server admins:', err);
+    return null;
+  }
+}
+
+// name -> 'admin' | 'editor' | 'viewer', from the lists (not from account tags)
+function churchPeople(sec) {
+  const people = new Map();
+  (sec.members?.names || []).forEach(name => people.set(name, 'viewer'));
+  (sec.editors?.names || []).forEach(name => people.set(name, 'editor'));
+  (sec.admins?.names || []).forEach(name => people.set(name, 'admin'));
+  return people;
+}
+
+function setPersonLevel(sec, name, level) {
+  sec.admins = { names: [], roles: [], ...sec.admins };
+  sec.members = { names: [], roles: [], ...sec.members };
+  sec.editors = { names: [], ...sec.editors };
+  for (const group of [sec.admins, sec.members, sec.editors]) {
+    group.names = (group.names || []).filter(n => n !== name);
+  }
+  if (level === 'admin') sec.admins.names.push(name);
+  if (level === 'editor') sec.editors.names.push(name);
+  if (level === 'editor' || level === 'viewer') sec.members.names.push(name);
+  return sec;
+}
+
+const levelLabels = { viewer: 'User', editor: 'Editor', admin: 'Church admin' };
+
+// The Admin panel: this church's people
+async function loadAllUsers() {
+  const box = document.getElementById('all_users');
+  if (!remoteDb) {
+    box.innerHTML = '<p>This database is only on this device, so there are no people to manage.</p>';
+    return;
+  }
+  if (!navigator.onLine) {
+    box.innerHTML = '<p>Managing people needs a connection to the server.</p>';
+    return;
+  }
+  let sec;
+  try {
+    sec = await getChurchSecurity();
+  } catch (err) {
+    box.textContent = err.message;
+    return;
+  }
+  const me = window.user._id.slice(2);
+  // Church admins first, then editors, then users; A-Z within each (ignoring upper/lower case)
+  const levelOrder = { admin: 0, editor: 1, viewer: 2 };
+  const people = [...churchPeople(sec)].sort((a, b) =>
+    levelOrder[a[1]] - levelOrder[b[1]] || a[0].localeCompare(b[0], undefined, { sensitivity: 'base' }));
+  // Server admins may reset a church admin's password too, unless that person is also a server admin
+  // (their sign-in lives in the server's settings, so resetting their account wouldn't change it)
+  const serverAdmins = window.church.serverAdmin ? await getServerAdminNames() : null;
+  const canReset = (name, level) => name !== me && (level !== 'admin' || (serverAdmins && !serverAdmins.includes(name)));
+  const oldTags = (sec.members?.roles || []).concat(sec.admins?.roles || []).filter(role => role !== '_admin');
+
+  let html = `<div class="people-header"><b>Users in this church</b><button class="btn btn-small" onclick="addChurchPerson()">+ Add</button></div>`;
+  if (people.length > 5) {
+    html += `<input type="search" class="people-search" placeholder="Search users" aria-label="Search users" value="${escapeHtml(peopleSearch)}" oninput="filterChurchPeople(this.value)">`;
+  }
+  html += '<ul class="people-list">' + people.map(([name, level]) => {
+    const self = name === me;
+    const options = Object.entries(levelLabels)
+      .map(([value, label]) => `<option value="${value}"${value === level ? ' selected' : ''}>${label}</option>`).join('');
+    // Fixed columns (name, password, level, remove), with an empty spot where a button doesn't apply,
+    // so the level menus line up in every row
+    return `<li data-name="${escapeHtml(name)}">
+      <span class="person-name">${escapeHtml(name)}${self ? ' (you)' : ''}</span>
+      ${canReset(name, level) ? '<button onclick="resetChurchPassword(this)">↻ Password</button>' : '<span></span>'}
+      <select aria-label="Level for ${escapeHtml(name)}" onchange="setChurchPersonLevel(this)"${self && !window.church.serverAdmin ? ' disabled title="Ask another church admin to change your own level"' : ''}>${options}</select>
+      ${self ? '<span></span>' : '<button onclick="removeChurchPerson(this)">🗑 Remove</button>'}
+    </li>`;
+  }).join('') + '</ul>';
+  if (!people.length) html += '<p>Nobody is on the list yet.</p>';
+  else html += '<p class="people-none" hidden>No one matches that search.</p>';
+  if (oldTags.length) {
+    html += `<p class="old-tags"><small>Also let in by older account tags: ${oldTags.map(escapeHtml).join(', ')}. Someone with one of these tags keeps that access even if they're removed or set lower here, until the tag comes off their account.</small></p>`;
+  }
+  if (window.church.serverAdmin) {
+    const [rules, moves] = await Promise.all([saveRulesStatus(), oldTags.length ? findTaggedMoves().catch(() => null) : []]);
+    const rulesLine = {
+      latest: 'Save rules: up to date.',
+      outdated: 'Save rules: an update is available.',
+      missing: 'Save rules: not installed. The server lets members change anything.',
+      unknown: "Save rules: couldn't check.",
+    }[rules.state];
+    const rulesButton = rules.state === 'latest' ? '' :
+      `<button class="btn btn-small" onclick="installSaveRules()">${rules.state === 'outdated' ? 'Update' : 'Install'} the save rules</button>`;
+    let movesLine = '';
+    if (moves === null) movesLine = "<p>Couldn't check the older tags.</p>";
+    else if (moves.length) movesLine = `<p>${moves.length === 1 ? '1 person with an older tag isn\'t' : moves.length + ' people with older tags aren\'t'} on the list yet. <button class="btn btn-small" onclick="moveTaggedPeople()">Move them onto the list</button></p>`;
+    else if (oldTags.length) movesLine = '<p>Everyone with an older tag is on the list.</p>';
+    html += `<div class="server-tools"><b>Server admin tools</b>
+      <p>${rulesLine} ${rulesButton}</p>${movesLine}</div>`;
+  }
+  box.innerHTML = html;
+  filterChurchPeople(people.length > 5 ? peopleSearch : '');
+}
+
+// The Admin list's search box: show only names containing what's typed (any case). Kept while the
+// list redraws after a change.
+let peopleSearch = '';
+function filterChurchPeople(text) {
+  peopleSearch = text;
+  const words = text.toLowerCase().trim();
+  let shown = 0;
+  document.querySelectorAll('#all_users .people-list li').forEach(li => {
+    const match = !words || li.dataset.name.toLowerCase().includes(words);
+    li.hidden = !match;
+    if (match) shown++;
+  });
+  const none = document.querySelector('#all_users .people-none');
+  if (none) none.hidden = shown > 0 || !words;
+}
+
+// ---- The account helper ----
+
+// Church admins who aren't server admins go through the account helper, which checks they are a
+// church admin before it creates an account or resets a password.
+async function postToHelper(body) {
+  if (!window.accountsURL) {
+    throw new Error("This isn't turned on yet. Ask Carl or Evan.");
+  }
+  // a plain-text body keeps this a "simple" request, which Apps Script web apps accept from any page
+  let reply;
+  try {
+    const res = await fetch(window.accountsURL, { method: 'POST', body: JSON.stringify(body), signal: AbortSignal.timeout(30000) });
+    reply = await res.json();
+  } catch (err) {
+    throw new Error(err?.name === 'TimeoutError'
+      ? "The account helper didn't answer. Please try again in a minute."
+      : "Couldn't reach the account helper. Check your connection and try again.");
+  }
+  if (!reply.ok) throw new Error(reply.error || 'The account helper refused');
+  return reply;
+}
+
+// The password this person signed in with (kept in memory only, see loginRemoteDb)
+function ownPassword() {
+  if (!sessionPwd) throw new Error('Please sign out and sign in again first.');
+  return sessionPwd;
+}
+
+async function callAccountsHelper(body) {
+  return postToHelper({ ...body, db: window.church.db, adminName: window.user._id.slice(2), adminPassword: ownPassword() });
+}
+
+// Your own account (CouchDB 3 doesn't let regular users read or change their own account record)
+async function callOwnAccount(body) {
+  return postToHelper({ ...body, name: window.user._id.slice(2), ownPassword: ownPassword() });
+}
+
+// The "new password" and "again" fields every password step uses
+function newPasswordFields(label = 'New password') {
+  return [
+    { name: 'password', label, type: 'password', autocomplete: 'new-password', minlength: 6, help: 'At least 6 characters.' },
+    { name: 'password2', label: 'Type it again', type: 'password', autocomplete: 'new-password', match: 'password' },
+  ];
+}
+
+function checkSignInName(name) {
+  if (!name || name.startsWith('_') || name.includes(':') || name.length > 64) {
+    throw new Error('Please use a different name. It can\'t start with "_" or contain ":".');
+  }
+}
+
+// ---- Recovery email (profile) and "Forgot password?" (login page) ----
+
+// The profile is drawn more than once at sign-in, so ask the helper once per person per session and
+// reuse the answer (or the request still on its way). Changing or removing the email asks again.
+let recoveryEmailLookup = null;
+async function loadRecoveryEmail({ fresh = false } = {}) {
+  const box = document.getElementById('recovery_email');
+  if (!box) return;
+  if (!window.accountsURL) {
+    box.innerHTML = '<p>Password recovery by email isn\'t turned on yet.</p>';
+    return;
+  }
+  const userId = window.user._id;
+  if (fresh || recoveryEmailLookup?.userId !== userId) {
+    if (!navigator.onLine) {
+      box.innerHTML = '<p>Connect to the internet to see or change it.</p>';
       return;
     }
+    recoveryEmailLookup = { userId, reply: callOwnAccount({ action: 'getEmail' }) };
   }
-  notyf.info(`Added ${username}`, 'green');
+  const lookup = recoveryEmailLookup;
+  try {
+    const { email } = await lookup.reply;
+    if (!document.body.contains(box)) return; // the profile was redrawn meanwhile
+    box.innerHTML = email
+      ? `<p>${escapeHtml(email)}</p><button class="btn" onclick="setRecoveryEmail()">Change</button> <button class="btn" onclick="clearRecoveryEmail()">Remove</button>`
+      : `<p>None yet. Add one so you can reset your password if you forget it.</p><button class="btn" onclick="setRecoveryEmail()">Add email</button>`;
+  } catch (err) {
+    if (recoveryEmailLookup === lookup) recoveryEmailLookup = null; // try again next time
+    box.textContent = err.message;
+  }
+}
+
+async function setRecoveryEmail() {
+  const dialog = new TaskDialog('Recovery email');
+  let email;
+  const sent = await dialog.run({
+    text: "If you forget your password, yCanta can email a code to this address. We'll send a code there first to check it's yours.",
+    fields: [{ name: 'email', label: 'Email address', type: 'email', autocomplete: 'email', maxlength: 200 }],
+    submit: 'Send code',
+    working: 'Sending the code…',
+    action: async values => {
+      email = values.email;
+      await callOwnAccount({ action: 'startEmail', email });
+    },
+  });
+  if (sent === null) return;
+  const saved = await dialog.run({
+    text: `We emailed a code to ${email}. It lasts 20 minutes.`,
+    fields: [{ name: 'code', label: 'Code from the email', autocomplete: 'one-time-code', maxlength: 12 }],
+    submit: 'Confirm',
+    working: 'Checking the code…',
+    action: values => callOwnAccount({ action: 'confirmEmail', code: values.code }),
+  });
+  if (saved === null) return;
+  loadRecoveryEmail({ fresh: true });
+  await dialog.finish(`Your recovery email is now ${saved.email}.`);
+}
+
+async function clearRecoveryEmail() {
+  const dialog = new TaskDialog('Remove recovery email');
+  const done = await dialog.run({
+    text: "Without a recovery email you can't reset a forgotten password yourself. A church admin can still reset it for you.",
+    submit: 'Remove',
+    danger: true,
+    working: 'Removing…',
+    action: () => callOwnAccount({ action: 'clearEmail' }),
+  });
+  if (done === null) return;
+  dialog.close();
+  notyf.info('Recovery email removed', 'olive');
+  loadRecoveryEmail({ fresh: true });
+}
+
+async function forgotPassword() {
+  const dialog = new TaskDialog('Forgot password');
+  let who, message;
+  const asked = await dialog.run({
+    text: "Enter your yCanta name, or the recovery email on your account. We'll email you a code.",
+    fields: [{ name: 'who', label: 'Name or email', autocomplete: 'username', value: document.getElementById('username').value.trim(), maxlength: 200 }],
+    submit: 'Email me a code',
+    working: 'Sending…',
+    action: async values => {
+      who = values.who;
+      ({ message } = await postToHelper({ action: 'requestReset', who }));
+    },
+  });
+  if (asked === null) return;
+  const byEmail = who.includes('@');
+  let name = byEmail ? '' : who;
+  const changed = await dialog.run({
+    text: `${message} If nothing arrives, check your spam folder, or ask your church admin to reset it.`,
+    fields: [
+      ...(byEmail ? [{ name: 'name', label: 'Your yCanta name', help: 'The email shows it next to "Your name".', autocomplete: 'username' }] : []),
+      { name: 'code', label: 'Code from the email', help: 'Next to "Your code".', autocomplete: 'one-time-code', maxlength: 12 },
+      ...newPasswordFields(),
+    ],
+    submit: 'Change password',
+    working: 'Changing your password…',
+    action: async values => {
+      if (byEmail) name = values.name;
+      await postToHelper({ action: 'confirmReset', name, code: values.code, password: values.password });
+    },
+  });
+  if (changed === null) return;
+  document.getElementById('username').value = name;
+  document.getElementById('pwd').value = '';
+  await dialog.finish('Your password is changed. Sign in with it now.');
+  document.getElementById('pwd').focus();
+}
+
+// ---- Managing a church's people (Admin panel) ----
+
+async function addChurchPerson() {
+  const dialog = new TaskDialog('Add someone');
+  let added;
+  const madeHere = new Set(); // accounts this dialog created, in case saving the list failed and they retry
+  const result = await dialog.run({
+    text: "If they already have a yCanta account (for example from another church), it stays as it is and the password below isn't used.",
+    fields: [
+      { name: 'name', label: 'The name they sign in with', maxlength: 64 },
+      ...newPasswordFields('Password for their new account'),
+    ],
+    submit: 'Add',
+    working: 'Adding…',
+    action: async values => {
+      checkSignInName(values.name);
+      if (churchPeople(await getChurchSecurity()).has(values.name)) throw new Error(`${values.name} is already on the list.`);
+      let existed;
+      if (window.church.serverAdmin) {
+        try {
+          await remoteDb.signUp(values.name, values.password, { metadata: { created_for: window.church.db } });
+          existed = false;
+        } catch (err) {
+          if (err.name !== 'conflict') throw err;
+          existed = true;
+        }
+      } else {
+        existed = (await callAccountsHelper({ action: 'createAccount', name: values.name, password: values.password })).existed;
+      }
+      if (!existed) madeHere.add(values.name);
+      await updateChurchPeople([[values.name, 'viewer']]);
+      added = values.name;
+      return { existed: existed && !madeHere.has(values.name) };
+    },
+  });
+  if (result === null) return;
+  loadAllUsers();
+  await dialog.finish(result.existed
+    ? `${added} already had a yCanta account, so their password didn't change. They're now a user in this church.`
+    : `Added ${added} as a user. Let them know their sign-in name and password. They can add a recovery email in their profile.`);
+}
+
+async function setChurchPersonLevel(select) {
+  const name = select.closest('li').dataset.name;
+  select.disabled = true;
+  try {
+    await updateChurchPeople([[name, select.value]]);
+    notyf.info(`${escapeHtml(name)} is now: ${levelLabels[select.value]}`, 'green');
+  } catch (err) {
+    await TaskDialog.message('Could not change that', err.message || String(err));
+  }
   loadAllUsers();
 }
 
-async function toggleUserEditor(username, editor) { // Pass dbName explicitly
-  try {
-    const userJS = await remoteDb.getUser(username);
-    const editorName = window.dbName + "-editor"; 
+async function removeChurchPerson(button) {
+  const name = button.closest('li').dataset.name;
+  const hasOldTags = !!document.querySelector('#all_users .old-tags');
+  const dialog = new TaskDialog(`Remove ${name}?`);
+  const done = await dialog.run({
+    text: `${name} won't be able to open this church anymore. Their account stays, so another church can still use it.` +
+      (hasOldTags ? '\n\nIf their account also has one of the older tags listed under the users, that tag still lets them in until Carl or Evan removes it.' : ''),
+    submit: 'Remove',
+    danger: true,
+    working: 'Removing…',
+    action: () => updateChurchPeople([[name, 'none']]),
+  });
+  if (done === null) return;
+  dialog.close();
+  notyf.info(`Removed ${escapeHtml(name)}`, 'red');
+  loadAllUsers();
+}
 
-    let roles;
-    if (editor) {
-      roles = Array.from(new Set(userJS.roles.concat([editorName]))); // Avoid duplicates
-    } else {
-      roles = userJS.roles.filter((e) => e !== editorName);
-    }
+async function resetChurchPassword(button) {
+  const name = button.closest('li').dataset.name;
+  const dialog = new TaskDialog(`New password for ${name}`);
+  const done = await dialog.run({
+    fields: newPasswordFields(),
+    submit: 'Change password',
+    working: 'Changing the password…',
+    action: async values => {
+      if (window.church.serverAdmin) {
+        await remoteDb.changePassword(name, values.password);
+      } else {
+        await callAccountsHelper({ action: 'resetPassword', name, password: values.password });
+      }
+    },
+  });
+  if (done === null) return;
+  await dialog.finish(`Changed. Let ${name} know the new password.`);
+}
 
-    await remoteDb.putUser(username, { roles });  // Use async/await consistently
-    
-    loadAllUsers();
-    notyf.info(`Updated ${username}`, 'green');
-
-  } catch (err) {
-    handleError(err); 
+// Server admins: who has this church's older account tags but isn't on the lists at that level yet.
+// [[name, level], ...]. Accounts and tags aren't changed, so the tags keep working too.
+async function findTaggedMoves() {
+  const dbId = window.church.db;
+  const usersUrl = new URL(remoteDb.getUsersDatabaseUrl());
+  usersUrl.username = '';
+  usersUrl.password = '';
+  const res = await fetch(usersUrl.href + '/_all_docs?include_docs=true&startkey="org.couchdb.user:"&endkey="org.couchdb.user:\ufff0"', {
+    cache: 'no-store',
+    headers: { Authorization: getBasicAuthHeader(window.user._id.slice(2), ownPassword()) },
+  });
+  if (!res.ok) throw new Error(`Could not read the accounts (${res.status})`);
+  const rows = (await res.json()).rows.map(row => row.doc).filter(Boolean);
+  const people = churchPeople(await getChurchSecurity());
+  const rank = { viewer: 1, editor: 2, admin: 3 };
+  const moves = [];
+  for (const user of rows) {
+    const roles = user.roles || [];
+    const level = roles.includes(dbId + '-admin') ? 'admin'
+      : roles.includes(dbId + '-editor') ? 'editor'
+      : roles.includes(dbId + '-viewer') ? 'viewer' : null;
+    if (level && (rank[level] > (rank[people.get(user.name)] || 0))) moves.push([user.name, level]);
   }
+  return moves;
+}
+
+async function moveTaggedPeople() {
+  const dialog = new TaskDialog('Move tagged people onto the list');
+  dialog.working('Reading the accounts…');
+  let moves;
+  try {
+    moves = await findTaggedMoves();
+  } catch (err) {
+    await dialog.finish(err.message || String(err), { error: true });
+    return;
+  }
+  if (!moves.length) {
+    loadAllUsers();
+    await dialog.finish('Everyone with a tag is already on the list.');
+    return;
+  }
+  const done = await dialog.run({
+    text: moves.length === 1
+      ? 'This person gets onto the list. Their account and tags stay as they are.'
+      : `These ${moves.length} people get onto the list. Their accounts and tags stay as they are.`,
+    html: '<ul>' + moves.map(([name, level]) => `<li>${escapeHtml(name)}: ${levelLabels[level]}</li>`).join('') + '</ul>',
+    submit: 'Move them',
+    working: 'Saving the list…',
+    action: () => updateChurchPeople(moves),
+  });
+  if (done === null) return;
+  loadAllUsers();
+  await dialog.finish(`Moved ${moves.length} ${moves.length === 1 ? 'person' : 'people'} onto the list.`);
+}
+
+// Server admins: is couchdb/validate.js this church's save rules (_design/auth)?
+// { state: 'latest' | 'outdated' | 'missing' | 'unknown', source, rev }
+async function saveRulesStatus() {
+  const same = (a, b) => (a || '').replace(/\r\n/g, '\n').trim() === (b || '').replace(/\r\n/g, '\n').trim();
+  try {
+    const source = await (await fetch('couchdb/validate.js', { cache: 'no-store' })).text();
+    if (!source.trim().startsWith('function')) throw new Error('Could not load couchdb/validate.js');
+    // never a cached copy (the browser can hand back an old one, as with the people list)
+    const res = await remoteDb.fetch('_design/auth', { cache: 'no-store' });
+    if (res.status === 404) return { state: 'missing', source };
+    if (!res.ok) throw new Error(`Couldn't read the save rules (${res.status})`);
+    const current = await res.json();
+    return { state: same(current.validate_doc_update, source) ? 'latest' : 'outdated', source, rev: current._rev };
+  } catch (err) {
+    console.warn("Couldn't check the save rules:", err);
+    return { state: 'unknown', error: err };
+  }
+}
+
+// Server admins: install couchdb/validate.js as this church's save rules
+async function installSaveRules() {
+  const dialog = new TaskDialog('Save rules');
+  dialog.working('Checking…');
+  const rules = await saveRulesStatus();
+  if (rules.state === 'unknown') {
+    await dialog.finish(rules.error?.message || "Couldn't check the save rules.", { error: true });
+    return;
+  }
+  if (rules.state === 'latest') {
+    loadAllUsers();
+    await dialog.finish(`${window.church.db} already has the latest save rules.`);
+    return;
+  }
+  const update = rules.state === 'outdated';
+  const done = await dialog.run({
+    text: `${update ? 'Update' : 'Install'} the save rules for ${window.church.db}? From then on the server checks every save: editors and church admins can change anything, everyone else only what they added.`,
+    submit: update ? 'Update' : 'Install',
+    working: 'Installing…',
+    action: () => remoteDb.put({ _id: '_design/auth', ...(update ? { _rev: rules.rev } : {}), validate_doc_update: rules.source }),
+  });
+  if (done === null) return;
+  loadAllUsers();
+  await dialog.finish('The save rules are installed.');
+}
+
+// The server refused something this device saved (see couchdb/validate.js). Say so once per doc.
+const deniedShown = new Set();
+async function reportDenied(event) {
+  const err = event?.doc || event || {}; // sync wraps the refusal as {direction, doc}
+  const id = err.id || err._id || '';
+  if (deniedShown.has(id)) return;
+  deniedShown.add(id);
+  console.warn('Server refused a save:', JSON.stringify(err));
+  let title = id;
+  try {
+    title = (await db.get(id)).title || id;
+  } catch (e) {
+    // fine, use the id
+  }
+  notyf.error(`The server did not save "${escapeHtml(title)}": ${escapeHtml(err.reason || err.message || 'not allowed')}`);
+}
+
+// Your own password, from the profile. Server admins live in the server's settings, so theirs is
+// replaced through a short-lived helper admin; everyone else changes the password on their account.
+async function changeAdminPassword(username) {
+  await changeOwnPassword(username, async password => {
+    const tempAdminName = username + '-temp3';
+    const ajaxOpts = { ajax: { headers: { Authorization: null } } };
+    await remoteDb.signUpAdmin(tempAdminName, 'brucewayne');
+    // Ensure temp admin login is successful BEFORE logging out the current user
+    ajaxOpts.ajax.headers.Authorization = getBasicAuthHeader(tempAdminName, 'brucewayne');
+    await remoteDb.logOut();
+    await remoteDb.logIn(tempAdminName, 'brucewayne', ajaxOpts);
+    await remoteDb.deleteAdmin(username);
+    await remoteDb.signUpAdmin(username, password);
+    await remoteDb.logOut();
+    ajaxOpts.ajax.headers.Authorization = getBasicAuthHeader(username, password); // original username, new password
+    await remoteDb.logIn(username, password, ajaxOpts);
+    await remoteDb.deleteAdmin(tempAdminName);
+  });
 }
 
 async function changeUserPassword(username) {
-  const password = prompt(`What do you want to change the password for ${username} to?`);
-  if (!password) return;
-
-  const passwordAgain = prompt("Please enter it again.");
-  if (password !== passwordAgain) {
-    alert("Passwords did not match, please try again");
-    return;
-  }
-
-  try {
-    await remoteDb.changePassword(username, password);
-    if ('u-' + username === window.user._id) {  // Check against the passed currentUser also check if we are on memory version
-      let localStorageUser = JSON.parse(localStorage.getItem('loggedin'));
-      localStorageUser.pwd = password;
-      localStorage.setItem('loggedin',JSON.stringify(localStorageUser));
-      location.reload();
+  await changeOwnPassword(username, async password => {
+    if (window.accountsURL && !window.church?.serverAdmin) {
+      await callOwnAccount({ action: 'changeOwnPassword', password }); // see callOwnAccount
+    } else {
+      await remoteDb.changePassword(username, password);
     }
-    notyf.info(`Password changed for ${username}`, "olive");
-  } catch (err) {
-    handleError(err); 
-  }
+  });
 }
 
-async function deleteUser(username) {
-  const response = confirm(`Are you sure you want to remove ${username}?`);
-  if (!response) return; 
-
-  try {
-      const userJS = await remoteDb.getUser(username);
-      const roles = userJS.roles.filter(e => !e.includes(window.dbName)); // Create a new array
-
-      await remoteDb.putUser(username, { roles });
-      loadAllUsers();
-      notyf.info(`Removed user: ${username}`, 'red');
-  } catch (err) {
-      handleError(err);
-  }
+async function changeOwnPassword(username, change) {
+  const dialog = new TaskDialog('Change your password');
+  const done = await dialog.run({
+    fields: newPasswordFields(),
+    submit: 'Change password',
+    working: 'Changing your password…',
+    action: async values => {
+      await change(values.password);
+      sessionPwd = values.password;
+      const stored = JSON.parse(localStorage.getItem('loggedin') || 'null');
+      if (stored?.pwd) { // only where "Keep me logged in" already keeps it
+        stored.pwd = values.password;
+        localStorage.setItem('loggedin', JSON.stringify(stored));
+      }
+      // "Keep me logged in" reconnects with the password saved on this device; keep it current
+      await db.upsert('_local/' + window.user._id, doc => (doc.pwd ? { ...doc, pwd: values.password } : false));
+    },
+  });
+  if (done === null) return;
+  dialog.working('Changed. Signing you back in…');
+  location.reload();
 }
 
 function handleError(err){
