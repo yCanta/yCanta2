@@ -33,5 +33,5 @@ live server). It deletes and recreates a `church_a` database and makes fake user
 the live server.
 
 ```bash
-COUCH_ADMIN_PASS=... node couchdb/test-rule.mjs
+COUCH_ADMIN_PASS=... node database/test-rule.mjs
 ```

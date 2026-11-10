@@ -8,4 +8,4 @@ deepseek/deepseek-chat
 .aider.input.history
 .aider.chat.history.md
 .claude/
-couchdb/.admin-pass
+database/.admin-pass

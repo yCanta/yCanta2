@@ -66,7 +66,7 @@ In the Apps Script project, signed in as info.ycanta@gmail.com:
 
 ## Testing
 
-- `test-local.mjs` runs `Code.gs` unchanged in Node against the local test CouchDB (see `../couchdb/`), with
+- `test-local.mjs` runs `Code.gs` unchanged in Node against the local test CouchDB (see `../database/`), with
   stand-ins for the Apps Script services in `local-shim.mjs`.
 - `serve-local.mjs` serves it at `http://localhost:8790` for the app's local test page. Emails it would send
   are kept at `http://localhost:8790/mail` instead.

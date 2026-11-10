@@ -1,8 +1,8 @@
 // Runs Code.gs unchanged in Node, with stand-ins for the Apps Script services, against the LOCAL test
-// CouchDB. Run couchdb/test-rule.mjs and couchdb/probe-account-helper.mjs first (they make church_a,
+// CouchDB. Run database/test-rule.mjs and database/probe-account-helper.mjs first (they make church_a,
 // church_b, the fake users and the accounts-only "maker" admin).
 import { loadHelper } from './local-shim.mjs';
-import { req, as, pw, BASE } from '../couchdb/lib.mjs';
+import { req, as, pw, BASE } from '../database/lib.mjs';
 
 const props = { COUCH_URL: BASE + '/', MAKER_NAME: 'maker', MAKER_PASS: pw('maker') };
 const logRows = [];

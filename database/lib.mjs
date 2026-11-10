@@ -1,6 +1,6 @@
 // Tiny CouchDB client for a LOCAL test server only. Never point it at a live server: it deletes and
 // recreates the church_a database and makes fake users.
-// The local server admin's password comes from COUCH_ADMIN_PASS or couchdb/.admin-pass (not committed).
+// The local server admin's password comes from COUCH_ADMIN_PASS or database/.admin-pass (not committed).
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';

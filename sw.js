@@ -1,6 +1,6 @@
 // Bump this on every release. A new service worker reloads every file at once; without it, files
 // refresh one at a time and a browser can keep running old scripts next to a new index.html.
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 const CACHE = `cache-and-update-${CACHE_VERSION}`;
 
 var prefetchedURLs = [
@@ -55,10 +55,10 @@ self.addEventListener('fetch', function(evt) {
   }
   // Only cache the app's own files. Database requests (cross-origin, or /couch/ on this host)
   // must hit the network, or ignoreSearch would hand sync stale _changes results.
-  // The server save rules (/couchdb/validate.js) must be fresh too, or "Install or update the save
+  // The server save rules (/database/validate.js) must be fresh too, or "Install or update the save
   // rules" would install an old copy.
   const url = new URL(evt.request.url);
-  if (url.origin !== self.location.origin || url.pathname.includes('/couch/') || url.pathname.includes('/couchdb/')) {
+  if (url.origin !== self.location.origin || url.pathname.includes('/couch/') || url.pathname.includes('/database/')) {
     return;
   }
 

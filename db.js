@@ -912,7 +912,7 @@ function initializeSongbooksList(){
 // ---- Church access and people ----
 // Each church database lists its own people in its security settings: "admins" (church admins),
 // "members" (everyone who may open it) and "editors" (members who may change anyone's songs). The
-// server enforces the same lists on every save with _design/auth (couchdb/validate.js); canEdit()
+// server enforces the same lists on every save with _design/auth (database/validate.js); canEdit()
 // mirrors it for the buttons. Older accounts may still carry "<db>-viewer"/"<db>-editor"/"<db>-admin"
 // tags, and both the server and the app still honor them.
 
@@ -1428,13 +1428,16 @@ async function moveTaggedPeople() {
   await dialog.finish(`Moved ${moves.length} ${moves.length === 1 ? 'person' : 'people'} onto the list.`);
 }
 
-// Server admins: is couchdb/validate.js this church's save rules (_design/auth)?
+// Server admins: is database/validate.js this church's save rules (_design/auth)?
 // { state: 'latest' | 'outdated' | 'missing' | 'unknown', source, rev }
 async function saveRulesStatus() {
   const same = (a, b) => (a || '').replace(/\r\n/g, '\n').trim() === (b || '').replace(/\r\n/g, '\n').trim();
   try {
-    const source = await (await fetch('couchdb/validate.js', { cache: 'no-store' })).text();
-    if (!source.trim().startsWith('function')) throw new Error('Could not load couchdb/validate.js');
+    // Not in a folder whose name starts with "couch": the church sites send every /couch... address to
+    // CouchDB, which answered this file with "Authentication required"
+    const file = await fetch('database/validate.js', { cache: 'no-store' });
+    const source = file.ok ? await file.text() : '';
+    if (!source.trim().startsWith('function')) throw new Error(`Could not load the save rules file, database/validate.js (${file.status})`);
     // never a cached copy (the browser can hand back an old one, as with the people list)
     const res = await remoteDb.fetch('_design/auth', { cache: 'no-store' });
     if (res.status === 404) return { state: 'missing', source };
@@ -1447,7 +1450,7 @@ async function saveRulesStatus() {
   }
 }
 
-// Server admins: install couchdb/validate.js as this church's save rules
+// Server admins: install database/validate.js as this church's save rules
 async function installSaveRules() {
   const dialog = new TaskDialog('Save rules');
   dialog.working('Checking…');
@@ -1473,7 +1476,7 @@ async function installSaveRules() {
   await dialog.finish('The save rules are installed.');
 }
 
-// The server refused something this device saved (see couchdb/validate.js). Say so once per doc.
+// The server refused something this device saved (see database/validate.js). Say so once per doc.
 const deniedShown = new Set();
 async function reportDenied(event) {
   const err = event?.doc || event || {}; // sync wraps the refusal as {direction, doc}

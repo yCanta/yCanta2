@@ -2,7 +2,7 @@
 // test page, talking to the LOCAL test CouchDB. Sent "emails" are printed here instead of sent.
 import { createServer } from 'node:http';
 import { loadHelper } from './local-shim.mjs';
-import { BASE, pw } from '../couchdb/lib.mjs';
+import { BASE, pw } from '../database/lib.mjs';
 
 const sentMail = [];
 const helper = loadHelper({ COUCH_URL: BASE + '/', MAKER_NAME: 'maker', MAKER_PASS: pw('maker'), APP_URL: 'http://localhost:8765/' }, { sentMail });

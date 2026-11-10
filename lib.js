@@ -1081,7 +1081,7 @@ async function loadCategories() {
   }
 }
 
-// Mirrors couchdb/validate.js: editors and church admins change anything; everyone else what they added
+// Mirrors database/validate.js: editors and church admins change anything; everyone else what they added
 function canEdit(doc) {
   if (!doc || doc._id == 'sb-allSongs' || doc._id == 'sb-favoriteSongs') return false; // not real docs
   if (window.church?.editor) return true;
