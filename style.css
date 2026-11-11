@@ -612,7 +612,11 @@ legend {
 }
 #dialog[data-use="player"]{
   width: 18.75rem;
-  width: min(18.75rem, 60vh);
+  /* never narrower than the control row, or a landscape phone wraps it (issue #141) */
+  width: max(15.5rem, min(18.75rem, 60vh));
+}
+#dialog .player-controls {
+  white-space: nowrap;
 }
 #dialog .title {
   display: block;

@@ -1407,6 +1407,11 @@ function bind_songbook_edit(song){
 }
 function bind_chunk_edit(chunk){
   chunk.setAttribute('draggable', 'true');  // Enable columns to be draggable.
+  // Firefox won't move the cursor on a click inside editable text whose parent is draggable (#123),
+  // so a press on the text turns dragging off; a press anywhere else in the box turns it back on.
+  chunk.addEventListener('pointerdown', function(event){
+    chunk.setAttribute('draggable', event.target.closest('chunk') ? 'false' : 'true');
+  }, true);
   chunk.addEventListener('dragstart', function(event){dragStart(event,'.wrap');}, false);
   chunk.addEventListener('dragenter', function(event){dragEnter(event,'.wrap');}, false);
   chunk.addEventListener('dragover', dragOver, false);
@@ -2551,11 +2556,13 @@ function loadSongPlayer() {
     const content = `
       <br><br>
       <div id="player"></div>
-      <span id="playlistnumber" style="margin: 1rem .5rem 1rem .5rem;"></span>
-      <button class="btn emoji" onclick="window.player.previousVideo()">⏮</button>
-      <button id="play" class="btn emoji" onclick="toggleVideo();">▶</button>
-      <button class="btn emoji" onclick="window.player.nextVideo()">⏭</button>
-      <button id="loop" class="btn emoji" onclick="toggleLoop();">🔁</button>
+      <div class="player-controls">
+        <span id="playlistnumber" style="margin: 1rem .5rem 1rem .5rem;"></span>
+        <button class="btn emoji" onclick="window.player.previousVideo()">⏮</button>
+        <button id="play" class="btn emoji" onclick="toggleVideo();">▶</button>
+        <button class="btn emoji" onclick="window.player.nextVideo()">⏭</button>
+        <button id="loop" class="btn emoji" onclick="toggleLoop();">🔁</button>
+      </div>
     `;
 
     dialog.querySelector('.content').innerHTML = content;

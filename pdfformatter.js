@@ -36,7 +36,7 @@ var inch = 72;
 
 onmessage = function(e) {
   console.log('Message received from main script');
-  format(e.data[0],read_config(e.data[1]));
+  format(e.data[0],read_config(e.data[1], e.data[0]));
 }
 
 function* range(start, end) {
@@ -630,7 +630,7 @@ class PageLayoutBooklet extends PageLayoutColumn {
     let page4 = [];
 
     // process pages in groups of 4
-    for(let i of range(0, pages.length, 4)) {
+    for(let i = 0; i < pages.length; i += 4) {  // the range() above has no step, so it can't do this
       if ((i+0) < pages.length) {  // page 1 on physical paper
         page1 = shift_mappings(pages[i+0], this.cfg.PAPER_WIDTH + this.cfg.PAPER_MARGIN_GUTTER);  // shift right (include binder)
       }
@@ -644,9 +644,9 @@ class PageLayoutBooklet extends PageLayoutColumn {
         page4 = pages[i+3];                                                   // no shift
 
         // all 4 pages have now been found and shifted as needed
-        //used to be push(pag4 + page1) was causing problems !!!!!!!!!STILL ERROR HERE
-        paper_pages.push(page4,page1);  // 4 and 1 on same page
-        paper_pages.push(page2,page3);  // 2 and 3 on following page
+        // each is a list of page mappings, so join the lists (Python's page4+page1)
+        paper_pages.push(page4.concat(page1));  // 4 and 1 on same page
+        paper_pages.push(page2.concat(page3));  // 2 and 3 on following page
         
         // discard saved pages -- they are now in page list
         page1 = [];
@@ -657,18 +657,16 @@ class PageLayoutBooklet extends PageLayoutColumn {
     }
 
     // add any pages that were defined but not added (adds only done in the loop when page 4 is reached)
-    if (page1==[]) {
+    if (page1.length) {
       paper_pages.push(page1);
     }
-    if (page2==[] || page3==[]) {
-      paper_pages.push(page2,page3);
+    if (page2.length || page3.length) {
+      paper_pages.push(page2.concat(page3));
     }
 
     // set the paper sizes back to normal (but flipped 90 degrees)
     this.cfg.PAPER_WIDTH = this.old_height;
     this.cfg.PAPER_HEIGHT = this.old_width;
-
-    console.log(paper_pages);
 
     return paper_pages;
   }
@@ -680,11 +678,11 @@ class PageLayoutBooklet extends PageLayoutColumn {
     // but we have page 2 and page 3 opening across from each other
     // and page 4 and 1 open across from each other when the little booklets go together
     // ... so in one case we can see previous page even when columns say we shouldn't
-    let physical_pages = previous_pages.length / this.cfg.COLUMNS;      // this.cfg.COLUMNS per page
+    let physical_pages = Math.floor(previous_pages.length / this.cfg.COLUMNS);      // this.cfg.COLUMNS per page
 
 
-    // if this is page 2 or 4 now, then prev. page is visible 
-    if (physical_pages % 4 == (2 || 0)){
+    // if this is page 2 or 4 now, then prev. page is visible
+    if (physical_pages % 4 == 2 || physical_pages % 4 == 0){
       return true; 
     }
     
@@ -1594,7 +1592,9 @@ function format(songbook, cfg) {
   // pdf object creation must be after the page layout methods are run because the page layout can change the paper size
   
   //pdf = canvas.Canvas(pdf, pagesize=(cfg.PAPER_WIDTH, cfg.PAPER_HEIGHT));
-  let options = {size: cfg.PAPER_SIZE, layout: cfg.PAPER_ORIENTATION, autoFirstPage: false};
+  // The layout can change the paper: a booklet turns it sideways and an Adobe booklet halves it (#130).
+  // read_config set PAPER_WIDTH and PAPER_HEIGHT from the chosen size and orientation, so the others are unchanged.
+  let options = {size: [cfg.PAPER_WIDTH, cfg.PAPER_HEIGHT], autoFirstPage: false};
   doc = new PDFDocument(options);
   var stream = doc.pipe(blobStream());
 
@@ -1620,7 +1620,7 @@ function format(songbook, cfg) {
   });
 }
 
-function read_config(config_array) {
+function read_config(config_array, export_object = {}) {
   function safe_var(variable, type) {
     if(type == 'string') {
       return String(variable);
@@ -1718,7 +1718,8 @@ function read_config(config_array) {
 
   options.DEBUG_MARGINS =          safe_var(config_array.debug_margins,              'string');
 
-  if (options.SONGS_TO_PRINT == '' || !window.songbook.showStatus) {
+  // This runs in a web worker, which has no window: the songbook comes in with the message
+  if (options.SONGS_TO_PRINT == '' || !export_object.showStatus) {
     options.SONGS_TO_PRINT = 'anr';
   }
   let opts = {size: options.PAPER_SIZE, layout: options.PAPER_ORIENTATION, autoFirstPage: true};
