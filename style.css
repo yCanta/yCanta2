@@ -706,6 +706,23 @@ legend {
 .revision .revision{
   color: gray;
 }
+/* An open deleted song: read-only, with who deleted it and a Restore button (#69) */
+.deleted-song .deleted-note {
+  color: red;
+  font-weight: bold;
+  margin: .5rem 0;
+}
+.deleted-song .deleted-note .btn {
+  margin: 0 0 0 .5rem;
+}
+.deleted-song chunk,
+.deleted-song authors,
+.deleted-song key,
+.deleted-song categories,
+.deleted-song introduction,
+.deleted-song copyright {
+  opacity: .6;
+}
 .revision song:before {
   position: absolute;
   display: block;

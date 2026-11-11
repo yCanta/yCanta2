@@ -1634,8 +1634,13 @@ async function editSongbook() {
   });
 }
 
-async function editSong() { 
+async function editSong() {
   await loadSong(window.song._id);
+  if (window.song._deleted) { // a deleted song is restored, not edited (#69); this only happens with a typed ?edit link
+    notyf.error('This song was deleted. Restore it to edit it.', 'red');
+    window.location.hash = window.location.hash.replace(/\?edit\b/, '');
+    return;
+  }
 
   // Create and add edit buttons
   const buttonsHTML = `
@@ -2980,6 +2985,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function scrollIntoViewIfNeed(el, partiallyVisible = true, behavior = "smooth") {
+  if (!el) return; // e.g. a deleted song open from All Songs has no list item
   try {
     const rect = el.getBoundingClientRect();
     const isVisible = partiallyVisible

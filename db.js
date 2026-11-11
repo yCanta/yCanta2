@@ -140,10 +140,12 @@ function dbChanges() {
         loadRecentSongs();
         window.songbook_list?.remove('song-id', id);
         window.songbook_edit_togglesongs_list?.remove('song-id', id);
-        if (isOpen) { // someone deleted the song we're looking at (or editing): leave it, as production did
+        if (isOpen) { // someone deleted the song we're looking at (or editing): show it deleted, with Restore (#69)
           window.songEditing = false;
           notyf.error('This song was deleted', 'red');
-          window.location.hash = '#' + formatSbID(window.songbook?._id || 'sb-allSongs');
+          const viewHash = '#' + formatSbID(window.songbook?._id || 'sb-allSongs') + '&' + id;
+          if (location.hash !== viewHash) window.location.hash = viewHash; // leave the editor
+          loadSong(id).catch(() => {}); // a failure is already reported
         }
       } else if (id.startsWith('sb-')) {
         window.songbooks_list?.remove('songbook-id', id);
@@ -1753,8 +1755,9 @@ function loadSong(song_id, song_rev = false) {
       }
 
       // Build song element class list
+      // (not 'deleted': the router strips that class from everything when it finishes a route)
       const songElClassList = [];
-      if (deleted) songElClassList.push('deleted');
+      if (deleted) songElClassList.push('deleted-song');
       if (song_rev) {
         songElClassList.push('revision', 'current_rev');
         document.body.classList.add('revision');
@@ -1763,7 +1766,7 @@ function loadSong(song_id, song_rev = false) {
       // Build float menu if not a revision
       let floatMenu = '';
       if (!song_rev) {
-        const editable = canEdit(song);
+        const editable = canEdit(song) && !deleted; // a deleted song is restored, not edited (#69)
         floatMenu = `
           ${editable ? '<button data-songbook onclick="deleteSong(window.song._id)" class="float-menu-item deleteSong"><span class="float-menu-icon">&#128465;</span>Delete</button>' : ''}
           <a data-song-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span>Export</a>
@@ -1790,6 +1793,8 @@ function loadSong(song_id, song_rev = false) {
               `}
             </span>
           </div>
+          ${deleted ? `<p class="deleted-note">Deleted${song.deletedBy ? ' by ' + escapeHtml(window.users?.[song.deletedBy] || song.deletedBy.replace(/^u-/, '')) : ''}${song.deletedAt ? ', ' + formatDate(song.deletedAt) : ''}.
+            ${song.deletedAt && canEdit(song) ? `<button class="btn btn-tiny" onclick="restoreOpenSong(this)">↶ Restore</button>` : ''}</p>` : ''}
           <authors><author>${song.authors.join('</author>, <author>')}</author></authors>
           <scripture_ref><scrip_ref>${song.scripture_ref.join('</scrip_ref>, <scrip_ref>')}</scrip_ref></scripture_ref>
           ${!song_rev ? `<span id="keyToggleContainer"><span id="keyToggleFilter">` : ''}<key>${song.key}</key>${!song_rev ? `<button id="keyToggle" onclick="this.parentElement.parentElement.classList.toggle('active')">↑↓</button></span></span>` : ''}
@@ -1916,6 +1921,20 @@ function loadSong(song_id, song_rev = false) {
         await createSongHtml(song);
       }
     } catch (err) {
+      // A deleted song opens read-only with a Restore button, when its delete kept the song (#69)
+      if (err.status === 404 && !song_rev) {
+        const tombstone = await currentDoc(song_id).catch(() => null);
+        if (tombstone?._deleted && tombstone.content) {
+          await createSongHtml(tombstone, true);
+          return;
+        }
+        if (tombstone?._deleted) { // deleted before deletes kept the song: nothing to show
+          notyf.error('This song was deleted', 'red');
+          window.location.hash = '#' + formatSbID(window.songbook._id);
+          reject(err);
+          return;
+        }
+      }
       if (err.status === 404) {
         // Song not found - show error message and redirect
         console.error("Error loading song:", err);
@@ -2362,6 +2381,20 @@ async function restoreDeleted(id, rev) {
   // the change feed only updates songbooks already in the list, so add it back here, as deleteSongbook does
   if (id.startsWith('sb-')) initializeSongbooksList();
   return result;
+}
+
+// The Restore button on an open deleted song (#69). The change feed then reloads the song and its list item.
+async function restoreOpenSong(button) {
+  const { _id, _rev, title } = window.song;
+  button.disabled = true;
+  try {
+    await restoreDeleted(_id, _rev);
+    notyf.info(`Restored "${escapeHtml(title)}"`, 'var(--song-color)');
+  } catch (err) {
+    console.error('Error restoring:', err);
+    notyf.error(`Could not restore "${escapeHtml(title)}"`, 'red');
+    button.disabled = false;
+  }
 }
 
 // The Trash in the user menu: deleted songs and songbooks this user may restore (#138).
