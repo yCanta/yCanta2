@@ -125,6 +125,7 @@ function dbChanges() {
     live: true,
     include_docs: true
   }).on('change', function (change) {
+    if (change.id.startsWith('h-')) return; // a kept old version (#138): nothing to show
     // A song or songbook was deleted or restored: keep an open Trash current (#138)
     if (/^(s|sb)-/.test(change.id) && document.querySelector('#trash:not(.closed)')) {
       loadTrash();
@@ -580,7 +581,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
         let startTime = new Date();
         
         try {
-          await db.sync(remoteDb).on('denied', reportDenied).on('change', (change) => {
+          await db.sync(remoteDb, SYNC_OPTIONS).on('denied', reportDenied).on('change', (change) => {
             const percentage = parseInt(parseInt(change.change.last_seq.split('-')[0].replace('-',''))/parseInt(window.info.update_seq.replace('-',''))*100);
             
             document.documentElement.classList.add('barLoading');
@@ -664,9 +665,14 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     }
   }
 }
+// Up: everything, kept old versions included. Down: everything but kept old versions (h- docs), which
+// only the history view reads, from the server, when it's opened (#138). The server does the filtering.
+// A device keeps its own copies after sending them: deleting them here would delete them on the server.
+const SYNC_OPTIONS = { pull: { selector: { _id: { $not: { $regex: '^h-' } } } } };
 function setUpSyncHandler() {
   try {
     syncHandler = db.sync(remoteDb, {
+      ...SYNC_OPTIONS,
       live: true,
       retry: true
     }).on('denied', reportDenied).on('change', function (change) {
@@ -782,7 +788,7 @@ function loadRecentSongs(days = 1000, number = 15) {
     since: 0,
     filter: function(doc) {
       // A deleted song keeps its title and edit date now (#138), so leave it out by name
-      if (doc._deleted) return false;
+      if (doc._deleted || !doc._id.startsWith('s-')) return false; // and kept old versions (h-s-...)
       return (doc.edited > (new Date().getTime() - days * 24 * 60 * 60 * 1000)) * !doc._id.includes('sb');
     }
   }).then(function(result) {
@@ -1072,6 +1078,7 @@ async function loadAllUsers() {
   if (oldTags.length) {
     html += `<p class="old-tags"><small>Also let in by older account tags: ${oldTags.map(escapeHtml).join(', ')}. Someone with one of these tags keeps that access even if they're removed or set lower here, until the tag comes off their account.</small></p>`;
   }
+  html += '<p class="backup-tools"><button class="btn btn-small" onclick="restoreFromBackup()">↶ Restore from a backup</button></p>';
   if (window.church.serverAdmin) {
     const [rules, moves] = await Promise.all([saveRulesStatus(), oldTags.length ? findTaggedMoves().catch(() => null) : []]);
     const rulesLine = {
@@ -1483,6 +1490,10 @@ async function reportDenied(event) {
   const id = err.id || err._id || '';
   if (deniedShown.has(id)) return;
   deniedShown.add(id);
+  if (id.startsWith('h-')) { // an old version this server's save rules don't take yet
+    console.warn('Server did not keep an old version:', JSON.stringify(err));
+    return;
+  }
   console.warn('Server refused a save:', JSON.stringify(err));
   let title = id;
   try {
@@ -1655,7 +1666,7 @@ function saveSong(song_id, songElement = document.querySelector('#song song'), c
       };
       // A failed save rejects (#1). It used to resolve as if it had worked, so the edit was lost without a word.
       try {
-        await db.put(song);
+        await saveWithHistory(song);
         saved();
       } catch (err) {
         if (new_song && err.name === 'conflict') {
@@ -1769,7 +1780,7 @@ function loadSong(song_id, song_rev = false) {
           <div class="column_header title" id="song_header">
             <stitle><a data-song class="title_link">${song.title}</a></stitle>
             <span class="buttonsRight">
-              ${song_rev ? `<button onclick="this.closest('song').remove()" class="close-icon">&times;</button>` : `
+              ${song_rev ? `${canSave(song._id, window.song) ? `<button onclick="restoreSongRev('${escapeHtml(song._rev)}')" class="btn btn-tiny" title="Make this the current version">↶ Restore</button>` : ''}<button onclick="this.closest('song').remove()" class="close-icon">&times;</button>` : `
                 <span class="star" onclick="event.stopPropagation(); toggleFavorite(this.closest('song').dataset.id,'fav_songs')"></span>
                 <info onclick="event.stopPropagation(); loadInfo();"></info>
                 <span class="fsButton" onclick="toggleFullscreen(this)"></span>
@@ -1887,12 +1898,17 @@ function loadSong(song_id, song_rev = false) {
       const options = { revs_info: true };
       if (song_rev) options.rev = song_rev;
       
-      const song = await db.get(song_id, options);
+      // an old version kept in the history (#138) is already loaded; older revisions come from this device
+      const kept = song_rev && window.song?._versions?.list.find(v => v.rev === song_rev && v.doc);
+      const song = kept ? kept.doc : await db.get(song_id, options);
       if (song._deleted) {
-        if (window.song?._revs_info) {
-          window.song._revs_info = window.song._revs_info.filter(rev => rev.rev !== song._rev); //remove deleted revision
+        if (window.song?._versions) { // a deleted revision: take it out of the list and step past it
+          const list = window.song._versions.list;
+          const at = list.findIndex(version => version.rev === song._rev);
+          if (at !== -1) list.splice(at, 1);
+          if (list[at]) loadSong(song_id, list[at].rev).catch(() => {});
         }
-        prevSongRev();
+        resolve('song_loaded');
       } else {
         await createSongHtml(song);
       }
@@ -1909,6 +1925,434 @@ function loadSong(song_id, song_rev = false) {
     }
   });
 }
+// ---- Version history (#138 phase 2) ----
+// Every save of a song, songbook, profile, export setup or the category list first keeps a full copy of
+// the version it replaces, as its own doc:  h-<doc id>|<revision number, 6 digits>-<revision hash>
+// The id sorts one doc's versions in order, and saving the same version twice hits the same id, so a
+// retry can't make a copy twice. Devices send these up but never download them (see SYNC_OPTIONS); the
+// history view asks the server for one doc's range when it's opened. database/validate.js lets anyone
+// add a copy of a change they made, and only church admins change or remove one.
+const HISTORY_KEPT = /^(s-|sb-|u-|cfg-|categories$)/;
+
+function historyId(id, rev) {
+  let [num, hash] = rev.split('-');
+  while (num.length < 6) num = '0' + num;
+  return `h-${id}|${num}-${hash}`;
+}
+function historyRange(id) {
+  return { startkey: `h-${id}|`, endkey: `h-${id}|￰`, include_docs: true };
+}
+
+// Keep a copy of version `rev` of doc `id`, from this device's copy of the database
+async function keepHistory(id, rev) {
+  if (!rev || !HISTORY_KEPT.test(id)) return;
+  let old;
+  try {
+    old = await db.get(id, { rev });
+  } catch (err) {
+    if (err.status === 404) return; // this device never had that version: nothing to copy
+    throw err;
+  }
+  const { _id, _rev, _deleted, _revisions, _revs_info, _conflicts, _attachments, ...version } = old;
+  const entry = { _id: historyId(id, rev), of: id, rev, replacedAt: Date.now(), replacedBy: window.user._id, version };
+  if (_deleted) entry.deleted = true;
+  try {
+    await db.put(entry);
+  } catch (err) {
+    if (err.status !== 409) throw err; // 409: already kept
+  }
+}
+
+// Save a doc to this device's database, keeping a copy of the version it replaces. Use it for every save
+// of a kept kind of doc, so no change is missed. A failure to keep the copy is reported but doesn't stop
+// the save: losing someone's edit would be worse than losing one old version.
+async function saveWithHistory(doc) {
+  if (doc._rev) {
+    try {
+      await keepHistory(doc._id, doc._rev);
+    } catch (err) {
+      console.error('Could not keep the old version of ' + doc._id, err);
+      reportDbError(err, 'keep a copy of the old version');
+    }
+  }
+  return db.put(doc);
+}
+
+// One doc's saved versions, newest first: this device's copies, plus the server's when it can be reached.
+// complete is false when only this device's copies could be read.
+async function loadHistory(id) {
+  const found = new Map();
+  const add = result => result.rows.forEach(row => row.doc && found.set(row.id, row.doc));
+  add(await db.allDocs(historyRange(id)));
+  let complete = !db.name.endsWith('(remote)'); // a local database has everything on this device
+  if (window.remoteDb && navigator.onLine) {
+    try {
+      add(await remoteDb.allDocs(historyRange(id)));
+      complete = true;
+    } catch (err) {
+      console.warn('Could not read the history on the server:', err?.message || err);
+    }
+  }
+  const entries = [...found.values()].sort((a, b) => (a._id < b._id ? 1 : -1));
+  return { entries, complete };
+}
+
+// The doc as it is now, deleted or not, or null if this device has never had it
+async function currentDoc(id) {
+  const row = (await db.allDocs({ keys: [id] })).rows[0];
+  if (!row || row.error) return null;
+  if (!row.value.deleted) return db.get(id);
+  return db.get(id, { rev: row.value.rev });
+}
+
+// May this person save over this doc? Mirrors database/validate.js.
+function canSave(id, doc) {
+  if (window.church?.admin) return true;
+  if (/^(s|sb)-/.test(id)) return canEdit(doc);
+  if (id.startsWith('u-')) return id === window.user._id;
+  if (id.startsWith('cfg-')) return id.endsWith(window.user._id) || id.includes(window.user._id + ':');
+  if (id === 'categories') return !!window.church?.editor;
+  return false;
+}
+
+// Make an old version the current one again, as a new save, so the version it replaces is kept too.
+// entry is an h- doc from loadHistory.
+async function restoreVersion(entry) {
+  const id = entry.of;
+  if (entry.deleted) throw new Error('That version is a delete. Use the Trash to bring it back.');
+  const now = await currentDoc(id);
+  const restored = { ...entry.version, _id: id };
+  if (now) restored._rev = now._rev;
+  if (/^(s|sb)-/.test(id)) {
+    restored.edited = Date.now();
+    restored.editedBy = window.user._id;
+    if (typeof restored.search === 'string') {
+      restored.search = restored.search.replace(/editedBy:[^\0]*\0/, `editedBy:${ownName().replace(/\s+/g, ' ')}\0`);
+    }
+  }
+  if (!canSave(id, now || restored) || !canSave(id, restored)) throw new Error("You're not allowed to change this.");
+  const result = await saveWithHistory(restored);
+  if (id.startsWith('sb-') && now?._deleted) initializeSongbooksList();
+  return result;
+}
+
+// Text of a song line without its chords or markup. A <template> doesn't run anything put into it.
+function lineText(html) {
+  const template = document.createElement('template');
+  template.innerHTML = html;
+  template.content.querySelectorAll('c').forEach(chord => chord.remove());
+  return template.content.textContent;
+}
+function personName(userId) {
+  return window.users?.[userId] || (userId || 'someone').replace(/^u-/, '');
+}
+
+// A readable view of one saved version
+function versionSummary(id, v, titles) {
+  const list = items => `<ul>${items.map(item => `<li>${escapeHtml(item)}</li>`).join('') || '<li><i>none</i></li>'}</ul>`;
+  if (id.startsWith('s-')) {
+    const chunks = (v.content || []).map(([info, lines]) =>
+      `<p><small>${escapeHtml(info?.type || 'verse')}</small><br>${(lines || []).map(line => escapeHtml(lineText(line))).join('<br>')}</p>`);
+    return `<p><b>${escapeHtml(v.title || '')}</b>${v.key ? ` <small>Key: ${escapeHtml(v.key)}</small>` : ''}<br>
+      <small>${escapeHtml((v.authors || []).filter(Boolean).join(', '))}</small></p>${chunks.join('')}`;
+  }
+  if (id.startsWith('sb-')) {
+    const songs = (v.songrefs || []).map(ref => ref.id === 'section' ? `— ${ref.title || 'Section'} —` : (titles.get(ref.id) || ref.id));
+    return `<p><b>${escapeHtml(v.title || '')}</b></p><ol>${songs.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ol>`;
+  }
+  if (id.startsWith('u-')) {
+    const others = Object.entries(v).filter(([key]) => !['name', 'fav_sbs', 'fav_songs'].includes(key));
+    return `<p><b>${escapeHtml(v.name || '')}</b></p>
+      <p>Favorite songbooks:</p>${list((v.fav_sbs || []).filter(Boolean).map(sb => titles.get(sb) || sb))}
+      <p>Favorite songs:</p>${list((v.fav_songs || []).filter(Boolean).map(s => titles.get(s) || s))}
+      ${others.map(([key, value]) => `<p>${escapeHtml(key)}: ${escapeHtml(JSON.stringify(value))}</p>`).join('')}`;
+  }
+  if (id.startsWith('cfg-')) {
+    return `<p><b>${escapeHtml(v.name || 'Default')}</b></p>${list((v.cfg || []).map(opt => `${opt.name}: ${opt.value}`))}`;
+  }
+  if (id === 'categories') return list(v.categories || []);
+  return `<pre>${escapeHtml(JSON.stringify(v, null, 2))}</pre>`;
+}
+
+// When a version was made and by whom. Songs and songbooks say it themselves; other docs only say when
+// they were replaced.
+function versionLabel(id, entry) {
+  const num = parseInt(entry.rev);
+  const v = entry.version;
+  if (entry.deleted) return `Version ${num}: deleted by ${escapeHtml(personName(v.deletedBy || entry.replacedBy))}, ${formatDate(v.deletedAt || entry.replacedAt)}`;
+  if (/^(s|sb)-/.test(id) && v.edited) return `Version ${num}: saved by ${escapeHtml(personName(v.editedBy))}, ${formatDate(v.edited)}`;
+  return `Version ${num}: in use until ${formatDate(entry.replacedAt)}, when ${escapeHtml(personName(entry.replacedBy))} changed it`;
+}
+
+// Titles of the songs and songbooks the versions point to, deleted ones included
+async function titlesFor(entries) {
+  const ids = new Set();
+  for (const { version: v } of entries) {
+    (v.songrefs || []).forEach(ref => ref.id !== 'section' && ids.add(ref.id));
+    (v.fav_sbs || []).forEach(sb => sb && ids.add(sb));
+    (v.fav_songs || []).forEach(s => s && ids.add(s));
+  }
+  const titles = new Map();
+  if (!ids.size) return titles;
+  const rows = (await db.allDocs({ keys: [...ids], include_docs: true })).rows;
+  await Promise.all(rows.map(async row => {
+    if (row.doc) titles.set(row.key, row.doc.title);
+    else if (row.value?.deleted) titles.set(row.key, `${(await deletedTitle(row.key, row.value.rev)) || row.key} (deleted)`);
+  }));
+  return titles;
+}
+
+// The "Old versions" window for any kept doc: each version can be opened, and made current again
+async function showHistory(id, label) {
+  const dialog = new TaskDialog(`Old versions: ${label}`);
+  dialog.working('Looking for old versions…');
+  let history, now, titles;
+  try {
+    [history, now] = await Promise.all([loadHistory(id), currentDoc(id)]);
+    titles = await titlesFor(history.entries);
+  } catch (err) {
+    console.error(err);
+    await dialog.finish(`Couldn't load the old versions: ${err?.message || err}`, { error: true });
+    return;
+  }
+  const { entries, complete } = history;
+  const mayRestore = canSave(id, now || {});
+  const offline = complete ? '' : '<p class="history-note">Only the old versions saved on this device are shown. Connect to the internet to see them all.</p>';
+  if (!entries.length) {
+    dialog.render({ html: `${offline}<p>No old versions yet. From now on, every save keeps the version it replaces.</p>`, cancel: 'Close' });
+    return;
+  }
+  dialog.render({
+    cancel: 'Close',
+    html: `${offline}<ol class="history-list">${entries.map((entry, i) => `
+      <li><details>
+        <summary>${versionLabel(id, entry)}</summary>
+        <div class="history-version">${versionSummary(id, entry.version, titles)}</div>
+        ${mayRestore && !entry.deleted ? `<button type="button" class="btn" data-restore="${i}">↶ Make this the current version</button>` : ''}
+      </details></li>`).join('')}</ol>`,
+  });
+  dialog.body.querySelectorAll('[data-restore]').forEach(button => button.addEventListener('click', async () => {
+    const entry = entries[button.dataset.restore];
+    dialog.working('Saving that version as the current one…');
+    try {
+      await restoreVersion(entry);
+      await dialog.finish(`Version ${parseInt(entry.rev)} is the current version again. The version it replaced is kept too.`);
+    } catch (err) {
+      console.error(err);
+      await dialog.finish(`Couldn't restore it: ${err?.message || err}`, { error: true });
+    }
+  }));
+}
+
+// The song page's "Edit N / M", newest first: the current song, the kept old versions, and any older
+// revisions still on this device (from before #138, or not compacted yet). Loaded once per song version.
+async function songVersions() {
+  const song = window.song;
+  if (song._versions) return song._versions;
+  const byRev = new Map([[song._rev, { rev: song._rev, doc: song }]]);
+  let complete = false;
+  try {
+    const history = await loadHistory(song._id);
+    complete = history.complete;
+    for (const entry of history.entries) {
+      if (!entry.deleted && !byRev.has(entry.rev)) {
+        byRev.set(entry.rev, { rev: entry.rev, doc: { ...entry.version, _id: song._id, _rev: entry.rev }, entry });
+      }
+    }
+  } catch (err) {
+    console.warn('Could not load the old versions:', err?.message || err);
+  }
+  for (const info of song._revs_info || []) {
+    if (!byRev.has(info.rev)) byRev.set(info.rev, { rev: info.rev });
+  }
+  const list = [...byRev.values()].sort((a, b) => parseInt(b.rev) - parseInt(a.rev) || (a.rev < b.rev ? 1 : -1));
+  song._versions = { list, complete };
+  return song._versions;
+}
+
+// "↶ Restore" on an old version of the open song
+async function restoreSongRev(rev) {
+  const id = window.song._id;
+  let entry = window.song._versions?.list.find(v => v.rev === rev)?.entry;
+  const dialog = new TaskDialog('Restore an old version');
+  if (!entry) { // an older revision on this device: make it look like a kept version
+    try {
+      const { _id, _rev, _revs_info, _revisions, _deleted, ...version } = await db.get(id, { rev });
+      entry = { of: id, rev, version };
+    } catch (err) {
+      await dialog.finish(`Couldn't load that version: ${err?.message || err}`, { error: true });
+      return;
+    }
+  }
+  const done = await dialog.run({
+    text: `Make version ${parseInt(rev)} of "${window.song.title}" the current version?\n\nThe version it replaces is kept too, so you can switch back.`,
+    submit: 'Restore',
+    working: 'Saving…',
+    action: () => restoreVersion(entry),
+  });
+  if (done === null) return;
+  await dialog.finish('Done. That version is the current one again.');
+}
+
+// ---- Restore from a backup (#138 phase 3) ----
+// The nightly backups (backups/Backup.gs) are gzipped JSON files in the info.ycanta Google Drive:
+// { yCantaBackup: 1, db, takenAt, security, docs: [every doc, deleted ones and kept old versions too] }
+
+async function readBackupFile(file) {
+  if (!file) throw new Error('Please choose a backup file.');
+  let stream = file.stream();
+  if (file.name.endsWith('.gz')) stream = stream.pipeThrough(new DecompressionStream('gzip'));
+  let backup;
+  try {
+    backup = JSON.parse(await new Response(stream).text());
+  } catch (err) {
+    throw new Error("That file couldn't be read. Please choose a .json.gz file from the yCanta backups folder.");
+  }
+  if (!backup?.yCantaBackup || !Array.isArray(backup.docs)) throw new Error("That isn't a yCanta backup file.");
+  return backup;
+}
+
+// The same content, ignoring revisions and key order
+function sameContent(a, b) {
+  const plain = value => {
+    if (Array.isArray(value)) return value.map(plain);
+    if (value && typeof value === 'object') {
+      return Object.keys(value).filter(key => key !== '_rev' && key !== '_revisions').sort()
+        .reduce((out, key) => { out[key] = plain(value[key]); return out; }, {});
+    }
+    return value;
+  };
+  return JSON.stringify(plain(a)) === JSON.stringify(plain(b));
+}
+
+// What the backup has that's different now: changed since, deleted since, or gone. Things added since the
+// backup are left alone, as are kept old versions and the save rules.
+async function backupDifferences(backup) {
+  const now = new Map();
+  const changes = await db.changes({ since: 0, include_docs: true, style: 'main_only' });
+  changes.results.forEach(change => change.doc && now.set(change.id, change.doc));
+  return backup.docs
+    .filter(doc => !doc._deleted && !/^(_|h-)/.test(doc._id))
+    .map(doc => {
+      const current = now.get(doc._id);
+      const status = !current ? 'gone now' : current._deleted ? 'deleted since' : sameContent(doc, current) ? null : 'changed since';
+      return status && { doc, current, status };
+    })
+    .filter(Boolean)
+    .sort((a, b) => (a.doc.title || a.doc.name || a.doc._id).localeCompare(b.doc.title || b.doc.name || b.doc._id));
+}
+
+function backupItemKind(id) {
+  return id.startsWith('sb-') ? 'songbook' : id.startsWith('s-') ? 'song' : id.startsWith('u-') ? 'profile'
+    : id.startsWith('cfg-') ? 'export setup' : id.startsWith('c_') ? 'comments' : id === 'categories' ? 'category list' : 'other';
+}
+
+// Put one doc back as it was in the backup, as a new save, so what it replaces is kept in the history
+function restoreBackupItem({ doc, current }) {
+  const { _rev, _revisions, ...content } = doc;
+  if (current) content._rev = current._rev;
+  return saveWithHistory(content);
+}
+
+async function restoreFromBackup() {
+  const dialog = new TaskDialog('Restore from a backup');
+  let backup;
+  const opened = await dialog.run({
+    html: '<p>Backups are in the <b>yCanta backups</b> folder in the info.ycanta Google Drive: one file per church per night. Download the one you want, then choose it here.</p>',
+    fields: [{ name: 'file', label: 'Backup file', type: 'file', accept: '.gz,.json' }],
+    submit: 'Open',
+    working: 'Reading the backup…',
+    action: async () => { backup = await readBackupFile(dialog.form.elements.file.files[0]); },
+  });
+  if (opened === null) return;
+  dialog.working('Comparing it with now…');
+  let diffs;
+  try {
+    diffs = await backupDifferences(backup);
+  } catch (err) {
+    await dialog.finish(`Couldn't compare: ${err?.message || err}`, { error: true });
+    return;
+  }
+  const otherChurch = backup.db !== window.dbName
+    ? `<p class="task-error">This backup is of <b>${escapeHtml(backup.db)}</b>, and you're in <b>${escapeHtml(window.dbName)}</b>.</p>` : '';
+  const whole = window.church?.serverAdmin
+    ? `<p><small>Server lost? In a new, empty database, <button type="button" class="btn btn-small" data-whole>copy the whole backup in</button> instead: every song, old version and list, exactly as it was.</small></p>` : '';
+  const intro = `<p>Backup of <b>${escapeHtml(backup.db)}</b>, taken ${formatDate(backup.takenAt)}.</p>${otherChurch}`;
+  if (!diffs.length) {
+    dialog.render({ html: `${intro}<p>Everything in it is the same now. Nothing to restore.</p>${whole}`, cancel: 'Close' });
+    dialog.body.querySelector('[data-whole]')?.addEventListener('click', () => copyWholeBackup(dialog, backup));
+    return;
+  }
+  const rows = diffs.map((item, i) => {
+    const name = item.doc.title || item.doc.name || item.doc._id;
+    return `<li data-search="${escapeHtml(name.toLowerCase())}"><label><input type="checkbox" value="${i}">
+      ${escapeHtml(name)} <small>(${backupItemKind(item.doc._id)}, ${item.status})</small></label></li>`;
+  }).join('');
+  const picked = () => [...dialog.body.querySelectorAll('.backup-list input:checked')].map(box => diffs[box.value]);
+  const restore = dialog.run({
+    html: `${intro}<p>${diffs.length} ${diffs.length === 1 ? 'thing is' : 'things are'} different now. Choose what to put back as it was. Whatever it replaces is kept in its old versions.</p>
+      <input type="search" class="backup-search" placeholder="Search" aria-label="Search the backup">
+      <label class="backup-all"><input type="checkbox"> Choose all shown</label>
+      <ul class="backup-list">${rows}</ul>${whole}`,
+    submit: 'Restore the chosen ones',
+    working: 'Restoring…',
+    action: async () => {
+      const items = picked();
+      if (!items.length) throw new Error('Please choose at least one.');
+      const failed = [];
+      for (const [n, item] of items.entries()) {
+        dialog.setBusy(`Restoring ${n + 1} of ${items.length}…`);
+        try {
+          await restoreBackupItem(item);
+        } catch (err) {
+          failed.push(`${item.doc.title || item.doc._id}: ${err?.message || err}`);
+        }
+      }
+      if (items.some(item => item.doc._id.startsWith('sb-'))) initializeSongbooksList();
+      return { done: items.length - failed.length, failed };
+    },
+  });
+  const search = dialog.body.querySelector('.backup-search');
+  search.addEventListener('input', () => {
+    const words = search.value.toLowerCase().trim();
+    dialog.body.querySelectorAll('.backup-list li').forEach(li => { li.hidden = !!words && !li.dataset.search.includes(words); });
+  });
+  dialog.body.querySelector('.backup-all input').addEventListener('change', event => {
+    dialog.body.querySelectorAll('.backup-list li:not([hidden]) input').forEach(box => { box.checked = event.target.checked; });
+  });
+  dialog.body.querySelector('[data-whole]')?.addEventListener('click', () => dialog.resolveWith('whole'));
+  const result = await restore;
+  if (result === 'whole') return copyWholeBackup(dialog, backup);
+  if (!result) return; // closed
+  const { done, failed } = result;
+  await dialog.finish(`Restored ${done}.${failed.length ? ` ${failed.length} couldn't be:\n\n${failed.join('\n')}` : ''} They reach everyone's devices with the next sync.`, { error: failed.length > 0 });
+}
+
+// Server admins, after losing a server: load a backup into a new, empty database exactly as it was,
+// revisions, deleted docs, kept old versions, save rules and lists included
+async function copyWholeBackup(dialog, backup) {
+  const info = await remoteDb.info().catch(() => null);
+  const count = info?.doc_count ?? '?';
+  const go = await dialog.run({
+    text: `Copy all ${backup.docs.length} things from the backup of ${backup.db} into ${window.dbName}?\n\n` +
+      `This is for a new, empty database. ${window.dbName} has ${count} things in it now. Anything in both keeps whichever version CouchDB picks, and the other is kept as a conflict.`,
+    fields: [{ name: 'lists', label: "Put back the church's lists too", type: 'checkbox', required: false }],
+    submit: 'Copy everything',
+    danger: true,
+    working: 'Copying…',
+    action: async values => {
+      const docs = backup.docs.map(({ _revisions, ...doc }) => doc);
+      for (let start = 0; start < docs.length; start += 200) {
+        dialog.setBusy(`Copying ${Math.min(start + 200, docs.length)} of ${docs.length}…`);
+        await remoteDb.bulkDocs(docs.slice(start, start + 200), { new_edits: false });
+      }
+      if (values.lists && backup.security) await putChurchSecurity(structuredClone(backup.security));
+    },
+  });
+  if (go === null) return;
+  await dialog.finish(`Copied. This device downloads it with the next sync.`);
+}
+
 // A delete that keeps the whole doc, so lists can still name what was deleted (#69) and the Trash can
 // restore it (#138). CouchDB keeps the fields of a deleted doc, unlike db.remove(), which keeps only _id
 // and _rev. A deleted doc still drops out of allDocs, lists and searches on its own.
@@ -1939,10 +2383,48 @@ async function restoreDeleted(id, rev) {
   if (!tombstone._deleted || !tombstone.deletedAt) throw new Error(`${id} has nothing to restore`);
   if (!canEdit(tombstone)) throw new Error(`Not allowed to restore ${id}`);
   const { _deleted, deletedBy, deletedAt, ...doc } = tombstone;
-  const result = await db.put(doc);
+  const result = await saveWithHistory(doc);
   // the change feed only updates songbooks already in the list, so add it back here, as deleteSongbook does
   if (id.startsWith('sb-')) initializeSongbooksList();
   return result;
+}
+
+// The Trash in the user menu: deleted songs and songbooks this user may restore (#138).
+// (Added in 5630138; lost in the merge that moved loadAllUsers to db.js, so the Trash did nothing.)
+async function loadTrash() {
+  const box = document.getElementById('trash_content');
+  let items;
+  try {
+    items = await listTrash();
+  } catch (err) {
+    console.error('Error loading the trash:', err);
+    box.textContent = 'Could not load the trash.';
+    return;
+  }
+  if (!items.length) {
+    box.innerHTML = '<i>Nothing in the trash.</i>';
+    return;
+  }
+  box.innerHTML = '<ul class="trash-list">' + items.map(t => `
+    <li>
+      <span class="trash-title"><b>${escapeHtml(t.title)}</b> <small>(${t.type})</small><br>
+      <small>Deleted by ${escapeHtml(window.users?.[t.deletedBy] || t.deletedBy?.replace(/^u-/, ''))}, ${formatDate(t.deletedAt)}</small></span>
+      <button class="btn" data-id="${escapeHtml(t.id)}" data-rev="${escapeHtml(t.rev)}" onclick="restoreFromTrash(this)">↶ Restore</button>
+    </li>`).join('') + '</ul>';
+}
+
+async function restoreFromTrash(button) {
+  const { id, rev } = button.dataset;
+  const title = button.closest('li').querySelector('.trash-title b').textContent;
+  button.disabled = true;
+  try {
+    await restoreDeleted(id, rev);
+    notyf.info(`Restored "${escapeHtml(title)}"`, 'var(--song-color)', id.startsWith('sb-') ? `#${id}` : `#sb-allSongs&${id}`);
+  } catch (err) {
+    console.error('Error restoring:', err);
+    notyf.error(`Could not restore "${escapeHtml(title)}"`, 'red');
+  }
+  loadTrash();
 }
 
 // The title of a deleted doc: from the delete itself (deletedDoc), or else from the revision just before it.
@@ -1979,7 +2461,7 @@ async function deleteSong(song_id) {
     try {
       const doc = await db.get(song_id);
       window.deletingId = song_id; // our own delete: the change feed should not warn about it
-      await db.put(deletedDoc(doc));
+      await saveWithHistory(deletedDoc(doc));
       window.location.hash = "#" + formatSbID(window.songbook._id);
       console.log("Deleted:", window.song.title);
     } catch (err) {
@@ -1994,7 +2476,7 @@ async function deleteSongbook(songbook_id) {
     try {
       const doc = await db.get(songbook_id);
       window.deletingId = songbook_id;
-      await db.put(deletedDoc(doc));
+      await saveWithHistory(deletedDoc(doc));
       initializeSongbooksList();
       window.location.hash = '#songbooks';
       console.log("Deleted:", window.songbook.title);
@@ -2094,7 +2576,7 @@ function saveSongbook(songbook_id, songbook_html = document.getElementById('song
       };
       // A failed save rejects (#1). It used to resolve 'save_failed', which no caller checked.
       try {
-        await db.put(songbook);
+        await saveWithHistory(songbook);
         saved();
       } catch (err) {
         if (new_songbook && err.name === 'conflict') {
@@ -2368,7 +2850,7 @@ function addSongToSongbook(song_id, songbook_id=window.songbook._id) {
           "Hi"
         ]
       });
-      return db.put(songbook).then(function(result) {
+      return saveWithHistory(songbook).then(function(result) {
         console.log('Successfully added song to '+songbook.title+'!');
       });
     }).catch(function(err){
@@ -2475,7 +2957,7 @@ async function saveRawDbObject(element) {
     });
 
     // Save to database
-    await db.put(jsonObject);
+    await saveWithHistory(jsonObject);
     console.log('Successfully updated:', jsonObject._id);
     
     // Clear the container
@@ -2498,7 +2980,7 @@ async function deleteExportCfg(cfgId){
   try {
     const doc = await db.get(cfgId);
     if (confirm(`Are you sure you want to delete ${doc.name} config?`)) {
-      await db.remove(doc);
+      await saveWithHistory({ ...doc, _deleted: true }); // keeps the old version in the history
       console.log("Deleted:", doc.name);
     }
   } catch (err) {
@@ -2532,7 +3014,7 @@ async function saveExport(name) {
     } catch (err) {
       if (err.status !== 404) throw err; // 404: a new config
     }
-    const info = await db.put(cfg);
+    const info = await saveWithHistory(cfg);
     console.log("id of record: " + info.id);
     prepExport();
   } catch (err) {
@@ -2554,7 +3036,7 @@ async function toggleFavorite(itemId, favoriteType) { // Make it more generic
       user[favoriteType].splice(index, 1);
     }
 
-    await db.put(user);
+    await saveWithHistory(user);
     console.log(`Successfully updated favorite ${(favoriteType == 'fav_sbs' ? 'Songbook' :'Song')}s!`);
   } catch (err) {
     reportDbError(err, 'change your favorites');

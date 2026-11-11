@@ -1502,6 +1502,57 @@ input[type="number"] {
   top: .5em;
   left: 1.15em;
 }
+.export_history {
+  margin-left: 0.5em;
+  padding: 0 0.25em;
+  opacity: .8;
+}
+/* Old versions window (showHistory in db.js, #138) */
+.task-dialog .history-list {
+  margin: 0 0 1rem 0;
+  padding-left: 1.5rem;
+}
+.task-dialog .history-list li {
+  margin-bottom: .5rem;
+}
+.task-dialog .history-list summary {
+  cursor: pointer;
+}
+.task-dialog .history-version {
+  margin: .5rem 0;
+  padding: .5rem .75rem;
+  border-left: 3px solid var(--song-color);
+  max-height: 40vh;
+  overflow: auto;
+  font-size: .9rem;
+}
+.task-dialog .history-version p {
+  margin: 0 0 .5rem 0;
+}
+.task-dialog .history-note {
+  font-style: italic;
+}
+/* Restore from a backup (restoreFromBackup in db.js) */
+.task-dialog input[type="checkbox"] {
+  display: inline-block;
+  width: auto;
+  margin: 0 .5rem 0 0;
+  vertical-align: middle;
+}
+.task-dialog .backup-list {
+  list-style: none;
+  padding: 0;
+  max-height: 40vh;
+  overflow: auto;
+}
+.task-dialog .backup-list label,
+.task-dialog .backup-all {
+  font-weight: normal;
+  margin: 0 0 .35rem 0;
+}
+.task-dialog .backup-search {
+  margin-bottom: .75rem;
+}
 .export_close {
   float: right;
   margin: -5px -15px -5px 0.5em;

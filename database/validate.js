@@ -26,6 +26,19 @@ function (newDoc, oldDoc, userCtx, secObj) {
   if (has(roles, '_admin') || inGroup(secObj.admins) || has(roles, db + '-admin')) return;
   if (!name) no('Please log in to save.');
 
+  // Kept old versions (#138): "h-<doc id>|<revision number, 6 digits>-<revision hash>". Anyone can add a
+  // copy of a version they replaced; only church admins change or remove one.
+  if (id.indexOf('h-') === 0) {
+    if (oldDoc || newDoc._deleted) no('Only church admins can change or remove an old version.');
+    var rev = /^(\d+)-([0-9a-f]+)$/.exec(newDoc.rev || '');
+    if (!rev || typeof newDoc.of !== 'string') no('An old version has to say which doc and revision it is.');
+    var num = rev[1];
+    while (num.length < 6) num = '0' + num;
+    if (id !== 'h-' + newDoc.of + '|' + num + '-' + rev[2]) no("An old version's name has to match the doc and revision it is.");
+    if (newDoc.replacedBy !== me) no('An old version you add has to list you as the one who replaced it.');
+    return;
+  }
+
   // Editors: names in the church's editors list, or the older "<db>-editor" tag
   var isEditor = inGroup(secObj.editors) || has(roles, db + '-editor');
 

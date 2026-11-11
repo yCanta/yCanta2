@@ -11,6 +11,13 @@ CouchDB runs it on every save, including saves that arrive by sync, so the rules
 | Editor | Name in `_security.editors`, or the older `<db>-editor` tag | Any song, songbook, comment, and the category list |
 | Everyone else in `_security.members` | | Their own songs and songbooks (`addedBy`), new comments of their own, their own export settings (`cfg-`) and profile (`u-`) |
 
+Everyone in the church can also add **kept old versions** (`h-` docs, issue #138): before the app saves a song,
+songbook, profile, export setup or the category list, it saves a copy of the version being replaced, as
+`h-<doc id>|<revision number, 6 digits>-<revision hash>`. The rule checks that the name matches the doc and
+revision it says it copies, and that the person adding it is the one who replaced it. Only church admins
+can change or remove one. Devices send these up but never download them (the app's sync uses the selector
+`{"_id": {"$not": {"$regex": "^h-"}}}`); the "Old versions" window reads one doc's range from the server.
+
 Anything else is refused with a message the app can show. The built-in "All Songs" and "Favorite Songs"
 songbooks (`sb-allSongs`, `sb-favoriteSongs`) can never be saved.
 

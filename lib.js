@@ -99,6 +99,7 @@ class TaskDialog {
         field.required === false ? '' : 'required',
         field.minlength ? `minlength="${field.minlength}"` : '',
         field.maxlength ? `maxlength="${field.maxlength}"` : '',
+        field.accept ? `accept="${escapeHtml(field.accept)}"` : '',
         `autocomplete="${escapeHtml(field.autocomplete || 'off')}"`,
         field.inputmode ? `inputmode="${escapeHtml(field.inputmode)}"` : '',
         field.type === 'text' || !field.type ? 'autocapitalize="off" spellcheck="false"' : '',
@@ -146,7 +147,7 @@ class TaskDialog {
         event.preventDefault();
         const values = Object.fromEntries(new FormData(this.form)); // before the fieldset is disabled
         for (const field of spec.fields || []) {
-          if (field.type !== 'password') values[field.name] = (values[field.name] || '').trim();
+          if (!['password', 'file', 'checkbox'].includes(field.type)) values[field.name] = (values[field.name] || '').trim();
         }
         this.errorLine.hidden = true;
         this.setBusy(spec.working || 'Working…');
@@ -1047,6 +1048,9 @@ async function updateUser() {
     </button>
     <button onclick="change${document.documentElement.classList.contains('_admin') ? 'Admin' : 'User'}Password(window.user._id.replace('u-', ''))" class="btn">
       ↻ Password
+    </button>
+    <button onclick="showHistory(window.user._id, 'your profile')" class="btn">
+      Old versions
     </button>`;
 
   userContent.innerHTML = profileHtml;
@@ -1062,6 +1066,7 @@ async function loadCategories() {
     
     // Build HTML content
     let html = `<h3>Ordered List <a href="#" onclick="loadRawDbObject('categories', document.getElementById('category_content'), 'loadCategories();')" class="mirror editor-only">&#9998;</a>
+      <button class="btn btn-tiny" onclick="showHistory('categories', 'the category list')">Old versions</button>
       </h3><ul>`;
     
     // Add each category as a list item
@@ -1903,6 +1908,7 @@ async function prepExport() {
               <span data-name="${escapeHtml(row.doc.name || 'Default')}" onclick="saveExport(this.dataset.name);">
                 Save as ${escapeHtml(row.doc.name || 'Default')}
               </span>
+              <span class="export_history" title="Old versions" data-id="${escapeHtml(row.doc._id)}" data-label="your ${escapeHtml(row.doc.name || 'Default')} export setup" onclick="event.preventDefault(); event.stopPropagation(); showHistory(this.dataset.id, this.dataset.label)">⟲</span>
               <span class="export_close" onclick="event.preventDefault(); deleteExportCfg('${row.doc._id}');">×</span>
             </button>`);
         }
@@ -1917,6 +1923,7 @@ async function prepExport() {
     cfgButtons.insertAdjacentHTML('afterbegin', `
       <button class="btn" onclick="blueHighlight(this);">
         <span onclick="saveExport('');">Save as Default</span>
+        <span class="export_history" title="Old versions" data-id="${escapeHtml(userIdCfg)}" data-label="your Default export setup" onclick="event.preventDefault(); event.stopPropagation(); showHistory(this.dataset.id, this.dataset.label)">⟲</span>
       </button>`);
 
     // Add predefined options
@@ -2440,8 +2447,10 @@ async function loadInfo(song = true) {
   if (song) {
     // Song info
     const songId = window.song._id;
-    const revs = window.song._revs_info.map(rev => rev.rev);
-    const revNum = revs.indexOf(window.song_rev);
+    // The kept old versions (#138) and older revisions on this device, newest first
+    const { list, complete } = await songVersions();
+    const revs = list.map(version => version.rev);
+    const revNum = Math.max(0, revs.indexOf(window.song_rev));
 
     // Create revision controls
     const revisionControls = `
@@ -2450,12 +2459,13 @@ async function loadInfo(song = true) {
           ${revNum !== revs.length - 1 ? 'class="btn btn-tiny"' : ''}>
           ${revNum !== revs.length - 1 ? '<<' : ''}
         </button>
-        <small>Edit ${window.song._revs_info.length - revNum} / ${window.song._revs_info.length}</small>
+        <small>Edit ${revs.length - revNum} / ${revs.length}${complete ? '' : '<br>(connect to see all)'}</small>
         <button onclick="nextSongRev();" style="width:1.75rem" 
           ${revNum !== 0 ? 'class="btn btn-tiny"' : 'class="btn-tiny"'}>
           ${revNum !== 0 ? '>>' : ''}
         </button>
-      </div>`;
+      </div>
+      <button class="btn btn-tiny" onclick="showHistory(window.song._id, window.song.title)">Old versions</button>`;
 
     // Get songbooks containing this song
     let songbooks = [];
@@ -2493,7 +2503,9 @@ async function loadInfo(song = true) {
     );
   } else {
     // Songbook info
-    const revisionInfo = `<small>${(window.songbook._rev.split('-')[0] - 1)} previous edits</small>`;
+    const revisionInfo = window.songbook._rev
+      ? `<button class="btn btn-tiny" onclick="showHistory(window.songbook._id, window.songbook.title)">Old versions</button>`
+      : ''; // All Songs and Favorite Songs aren't saved, so they have none
 
     // Show dialog with songbook info
     showDialog(
@@ -2510,14 +2522,14 @@ async function loadInfo(song = true) {
   }
 }
 
-function prevSongRev() {
-  let prevRev = window.song._revs_info.map(rev => rev.rev).indexOf(window.song_rev) + 1;
-  loadSong(window.song._id, window.song._revs_info[prevRev].rev).catch(() => {}); // already reported
+// Step through window.song._versions (see songVersions in db.js)
+function stepSongRev(step) {
+  const list = window.song?._versions?.list || [];
+  const next = list[list.findIndex(version => version.rev === window.song_rev) + step];
+  if (next) loadSong(window.song._id, next.rev).catch(() => {}); // already reported
 }
-function nextSongRev() {
-  let nextRev = window.song._revs_info.map(rev => rev.rev).indexOf(window.song_rev) - 1;
-  loadSong(window.song._id, window.song._revs_info[nextRev].rev).catch(() => {}); // already reported
-}
+function prevSongRev() { stepSongRev(1); }
+function nextSongRev() { stepSongRev(-1); }
 
 function loadSongPlayer() {
   // Helper function to create YouTube player
@@ -2988,7 +3000,9 @@ function remToPx(rem) {
 }
 
 function checkColor() {
-  let color = window.getComputedStyle(document.elementFromPoint(1,1)).getPropertyValue('--highlight-color');
+  const corner = document.elementFromPoint(1,1); // null while the page isn't shown: nothing to match
+  if (!corner) return;
+  let color = window.getComputedStyle(corner).getPropertyValue('--highlight-color');
   document.querySelector("meta[name=theme-color]").setAttribute("content", color);
 }
 

@@ -9,3 +9,4 @@ deepseek/deepseek-chat
 .aider.chat.history.md
 .claude/
 database/.admin-pass
+backups/local-test-output/

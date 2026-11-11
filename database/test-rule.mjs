@@ -105,6 +105,38 @@ await put('editor changes categories', true, 'eddie', { ...(await get('categorie
 const login = await put('viewer login re-puts categories with no rev (putIfNotExists)', false, 'vera', { _id: 'categories', categories: [] });
 rows.push(`      -> status the app sees at login: ${login.status} (putIfNotExists only ignores 409)`);
 
+// --- kept old versions (#138 phase 2)
+const hist = (by, of = 's-vera1', rev = '3-abc123') => {
+  let [n, h] = rev.split('-'); n = n.padStart(6, '0');
+  return { _id: `h-${of}|${n}-${h}`, of, rev, replacedAt: Date.now(), replacedBy: 'u-' + by, version: { title: 'old' } };
+};
+await put('viewer keeps an old version', true, 'vera', hist('vera'));
+await put('viewer keeps an old version of a song they can\'t edit', true, 'vic', hist('vic', 's-eddie1'));
+await put('old version credited to someone else', false, 'vera', hist('eddie', 's-vera1', '4-abc'));
+await put('old version whose name doesn\'t match', false, 'vera', { ...hist('vera', 's-vera1', '5-abc'), _id: 'h-s-vera1|000006-abc' });
+await put('old version with no revision', false, 'vera', { ...hist('vera', 's-vera1', '7-abc'), rev: undefined });
+await put('editor changes an old version', false, 'eddie', { ...(await get('h-s-vera1|000003-abc123')), version: { title: 'faked' } });
+await put('viewer removes own old version', false, 'vera', { ...(await get('h-s-vera1|000003-abc123')), _deleted: true });
+await put('church admin removes an old version', true, 'alice', { ...(await get('h-s-vera1|000003-abc123')), _deleted: true });
+await put('outsider keeps an old version', false, 'olly', hist('olly', 's-x'));
+// the same version kept on two devices offline: the second arrives by sync as its own branch
+const histSync = await req(as('vic'), 'POST', `/${DB}/_bulk_docs`, { new_edits: false, docs: [
+  { ...hist('vic', 's-eddie1'), _rev: '1-ffff0000' },
+] });
+const histOk = histSync.status === 201 && !histSync.json?.[0]?.error;
+histOk ? pass++ : fail++;
+rows.push(`${histOk ? 'PASS' : 'FAIL'}  allow  same old version from a second device (sync) -> ${JSON.stringify(histSync.json)}`);
+
+// the download filter the app uses: no h- docs, deleted docs still come through, even an old-style
+// delete that kept only _id and _rev
+const gone = await req(as('alice'), 'PUT', `/${DB}/s-gone`, song('s-gone', 'alice'));
+await req(as('alice'), 'DELETE', `/${DB}/s-gone?rev=${gone.json.rev}`);
+const pulled = await req(as('vera'), 'POST', `/${DB}/_changes?filter=_selector&include_docs=true`, { selector: { _id: { $not: { $regex: '^h-' } } } });
+const pulledIds = pulled.json.results.map(r => r.id);
+const filterOk = !pulledIds.some(id => id.startsWith('h-')) && pulledIds.includes('s-vera1') && pulledIds.includes('s-gone');
+filterOk ? pass++ : fail++;
+rows.push(`${filterOk ? 'PASS' : 'FAIL'}  download filter: ${pulledIds.length} docs, none h-, deleted ones included`);
+
 // --- everything else
 await put('viewer saves an unknown kind of doc', false, 'vera', { _id: 'x-thing' });
 await put('editor saves an unknown kind of doc', false, 'eddie', { _id: 'x-thing' });

@@ -192,7 +192,7 @@ async function importSongV1(f){
         for(sb_id of songbook_with_comments){
           db.get(sb_id).then(function(result) {
             result.showComments = true;
-            return db.put(result);
+            return saveWithHistory(result);
           }).then(function(result){
             console.log(result);
           }).catch(function(err){
@@ -356,7 +356,7 @@ async function importSongV2(f){
             creditImport(doc, exist_doc);
 
             console.log('this '+doc_type+' is newer!');
-            db.put(doc, function callback(err, result) {
+            saveWithHistory(doc).then(result => [null, result], err => [err]).then(function([err, result]) {
               if (!err) {
                 console.log('imported: ', doc.title);
                 document.getElementById('progress_text').innerHTML = 'imported: ', doc.title;
