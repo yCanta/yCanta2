@@ -573,10 +573,13 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
         return doc;
       });
 
-      setLoginState();
+      // A first download is coming: wait for it before opening the page the link points to, or a song
+      // linked to is "not found" in a device copy that starts empty (without "Keep me logged in")
+      const willDownload = !!(remoteDb && navigator.onLine && db.name.endsWith('(remote)'));
+      setLoginState({ route: !willDownload });
 
       // Setup sync for remote databases
-      if(remoteDb && navigator.onLine && db.name.endsWith('(remote)')) { // no remoteDb: logged in from this device's copy
+      if(willDownload) { // no remoteDb: logged in from this device's copy
         console.log('doing a onetime sync...');
         let startTime = new Date();
         
@@ -1780,7 +1783,7 @@ function loadSong(song_id, song_rev = false) {
           <div class="column_header title" id="song_header">
             <stitle><a data-song class="title_link">${song.title}</a></stitle>
             <span class="buttonsRight">
-              ${song_rev ? `${canSave(song._id, window.song) ? `<button onclick="restoreSongRev('${escapeHtml(song._rev)}')" class="btn btn-tiny" title="Make this the current version">↶ Restore</button>` : ''}<button onclick="this.closest('song').remove()" class="close-icon">&times;</button>` : `
+              ${song_rev ? `${canEdit(window.song) ? `<button onclick="restoreSongRev('${escapeHtml(song._rev)}')" class="btn btn-tiny" title="Make this the current version">↶ Restore</button>` : ''}<button onclick="this.closest('song').remove()" class="close-icon">&times;</button>` : `
                 <span class="star" onclick="event.stopPropagation(); toggleFavorite(this.closest('song').dataset.id,'fav_songs')"></span>
                 <info onclick="event.stopPropagation(); loadInfo();"></info>
                 <span class="fsButton" onclick="toggleFullscreen(this)"></span>
@@ -1926,13 +1929,15 @@ function loadSong(song_id, song_rev = false) {
   });
 }
 // ---- Version history (#138 phase 2) ----
-// Every save of a song, songbook, profile, export setup or the category list first keeps a full copy of
-// the version it replaces, as its own doc:  h-<doc id>|<revision number, 6 digits>-<revision hash>
+// Every save of a song or songbook first keeps a full copy of the version it replaces, as its own doc:
+//   h-<doc id>|<revision number, 6 digits>-<revision hash>
+// Other docs (profiles, export setups, the category list, comments) have no history here: the nightly
+// backups cover them (backups/Backup.gs).
 // The id sorts one doc's versions in order, and saving the same version twice hits the same id, so a
 // retry can't make a copy twice. Devices send these up but never download them (see SYNC_OPTIONS); the
 // history view asks the server for one doc's range when it's opened. database/validate.js lets anyone
 // add a copy of a change they made, and only church admins change or remove one.
-const HISTORY_KEPT = /^(s-|sb-|u-|cfg-|categories$)/;
+const HISTORY_KEPT = /^(s|sb)-/;
 
 function historyId(id, rev) {
   let [num, hash] = rev.split('-');
@@ -1963,8 +1968,8 @@ async function keepHistory(id, rev) {
   }
 }
 
-// Save a doc to this device's database, keeping a copy of the version it replaces. Use it for every save
-// of a kept kind of doc, so no change is missed. A failure to keep the copy is reported but doesn't stop
+// Save a song or songbook to this device's database, keeping a copy of the version it replaces. Use it for
+// every song and songbook save, so no change is missed (other docs pass straight through). A failure to keep the copy is reported but doesn't stop
 // the save: losing someone's edit would be worse than losing one old version.
 async function saveWithHistory(doc) {
   if (doc._rev) {
@@ -2005,16 +2010,6 @@ async function currentDoc(id) {
   return db.get(id, { rev: row.value.rev });
 }
 
-// May this person save over this doc? Mirrors database/validate.js.
-function canSave(id, doc) {
-  if (window.church?.admin) return true;
-  if (/^(s|sb)-/.test(id)) return canEdit(doc);
-  if (id.startsWith('u-')) return id === window.user._id;
-  if (id.startsWith('cfg-')) return id.endsWith(window.user._id) || id.includes(window.user._id + ':');
-  if (id === 'categories') return !!window.church?.editor;
-  return false;
-}
-
 // Make an old version the current one again, as a new save, so the version it replaces is kept too.
 // entry is an h- doc from loadHistory.
 async function restoreVersion(entry) {
@@ -2023,14 +2018,12 @@ async function restoreVersion(entry) {
   const now = await currentDoc(id);
   const restored = { ...entry.version, _id: id };
   if (now) restored._rev = now._rev;
-  if (/^(s|sb)-/.test(id)) {
-    restored.edited = Date.now();
-    restored.editedBy = window.user._id;
-    if (typeof restored.search === 'string') {
-      restored.search = restored.search.replace(/editedBy:[^\0]*\0/, `editedBy:${ownName().replace(/\s+/g, ' ')}\0`);
-    }
+  restored.edited = Date.now();
+  restored.editedBy = window.user._id;
+  if (typeof restored.search === 'string') {
+    restored.search = restored.search.replace(/editedBy:[^\0]*\0/, `editedBy:${ownName().replace(/\s+/g, ' ')}\0`);
   }
-  if (!canSave(id, now || restored) || !canSave(id, restored)) throw new Error("You're not allowed to change this.");
+  if (!canEdit(now || restored) || !canEdit(restored)) throw new Error("You're not allowed to change this.");
   const result = await saveWithHistory(restored);
   if (id.startsWith('sb-') && now?._deleted) initializeSongbooksList();
   return result;
@@ -2047,50 +2040,32 @@ function personName(userId) {
   return window.users?.[userId] || (userId || 'someone').replace(/^u-/, '');
 }
 
-// A readable view of one saved version
+// A readable view of one saved version of a song or songbook
 function versionSummary(id, v, titles) {
-  const list = items => `<ul>${items.map(item => `<li>${escapeHtml(item)}</li>`).join('') || '<li><i>none</i></li>'}</ul>`;
   if (id.startsWith('s-')) {
     const chunks = (v.content || []).map(([info, lines]) =>
       `<p><small>${escapeHtml(info?.type || 'verse')}</small><br>${(lines || []).map(line => escapeHtml(lineText(line))).join('<br>')}</p>`);
     return `<p><b>${escapeHtml(v.title || '')}</b>${v.key ? ` <small>Key: ${escapeHtml(v.key)}</small>` : ''}<br>
       <small>${escapeHtml((v.authors || []).filter(Boolean).join(', '))}</small></p>${chunks.join('')}`;
   }
-  if (id.startsWith('sb-')) {
-    const songs = (v.songrefs || []).map(ref => ref.id === 'section' ? `— ${ref.title || 'Section'} —` : (titles.get(ref.id) || ref.id));
-    return `<p><b>${escapeHtml(v.title || '')}</b></p><ol>${songs.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ol>`;
-  }
-  if (id.startsWith('u-')) {
-    const others = Object.entries(v).filter(([key]) => !['name', 'fav_sbs', 'fav_songs'].includes(key));
-    return `<p><b>${escapeHtml(v.name || '')}</b></p>
-      <p>Favorite songbooks:</p>${list((v.fav_sbs || []).filter(Boolean).map(sb => titles.get(sb) || sb))}
-      <p>Favorite songs:</p>${list((v.fav_songs || []).filter(Boolean).map(s => titles.get(s) || s))}
-      ${others.map(([key, value]) => `<p>${escapeHtml(key)}: ${escapeHtml(JSON.stringify(value))}</p>`).join('')}`;
-  }
-  if (id.startsWith('cfg-')) {
-    return `<p><b>${escapeHtml(v.name || 'Default')}</b></p>${list((v.cfg || []).map(opt => `${opt.name}: ${opt.value}`))}`;
-  }
-  if (id === 'categories') return list(v.categories || []);
-  return `<pre>${escapeHtml(JSON.stringify(v, null, 2))}</pre>`;
+  const songs = (v.songrefs || []).map(ref => ref.id === 'section' ? `— ${ref.title || 'Section'} —` : (titles.get(ref.id) || ref.id));
+  return `<p><b>${escapeHtml(v.title || '')}</b></p><ol>${songs.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ol>`;
 }
 
-// When a version was made and by whom. Songs and songbooks say it themselves; other docs only say when
-// they were replaced.
-function versionLabel(id, entry) {
+// When a version was made and by whom
+function versionLabel(entry) {
   const num = parseInt(entry.rev);
   const v = entry.version;
   if (entry.deleted) return `Version ${num}: deleted by ${escapeHtml(personName(v.deletedBy || entry.replacedBy))}, ${formatDate(v.deletedAt || entry.replacedAt)}`;
-  if (/^(s|sb)-/.test(id) && v.edited) return `Version ${num}: saved by ${escapeHtml(personName(v.editedBy))}, ${formatDate(v.edited)}`;
-  return `Version ${num}: in use until ${formatDate(entry.replacedAt)}, when ${escapeHtml(personName(entry.replacedBy))} changed it`;
+  if (v.edited) return `Version ${num}: saved by ${escapeHtml(personName(v.editedBy))}, ${formatDate(v.edited)}`;
+  return `Version ${num}: replaced ${formatDate(entry.replacedAt)} by ${escapeHtml(personName(entry.replacedBy))}`;
 }
 
-// Titles of the songs and songbooks the versions point to, deleted ones included
+// Titles of the songs a songbook's versions list, deleted ones included
 async function titlesFor(entries) {
   const ids = new Set();
   for (const { version: v } of entries) {
     (v.songrefs || []).forEach(ref => ref.id !== 'section' && ids.add(ref.id));
-    (v.fav_sbs || []).forEach(sb => sb && ids.add(sb));
-    (v.fav_songs || []).forEach(s => s && ids.add(s));
   }
   const titles = new Map();
   if (!ids.size) return titles;
@@ -2102,7 +2077,7 @@ async function titlesFor(entries) {
   return titles;
 }
 
-// The "Old versions" window for any kept doc: each version can be opened, and made current again
+// The "Old versions" window for a song or songbook: each version can be opened, and made current again
 async function showHistory(id, label) {
   const dialog = new TaskDialog(`Old versions: ${label}`);
   dialog.working('Looking for old versions…');
@@ -2116,7 +2091,7 @@ async function showHistory(id, label) {
     return;
   }
   const { entries, complete } = history;
-  const mayRestore = canSave(id, now || {});
+  const mayRestore = canEdit(now || {});
   const offline = complete ? '' : '<p class="history-note">Only the old versions saved on this device are shown. Connect to the internet to see them all.</p>';
   if (!entries.length) {
     dialog.render({ html: `${offline}<p>No old versions yet. From now on, every save keeps the version it replaces.</p>`, cancel: 'Close' });
@@ -2126,7 +2101,7 @@ async function showHistory(id, label) {
     cancel: 'Close',
     html: `${offline}<ol class="history-list">${entries.map((entry, i) => `
       <li><details>
-        <summary>${versionLabel(id, entry)}</summary>
+        <summary>${versionLabel(entry)}</summary>
         <div class="history-version">${versionSummary(id, entry.version, titles)}</div>
         ${mayRestore && !entry.deleted ? `<button type="button" class="btn" data-restore="${i}">↶ Make this the current version</button>` : ''}
       </details></li>`).join('')}</ol>`,
@@ -2957,7 +2932,7 @@ async function saveRawDbObject(element) {
     });
 
     // Save to database
-    await saveWithHistory(jsonObject);
+    await db.put(jsonObject);
     console.log('Successfully updated:', jsonObject._id);
     
     // Clear the container
@@ -2980,7 +2955,7 @@ async function deleteExportCfg(cfgId){
   try {
     const doc = await db.get(cfgId);
     if (confirm(`Are you sure you want to delete ${doc.name} config?`)) {
-      await saveWithHistory({ ...doc, _deleted: true }); // keeps the old version in the history
+      await db.remove(doc);
       console.log("Deleted:", doc.name);
     }
   } catch (err) {
@@ -3014,7 +2989,7 @@ async function saveExport(name) {
     } catch (err) {
       if (err.status !== 404) throw err; // 404: a new config
     }
-    const info = await saveWithHistory(cfg);
+    const info = await db.put(cfg);
     console.log("id of record: " + info.id);
     prepExport();
   } catch (err) {
@@ -3036,7 +3011,7 @@ async function toggleFavorite(itemId, favoriteType) { // Make it more generic
       user[favoriteType].splice(index, 1);
     }
 
-    await saveWithHistory(user);
+    await db.put(user);
     console.log(`Successfully updated favorite ${(favoriteType == 'fav_sbs' ? 'Songbook' :'Song')}s!`);
   } catch (err) {
     reportDbError(err, 'change your favorites');

@@ -1502,11 +1502,6 @@ input[type="number"] {
   top: .5em;
   left: 1.15em;
 }
-.export_history {
-  margin-left: 0.5em;
-  padding: 0 0.25em;
-  opacity: .8;
-}
 /* Old versions window (showHistory in db.js, #138) */
 .task-dialog .history-list {
   margin: 0 0 1rem 0;

@@ -119,6 +119,9 @@ await put('editor changes an old version', false, 'eddie', { ...(await get('h-s-
 await put('viewer removes own old version', false, 'vera', { ...(await get('h-s-vera1|000003-abc123')), _deleted: true });
 await put('church admin removes an old version', true, 'alice', { ...(await get('h-s-vera1|000003-abc123')), _deleted: true });
 await put('outsider keeps an old version', false, 'olly', hist('olly', 's-x'));
+await put('viewer keeps an old version of their profile', false, 'vera', hist('vera', 'u-vera'));
+await put('viewer keeps an old version of an export setup', false, 'vera', hist('vera', 'cfg-sb-1u-vera'));
+await put('viewer keeps an old version of a songbook', true, 'vera', hist('vera', 'sb-vera1', '2-abc'));
 // the same version kept on two devices offline: the second arrives by sync as its own branch
 const histSync = await req(as('vic'), 'POST', `/${DB}/_bulk_docs`, { new_edits: false, docs: [
   { ...hist('vic', 's-eddie1'), _rev: '1-ffff0000' },

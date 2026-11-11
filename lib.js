@@ -1048,9 +1048,6 @@ async function updateUser() {
     </button>
     <button onclick="change${document.documentElement.classList.contains('_admin') ? 'Admin' : 'User'}Password(window.user._id.replace('u-', ''))" class="btn">
       ↻ Password
-    </button>
-    <button onclick="showHistory(window.user._id, 'your profile')" class="btn">
-      Old versions
     </button>`;
 
   userContent.innerHTML = profileHtml;
@@ -1065,9 +1062,7 @@ async function loadCategories() {
     const result = await db.get('categories');
     
     // Build HTML content
-    let html = `<h3>Ordered List <a href="#" onclick="loadRawDbObject('categories', document.getElementById('category_content'), 'loadCategories();')" class="mirror editor-only">&#9998;</a>
-      <button class="btn btn-tiny" onclick="showHistory('categories', 'the category list')">Old versions</button>
-      </h3><ul>`;
+    let html = `<h3>Ordered List <a href="#" onclick="loadRawDbObject('categories', document.getElementById('category_content'), 'loadCategories();')" class="mirror editor-only">&#9998;</a>      </h3><ul>`;
     
     // Add each category as a list item
     result.categories.forEach(cat => {
@@ -1124,7 +1119,9 @@ function goToSettings(){
   document.getElementById('appSettings').classList.remove('closed');
   setTimeout(function() {scrollIntoViewIfNeed(document.getElementById('appSettings'))},300);
 }
-function setLoginState() {
+// route: false shows the logged-in state but doesn't open the linked page or load the lists yet, for
+// while the first download runs. takeNextStep calls it again with route: true once that's done.
+function setLoginState({ route = true } = {}) {
   window.loggedin = true;
   
   // Update user interface
@@ -1143,6 +1140,8 @@ function setLoginState() {
     titleLink.innerHTML = `${dbName}<sup style="font-size: .8rem; font-weight: normal; color: var(--songList-color);"> ${dbType}</sup>`;
   }
   
+  if (!route) return;
+
   // Handle login hash
   if (location.hash.startsWith('#login?')) {
     location.hash = location.hash.split('?').slice(1).join('?');
@@ -1907,9 +1906,7 @@ async function prepExport() {
             <button class="btn" onclick="blueHighlight(this);">
               <span data-name="${escapeHtml(row.doc.name || 'Default')}" onclick="saveExport(this.dataset.name);">
                 Save as ${escapeHtml(row.doc.name || 'Default')}
-              </span>
-              <span class="export_history" title="Old versions" data-id="${escapeHtml(row.doc._id)}" data-label="your ${escapeHtml(row.doc.name || 'Default')} export setup" onclick="event.preventDefault(); event.stopPropagation(); showHistory(this.dataset.id, this.dataset.label)">⟲</span>
-              <span class="export_close" onclick="event.preventDefault(); deleteExportCfg('${row.doc._id}');">×</span>
+              </span>              <span class="export_close" onclick="event.preventDefault(); deleteExportCfg('${row.doc._id}');">×</span>
             </button>`);
         }
         innerHTML = `<option value="${escapeHtml(JSON.stringify(row.doc.cfg))}">Your ${escapeHtml(row.doc.name || 'Default')}</option>${innerHTML}`;
@@ -1922,9 +1919,7 @@ async function prepExport() {
     // Add default button
     cfgButtons.insertAdjacentHTML('afterbegin', `
       <button class="btn" onclick="blueHighlight(this);">
-        <span onclick="saveExport('');">Save as Default</span>
-        <span class="export_history" title="Old versions" data-id="${escapeHtml(userIdCfg)}" data-label="your Default export setup" onclick="event.preventDefault(); event.stopPropagation(); showHistory(this.dataset.id, this.dataset.label)">⟲</span>
-      </button>`);
+        <span onclick="saveExport('');">Save as Default</span>      </button>`);
 
     // Add predefined options
     const opts = window.export.def_configs;
