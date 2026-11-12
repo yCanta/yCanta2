@@ -88,8 +88,8 @@ class TaskDialog {
   }
 
   render({ text = '', html = '', fields = [], submit = '', cancel = 'Cancel', danger = false }) {
+    this.setBusy(false); // new content after working() must be usable (working() sets busy again after this)
     this.errorLine.hidden = true;
-    this.statusLine.textContent = '';
     const paragraphs = text ? text.split('\n\n').map(p => `<p>${escapeHtml(p)}</p>`).join('') : '';
     this.body.innerHTML = paragraphs + html + fields.map(field => {
       const attrs = [
@@ -1638,7 +1638,7 @@ async function editSong() {
   await loadSong(window.song._id);
   if (window.song._deleted) { // a deleted song is restored, not edited (#69); this only happens with a typed ?edit link
     notyf.error('This song was deleted. Restore it to edit it.', 'red');
-    window.location.hash = window.location.hash.replace(/\?edit\b/, '');
+    window.location.hash = window.location.hash.replace(/\?edit\b(?!.*\?edit)/, ''); // the song's (last) one
     return;
   }
 
@@ -2452,13 +2452,12 @@ async function loadInfo(song = true) {
   if (song) {
     // Song info
     const songId = window.song._id;
-    // The kept old versions (#138) and older revisions on this device, newest first
-    const { list, complete } = await songVersions();
-    const revs = list.map(version => version.rev);
-    const revNum = Math.max(0, revs.indexOf(window.song_rev));
-
-    // Create revision controls
-    const revisionControls = `
+    // The kept old versions (#138) and older revisions on this device, newest first. The list asks the
+    // server, so the window opens first and the arrows fill in when it answers.
+    const versionControls = ({ list, complete }) => {
+      const revs = list.map(version => version.rev);
+      const revNum = Math.max(0, revs.indexOf(window.song_rev));
+      return `
       <div style="display: flex; align-items: center; justify-content: space-between;">
         <button onclick="prevSongRev();" style="width:1.75rem" 
           ${revNum !== revs.length - 1 ? 'class="btn btn-tiny"' : ''}>
@@ -2469,7 +2468,10 @@ async function loadInfo(song = true) {
           ${revNum !== 0 ? 'class="btn btn-tiny"' : 'class="btn-tiny"'}>
           ${revNum !== 0 ? '>>' : ''}
         </button>
-      </div>
+      </div>`;
+    };
+    const versions = window.song._versions;
+    const revisionControls = `<div class="song-versions">${versions ? versionControls(versions) : '<small>Looking for old versions…</small>'}</div>
       <button class="btn btn-tiny" onclick="showHistory(window.song._id, window.song.title)">Old versions</button>`;
 
     // Get songbooks containing this song
@@ -2506,6 +2508,12 @@ async function loadInfo(song = true) {
         revisionControls + songbookContent
       )
     );
+    if (!versions) {
+      const song = window.song;
+      const found = await songVersions();
+      const box = dialog.querySelector('.song-versions');
+      if (box && window.song === song) box.innerHTML = versionControls(found); // still this song's info
+    }
   } else {
     // Songbook info
     const revisionInfo = window.songbook._rev

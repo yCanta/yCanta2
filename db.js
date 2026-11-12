@@ -575,10 +575,19 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
         return doc;
       });
 
-      // A first download is coming: wait for it before opening the page the link points to, or a song
-      // linked to is "not found" in a device copy that starts empty (without "Keep me logged in")
+      // A first download into an empty device copy (without "Keep me logged in"): wait for it before
+      // opening the page the link points to, or a song linked to is "not found". A device that already
+      // has the songs opens right away and catches up while it's in use.
       const willDownload = !!(remoteDb && navigator.onLine && db.name.endsWith('(remote)'));
-      setLoginState({ route: !willDownload });
+      let firstDownload = false;
+      if (willDownload) {
+        try {
+          firstDownload = (await db.info()).doc_count === 0;
+        } catch (err) {
+          console.warn('Could not count the songs on this device:', err);
+        }
+      }
+      setLoginState({ route: !firstDownload });
 
       // Setup sync for remote databases
       if(willDownload) { // no remoteDb: logged in from this device's copy
@@ -2031,17 +2040,21 @@ async function currentDoc(id) {
 
 // Make an old version the current one again, as a new save, so the version it replaces is kept too.
 // entry is an h- doc from loadHistory.
+// Putting something back is a save by whoever does it, so the old versions list names them
+function savedByMe(doc) {
+  doc.edited = Date.now();
+  doc.editedBy = window.user._id;
+  if (typeof doc.search === 'string') {
+    doc.search = doc.search.replace(/editedBy:[^\0]*\0/, `editedBy:${ownName().replace(/\s+/g, ' ')}\0`);
+  }
+  return doc;
+}
 async function restoreVersion(entry) {
   const id = entry.of;
   if (entry.deleted) throw new Error('That version is a delete. Use the Trash to bring it back.');
   const now = await currentDoc(id);
-  const restored = { ...entry.version, _id: id };
+  const restored = savedByMe({ ...entry.version, _id: id });
   if (now) restored._rev = now._rev;
-  restored.edited = Date.now();
-  restored.editedBy = window.user._id;
-  if (typeof restored.search === 'string') {
-    restored.search = restored.search.replace(/editedBy:[^\0]*\0/, `editedBy:${ownName().replace(/\s+/g, ' ')}\0`);
-  }
   if (!canEdit(now || restored) || !canEdit(restored)) throw new Error("You're not allowed to change this.");
   const result = await saveWithHistory(restored);
   if (id.startsWith('sb-') && now?._deleted) initializeSongbooksList();
@@ -2245,7 +2258,7 @@ function backupItemKind(id) {
 function restoreBackupItem({ doc, current }) {
   const { _rev, _revisions, ...content } = doc;
   if (current) content._rev = current._rev;
-  return saveWithHistory(content);
+  return saveWithHistory(/^(s|sb)-/.test(content._id) ? savedByMe(content) : content); // only these say who saved
 }
 
 async function restoreFromBackup() {
@@ -2336,14 +2349,21 @@ async function copyWholeBackup(dialog, backup) {
     working: 'Copying…',
     action: async values => {
       const docs = backup.docs.map(({ _revisions, ...doc }) => doc);
+      const failed = [];
       for (let start = 0; start < docs.length; start += 200) {
         dialog.setBusy(`Copying ${Math.min(start + 200, docs.length)} of ${docs.length}…`);
-        await remoteDb.bulkDocs(docs.slice(start, start + 200), { new_edits: false });
+        const results = await remoteDb.bulkDocs(docs.slice(start, start + 200), { new_edits: false });
+        for (const r of results) if (r.error) failed.push(`${r.id}: ${r.reason || r.error}`); // bulkDocs reports each doc that failed
       }
       if (values.lists && backup.security) await putChurchSecurity(structuredClone(backup.security));
+      return failed;
     },
   });
   if (go === null) return;
+  if (go.length) {
+    await dialog.finish(`Copied all but ${go.length}. These couldn't be copied:\n\n${go.slice(0, 20).join('\n')}${go.length > 20 ? `\n…and ${go.length - 20} more` : ''}`, { error: true });
+    return;
+  }
   await dialog.finish(`Copied. This device downloads it with the next sync.`);
 }
 
@@ -2377,7 +2397,7 @@ async function restoreDeleted(id, rev) {
   if (!tombstone._deleted || !tombstone.deletedAt) throw new Error(`${id} has nothing to restore`);
   if (!canEdit(tombstone)) throw new Error(`Not allowed to restore ${id}`);
   const { _deleted, deletedBy, deletedAt, ...doc } = tombstone;
-  const result = await saveWithHistory(doc);
+  const result = await saveWithHistory(savedByMe(doc));
   // the change feed only updates songbooks already in the list, so add it back here, as deleteSongbook does
   if (id.startsWith('sb-')) initializeSongbooksList();
   return result;

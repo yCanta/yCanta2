@@ -23,6 +23,7 @@
 const KEEP_DAYS = 14;
 const KEEP_MONTHS = 12;
 const FOLDER_NAME = 'yCanta backups';
+const BACKUP_PAGE = 1000; // docs per request to CouchDB
 const TIME_ZONE = 'America/New_York';
 
 function backupAll() {
@@ -61,14 +62,23 @@ function backupAll() {
 function takeBackup(db) {
   const path = encodeURIComponent(db);
   const info = backupFetch(path);
-  const changes = backupFetch(path + '/_changes?include_docs=true&style=main_only');
-  const docs = changes.results.map(function (row) { return row.doc; }).filter(Boolean);
+  // In pages: kept old versions make the feed grow, and one fetch can't be bigger than 50MB. A doc saved
+  // while this runs can show up in two pages; the later one is newer, so it replaces the earlier one.
+  const byId = {};
+  let since = '0';
+  for (;;) {
+    const page = backupFetch(path + '/_changes?include_docs=true&style=main_only&limit=' + BACKUP_PAGE + '&since=' + encodeURIComponent(since));
+    page.results.forEach(function (row) { if (row.doc) byId[row.id] = row.doc; });
+    since = page.last_seq;
+    if (page.results.length < BACKUP_PAGE) break;
+  }
+  const docs = Object.keys(byId).map(function (id) { return byId[id]; });
   return {
     yCantaBackup: 1,
     db: db,
     takenAt: new Date().toISOString(),
     docCount: info.doc_count,
-    lastSeq: changes.last_seq,
+    lastSeq: since,
     security: backupFetch(path + '/_security'),
     docs: docs,
   };

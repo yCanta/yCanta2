@@ -56,7 +56,10 @@ const sandbox = {
   DriveApp: { getFolderById: () => folder, createFolder: () => folder },
 };
 vm.createContext(sandbox);
-vm.runInContext(readFileSync(new URL('./Backup.gs', import.meta.url), 'utf8'), sandbox);
+// small pages, so a few test docs take several requests (paging is what real churches need)
+const script = readFileSync(new URL('./Backup.gs', import.meta.url), 'utf8');
+if (!/const BACKUP_PAGE = \d+;/.test(script)) throw new Error('BACKUP_PAGE not found in Backup.gs');
+vm.runInContext(script.replace(/const BACKUP_PAGE = \d+;/, 'const BACKUP_PAGE = 3;'), sandbox);
 
 let pass = 0, fail = 0;
 const check = (label, ok, detail = '') => { ok ? pass++ : fail++; console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}${detail ? '  ' + detail : ''}`); };
