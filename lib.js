@@ -1594,30 +1594,7 @@ async function editSongbook() {
       song.appendChild(deleteButton);
     });
 
-    const toggleSongList = document.querySelectorAll('#songList #songbook_edit_togglesongs ul li');
-    toggleSongList.forEach((song) => {
-      bind_songbook_edit(song);
-      song.addEventListener('click', () => {
-        const copySong = song.cloneNode(true);
-        bind_songbook_edit(copySong);
-        dataxInBookUpdate(copySong);
-        if (copySong.getAttribute('data-song-id') === 'section') {
-          add_edit_pencil(copySong);
-        }
-        const deleteButton = document.createElement('button');
-        deleteButton.innerHTML = '&#128465;';
-        deleteButton.addEventListener('click', () => {
-          dataxInBookUpdate(copySong, true);
-          scaleRemove(copySong);
-        });
-        copySong.appendChild(deleteButton);
-        copySong.setAttribute('data-song-status', 'n');
-        document.querySelector('#songbook_content .list').appendChild(copySong);
-        scrollIntoViewIfNeed(copySong);
-        copySong.classList.add('highlightBg');
-        setTimeout(() => copySong.classList.remove('highlightBg'), 3000);
-      });
-    });
+    document.querySelectorAll('#songList #songbook_edit_togglesongs ul li').forEach(bindAdderSong);
   };
 
   // Main logic
@@ -1632,6 +1609,41 @@ async function editSongbook() {
     ul.addEventListener('drop', dragDrop, false);
     ul.addEventListener('dragover', dragOver, false);
   });
+}
+
+// One song in the songbook editor's "Add a song?" list: clicking it adds a copy to the book
+function bindAdderSong(song) {
+  bind_songbook_edit(song);
+  song.addEventListener('click', () => {
+    const copySong = song.cloneNode(true);
+    bind_songbook_edit(copySong);
+    dataxInBookUpdate(copySong);
+    if (copySong.getAttribute('data-song-id') === 'section') {
+      add_edit_pencil(copySong);
+    }
+    const deleteButton = document.createElement('button');
+    deleteButton.innerHTML = '&#128465;';
+    deleteButton.addEventListener('click', () => {
+      dataxInBookUpdate(copySong, true);
+      scaleRemove(copySong);
+    });
+    copySong.appendChild(deleteButton);
+    copySong.setAttribute('data-song-status', 'n');
+    document.querySelector('#songbook_content .list').appendChild(copySong);
+    scrollIntoViewIfNeed(copySong);
+    copySong.classList.add('highlightBg');
+    setTimeout(() => copySong.classList.remove('highlightBg'), 3000);
+  });
+}
+
+// A song that shows up while the songbook editor is open (restored or added, maybe on another device):
+// put it in "Add a song?" in title order, after New Section
+function addToSongAdder(values) {
+  const adder = window.songbook_edit_togglesongs_list;
+  const [item] = adder.add(values);
+  const key = it => it.values()['song-id'] === 'section' ? '' : (it.values().name || ' ');
+  adder.sort('name', { sortFunction: (a, b) => key(a).localeCompare(key(b)) });
+  if (item?.elm) bindAdderSong(item.elm);
 }
 
 async function editSong() {

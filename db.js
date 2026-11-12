@@ -202,12 +202,17 @@ function dbChanges() {
       if (window.songbook_edit_togglesongs_list) {
         window.songbook_edit_togglesongs_list.get('song-id', change.doc._id)
           .forEach(song => song.values(songData));
+        // not there: restored from the Trash (the delete took it out), or new
+        if (!window.songbook_edit_togglesongs_list.get('song-id', change.doc._id).length) addToSongAdder(songData);
       }
 
-      // Reload all songs view if needed
-      if (window.songbook?._id === 'sb-allSongs') {
-        window.songbook._id = '';
-        loadSongbook('sb-allSongs').catch(() => {}); // a failure is already reported
+      // Reload the open songbook: All Songs on any change, and another book when it holds this song but its
+      // list doesn't show it (restored from the Trash, maybe on another device: the delete took it out).
+      // Not while the book is being edited, which would throw the edits away.
+      const holdsSong = window.songbook?.songrefs?.some(ref => ref.id === change.doc._id);
+      const listShowsSong = window.songbook_list?.get('song-id', change.doc._id).length;
+      if (window.songbook?._id === 'sb-allSongs' || (holdsSong && !listShowsSong && !window.songbookEditing)) {
+        loadSongbook(window.songbook._id, true).catch(() => {}); // a failure is already reported
       }
     } 
     // Songbook changes
@@ -230,11 +235,13 @@ function dbChanges() {
 
       // Update songbooks list if exists
       if (window.songbooks_list) {
-        window.songbooks_list.get('songbook-id', change.doc._id)
-          .forEach(songbook => {
-            songbook.values(mapSongbookRowToValue(change));
-          });
-        window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
+        const rows = window.songbooks_list.get('songbook-id', change.doc._id);
+        if (!rows.length) { // restored from the Trash, or new, maybe on another device
+          initializeSongbooksList();
+        } else {
+          rows.forEach(songbook => songbook.values(mapSongbookRowToValue(change)));
+          window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
+        }
       }
     }
     // Comment changes
@@ -2056,9 +2063,7 @@ async function restoreVersion(entry) {
   const restored = savedByMe({ ...entry.version, _id: id });
   if (now) restored._rev = now._rev;
   if (!canEdit(now || restored) || !canEdit(restored)) throw new Error("You're not allowed to change this.");
-  const result = await saveWithHistory(restored);
-  if (id.startsWith('sb-') && now?._deleted) initializeSongbooksList();
-  return result;
+  return saveWithHistory(restored); // the change feed puts a deleted one back in the open lists
 }
 
 // Text of a song line without its chords or markup. A <template> doesn't run anything put into it.
@@ -2397,10 +2402,7 @@ async function restoreDeleted(id, rev) {
   if (!tombstone._deleted || !tombstone.deletedAt) throw new Error(`${id} has nothing to restore`);
   if (!canEdit(tombstone)) throw new Error(`Not allowed to restore ${id}`);
   const { _deleted, deletedBy, deletedAt, ...doc } = tombstone;
-  const result = await saveWithHistory(savedByMe(doc));
-  // the change feed only updates songbooks already in the list, so add it back here, as deleteSongbook does
-  if (id.startsWith('sb-')) initializeSongbooksList();
-  return result;
+  return saveWithHistory(savedByMe(doc)); // the change feed puts it back in the open lists
 }
 
 // The Restore button on an open deleted song (#69). The change feed then reloads the song and its list item.
