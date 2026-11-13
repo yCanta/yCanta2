@@ -19,7 +19,10 @@ function escapeHtml(text) {
 }
 // Tells the user a database call failed (#1), with the details in the console.
 // whatFailed finishes "Couldn't ...", for example 'save the song'.
-function reportDbError(err, whatFailed) {
+// stay: the most serious failures (work not saved, sync stopped) stay on screen until closed instead of
+// fading after 5 seconds (#137); more adds a sentence; onClick makes the message a "try again". Returns
+// the sticky message.
+function reportDbError(err, whatFailed, { stay = false, more = '', onClick = null } = {}) {
   console.error(`Couldn't ${whatFailed}:`, err);
   let why;
   if (err?.status === 409 || err?.name === 'conflict') why = 'someone else changed it at the same time. Reload and try again.';
@@ -28,7 +31,22 @@ function reportDbError(err, whatFailed) {
   else if (err?.status === 404 || err?.name === 'not_found') why = "it wasn't found.";
   else if (!navigator.onLine || err?.status === 0 || err?.name === 'unknown_error') why = "the server can't be reached.";
   else why = (err?.message || String(err)) + '.';
-  notyf.error(`Couldn't ${escapeHtml(whatFailed)}: ${escapeHtml(why)}`);
+  const message = `Couldn't ${escapeHtml(whatFailed)}: ${escapeHtml(why)}${more ? ' ' + escapeHtml(more) : ''}`;
+  if (!stay) {
+    notyf.error(message);
+    return null;
+  }
+  return stickyError(onClick ? `${message} Tap here to try again.` : message, onClick);
+}
+
+// A red message at the top that stays until it's closed (#137), or tapped when it offers to try again
+function stickyError(message, onClick = null) {
+  const notice = dysmyssable.open({ type: 'error', message, background: 'crimson' });
+  if (onClick) notice.on('click', () => {
+    dysmyssable.dismiss(notice);
+    onClick();
+  });
+  return notice;
 }
 // A step-by-step dialog for tasks that need input: adding people, passwords, recovery email.
 // It is the browser's own <dialog> and <form>: showModal() dims the page, keeps keyboard focus inside
@@ -2062,15 +2080,24 @@ function bindKeyAndChords() {
   if (!container || !keyButton) return;
   const songColumn = document.getElementById('song');
   const chordSwitch = document.getElementById('chordSwitch');
+  // The key list is one stop for Tab, and none while it's closed (#68): its picked key, or the first
+  const keyLinks = () => [...container.querySelectorAll('.transpose-keys a')];
+  const tabStop = () => container.querySelector('.transpose-keys a.selected') || keyLinks()[0];
+  const setStop = link => keyLinks().forEach(a => { a.tabIndex = a === link ? 0 : -1; });
   const setOpen = open => {
     container.classList.toggle('active', open);
     keyButton.setAttribute('aria-expanded', open);
+    setStop(open ? tabStop() : null);
   };
   const setChords = show => {
     songColumn.classList.toggle('nochords', !show);
     chordSwitch.checked = show;
   };
-  keyButton.addEventListener('click', () => setOpen(!container.classList.contains('active')));
+  keyButton.addEventListener('click', event => {
+    const open = !container.classList.contains('active');
+    setOpen(open);
+    if (open && event.detail === 0) tabStop()?.focus({ preventScroll: true }); // opened from the keyboard
+  });
   chordSwitch.closest('label').hidden = !container.closest('song')?.querySelector('c');
   chordSwitch.checked = !songColumn.classList.contains('nochords');
   chordSwitch.addEventListener('change', () => setChords(chordSwitch.checked));
@@ -2086,6 +2113,41 @@ function bindKeyAndChords() {
       if (byKeyboard) keyButton.focus({ preventScroll: true });
       else document.activeElement?.blur();
     },
+  });
+  setStop(null); // the list starts closed
+  // In the open list: arrows move through the keys (up and down by row), Home and End, a letter jumps to
+  // the next key starting with it (D, D#, Db, D ...), Esc closes it (#68). Enter or Space picks.
+  container.querySelector('.transpose-keys')?.addEventListener('keydown', e => {
+    const links = keyLinks();
+    const current = links.indexOf(document.activeElement);
+    if (current < 0) return;
+    let next = null;
+    const rowStep = dir => { // the nearest key in the row above or below
+      const here = links[current].getBoundingClientRect();
+      const row = links.filter(a => dir > 0 ? a.getBoundingClientRect().top > here.top + 4 : a.getBoundingClientRect().top < here.top - 4);
+      const rowTop = dir > 0 ? Math.min(...row.map(a => a.getBoundingClientRect().top)) : Math.max(...row.map(a => a.getBoundingClientRect().top));
+      const inRow = row.filter(a => Math.abs(a.getBoundingClientRect().top - rowTop) < 4);
+      return inRow.sort((a, b) => Math.abs(a.getBoundingClientRect().left - here.left) - Math.abs(b.getBoundingClientRect().left - here.left))[0] || null;
+    };
+    if (e.key === 'ArrowRight') next = links[Math.min(links.length - 1, current + 1)];
+    else if (e.key === 'ArrowLeft') next = links[Math.max(0, current - 1)];
+    else if (e.key === 'ArrowDown') next = rowStep(1);
+    else if (e.key === 'ArrowUp') next = rowStep(-1);
+    else if (e.key === 'Home') next = links[0];
+    else if (e.key === 'End') next = links.at(-1);
+    else if (e.key === 'Escape') {
+      e.preventDefault();
+      setOpen(false);
+      keyButton.focus({ preventScroll: true });
+      return;
+    } else if (/^[a-g]$/i.test(e.key)) {
+      const matches = links.filter(a => a.textContent[0].toLowerCase() === e.key.toLowerCase());
+      next = matches[(matches.indexOf(links[current]) + 1) % matches.length];
+    }
+    if (!next) return;
+    e.preventDefault();
+    setStop(next);
+    next.focus({ preventScroll: true });
   });
 }
 
@@ -2244,7 +2306,7 @@ async function saveSongbookFromEditor() {
     await saveSongbook(parseHash('sb-'));
   } catch (err) {
     window.songbookEditing = true;
-    reportDbError(err, 'save the songbook');
+    reportDbError(err, 'save the songbook', { stay: true }); // the editor stays open with the changes
   }
 }
 
@@ -2311,7 +2373,7 @@ async function prepSaveSong() {
     window.song = openSong;
     window.songEditing = true;
     editor.style.display = '';
-    reportDbError(error, 'save the song');
+    reportDbError(error, 'save the song', { stay: true }); // the editor stays open with the changes
   }
 }
 async function prepExport() { 

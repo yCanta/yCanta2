@@ -757,10 +757,23 @@ function setUpSyncHandler() {
         alert('Your login has expired. Please log in again.');
         dbLogout();
       } else {
-        reportDbError(err, 'keep syncing with the server');
         syncHandler = null; // so reconnectSync can start it again
+        // Stays on screen (#137): changes made now stay on this device until sync is back
+        if (!window.syncStoppedNotice) window.syncStoppedNotice = reportDbError(err, 'keep syncing with the server', {
+          stay: true,
+          more: 'Your changes stay on this device until it syncs again.',
+          onClick: () => {
+            window.syncStoppedNotice = null;
+            if (remoteDb && !syncHandler) setUpSyncHandler();
+            else reconnectSync();
+          },
+        });
       }
     });
+    if (window.syncStoppedNotice) { // sync is back: the message about it stopping can go
+      dysmyssable.dismiss(window.syncStoppedNotice);
+      window.syncStoppedNotice = null;
+    }
     notyf.info('Sync established', 'green');
   }
   catch(err) {
@@ -1567,7 +1580,7 @@ async function reportDenied(event) {
   } catch (e) {
     // fine, use the id
   }
-  notyf.error(`The server did not save "${escapeHtml(title)}": ${escapeHtml(err.reason || err.message || 'not allowed')}`);
+  stickyError(`The server did not save "${escapeHtml(title)}": ${escapeHtml(err.reason || err.message || 'not allowed')}`); // stays until closed (#137)
 }
 
 // Your own password, from the profile. Server admins live in the server's settings, so theirs is
@@ -1970,7 +1983,9 @@ function loadSong(song_id, song_rev = false) {
       // an old version kept in the history (#138) is already loaded; older revisions come from this device
       const kept = song_rev && window.song?._versions?.list.find(v => v.rev === song_rev && v.doc);
       const song = kept ? kept.doc : await db.get(song_id, options);
-      if (song._deleted) {
+      // Stepping back up to an open deleted song's own delete: that's the version on screen, not one to skip
+      const openDelete = song_rev && song._deleted && song._rev === window.song?._rev;
+      if (song._deleted && !openDelete) {
         if (window.song?._versions) { // a deleted revision: take it out of the list and step past it
           const list = window.song._versions.list;
           const at = list.findIndex(version => version.rev === song._rev);
@@ -1979,7 +1994,7 @@ function loadSong(song_id, song_rev = false) {
         }
         resolve('song_loaded');
       } else {
-        await createSongHtml(song);
+        await createSongHtml(song, openDelete);
       }
     } catch (err) {
       // A deleted song opens read-only with a Restore button, when its delete kept the song (#69)
