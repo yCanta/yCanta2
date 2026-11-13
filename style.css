@@ -786,6 +786,95 @@ stitle, cat, author, scrip_ref, key, copyright, cclis {
 .active > #keyToggleFilter {
   padding-bottom: 1rem;
 }
+/* The Key button and the Chords switch under a song's title (#143). The button shows the key, so the
+   <key> itself only shows while editing the song. */
+#keyToggleFilter > key {
+  display: none;
+}
+#song.edit #keyToggleFilter > key {
+  display: inline-block;
+}
+#song.edit #keyToggle,
+#song.edit .chord-switch,
+#song.edit .transpose-keys {
+  display: none;
+}
+#keyToggle {
+  font: inherit;
+  color: var(--text-color);
+  background: rgba(var(--edit-color-rgb), .5);
+  border: 1px solid rgba(128, 128, 128, .45);
+  border-radius: 2rem;
+  padding: .15rem .65rem;
+  margin-right: .75rem;
+  cursor: pointer;
+  vertical-align: middle;
+}
+#keyToggle:hover {
+  background: rgba(var(--edit-color-rgb), .9);
+}
+#keyToggle .chevron::after {
+  content: '▾';
+  margin-left: .35rem;
+  font-size: .85em;
+}
+#keyToggleContainer.active #keyToggle .chevron::after {
+  content: '▴';
+}
+.chord-switch {
+  position: relative; /* keeps the hidden checkbox here, so focusing it doesn't scroll the page */
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  vertical-align: middle;
+  font-size: .9em;
+  color: var(--light-text-color);
+  cursor: pointer;
+  user-select: none;
+}
+.chord-switch[hidden] {
+  display: none;
+}
+.chord-switch input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin: 0;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.switch-track {
+  position: relative;
+  flex: none;
+  width: 1.8rem;
+  height: 1rem;
+  border-radius: 1rem;
+  background: rgba(128, 128, 128, .45);
+  transition: background .2s;
+}
+.switch-track::after {
+  content: '';
+  position: absolute;
+  top: .125rem;
+  left: .125rem;
+  width: .75rem;
+  height: .75rem;
+  border-radius: 50%;
+  background: var(--background-color);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .3);
+  transition: transform .2s;
+}
+.chord-switch input:checked + .switch-track {
+  background: var(--song-color);
+}
+.chord-switch input:checked + .switch-track::after {
+  transform: translateX(.8rem);
+}
+.chord-switch input:focus-visible + .switch-track {
+  outline: 2px solid var(--song-color);
+  outline-offset: 2px;
+}
 
 .song .edit .wrap {
   cursor: move;

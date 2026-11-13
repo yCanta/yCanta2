@@ -73,10 +73,7 @@
     if (!newKey) return;
 
     const currentKey = getKeyByName(document.querySelector('key')?.textContent) || newKey;
-    if (currentKey.name === newKey.name) {
-      document.querySelector('#song').classList.toggle('nochords');
-      return;
-    }
+    if (currentKey.name === newKey.name) return; // showing and hiding chords is its own switch now (#143)
 
     const delta = getDelta(currentKey.value, newKey.value);
     document.querySelectorAll('#song chunk').forEach(chunk => {
@@ -91,7 +88,6 @@
         chunk.querySelectorAll('c').forEach(c => {
           transposeChord(c, delta, newKey);
         });
-        document.querySelector('#song').classList.remove('nochords');
       }
     });
   }
@@ -173,7 +169,9 @@
       keysHtml.querySelectorAll('a').forEach(a => a.classList.remove('selected'));
       e.target.classList.add('selected');
       document.querySelector('key').textContent = e.target.textContent;
+      opts.onPick?.(e.target.textContent);
     });
+    link.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); link.click(); } });
   });
 
   element.parentNode.after(keysHtml); // same spot as the old $(this).parent().after(keysHtml)

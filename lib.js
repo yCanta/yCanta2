@@ -726,7 +726,9 @@ document.addEventListener('DOMContentLoaded', function() {
   // chord toggling
   document.body.addEventListener('click', function(e) {
     if (e.target.classList.contains('toggle-chords')) {
-      document.getElementById('song').classList.toggle('nochords');
+      const shown = !document.getElementById('song').classList.toggle('nochords');
+      const chordSwitch = document.getElementById('chordSwitch');
+      if (chordSwitch) chordSwitch.checked = shown;
     }
   });
 
@@ -1644,6 +1646,41 @@ function addToSongAdder(values) {
   const key = it => it.values()['song-id'] === 'section' ? '' : (it.values().name || ' ');
   adder.sort('name', { sortFunction: (a, b) => key(a).localeCompare(key(b)) });
   if (item?.elm) bindAdderSong(item.elm);
+}
+
+// Under an open song: the Key button opens and closes the key list, and picking a key closes it and shows
+// the chords. The Chords switch, there only when the song has chords, shows and hides them (#143).
+function bindKeyAndChords() {
+  const container = document.getElementById('keyToggleContainer');
+  const keyButton = document.getElementById('keyToggle');
+  if (!container || !keyButton) return;
+  const songColumn = document.getElementById('song');
+  const chordSwitch = document.getElementById('chordSwitch');
+  const setOpen = open => {
+    container.classList.toggle('active', open);
+    keyButton.setAttribute('aria-expanded', open);
+  };
+  const setChords = show => {
+    songColumn.classList.toggle('nochords', !show);
+    chordSwitch.checked = show;
+  };
+  keyButton.addEventListener('click', () => setOpen(!container.classList.contains('active')));
+  chordSwitch.closest('label').hidden = !container.closest('song')?.querySelector('c');
+  chordSwitch.checked = !songColumn.classList.contains('nochords');
+  chordSwitch.addEventListener('change', () => setChords(chordSwitch.checked));
+  // After a key is picked, keyboard users go back to the Key button; a tap or click leaves no focus ring
+  let byKeyboard = false;
+  container.addEventListener('keydown', () => { byKeyboard = true; });
+  container.addEventListener('pointerdown', () => { byKeyboard = false; });
+  Transposer(keyButton, {
+    onPick: name => {
+      keyButton.querySelector('.key-name').textContent = name;
+      setOpen(false);
+      setChords(true);
+      if (byKeyboard) keyButton.focus({ preventScroll: true });
+      else document.activeElement?.blur();
+    },
+  });
 }
 
 async function editSong() {

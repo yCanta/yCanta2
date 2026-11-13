@@ -1813,7 +1813,7 @@ function loadSong(song_id, song_rev = false) {
             ${song.deletedAt && canEdit(song) ? `<button class="btn btn-tiny" onclick="restoreOpenSong(this)">↶ Restore</button>` : ''}</p>` : ''}
           <authors><author>${song.authors.join('</author>, <author>')}</author></authors>
           <scripture_ref><scrip_ref>${song.scripture_ref.join('</scrip_ref>, <scrip_ref>')}</scrip_ref></scripture_ref>
-          ${!song_rev ? `<span id="keyToggleContainer"><span id="keyToggleFilter">` : ''}<key>${song.key}</key>${!song_rev ? `<button id="keyToggle" onclick="this.parentElement.parentElement.classList.toggle('active')">↑↓</button></span></span>` : ''}
+          ${!song_rev ? `<span id="keyToggleContainer"><span id="keyToggleFilter">` : ''}<key>${song.key}</key>${!song_rev ? `<button id="keyToggle" type="button" aria-expanded="false" title="Change the key">Key: <b class="key-name">${escapeHtml(song.key)}</b><span class="chevron" aria-hidden="true"></span></button><label class="chord-switch" hidden><input type="checkbox" id="chordSwitch"><span class="switch-track" aria-hidden="true"></span>Chords</label></span></span>` : ''}
           <categories><cat>${song.categories.sort().join('</cat>, <cat>')}</cat></categories>
           <cclis>${(song.cclis ? (!isNaN(song.cclis) ? 'CCLI Song #: '+song.cclis : 'In CCLI') : '')}</cclis>
           <introduction>${song.introduction}</introduction>
@@ -1886,7 +1886,7 @@ function loadSong(song_id, song_rev = false) {
       document.querySelector('#song .edit_buttons')?.remove();
 
       if (!song_rev) {
-        Transposer(document.querySelector('#keyToggle'));
+        bindKeyAndChords();
       }
       if (document.getElementById('dialog').style.display === "block" && 
           document.getElementById('dialog').dataset.use === "info") {
