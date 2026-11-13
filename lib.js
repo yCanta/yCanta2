@@ -852,6 +852,43 @@ function highlightText(){
     });
   }
 }
+// The keyboard in the searchable lists (#66): ↓ from the search box goes to the first result, ↑ and ↓ move
+// through the results (Home and End to the ends), and ↑ from the first result or Esc goes back to the
+// search box. Enter does what a click does: a link does that by itself; a category's checkbox is ticked.
+// A songbook's section headings are skipped (nothing to open), but "New Section" in "Add a song?" is not.
+const KEYBOARD_LISTS = '#songbooks_container, #songbook_content, #songbook_edit_togglesongs, #categories';
+document.addEventListener('keydown', e => {
+  if (!['ArrowDown', 'ArrowUp', 'Home', 'End', 'Escape', 'Enter'].includes(e.key) || e.altKey || e.ctrlKey || e.metaKey) return;
+  const box = e.target.closest?.(KEYBOARD_LISTS);
+  if (!box || e.target.isContentEditable) return;
+  const search = box.querySelector('.search');
+  const stops = [...box.querySelectorAll('.list > li')]
+    .filter(li => li.offsetParent !== null && !(box.id === 'songbook_content' && li.dataset.songId === 'section'))
+    .map(li => li.querySelector('a, input'))
+    .filter(Boolean);
+  const onSearch = e.target === search;
+  const at = stops.indexOf(e.target);
+  if (!onSearch && at < 0) return;
+  if (e.key === 'Enter') {
+    if (e.target.type === 'checkbox') {
+      e.preventDefault();
+      e.target.click();
+    }
+    return; // a link opens by itself
+  }
+  let next = null;
+  if (e.key === 'ArrowDown') next = onSearch ? stops[0] : stops[at + 1];
+  else if (onSearch) return; // ↑, Home, End and Esc keep their usual job in the search box
+  else if (e.key === 'ArrowUp') next = at > 0 ? stops[at - 1] : search;
+  else if (e.key === 'Home') next = stops[0];
+  else if (e.key === 'End') next = stops.at(-1);
+  else if (e.key === 'Escape') next = search;
+  if (!next || next.disabled) return;
+  e.preventDefault(); // and the page doesn't scroll
+  next.focus();
+  next.scrollIntoView?.({ block: 'nearest' });
+});
+
 function bindSearchToList(list, id) {
   const updateCountDisplay = (list, targetId) => {
     const countElement = document.querySelector(`${targetId} .search + span`);
