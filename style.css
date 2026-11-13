@@ -2363,6 +2363,25 @@ only screen and (max-height: 31.25rem) {
 .mb23 {
   margin-bottom: 2.5em
 }
+/* The Category menu under the search box in the songbook editor's "Add a song?" list (#84) */
+.adder-category {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  margin-top: .4rem;
+  font-size: .85em;
+  color: var(--light-text-color);
+}
+.adder-category select {
+  flex: 1;
+  min-width: 0;
+  padding: .15rem .5rem;
+  border-radius: 2rem;
+  border: 1px solid rgba(128, 128, 128, .45);
+  background-color: var(--btn-color);
+  color: var(--text-color);
+  font: inherit;
+}
 .bluehighlight {
   background-color: var(--song-color) !important;
 }

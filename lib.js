@@ -793,9 +793,11 @@ function bindSearchToList(list, id) {
       const visibleCount = list.visibleItems.length;
       countElement.dataset.numberVisible = `${songPlacement ? `${songPlacement}/` : ''}${visibleCount}`;
     } else {
-      countElement.dataset.numberVisible = list.visibleItems.length;
+      countElement.dataset.numberVisible = songCount(list);
     }
   };
+  // "New Section" in "Add a song?" isn't a song
+  const songCount = list => list.visibleItems.filter(item => item.values()['song-id'] !== 'section').length;
 
   const handleSearchComplete = () => {
     updateCountDisplay(list, id);
@@ -815,12 +817,13 @@ function bindSearchToList(list, id) {
   } else {
     const countElement = document.querySelector(`${id} .search + span`);
     if (countElement) {
-      countElement.dataset.numberVisible = document.querySelectorAll(`${id} .list li`).length;
+      countElement.dataset.numberVisible = songCount(list);
     }
   }
 
-  // Bind search complete event
+  // Bind search complete event (and filter, for the Category menu in "Add a song?")
   list.on('searchComplete', handleSearchComplete);
+  list.on('filterComplete', handleSearchComplete);
 }
 
 function bindToSongEdit() {
@@ -1337,6 +1340,13 @@ function buildSongbookList(songs, target_class='songbook_content',
       <option value=""></option>
       <option value="c:!c">No Category</option>
       ${categories.categories.map(cat => `<option value="c:${cat}">${cat}</option>`).join('')}`;
+    // and the songbook editor's "Add a song?" list (#84); a new editor starts on All
+    const adderFilter = document.getElementById('adder_category');
+    const keep = edit ? '' : adderFilter.value;
+    adderFilter.innerHTML = '<option value="">All</option><option value="!c">No category</option>' +
+      categories.categories.map(cat => `<option value="${escapeHtml(cat)}">${escapeHtml(cat)}</option>`).join('');
+    adderFilter.value = [...adderFilter.options].some(o => o.value === keep) ? keep : '';
+    if (edit) filterSongAdder();
   }).catch(err => reportDbError(err, 'load the category filter'));
 
   // Create list
@@ -1361,6 +1371,21 @@ function buildSongbookList(songs, target_class='songbook_content',
   }
   // A list rebuilt by a sync change has no hrefs or current-song highlight yet
   if (window.songbook && window.song) updateAllLinks();
+}
+
+// The Category menu in the songbook editor's "Add a song?" list (#84). It works together with the search
+// box, and "New Section" always stays.
+function filterSongAdder() {
+  const adder = window.songbook_edit_togglesongs_list;
+  const want = document.getElementById('adder_category')?.value;
+  if (!adder) return;
+  if (!want) {
+    adder.filter();
+    return;
+  }
+  // a song's search text holds "c:Joy c:Praise\0", or "c:!c\0" when it has no category
+  const match = want === '!c' ? /\0c:!c\0/ : new RegExp(`\\0c:(?:[^\\0]* c:)?${escapeRegExp(stripAccents(want))}(?: c:|\\0)`);
+  adder.filter(item => item.values()['song-id'] === 'section' || match.test(item.values()['song-search'] || ''));
 }
 function dataxInBookUpdate(song, remove = false) {
    const songId = song.getAttribute('data-song-id');
@@ -1645,6 +1670,7 @@ function addToSongAdder(values) {
   const [item] = adder.add(values);
   const key = it => it.values()['song-id'] === 'section' ? '' : (it.values().name || ' ');
   adder.sort('name', { sortFunction: (a, b) => key(a).localeCompare(key(b)) });
+  filterSongAdder(); // a new item isn't filtered yet
   if (item?.elm) bindAdderSong(item.elm);
 }
 

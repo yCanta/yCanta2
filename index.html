@@ -216,6 +216,9 @@
               <div class="column_header">
                 <h3>Add a song?<button onclick="this.closest('.sidebar-open').classList.remove('sidebar-open');" class="icon-fl-right close-icon-mobile">&times;</button></h3>
                 <input aria-label="Search" class="search deletable" type="text" data-target="#songbook_edit_togglesongs" data-trigger="change" placeholder="Search">
+                <label class="adder-category">Category:
+                  <select id="adder_category" onchange="filterSongAdder()"><option value="">All</option></select>
+                </label>
               </div>
               <ul class="list">
               </ul>
