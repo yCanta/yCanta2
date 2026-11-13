@@ -612,37 +612,14 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       // Setup sync for remote databases
       if(willDownload) { // no remoteDb: logged in from this device's copy
         console.log('doing a onetime sync...');
-        let startTime = new Date();
-        
+        const status = downloadStatus({ first: firstDownload, tip: firstDownload && !keepLoggedIn });
         try {
-          await db.sync(remoteDb, SYNC_OPTIONS).on('denied', reportDenied).on('change', (change) => {
-            const percentage = downloadPercent(change);
-            if (percentage === null) return; // this device sending its own changes up
-
-            document.documentElement.classList.add('barLoading');
-            
-            if(new Date() - startTime > 4000 && !document.documentElement.classList.contains('circleLoading')) {
-              document.documentElement.classList.add('circleLoading');
-            }
-            
-            if((new Date() - startTime) > 10000) {
-              document.documentElement.classList.remove('circleLoading');
-              startTime = false;
-            }
-            
-            document.documentElement.style.setProperty('--status-text', `"Downloading song files to your device . . . ${percentage}%${(startTime ? ' \\a If this happens every time you log in, try clicking \\"Keep me logged in\\" :)' : '')}"`);
-            document.documentElement.style.setProperty('--animation', `3s loading infinite`);
-          });
+          await db.sync(remoteDb, SYNC_OPTIONS).on('denied', reportDenied).on('change', status.update);
         } catch (error) {
           // Not fatal: the app goes on with the copy on this device, and the live sync below keeps trying
           reportDbError(error, 'download the latest songs');
         }
-        console.log('finished');
-
-        document.documentElement.classList.remove('circleLoading', 'barLoading');
-        document.documentElement.style.setProperty('--status-text', '""');
-        document.documentElement.style.setProperty('--animation', '"unset"');
-        
+        status.finish();
         console.log('sync complete');
         await setUpSyncHandler();
         setLoginState();
@@ -705,17 +682,58 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
 // A device keeps its own copies after sending them: deleting them here would delete them on the server.
 const SYNC_OPTIONS = { pull: { selector: { _id: { $not: { $regex: '^h-' } } } } };
 
-// How far a download from the server has got, 0-100, or null for a change going up. The server's change
-// list has one row per doc (deleted ones too), and each batch says how many rows are left ("pending").
-// (It used to divide the change number by the server's latest one, but that number counts every edit ever
-// made: docs saved again in bulk all sit near the end, so the first batch already showed about 70%.)
-function downloadPercent(change) {
-  if (change.direction !== 'pull') return null;
-  const total = (window.info?.doc_count || 0) + (window.info?.doc_del_count || 0);
-  if (!total) return 0;
-  const left = change.change.pending;
-  const done = typeof left === 'number' ? total - left : change.change.docs_read; // pending is missing on old servers
-  return Math.max(0, Math.min(99, Math.floor(done / total * 100))); // 100 is when it's finished
+// The card that shows a sign-in's download from the server. A first download (nothing on this device yet,
+// and the page waits for it) gets a card in the middle of the screen; catching up (the songs are already
+// here) a slim card at the bottom, and only if it takes more than a second.
+//
+// Progress counts rows of the server's change list: one per doc, deleted ones too, and each batch says
+// how many are left ("pending"). (It used to divide the change number by the server's latest one, but that
+// number counts every edit ever made: docs saved again in bulk all sit near the end, so the first batch
+// already showed about 70%.)
+function downloadStatus({ first, tip }) {
+  const started = Date.now();
+  let total = first ? (window.info?.doc_count || 0) + (window.info?.doc_del_count || 0) : 0;
+  let card = null;
+  const show = () => {
+    card = document.createElement('div');
+    card.id = 'download_status';
+    card.className = first ? 'first' : 'catching-up';
+    card.innerHTML = `<div class="download-card" role="status">
+        <h4>${first ? 'Getting your songs' : 'Updating songs'}</h4>
+        <div class="download-track"><div class="download-fill"></div></div>
+        <div class="download-meta"><span class="download-count"></span><span class="download-percent">0%</span></div>
+        ${tip ? '<p class="download-tip">Tip: tick "Keep me logged in" and this device keeps its songs, so next time you can skip this.</p>' : ''}
+      </div>`;
+    document.body.append(card);
+    requestAnimationFrame(() => card.classList.add('open'));
+  };
+  const draw = (done, percent) => {
+    card.querySelector('.download-fill').style.width = `${percent}%`;
+    card.querySelector('.download-percent').textContent = `${percent}%`;
+    if (first && total) card.querySelector('.download-count').textContent = `${Math.min(done, total).toLocaleString()} of ${total.toLocaleString()}`;
+  };
+  if (first) show();
+  return {
+    update(change) {
+      if (change.direction !== 'pull') return; // this device sending its own changes up
+      const left = typeof change.change.pending === 'number' ? change.change.pending : null; // missing on old servers
+      if (!total) total = (left || 0) + (change.change.docs_read || 0);
+      if (!card) {
+        if (Date.now() - started < 1000) return; // a quick catch-up shows nothing
+        show();
+      }
+      const done = left === null ? change.change.docs_read : total - left;
+      draw(done, total ? Math.max(0, Math.min(99, Math.floor(done / total * 100))) : 0); // 100 is when it's finished
+    },
+    finish() {
+      if (!card) return;
+      draw(total, 100);
+      setTimeout(() => {
+        card.classList.remove('open');
+        setTimeout(() => card.remove(), 400);
+      }, 400);
+    },
+  };
 }
 function setUpSyncHandler() {
   try {

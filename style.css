@@ -196,53 +196,105 @@ body, body *,
 body {
   background-color: var(--background-color);
 }
+/* the line along the bottom: green online, yellow offline */
 html::after {
   border-bottom: 5px solid green;
   z-index: 10;
   content: '';
   display: block;
   position: fixed;
-  content: var(--status-text);
-  background: var(--song-color);
-  text-align: center;
-  animation: var(--animation);
-  line-height: auto;
-  border-radius: 0;
   top: calc(100vh - 5px);
   bottom: 0;
   left: 0;
   right: 0;
-  transition: all .2s;
 }
-html.barLoading::after { 
-  line-height: 3rem;
-  top: calc(100vh - 3rem);
-  border-radius: 0%;
-  border-top-left-radius: 2rem;
-  border-top-right-radius: 2rem;
+/* A sign-in's download (db.js downloadStatus): a card in the middle over a dimmed page the first time on
+   a device, a slim card at the bottom when catching up */
+#download_status {
+  position: fixed;
+  z-index: 60;
 }
-html.circleLoading::after {
-  --circle-size: min(90vw, 90vh, 30rem);
-  line-height: unset;
-  padding-top: calc(var(--circle-size)/2 - 2vh);
-  padding-left: 2rem;
-  padding-right: 2rem;
-  top: calc((100vh - var(--circle-size)) / 2);
-  bottom: calc((100vh - var(--circle-size)) / 2);
-  width: var(--circle-size);
-  margin-left: auto;
-  margin-right: auto;
-  border-radius: 100%;
-  white-space: pre-wrap;
-  box-sizing: border-box;
+#download_status.first {
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, .35);
+  opacity: 0;
+  transition: opacity .25s;
 }
-@keyframes loading { 
-  from { 
-    filter: drop-shadow(-99vw 4px 6px black);
-  } 
-  to { 
-    filter: drop-shadow(99vw 4px 6px black);
-  } 
+#download_status.catching-up {
+  left: 0;
+  right: 0;
+  bottom: 1rem;
+  width: min(26rem, calc(100% - 1.5rem));
+  margin: 0 auto;
+  transform: translateY(150%);
+  transition: transform .3s ease;
+}
+#download_status.first.open {
+  opacity: 1;
+}
+#download_status.catching-up.open {
+  transform: none;
+}
+.download-card {
+  width: min(22rem, calc(100vw - 2rem));
+  padding: 1.25rem 1.25rem 1rem;
+  border-radius: 1rem;
+  color: var(--text-color);
+  background-color: var(--background-color);
+  box-shadow: var(--box-shadow-var), inset 0 0 0 1px var(--btn-edge);
+}
+.catching-up .download-card {
+  width: auto;
+  padding: .7rem 1rem .75rem;
+}
+.download-card h4 {
+  margin: 0 0 .6rem;
+  font-size: 1rem;
+}
+.catching-up .download-card h4 {
+  margin-bottom: .45rem;
+  font-size: .9rem;
+}
+.download-track {
+  height: .6rem;
+  overflow: hidden;
+  border-radius: 1rem;
+  background-color: rgba(128, 128, 128, .25);
+}
+.download-fill {
+  width: 0;
+  height: 100%;
+  border-radius: 1rem;
+  background-color: var(--song-color);
+  background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, .45), transparent);
+  background-size: 3rem 100%;
+  background-repeat: no-repeat;
+  transition: width .3s ease;
+  animation: download-shine 1.4s linear infinite;
+}
+@keyframes download-shine {
+  from { background-position: -3rem 0; }
+  to { background-position: calc(100% + 3rem) 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .download-fill { animation: none; }
+}
+.download-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-top: .4rem;
+  font-size: .8rem;
+  color: var(--light-text-color);
+}
+.download-tip {
+  margin: .8rem 0 0;
+  padding-top: .6rem;
+  border-top: 1px solid rgba(128, 128, 128, .25);
+  font-size: .8rem;
+  color: var(--light-text-color);
 }
 html, body, main{
   height: 100%; 
