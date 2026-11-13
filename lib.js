@@ -2804,9 +2804,13 @@ async function loadInfo(song = true) {
   dialog.setAttribute('data-use', 'info');
 
   // Helper function to create info content
+  // Church admins can change who it belongs to (#120); not a deleted song, or All Songs and Favorite Songs
+  const doc = song ? window.song : window.songbook;
+  const ownerButton = window.church?.admin && doc?._rev && !doc._deleted
+    ? ` <button class="btn btn-tiny" onclick="changeOwner(${song})" title="Change who it belongs to">Change</button>` : '';
   const createInfoContent = (title, addedBy, addedDate, editedBy, editedDate, extraContent = '') => {
     return `
-      <small>Added by: ${addedBy}<br>${formatDate(addedDate)}</small><br>
+      <small>Added by: ${escapeHtml(addedBy || '')}${ownerButton}<br>${formatDate(addedDate)}</small><br>
       <small>Edited by: ${editedBy}<br>${formatDate(editedDate)}</small><br>
       ${extraContent}`;
   };
@@ -2873,7 +2877,7 @@ async function loadInfo(song = true) {
       window.song.title,
       createInfoContent(
         window.song.title,
-        window.users[window.song.addedBy] || window.song.addedBy,
+        window.users[window.song.addedBy] || window.song.addedBy?.replace(/^u-/, ''),
         window.song.added,
         window.users[window.song.editedBy] || window.song.editedBy.slice(2),
         window.song.edited,
@@ -2897,9 +2901,9 @@ async function loadInfo(song = true) {
       window.songbook.title,
       createInfoContent(
         window.songbook.title,
-        window.users[window.songbook.addedBy] || window.songbook.addedBy,
+        window.users[window.songbook.addedBy] || window.songbook.addedBy?.replace(/^u-/, ''),
         window.songbook.added,
-        window.users[window.songbook.editedBy] || window.songbook.editedBy,
+        window.users[window.songbook.editedBy] || window.songbook.editedBy?.replace(/^u-/, ''),
         window.songbook.edited,
         revisionInfo
       )

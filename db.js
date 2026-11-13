@@ -2062,6 +2062,10 @@ async function restoreVersion(entry) {
   const now = await currentDoc(id);
   const restored = savedByMe({ ...entry.version, _id: id });
   if (now) restored._rev = now._rev;
+  if (now?.addedBy && !now._deleted) { // the words come back; who it belongs to stays (#120)
+    restored.addedBy = now.addedBy;
+    if (typeof restored.search === 'string') restored.search = restored.search.replace(/addedBy:[^\0]*\0/, `addedBy:${now.addedBy.replace(/^u-/, '')}\0`);
+  }
   if (!canEdit(now || restored) || !canEdit(restored)) throw new Error("You're not allowed to change this.");
   return saveWithHistory(restored); // the change feed puts a deleted one back in the open lists
 }
@@ -2397,6 +2401,43 @@ async function listTrash() {
 }
 
 // Bring a deleted song or songbook back, exactly as it was, as a new revision on top of the delete. (#138)
+// Church admins: who a song or songbook belongs to (#120). Its owner can change and delete it without
+// being an editor. The save is recorded as this admin's, and the version it replaces is kept.
+async function changeOwner(isSong) {
+  const current = isSong ? window.song : window.songbook;
+  if (!window.church?.admin || !current?._rev || current._deleted) return;
+  const id = current._id;
+  // Everyone on the church's list (online), and everyone with a profile on this device
+  const names = new Map(Object.entries(window.users || {}));
+  try {
+    if (remoteDb && navigator.onLine) for (const name of churchPeople(await getChurchSecurity()).keys()) if (!names.has('u-' + name)) names.set('u-' + name, name);
+  } catch (err) {
+    console.warn("Couldn't read the church's list of people:", err);
+  }
+  const people = [...names].sort((a, b) => String(a[1]).localeCompare(String(b[1]), undefined, { sensitivity: 'base' }));
+  if (current.addedBy && !people.some(([userId]) => userId === current.addedBy)) people.unshift([current.addedBy, current.addedBy.replace(/^u-/, '')]);
+  const options = people.map(([userId, name]) =>
+    `<option value="${escapeHtml(userId)}"${userId === current.addedBy ? ' selected' : ''}>${escapeHtml(name || userId.replace(/^u-/, ''))}</option>`).join('');
+  const dialog = new TaskDialog(`Who "${current.title}" belongs to`);
+  const result = await dialog.run({
+    text: `The person it belongs to can change and delete it, even if they aren't an editor. It shows as "Added by" in its info.`,
+    html: `<label>Belongs to<select name="owner" required>${options}</select></label>`,
+    submit: 'Change',
+    working: 'Saving…',
+    action: async ({ owner }) => {
+      const doc = await db.get(id); // the newest, in case it changed since it was opened
+      if (owner === doc.addedBy) return 'same';
+      doc.addedBy = owner;
+      if (typeof doc.search === 'string') doc.search = doc.search.replace(/addedBy:[^\0]*\0/, `addedBy:${owner.replace(/^u-/, '')}\0`);
+      await saveWithHistory(savedByMe(doc));
+      return owner;
+    },
+  });
+  if (result === null) return;
+  await dialog.finish(result === 'same' ? 'It already belongs to them, so nothing changed.'
+    : `"${current.title}" now belongs to ${window.users?.[result] || result.replace(/^u-/, '')}.`);
+}
+
 async function restoreDeleted(id, rev) {
   const tombstone = await db.get(id, { rev });
   if (!tombstone._deleted || !tombstone.deletedAt) throw new Error(`${id} has nothing to restore`);
