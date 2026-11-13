@@ -11,12 +11,25 @@ function updateOnlineStatus(event) {
   console.log(`Event: ${event.type}; Status: ${condition}`);
   logData('connection', condition);
 }
+// Keep the screen from going dark while yCanta is open (songs are read from it). The browser drops the lock
+// whenever the page is hidden, so ask again each time it comes back. Browsers without it (iOS before 16.4)
+// and a refusal (low battery, a hidden page) just mean the screen sleeps as usual.
+async function keepScreenOn() {
+  if (!('wakeLock' in navigator) || document.visibilityState !== 'visible' || window.currentWakeLock && !window.currentWakeLock.released) return;
+  try {
+    window.currentWakeLock = await navigator.wakeLock.request('screen');
+  } catch (err) {
+    console.info("The screen may go dark: the browser didn't keep it on.", err.name);
+  }
+}
+document.addEventListener('visibilitychange', keepScreenOn);
+
 window.addEventListener('load', function() {
   // Update Online status
   updateOnlineStatus(event);
   window.addEventListener('online', updateOnlineStatus);
   window.addEventListener('offline', updateOnlineStatus);
-  window.currentWakeLock = navigator.wakeLock.request();
+  keepScreenOn();
 
   // Login listener
   const dbSelect = document.getElementById('db_select');
@@ -603,8 +616,9 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
         
         try {
           await db.sync(remoteDb, SYNC_OPTIONS).on('denied', reportDenied).on('change', (change) => {
-            const percentage = parseInt(parseInt(change.change.last_seq.split('-')[0].replace('-',''))/parseInt(window.info.update_seq.replace('-',''))*100);
-            
+            const percentage = downloadPercent(change);
+            if (percentage === null) return; // this device sending its own changes up
+
             document.documentElement.classList.add('barLoading');
             
             if(new Date() - startTime > 4000 && !document.documentElement.classList.contains('circleLoading')) {
@@ -690,6 +704,19 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
 // only the history view reads, from the server, when it's opened (#138). The server does the filtering.
 // A device keeps its own copies after sending them: deleting them here would delete them on the server.
 const SYNC_OPTIONS = { pull: { selector: { _id: { $not: { $regex: '^h-' } } } } };
+
+// How far a download from the server has got, 0-100, or null for a change going up. The server's change
+// list has one row per doc (deleted ones too), and each batch says how many rows are left ("pending").
+// (It used to divide the change number by the server's latest one, but that number counts every edit ever
+// made: docs saved again in bulk all sit near the end, so the first batch already showed about 70%.)
+function downloadPercent(change) {
+  if (change.direction !== 'pull') return null;
+  const total = (window.info?.doc_count || 0) + (window.info?.doc_del_count || 0);
+  if (!total) return 0;
+  const left = change.change.pending;
+  const done = typeof left === 'number' ? total - left : change.change.docs_read; // pending is missing on old servers
+  return Math.max(0, Math.min(99, Math.floor(done / total * 100))); // 100 is when it's finished
+}
 function setUpSyncHandler() {
   try {
     syncHandler = db.sync(remoteDb, {
@@ -697,7 +724,7 @@ function setUpSyncHandler() {
       live: true,
       retry: true
     }).on('denied', reportDenied).on('change', function (change) {
-      console.log('Synced some stuff', window.info ? parseInt(parseInt(change.change.last_seq.split('-')[0].replace('-',''))/parseInt(window.info.update_seq.replace('-',''))*100)+'%' : '');
+      console.log('Synced some stuff:', change.direction, change.change.docs_written, 'docs');
       // yo, something changed!
     }).on('paused', function (info) {
       // replication was paused, usually because of a lost connection
