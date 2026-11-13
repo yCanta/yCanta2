@@ -36,17 +36,29 @@ function reportDbError(err, whatFailed, { stay = false, more = '', onClick = nul
     notyf.error(message);
     return null;
   }
-  return stickyError(onClick ? `${message} Tap here to try again.` : message, onClick);
+  return stickyError(onClick ? `${message} Tap here to try again.` : message, onClick, whatFailed);
 }
 
-// A red message at the top that stays until it's closed (#137), or tapped when it offers to try again
-function stickyError(message, onClick = null) {
+// A red message at the top that stays until it's closed (#137), or tapped when it offers to try again.
+// One per kind: a second failure of the same kind (a save tried again) replaces the first.
+const stickyErrors = new Map();
+function stickyError(message, onClick = null, kind = message) {
+  clearStickyError(kind);
   const notice = dysmyssable.open({ type: 'error', message, background: 'crimson' });
+  stickyErrors.set(kind, notice);
+  notice.on('dismiss', () => { if (stickyErrors.get(kind) === notice) stickyErrors.delete(kind); });
   if (onClick) notice.on('click', () => {
-    dysmyssable.dismiss(notice);
+    clearStickyError(kind);
     onClick();
   });
   return notice;
+}
+// Take a kind's message away, e.g. when the save it was about worked after all
+function clearStickyError(kind) {
+  const notice = stickyErrors.get(kind);
+  if (!notice) return;
+  stickyErrors.delete(kind);
+  dysmyssable.dismiss(notice);
 }
 // A step-by-step dialog for tasks that need input: adding people, passwords, recovery email.
 // It is the browser's own <dialog> and <form>: showModal() dims the page, keeps keyboard focus inside
@@ -806,7 +818,7 @@ function bindSearchToList(list, id) {
 
     if (list === window.songbook_list) {
       const songPlacement = list.visibleItems.findIndex(
-        el => el._values['song-id'] === window.song._id
+        el => el._values['song-id'] === window.song?._id // no song open after a cancelled edit
       ) + 1;
       const visibleCount = list.visibleItems.length;
       countElement.dataset.numberVisible = `${songPlacement ? `${songPlacement}/` : ''}${visibleCount}`;
@@ -825,7 +837,7 @@ function bindSearchToList(list, id) {
   // Initial count setup
   if (list === window.songbook_list) {
     const initialPlacement = list.visibleItems.findIndex(
-      el => el._values['song-id'] === window.song._id
+      el => el._values['song-id'] === window.song?._id
     ) + 1;
     const totalCount = document.querySelectorAll(`${id} .list li`).length;
     const countElement = document.querySelector(`${id} .search + span`);
@@ -1488,6 +1500,7 @@ const songFilters = {};
 const songFilterState = name => songFilters[name] ||= { cat: new Set(), key: new Set(), has: new Set(), yt: new Set(), sort: 'title' };
 const songFilterList = name => name === 'adder' ? window.songbook_edit_togglesongs_list : window.songbook_list;
 const songFilterCount = f => f.cat.size + f.key.size + f.has.size + f.yt.size;
+const songFilterOn = name => { const f = songFilterState(name); return songFilterCount(f) > 0 || f.sort !== 'title'; };
 const videoLabel = n => n ? String(n) : 'None';
 // Sorting only where there's no order of its own to keep: All Songs, Favorite Songs and "Add a song?"
 const songFilterSorts = name => name === 'adder' || ['sb-allSongs', 'sb-favoriteSongs'].includes(window.songbook?._id);
@@ -1498,7 +1511,8 @@ function songFacts(doc) {
   return {
     cats: (doc.categories || []).filter(Boolean),
     key: doc.key || '',
-    chords: JSON.stringify(doc.content || []).includes('<c>'),
+    chords: (doc.content || []).some(chunk => (chunk?.[1] || []).some(line => String(line).includes('<c>'))), // stops at the first
+
     yt: Number(doc.yt) || 0,
     ccli: !!doc.cclis,
     scripture: (doc.scripture_ref || []).some(ref => ref.trim()),
@@ -1662,6 +1676,7 @@ function fillSongFilterPanel(name, panel) {
       <div class="filter-options">${[...picked, NO_CATEGORY].map(catChip).join('')}</div>
       <input type="search" class="filter-find" placeholder="Find a category" aria-label="Find a category" value="${escapeHtml(f.find || '')}">
       <div class="filter-cat-body">${songCategoryBody(name)}</div></div>`;
+  const scrolled = panel.scrollTop; // a redraw (a pick, or a sync change under it) keeps your place
   panel.innerHTML = `<div class="filter-grip" aria-hidden="true"></div>` + category +
     section('Key', keys.map(k => chip('key', k, k, countWith('key', facts => facts.key === k))).join('')) +
     section('Has', SONG_FILTER_HAS.map(([id, label, test]) => chip('has', id, label, countWith('has', test))).join('')) +
@@ -1669,6 +1684,7 @@ function fillSongFilterPanel(name, panel) {
     (songFilterSorts(name) ? section('Sort', SONG_FILTER_SORTS.map(([id, label]) =>
       `<button type="button" class="filter-chip${f.sort === id ? ' sel' : ''}" data-sort="${id}" aria-pressed="${f.sort === id}">${label}</button>`).join('')) : '') +
     `<div class="filter-actions"><button type="button" class="btn btn-small filter-clear-all"${songFilterCount(f) || f.sort !== 'title' ? '' : ' hidden'}>Clear all</button><button type="button" class="btn btn-small filter-done">Show ${shown} song${shown === 1 ? '' : 's'}</button></div>`;
+  panel.scrollTop = scrolled;
   if (finding) { // picking a found category redraws the panel: stay in the box
     const box = panel.querySelector('.filter-find');
     box.focus({ preventScroll: true });
@@ -1768,8 +1784,12 @@ document.addEventListener('pointerdown', e => {
   if (e.target.closest('.filter-panel, .filter-btn, #filter_scrim')) return;
   document.querySelectorAll('.filter-panel.open:not(.sheet)').forEach(panel => toggleSongFilterPanel(panel.id.replace('filter_panel_', ''), false));
 });
-['hashchange', 'resize'].forEach(type => window.addEventListener(type, () =>
-  document.querySelectorAll('.filter-panel.open').forEach(panel => toggleSongFilterPanel(panel.id.replace('filter_panel_', ''), false))));
+// A new screen closes any panel; a resize only the desktop dropdown (placed by the button), since on phones
+// the keyboard opening for "Find a category", or the toolbar hiding, resizes the page under the sheet
+window.addEventListener('hashchange', () =>
+  document.querySelectorAll('.filter-panel.open').forEach(panel => toggleSongFilterPanel(panel.id.replace('filter_panel_', ''), false)));
+window.addEventListener('resize', () =>
+  document.querySelectorAll('.filter-panel.open:not(.sheet)').forEach(panel => toggleSongFilterPanel(panel.id.replace('filter_panel_', ''), false)));
 // The chips under the search box: × takes one away, "Clear all" takes them all
 document.addEventListener('click', e => {
   const row = e.target.closest('.filter-chips');
@@ -2304,6 +2324,7 @@ async function editSong() {
 async function saveSongbookFromEditor() {
   try {
     await saveSongbook(parseHash('sb-'));
+    clearStickyError('save the songbook'); // an earlier failed try's message
   } catch (err) {
     window.songbookEditing = true;
     reportDbError(err, 'save the songbook', { stay: true }); // the editor stays open with the changes
@@ -2368,6 +2389,7 @@ async function prepSaveSong() {
   try {
     delete window.song;
     await saveSong(openSong._id, songElement);
+    clearStickyError('save the song'); // an earlier failed try's message
   } catch (error) {
     // Back to the editor, edits intact
     window.song = openSong;

@@ -226,8 +226,11 @@ function dbChanges() {
       const listShowsSong = window.songbook_list?.get('song-id', change.doc._id).length;
       if (window.songbook?._id === 'sb-allSongs' || (holdsSong && !listShowsSong && !window.songbookEditing)) {
         loadSongbook(window.songbook._id, true).catch(() => {}); // a failure is already reported
+      } else if (songFilterOn('book') && !window.songbookEditing) {
+        applySongFilter('book'); // the changed song may not match the filter now (#84)
       }
-    } 
+      if (window.songbook_edit_togglesongs_list && songFilterOn('adder')) applySongFilter('adder');
+    }
     // Songbook changes
     else if (change.doc._id.startsWith('sb-')) {
       const isCurrentSongbook = window.songbook?._id === change.doc._id && 
@@ -613,13 +616,15 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       if(willDownload) { // no remoteDb: logged in from this device's copy
         console.log('doing a onetime sync...');
         const status = downloadStatus({ first: firstDownload, tip: firstDownload && !keepLoggedIn });
+        let downloaded = true;
         try {
           await db.sync(remoteDb, SYNC_OPTIONS).on('denied', reportDenied).on('change', status.update);
         } catch (error) {
           // Not fatal: the app goes on with the copy on this device, and the live sync below keeps trying
+          downloaded = false;
           reportDbError(error, 'download the latest songs');
         }
-        status.finish();
+        status.finish(downloaded);
         console.log('sync complete');
         await setUpSyncHandler();
         setLoginState();
@@ -725,9 +730,9 @@ function downloadStatus({ first, tip }) {
       const done = left === null ? change.change.docs_read : total - left;
       draw(done, total ? Math.max(0, Math.min(99, Math.floor(done / total * 100))) : 0); // 100 is when it's finished
     },
-    finish() {
+    finish(done = true) {
       if (!card) return;
-      draw(total, 100);
+      if (done) draw(total, 100); // a failed download just closes, with its error showing
       setTimeout(() => {
         card.classList.remove('open');
         setTimeout(() => card.remove(), 400);
@@ -759,21 +764,17 @@ function setUpSyncHandler() {
       } else {
         syncHandler = null; // so reconnectSync can start it again
         // Stays on screen (#137): changes made now stay on this device until sync is back
-        if (!window.syncStoppedNotice) window.syncStoppedNotice = reportDbError(err, 'keep syncing with the server', {
+        reportDbError(err, 'keep syncing with the server', {
           stay: true,
           more: 'Your changes stay on this device until it syncs again.',
           onClick: () => {
-            window.syncStoppedNotice = null;
             if (remoteDb && !syncHandler) setUpSyncHandler();
             else reconnectSync();
           },
         });
       }
     });
-    if (window.syncStoppedNotice) { // sync is back: the message about it stopping can go
-      dysmyssable.dismiss(window.syncStoppedNotice);
-      window.syncStoppedNotice = null;
-    }
+    clearStickyError('keep syncing with the server'); // sync is back: the message about it stopping can go
     notyf.info('Sync established', 'green');
   }
   catch(err) {
@@ -1564,6 +1565,9 @@ async function installSaveRules() {
 
 // The server refused something this device saved (see database/validate.js). Say so once per doc.
 const deniedShown = new Set();
+let deniedRecent = []; // the refusals the message on screen lists; a new list once it's closed
+let deniedTimer = null;
+let deniedNotice = null;
 async function reportDenied(event) {
   const err = event?.doc || event || {}; // sync wraps the refusal as {direction, doc}
   const id = err.id || err._id || '';
@@ -1580,7 +1584,21 @@ async function reportDenied(event) {
   } catch (e) {
     // fine, use the id
   }
-  stickyError(`The server did not save "${escapeHtml(title)}": ${escapeHtml(err.reason || err.message || 'not allowed')}`); // stays until closed (#137)
+  // One message that stays until closed (#137), for every refusal that comes in close together
+  deniedRecent.push({ title, reason: err.reason || err.message || 'not allowed' });
+  clearTimeout(deniedTimer);
+  deniedTimer = setTimeout(() => {
+    const names = deniedRecent.slice(0, 3).map(d => `"${escapeHtml(d.title)}"`).join(', ') + (deniedRecent.length > 3 ? ` and ${deniedRecent.length - 3} more` : '');
+    const reasons = [...new Set(deniedRecent.map(d => d.reason))];
+    deniedNotice = null; // replacing it isn't closing it: the list goes on
+    const notice = stickyError(`The server did not save ${names}: ${escapeHtml(reasons.length === 1 ? reasons[0] : reasons[0] + ' (and other reasons)')}`, null, 'server refused');
+    deniedNotice = notice;
+    notice.on('dismiss', () => {
+      if (deniedNotice !== notice) return;
+      deniedNotice = null;
+      deniedRecent = []; // closed: the next refusal starts a new message
+    });
+  }, 500);
 }
 
 // Your own password, from the profile. Server admins live in the server's settings, so theirs is
