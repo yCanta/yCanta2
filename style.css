@@ -2407,6 +2407,17 @@ only screen and (max-height: 31.25rem) {
   color: var(--text-color);
   cursor: pointer;
 }
+/* the Categories page: a named "-----" divider is a heading, a plain one a line */
+.category-group {
+  margin: .9rem 0 .2rem;
+  font-size: .85rem;
+  color: var(--light-text-color);
+}
+.category-divider {
+  margin: .6rem 0;
+  border: 0;
+  border-top: 1px dashed rgba(128, 128, 128, .5);
+}
 .filter-clear[hidden],
 .filter-clear-all[hidden] {
   display: none; /* the app's button styles would show it anyway */

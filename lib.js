@@ -1068,14 +1068,26 @@ async function loadCategories() {
     
     // Build HTML content
     let html = `<h3>Ordered List <a href="#" onclick="loadRawDbObject('categories', document.getElementById('category_content'), 'loadCategories();')" class="mirror editor-only">&#9998;</a>      </h3><ul>`;
-    
-    // Add each category as a list item
-    result.categories.forEach(cat => {
-      html += `
-        <li><a href="#sb-allSongs" onclick="searchSBfor(this.textContent)">${cat}</a></li>`;
+
+    // Each category as a list item. A "-----" divider starts a group: "----- Seasons" shows Seasons as a
+    // heading, a plain "-----" a line (#84). A category listed twice shows once.
+    const seen = new Set();
+    result.categories.forEach(raw => {
+      const cat = String(raw).trim();
+      const divider = cat.match(/^-{3,}\s*(.*)$/);
+      if (divider) {
+        html += divider[1].trim()
+          ? `</ul><h4 class="category-group">${escapeHtml(divider[1].trim())}</h4><ul>`
+          : '</ul><hr class="category-divider"><ul>';
+      } else if (cat && !seen.has(cat)) {
+        seen.add(cat);
+        html += `
+        <li><a href="#sb-allSongs" onclick="searchSBfor(this.textContent)">${escapeHtml(cat)}</a></li>`;
+      }
     });
-    
+
     html += '</ul>';
+    html = html.replace(/<ul><\/ul>/g, ''); // a list that starts with a divider
     
     // Update DOM
     categoryContent.innerHTML = html;
