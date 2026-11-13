@@ -13,6 +13,8 @@
 
   --box-shadow-var: 0 0 20px 2px rgba(0, 0, 0, 0.2);
   --btn-shadow-var: 0 2px 2px 2px rgba(0, 0, 0, 0.1);
+  --btn-color: white; /* buttons: their own surface and edge, so they stand out in dark mode too */
+  --btn-edge: transparent;
 }
 :root.dark {
   --songbookList-color: #f2c249;
@@ -29,6 +31,8 @@
 
   --box-shadow-var: 0 0 20px 2px rgba(0, 0, 0, 0.5);
   --btn-shadow-var: 0 2px 2px 2px rgba(0, 0, 0, 0.3);
+  --btn-color: #2c2c2c;
+  --btn-edge: rgba(255, 255, 255, .16);
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -46,6 +50,8 @@
 
     --box-shadow-var: 0 0 20px 2px rgba(0, 0, 0, 0.5);
     --btn-shadow-var: 0 2px 2px 2px rgba(0, 0, 0, 0.3);
+    --btn-color: #2c2c2c;
+    --btn-edge: rgba(255, 255, 255, .16);
   }
   :root.light {
     --songbookList-color: lemonchiffon;
@@ -62,6 +68,8 @@
 
     --box-shadow-var: 0 0 20px 2px rgba(0, 0, 0, 0.2);
     --btn-shadow-var: 0 2px 2px 2px rgba(0, 0, 0, 0.1);
+    --btn-color: white;
+    --btn-edge: transparent;
   }
 }
 :root {
@@ -164,9 +172,9 @@ button.circle {
   transform: scale3d(.8, .8, .8);
 }
 .btn {
-  box-shadow: var(--btn-shadow-var);
+  box-shadow: var(--btn-shadow-var), inset 0 0 0 1px var(--btn-edge);
   font-weight: bold;
-  background-color: var(--background-color);
+  background-color: var(--btn-color);
   border-radius: 2rem;
   padding: 5px 15px 5px 15px;
   display: inline-block;
