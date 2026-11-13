@@ -2414,7 +2414,7 @@ only screen and (max-height: 31.25rem) {
 .install-offer .install-btn {
   display: block;
   width: fit-content;
-  margin: 0 .5rem .25rem !important; /* its own line, under Settings and Logout */
+  margin: 0 auto .75rem !important; /* its own line, centered under Settings and Logout */
   font-size: .8rem;
   background-color: var(--song-color);
   color: black;
