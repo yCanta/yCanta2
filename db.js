@@ -984,10 +984,17 @@ function initializeSongbooksList(){
       //Creates list.min.js list for viewing all the songbooks
       // index.html renamed it from "songbooks"; accept both for the one load where the browser has an old copy cached
       const containerId = document.getElementById('songbooks_container') ? 'songbooks_container' : 'songbooks';
-      window.songbooks_list = new List(containerId, options, values);
+      // One list, emptied and refilled: a new List each time added search listeners that never went away
+      if (window.songbooks_list) {
+        window.songbooks_list.clear(); // again: an overlapping rebuild may have filled it since
+        window.songbooks_list.add(values);
+      } else {
+        window.songbooks_list = new List(containerId, options, values);
+        bindSearchToList(window.songbooks_list, '#' + containerId);
+      }
       window.songbooks_list.sort('user-fav', {order: 'desc', sortFunction: sortFavSongbooks});
-      bindSearchToList(window.songbooks_list, '#' + containerId);
-      return 
+      document.querySelector('#' + containerId + ' .search')?.dispatchEvent(new KeyboardEvent('keyup')); // the search box's words, on the new list
+      return
     }
     buildSongbooksList(result.rows);
   }).catch(function(err){

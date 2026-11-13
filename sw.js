@@ -1,6 +1,6 @@
 // Bump this on every release. A new service worker reloads every file at once; without it, files
 // refresh one at a time and a browser can keep running old scripts next to a new index.html.
-const CACHE_VERSION = 'v7';
+const CACHE_VERSION = 'v8';
 const CACHE = `cache-and-update-${CACHE_VERSION}`;
 
 var prefetchedURLs = [
@@ -42,10 +42,73 @@ var prefetchedURLs = [
   'safari-pinned-tab.svg'
 ];
 
+// The PDF viewer for export previews: saved in a second step, so the app still installs if it can't be
+// (about 3MB). Without it, an export made offline can't be previewed, only downloaded.
+var viewerURLs = [
+  'pdfjs-2.8.335-dist/web/viewer.html',
+  'pdfjs-2.8.335-dist/web/viewer.js',
+  'pdfjs-2.8.335-dist/web/viewer.css',
+  'pdfjs-2.8.335-dist/web/locale/locale.properties',
+  'pdfjs-2.8.335-dist/web/locale/en-US/viewer.properties',
+  'pdfjs-2.8.335-dist/build/pdf.js',
+  'pdfjs-2.8.335-dist/build/pdf.worker.js',
+  'pdfjs-2.8.335-dist/build/pdf.sandbox.js',
+  'pdfjs-2.8.335-dist/web/images/annotation-check.svg',
+  'pdfjs-2.8.335-dist/web/images/annotation-comment.svg',
+  'pdfjs-2.8.335-dist/web/images/annotation-help.svg',
+  'pdfjs-2.8.335-dist/web/images/annotation-insert.svg',
+  'pdfjs-2.8.335-dist/web/images/annotation-key.svg',
+  'pdfjs-2.8.335-dist/web/images/annotation-newparagraph.svg',
+  'pdfjs-2.8.335-dist/web/images/annotation-noicon.svg',
+  'pdfjs-2.8.335-dist/web/images/annotation-note.svg',
+  'pdfjs-2.8.335-dist/web/images/annotation-paragraph.svg',
+  'pdfjs-2.8.335-dist/web/images/findbarButton-next.svg',
+  'pdfjs-2.8.335-dist/web/images/findbarButton-previous.svg',
+  'pdfjs-2.8.335-dist/web/images/grab.cur',
+  'pdfjs-2.8.335-dist/web/images/grabbing.cur',
+  'pdfjs-2.8.335-dist/web/images/loading-dark.svg',
+  'pdfjs-2.8.335-dist/web/images/loading-icon.gif',
+  'pdfjs-2.8.335-dist/web/images/loading.svg',
+  'pdfjs-2.8.335-dist/web/images/secondaryToolbarButton-documentProperties.svg',
+  'pdfjs-2.8.335-dist/web/images/secondaryToolbarButton-firstPage.svg',
+  'pdfjs-2.8.335-dist/web/images/secondaryToolbarButton-handTool.svg',
+  'pdfjs-2.8.335-dist/web/images/secondaryToolbarButton-lastPage.svg',
+  'pdfjs-2.8.335-dist/web/images/secondaryToolbarButton-rotateCcw.svg',
+  'pdfjs-2.8.335-dist/web/images/secondaryToolbarButton-rotateCw.svg',
+  'pdfjs-2.8.335-dist/web/images/secondaryToolbarButton-scrollHorizontal.svg',
+  'pdfjs-2.8.335-dist/web/images/secondaryToolbarButton-scrollVertical.svg',
+  'pdfjs-2.8.335-dist/web/images/secondaryToolbarButton-scrollWrapped.svg',
+  'pdfjs-2.8.335-dist/web/images/secondaryToolbarButton-selectTool.svg',
+  'pdfjs-2.8.335-dist/web/images/secondaryToolbarButton-spreadEven.svg',
+  'pdfjs-2.8.335-dist/web/images/secondaryToolbarButton-spreadNone.svg',
+  'pdfjs-2.8.335-dist/web/images/secondaryToolbarButton-spreadOdd.svg',
+  'pdfjs-2.8.335-dist/web/images/shadow.png',
+  'pdfjs-2.8.335-dist/web/images/toolbarButton-bookmark.svg',
+  'pdfjs-2.8.335-dist/web/images/toolbarButton-currentOutlineItem.svg',
+  'pdfjs-2.8.335-dist/web/images/toolbarButton-download.svg',
+  'pdfjs-2.8.335-dist/web/images/toolbarButton-menuArrow.svg',
+  'pdfjs-2.8.335-dist/web/images/toolbarButton-openFile.svg',
+  'pdfjs-2.8.335-dist/web/images/toolbarButton-pageDown.svg',
+  'pdfjs-2.8.335-dist/web/images/toolbarButton-pageUp.svg',
+  'pdfjs-2.8.335-dist/web/images/toolbarButton-presentationMode.svg',
+  'pdfjs-2.8.335-dist/web/images/toolbarButton-print.svg',
+  'pdfjs-2.8.335-dist/web/images/toolbarButton-search.svg',
+  'pdfjs-2.8.335-dist/web/images/toolbarButton-secondaryToolbarToggle.svg',
+  'pdfjs-2.8.335-dist/web/images/toolbarButton-sidebarToggle.svg',
+  'pdfjs-2.8.335-dist/web/images/toolbarButton-viewAttachments.svg',
+  'pdfjs-2.8.335-dist/web/images/toolbarButton-viewLayers.svg',
+  'pdfjs-2.8.335-dist/web/images/toolbarButton-viewOutline.svg',
+  'pdfjs-2.8.335-dist/web/images/toolbarButton-viewThumbnail.svg',
+  'pdfjs-2.8.335-dist/web/images/toolbarButton-zoomIn.svg',
+  'pdfjs-2.8.335-dist/web/images/toolbarButton-zoomOut.svg',
+  'pdfjs-2.8.335-dist/web/images/treeitem-collapsed.svg',
+  'pdfjs-2.8.335-dist/web/images/treeitem-expanded.svg',
+];
+
 self.addEventListener('install', function(evt) {
   console.log(`Service worker installing (version: ${CACHE_VERSION})`);
   self.skipWaiting(); // Immediately activate new SW
-  evt.waitUntil(precache());
+  evt.waitUntil(precache().then(precacheViewer));
 });
 
 self.addEventListener('fetch', function(evt) {
@@ -72,6 +135,15 @@ function precache() {
   return caches.open(CACHE).then(function(cache) {
     // Force a network reload to bypass browser cache for new file structures
     return cache.addAll(prefetchedURLs.map(url => new Request(url, {cache: 'reload'})));
+  });
+}
+
+// Each viewer file on its own: one that fails is fetched (and kept) the next time it's used online
+function precacheViewer() {
+  return caches.open(CACHE).then(function(cache) {
+    return Promise.all(viewerURLs.map(function(url) {
+      return cache.add(new Request(url, {cache: 'reload'})).catch(function() {});
+    }));
   });
 }
 

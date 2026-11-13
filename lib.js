@@ -1494,33 +1494,42 @@ function buildSongbookList(songs, target_class='songbook_content',
     renderSongFilter(edit ? 'adder' : 'book');
   }).catch(err => reportDbError(err, 'load the category filter'));
 
-  // Create list
+  // Make the list once, then empty and refill it. Each new List on the same box added another set of
+  // search listeners to it, which never went away: every keystroke ran one more search for each songbook
+  // opened since the page loaded. (Clearing right before refilling also keeps reloads that overlap, from
+  // several sync changes at once, from listing every song several times.)
   if (!edit) {
-    // Clear right before building: loadSongbook clears first too, but reloads that overlap (several sync
-    // changes at once) each build between one's clear and the next, and the list ended up with every song
-    // several times
-    window.songbook_list?.clear();
-    window.songbook_list = new List(target_class, options, values);
-    bindSearchToList(window.songbook_list, '#songbook_content');
-    window.songbook_list.on('searchComplete', () => renderSongFilter('book'));
+    if (window.songbook_list) {
+      window.songbook_list.clear();
+      window.songbook_list.add(values);
+    } else {
+      window.songbook_list = new List(target_class, options, values);
+      bindSearchToList(window.songbook_list, '#songbook_content');
+      window.songbook_list.on('searchComplete', () => renderSongFilter('book'));
+    }
     applySongFilter('book');
     const searchInput = document.querySelector('#songbook_content .search');
-    searchInput.dispatchEvent(new KeyboardEvent('keyup'));
+    searchInput.dispatchEvent(new KeyboardEvent('keyup')); // the search box's words, on the new songs
   } else {
-    if(window.songbook_edit_togglesongs_list) window.songbook_edit_togglesongs_list.clear(); //I don't know why I needed to add this to keep the list from duplicating on additional navigations
-    window.songbook_edit_togglesongs_list = new List(target_class, options, values);
-    // Keep "New Section" in the add-song list during a search (issue #82). List.js runs handlers last-added
-    // first, so adding this before bindSearchToList leaves the section out of the count.
-    window.songbook_edit_togglesongs_list.on('searchComplete', list => {
-      const section = list.get('song-id', 'section')[0];
-      if (section && !section.found) {
-        section.found = true;
-        list.update();
-      }
-    });
-    bindSearchToList(window.songbook_edit_togglesongs_list, '#songListEdit');
-    window.songbook_edit_togglesongs_list.on('searchComplete', () => renderSongFilter('adder'));
+    if (window.songbook_edit_togglesongs_list) {
+      window.songbook_edit_togglesongs_list.clear();
+      window.songbook_edit_togglesongs_list.add(values);
+    } else {
+      window.songbook_edit_togglesongs_list = new List(target_class, options, values);
+      // Keep "New Section" in the add-song list during a search (issue #82). List.js runs handlers last-added
+      // first, so adding this before bindSearchToList leaves the section out of the count.
+      window.songbook_edit_togglesongs_list.on('searchComplete', list => {
+        const section = list.get('song-id', 'section')[0];
+        if (section && !section.found) {
+          section.found = true;
+          list.update();
+        }
+      });
+      bindSearchToList(window.songbook_edit_togglesongs_list, '#songListEdit');
+      window.songbook_edit_togglesongs_list.on('searchComplete', () => renderSongFilter('adder'));
+    }
     clearSongFilter('adder'); // a new editor starts with everything shown
+    document.querySelector('#songbook_edit_togglesongs .search')?.dispatchEvent(new KeyboardEvent('keyup'));
   }
   // A list rebuilt by a sync change has no hrefs or current-song highlight yet
   if (window.songbook && window.song) updateAllLinks();
@@ -2339,12 +2348,20 @@ async function editSong() {
     const categories = await db.get('categories');
     // search: the name without accents, which is what list.min.js compares the query with
     const options = { valueNames: ['name', { data: ['search'] }], item: 'category-template' };
+    const seen = new Set();
     const values = categories.categories
-      .filter(cat => !window.categories_list?.get('name', escapeHtml(cat)).length)
+      .filter(cat => !seen.has(cat) && seen.add(cat))
       .map(cat => ({ name: escapeHtml(cat), search: stripAccents(cat) })); // shown as page code by List.js: make it text
-    
-    window.categories_list = new List('categories', options, values);
-    bindSearchToList(window.categories_list, '#categories');
+    // One list, emptied and refilled each time a song is edited (a new List each time added search
+    // listeners that never went away, and kept categories since taken off the church's list)
+    if (window.categories_list) {
+      window.categories_list.clear();
+      window.categories_list.add(values);
+    } else {
+      window.categories_list = new List('categories', options, values);
+      bindSearchToList(window.categories_list, '#categories');
+    }
+    document.querySelector('#categories .search')?.dispatchEvent(new KeyboardEvent('keyup'));
 
     // Set checkboxes based on current categories
     const currentCategories = songElement.querySelector('categories').textContent.split(',').map(c => c.trim());
@@ -2439,7 +2456,22 @@ async function prepSaveSong() {
     reportDbError(error, 'save the song', { stay: true }); // the editor stays open with the changes
   }
 }
-async function prepExport() { 
+// The export preview's viewer window, once its app has started up (pdf.js says so with initializedPromise).
+// Throws if the viewer didn't load (offline, not saved on this device) or doesn't start in time.
+async function exportViewerReady(frame, timeoutMs = 20000) {
+  const started = Date.now();
+  for (;;) {
+    const app = frame.contentWindow.PDFViewerApplication; // a page that failed to load can't be read: throws
+    if (app?.initializedPromise) {
+      await app.initializedPromise;
+      return frame.contentWindow;
+    }
+    if (Date.now() - started > timeoutMs) throw new Error('The PDF viewer did not start');
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+}
+
+async function prepExport() {
   // Reset progress bar
   const progressBar = document.getElementById('pdf_progress');
   const progressText = document.getElementById('pdf_progress_text');
@@ -2452,21 +2484,32 @@ async function prepExport() {
 
   // Reset PDF viewer
   const pdfViewer = document.getElementById('pdf');
+  // The frame keeps the last viewer until this one has loaded: remember when it has
+  window.exportViewerLoaded = new Promise(resolve => pdfViewer.addEventListener('load', resolve, { once: true }));
   pdfViewer.src = "pdfjs-2.8.335-dist/web/viewer.html?file=";
 
   // Initialize web worker if not already created
   if (typeof window.pdfFormatter === 'undefined') {
     window.pdfFormatter = await new Worker('pdfformatter.js');
-    
-    pdfFormatter.onmessage = function(e) {
+
+    pdfFormatter.onmessage = async function(e) {
       if (e.data[0] === 'pdf') {
         const downloadLink = document.getElementById('downloadPDF');
         downloadLink.innerHTML = `
-          <a class="btn" href="${e.data[1]}" style="margin-top:0;" target="_blank" download="${window.exportObject.title}.pdf">
+          <a class="btn" href="${escapeHtml(e.data[1])}" style="margin-top:0;" target="_blank" download="${escapeHtml(window.exportObject.title)}.pdf">
             Download ⭳
           </a>`;
-        
-        pdfViewer.contentWindow.yourMethod(e.data[1]);
+
+        // Hand the PDF to the new viewer once it has started up: from the offline copy the PDF can be ready
+        // first, and a viewer given it too early showed nothing. Offline on a device that hasn't saved the
+        // viewer yet it can't open at all: say so, and the Download button still works.
+        try {
+          await window.exportViewerLoaded;
+          (await exportViewerReady(pdfViewer)).yourMethod(e.data[1]);
+        } catch (err) {
+          console.warn("The export preview couldn't open:", err);
+          notyf.error("The preview can't open offline on this device yet. Use Download to see the PDF.");
+        }
         console.log('Message received from worker');
         logData('exported', `${window.exportObject._id}: ${JSON.stringify(read_config_form())}`);
       } else if (e.data[0] === 'progress') {
