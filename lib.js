@@ -1449,6 +1449,7 @@ function clearSongFilter(name) {
   const f = songFilterState(name);
   ['cat', 'key', 'has', 'yt'].forEach(group => f[group].clear());
   f.sort = 'title';
+  f.find = '';
   applySongFilter(name);
 }
 
@@ -1495,26 +1496,83 @@ function renderSongFilter(name) {
   if (panel?.classList.contains('open')) fillSongFilterPanel(name, panel);
 }
 
-// The panel's choices, each with how many songs it would leave given the other choices and the search
-function fillSongFilterPanel(name, panel) {
+// The church's categories in the groups its "-----" dividers make: "----- Seasons" starts a group named
+// Seasons, a plain "-----" one with no name. Categories songs have that aren't in the list come last.
+function songCategoryGroups(songs) {
+  const groups = [{ name: '', cats: [] }];
+  const seen = new Set();
+  for (const raw of window.songCategories || []) {
+    const cat = String(raw).trim();
+    const divider = cat.match(/^-{3,}\s*(.*)$/);
+    if (divider) groups.push({ name: divider[1].trim(), cats: [] });
+    else if (cat && !seen.has(cat)) {
+      seen.add(cat);
+      groups.at(-1).cats.push(cat);
+    }
+  }
+  const missing = [...new Set(songs.flatMap(facts => facts.cats))].filter(cat => !seen.has(cat)).sort((a, b) => a.localeCompare(b));
+  if (missing.length) groups.push({ name: 'Not in the category list', cats: missing });
+  return groups.filter(group => group.cats.length);
+}
+
+// What drawing a list's panel needs: the songs it counts (those the search leaves) and a chip maker
+function songFilterContext(name) {
   const f = songFilterState(name);
   const list = songFilterList(name);
   const songs = (list?.items || []).filter(item => item.values()['song-id'] !== 'section' && (!list.searched || item.found)).map(item => item.values().facts).filter(Boolean);
   const countWith = (group, test) => songs.filter(facts => songFilterPasses(f, facts, group) && test(facts)).length;
   const chip = (group, value, label, n) => `<button type="button" class="filter-chip${f[group].has(value) ? ' sel' : ''}${n === 0 && !f[group].has(value) ? ' none' : ''}" data-group="${group}" data-value="${escapeHtml(value)}" aria-pressed="${f[group].has(value)}">${escapeHtml(label)} <span class="n">${n}</span></button>`;
+  const catChip = cat => chip('cat', cat, cat === NO_CATEGORY ? 'No category' : cat, countWith('cat', facts => cat === NO_CATEGORY ? !facts.cats.length : facts.cats.includes(cat)));
+  return { f, list, songs, countWith, chip, catChip };
+}
+
+// The Category section below its find box: what the box finds, or the groups (small ones open at first)
+function songCategoryBody(name) {
+  const { f, songs, catChip } = songFilterContext(name);
+  const groups = songCategoryGroups(songs);
+  const find = (f.find || '').trim().toLowerCase();
+  if (find) {
+    const hits = groups.flatMap(group => group.cats).filter(cat => cat.toLowerCase().includes(find));
+    return hits.length ? `<div class="filter-options">${hits.map(catChip).join('')}</div>` : '<p class="filter-none">No category has that in its name.</p>';
+  }
+  f.openGroups ||= new Map();
+  return groups.map(group => {
+    const chips = `<div class="filter-options">${group.cats.map(catChip).join('')}</div>`;
+    if (!group.name) return `<div class="filter-group unnamed">${chips}</div>`;
+    const open = f.openGroups.has(group.name) ? f.openGroups.get(group.name) : group.cats.length <= 10;
+    const empty = group.cats.filter(cat => !songs.some(facts => facts.cats.includes(cat))).length;
+    const picked = group.cats.filter(cat => f.cat.has(cat)).length;
+    const about = [group.cats.length, empty && `${empty} with no songs`, picked && `${picked} picked`].filter(Boolean).join(' · ');
+    return `<div class="filter-group"><button type="button" class="filter-group-head" data-cat-group="${escapeHtml(group.name)}" aria-expanded="${open}">${escapeHtml(group.name)} <span class="about">${about}</span><span class="arrow" aria-hidden="true">${open ? '▾' : '▸'}</span></button>${open ? chips : ''}</div>`;
+  }).join('');
+}
+
+// The panel's choices, each with how many songs it would leave given the other choices and the search
+function fillSongFilterPanel(name, panel) {
+  const { f, list, songs, countWith, chip, catChip } = songFilterContext(name);
   const section = (title, html) => html ? `<div class="filter-section"><h4>${title}</h4><div class="filter-options">${html}</div></div>` : '';
-  const cats = [...(window.songCategories || []), NO_CATEGORY];
   const keys = [...new Set(songs.map(facts => facts.key).filter(Boolean))].sort((a, b) => a.localeCompare(b));
   const videos = [...new Set(songs.map(facts => videoLabel(facts.yt)))].sort((a, b) => (a === 'None' ? -1 : +a) - (b === 'None' ? -1 : +b));
   const shown = list ? list.visibleItems.filter(item => item.values()['song-id'] !== 'section').length : 0;
-  panel.innerHTML = `<div class="filter-grip" aria-hidden="true"></div>` +
-    section('Category', cats.map(c => chip('cat', c, c === NO_CATEGORY ? 'No category' : c, countWith('cat', facts => c === NO_CATEGORY ? !facts.cats.length : facts.cats.includes(c)))).join('')) +
+  const finding = document.activeElement?.classList.contains('filter-find') && panel.contains(document.activeElement);
+  // Category: what's picked and "No category" first, then the find box, then the groups
+  const picked = [...f.cat].filter(cat => cat !== NO_CATEGORY);
+  const category = `<div class="filter-section"><h4>Category</h4>
+      <div class="filter-options">${[...picked, NO_CATEGORY].map(catChip).join('')}</div>
+      <input type="search" class="filter-find" placeholder="Find a category" aria-label="Find a category" value="${escapeHtml(f.find || '')}">
+      <div class="filter-cat-body">${songCategoryBody(name)}</div></div>`;
+  panel.innerHTML = `<div class="filter-grip" aria-hidden="true"></div>` + category +
     section('Key', keys.map(k => chip('key', k, k, countWith('key', facts => facts.key === k))).join('')) +
     section('Has', SONG_FILTER_HAS.map(([id, label, test]) => chip('has', id, label, countWith('has', test))).join('')) +
     section('Video links', videos.length > 1 ? videos.map(v => chip('yt', v, v, countWith('yt', facts => videoLabel(facts.yt) === v))).join('') : '') +
     (songFilterSorts(name) ? section('Sort', SONG_FILTER_SORTS.map(([id, label]) =>
       `<button type="button" class="filter-chip${f.sort === id ? ' sel' : ''}" data-sort="${id}" aria-pressed="${f.sort === id}">${label}</button>`).join('')) : '') +
     `<div class="filter-actions"><button type="button" class="btn btn-small filter-clear-all"${songFilterCount(f) || f.sort !== 'title' ? '' : ' hidden'}>Clear all</button><button type="button" class="btn btn-small filter-done">Show ${shown} song${shown === 1 ? '' : 's'}</button></div>`;
+  if (finding) { // picking a found category redraws the panel: stay in the box
+    const box = panel.querySelector('.filter-find');
+    box.focus({ preventScroll: true });
+    box.setSelectionRange(box.value.length, box.value.length);
+  }
 }
 
 function songFilterPanel(name) {
@@ -1525,10 +1583,22 @@ function songFilterPanel(name) {
     panel.className = 'filter-panel';
     panel.setAttribute('role', 'dialog');
     panel.setAttribute('aria-label', 'Filter songs');
+    // typing in "Find a category" redraws only what's under the box, so the box keeps its focus
+    panel.addEventListener('input', e => {
+      if (!e.target.classList.contains('filter-find')) return;
+      songFilterState(name).find = e.target.value;
+      panel.querySelector('.filter-cat-body').innerHTML = songCategoryBody(name);
+    });
     panel.addEventListener('click', e => {
       const chip = e.target.closest('.filter-chip');
+      const groupHead = e.target.closest('.filter-group-head');
       const f = songFilterState(name);
-      if (chip?.dataset.sort) {
+      if (groupHead) {
+        const open = groupHead.getAttribute('aria-expanded') !== 'true';
+        f.openGroups.set(groupHead.dataset.catGroup, open);
+        panel.querySelector('.filter-cat-body').innerHTML = songCategoryBody(name);
+        panel.querySelector(`.filter-group-head[data-cat-group="${CSS.escape(groupHead.dataset.catGroup)}"]`)?.focus({ preventScroll: true });
+      } else if (chip?.dataset.sort) {
         f.sort = chip.dataset.sort;
         applySongFilter(name);
       } else if (chip) {
