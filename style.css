@@ -2407,6 +2407,41 @@ only screen and (max-height: 31.25rem) {
   color: var(--text-color);
   cursor: pointer;
 }
+/* The install notice (#126): only on phones and tablets in a browser (lib.js sets the classes) */
+.install-btn {
+  display: none;
+}
+.install-offer .install-btn {
+  display: block;
+  width: fit-content;
+  margin: 0 .5rem .25rem !important; /* its own line, under Settings and Logout */
+  font-size: .8rem;
+  background-color: var(--song-color);
+  color: black;
+}
+.install-dot #username_legend {
+  position: relative;
+}
+.install-dot #username_legend::after {
+  content: '';
+  position: absolute;
+  top: -.15rem;
+  right: -.15rem;
+  width: .6rem;
+  height: .6rem;
+  border-radius: 50%;
+  background-color: crimson;
+  box-shadow: 0 0 0 2px var(--background-color);
+}
+.install-hide {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: .9rem;
+  text-decoration: underline;
+  color: var(--light-text-color);
+  cursor: pointer;
+}
 /* the Categories page: a named "-----" divider is a heading, a plain one a line */
 .category-group {
   margin: .9rem 0 .2rem;

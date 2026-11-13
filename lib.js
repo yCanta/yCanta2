@@ -1113,6 +1113,75 @@ function searchSBfor(text) {
   }
 }
 
+// ---- The install notice (#126). On a phone or tablet in a browser (not the installed app), the name
+// button gets a dot and its menu an "Install yCanta" button with the steps for this device. Desktops and
+// laptops never see it. The dot goes once the steps have been opened; the button once the app is installed
+// (Android says so) or after "Don't show this again".
+const installNotice = { prompt: null }; // the browser's own install prompt, when it offers one (Android)
+const installKey = name => `install-${name}`;
+function installFlag(name, value) {
+  try {
+    if (value === undefined) return localStorage.getItem(installKey(name)) === '1';
+    localStorage.setItem(installKey(name), '1');
+  } catch (err) {
+    return false; // no storage (private browsing): the notice just doesn't remember
+  }
+}
+// iPads say they're Macs, but Macs have no touch screen
+const onIos = () => /iPhone|iPad|iPod/i.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+const onPhoneOrTablet = () => onIos() || /Android/i.test(navigator.userAgent);
+const runningInstalled = () => ['standalone', 'fullscreen', 'minimal-ui'].some(mode => matchMedia(`(display-mode: ${mode})`).matches) || navigator.standalone === true;
+
+function updateInstallNotice() {
+  const offer = onPhoneOrTablet() && !runningInstalled() && !installFlag('hidden') && !installFlag('done');
+  document.documentElement.classList.toggle('install-offer', offer);
+  document.documentElement.classList.toggle('install-dot', offer && !installFlag('seen'));
+}
+window.addEventListener('beforeinstallprompt', event => {
+  if (!onPhoneOrTablet()) return; // desktops keep the browser's own install icon
+  event.preventDefault(); // our button offers it instead of the browser's banner
+  installNotice.prompt = event;
+});
+window.addEventListener('appinstalled', () => {
+  installFlag('done', true);
+  installNotice.prompt = null;
+  updateInstallNotice();
+});
+updateInstallNotice();
+
+async function showInstallSteps() {
+  installFlag('seen', true);
+  updateInstallNotice();
+  const why = "Installed, yCanta opens from your home screen like any other app, full screen, and works better without a connection.";
+  const prompt = installNotice.prompt;
+  let steps;
+  if (prompt) steps = 'Tap Install, then confirm.';
+  else if (onIos()) steps = 'Tap the Share button (a square with an arrow pointing up). In Safari on an iPhone it\'s at the bottom; on an iPad, and in Chrome, it\'s at the top.\n\nThen tap "Add to Home Screen" (scroll down if you don\'t see it), then "Add".';
+  else steps = 'Open your browser\'s menu (⋮, at the top right), then tap "Install app" or "Add to Home screen".';
+  const dialog = new TaskDialog('Install yCanta');
+  const pending = dialog.run({
+    text: `${why}\n\n${steps}`,
+    html: '<p><button type="button" class="install-hide">Don\'t show this again</button></p>',
+    submit: prompt ? 'Install' : 'OK',
+    cancel: prompt ? 'Not now' : '',
+    action: async () => {
+      if (!prompt) return 'closed';
+      prompt.prompt();
+      const { outcome } = await prompt.userChoice;
+      installNotice.prompt = null; // the browser offers each prompt once
+      return outcome;
+    },
+  });
+  dialog.body.querySelector('.install-hide').addEventListener('click', () => {
+    installFlag('hidden', true);
+    updateInstallNotice();
+    dialog.close();
+  });
+  const result = await pending;
+  if (result === 'accepted') await dialog.finish('Installing. Look for yCanta on your home screen.');
+  else dialog.close();
+}
+
 function handleDarkMode(){
   let value = document.querySelector('input[name="darkmode"]:checked').value;
   switch(value) {
@@ -1171,6 +1240,8 @@ function setLoginState({ route = true } = {}) {
     document.body.classList.remove('loading');
   }, 20);
   
+  updateInstallNotice(); // logging out cleared its classes (#126)
+
   // Load additional data
   loadRecentSongs();
   initializeSongbooksList();
