@@ -2338,11 +2338,25 @@ only screen and (max-height: 31.25rem) {
 }
 /* The song filter (#84): a Filter button beside a song list's search box, chips for what's on, and a
    panel that drops down over the list (a sheet from the bottom on phones) */
+/* the search box and the Filter button share a row: the button always sits at the box's right, and the
+   box takes what's left */
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.search-row .deleteicon {
+  flex: 1;
+  min-width: 0;
+}
+.search-row .search {
+  width: calc(100% - 1rem);
+}
 .song-filter {
   display: inline-flex;
+  flex: none;
   align-items: center;
   gap: .2rem;
-  margin-left: .35rem;
   vertical-align: middle;
 }
 .filter-btn {

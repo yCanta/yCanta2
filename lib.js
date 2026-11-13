@@ -1639,11 +1639,15 @@ function toggleSongFilterPanel(name, open) {
   fillSongFilterPanel(name, panel);
   const phone = songFilterPhone();
   panel.classList.toggle('sheet', phone);
-  panel.style.top = panel.style.left = '';
-  if (!phone && button) { // drop down under the button, over the list
+  panel.style.top = panel.style.left = panel.style.width = '';
+  if (!phone && button) { // drop down under the button, over the list it filters, as wide as that list's column
     const r = button.getBoundingClientRect();
+    const column = (button.closest('.subcolumn') || button.closest('.column'))?.getBoundingClientRect();
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const width = Math.min(24 * rem, Math.max(18 * rem, (column?.width || window.innerWidth) - 16), window.innerWidth - 16);
+    panel.style.width = `${width}px`;
     panel.style.top = `${r.bottom + 6}px`;
-    panel.style.left = `${Math.max(8, Math.min(r.right - panel.offsetWidth, window.innerWidth - panel.offsetWidth - 8))}px`;
+    panel.style.left = `${Math.max(8, Math.min(r.right - width, window.innerWidth - width - 8))}px`;
   }
   scrim.classList.toggle('open', phone);
   requestAnimationFrame(() => panel.classList.add('open'));

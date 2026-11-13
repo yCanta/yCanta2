@@ -187,8 +187,10 @@
                 <div class="title">
                   <h3><a data-songbook class="title_link" href="#" id="songbook_title">All Songs</a></h3>
                 </div>
-                <input aria-label="Search" class="search deletable" type="text" data-target="#songbook_content" data-trigger="change" placeholder="Search">
-                <nav class="song-filter" data-list="book" aria-label="Filter songs"></nav>
+                <div class="search-row">
+                  <input aria-label="Search" class="search deletable" type="text" data-target="#songbook_content" data-trigger="change" placeholder="Search">
+                  <nav class="song-filter" data-list="book" aria-label="Filter songs"></nav>
+                </div>
               </div>
               <div class="filter-chips" data-list="book" hidden></div>
               <ul class="list"></ul>
@@ -208,8 +210,10 @@
             <div id="songbook_edit_togglesongs">
               <div class="column_header">
                 <h3>Add a song?<button onclick="this.closest('.sidebar-open').classList.remove('sidebar-open');" class="icon-fl-right close-icon-mobile">&times;</button></h3>
-                <input aria-label="Search" class="search deletable" type="text" data-target="#songbook_edit_togglesongs" data-trigger="change" placeholder="Search">
-                <nav class="song-filter" data-list="adder" aria-label="Filter songs"></nav>
+                <div class="search-row">
+                  <input aria-label="Search" class="search deletable" type="text" data-target="#songbook_edit_togglesongs" data-trigger="change" placeholder="Search">
+                  <nav class="song-filter" data-list="adder" aria-label="Filter songs"></nav>
+                </div>
                 <div class="filter-chips" data-list="adder" hidden></div>
               </div>
               <ul class="list">
