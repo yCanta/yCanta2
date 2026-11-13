@@ -17,6 +17,47 @@ function escapeHtml(text) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
+
+// Song text shows as text, never as page code: a title like <img onerror=...> would otherwise run for
+// everyone who opens the list. Fields are plain text (the editor saves them as text). A lyric line keeps
+// the markup songs really carry: chords (<c>), line breaks, blocks pasted in (<div>), and links to web
+// pages (in comment sections). Anything else in a line shows as its text.
+function safeSongLine(line) {
+  const box = document.createElement('template'); // parsed inert: nothing in it loads or runs
+  box.innerHTML = String(line ?? '');
+  const walk = parent => [...parent.childNodes].map(node => {
+    if (node.nodeType === Node.TEXT_NODE) return escapeHtml(node.textContent);
+    if (node.nodeType !== Node.ELEMENT_NODE) return '';
+    const tag = node.localName;
+    if (tag === 'c') return `<c>${escapeHtml(node.textContent)}</c>`;
+    if (tag === 'br') return '<br>';
+    if (tag === 'div') return `<div>${walk(node)}</div>`;
+    if (tag === 'a') {
+      const href = node.getAttribute('href') || '';
+      return /^https?:\/\//i.test(href) ? `<a href="${escapeHtml(href)}" target="_blank" rel="noopener">${walk(node)}</a>` : walk(node);
+    }
+    return walk(node); // any other tag: just its text
+  }).join('');
+  return walk(box.content);
+}
+// A copy of a song to show: its fields as text, its lines through safeSongLine. The song itself (saved,
+// edited, kept in old versions) never changes.
+function displaySong(doc) {
+  if (!doc) return doc;
+  const text = value => escapeHtml(value);
+  const list = value => (Array.isArray(value) ? value : [value ?? '']).map(text);
+  return {
+    ...doc,
+    title: text(doc.title), key: text(doc.key), introduction: text(doc.introduction), copyright: text(doc.copyright),
+    authors: list(doc.authors), scripture_ref: list(doc.scripture_ref), categories: list(doc.categories ?? []),
+    cclis: typeof doc.cclis === 'string' ? text(doc.cclis) : doc.cclis,
+    search: typeof doc.search === 'string' ? text(doc.search) : doc.search,
+    content: (doc.content || []).map(chunk => [
+      { ...chunk?.[0], type: String(chunk?.[0]?.type || 'verse').replace(/[^a-z -]/gi, '') },
+      (chunk?.[1] || []).map(safeSongLine),
+    ]),
+  };
+}
 // Tells the user a database call failed (#1), with the details in the console.
 // whatFailed finishes "Couldn't ...", for example 'save the song'.
 // stay: the most serious failures (work not saved, sync stopped) stay on screen until closed instead of
@@ -1025,7 +1066,7 @@ async function updateUser() {
       profileHtml += result.rows
         .sort((a, b) => (a.doc?.title || '').localeCompare(b.doc?.title || ''))
         .filter(sb => sb.doc)
-        .map(sb => `<li><a class="link" href="#${sb.doc._id}">${sb.doc.title}</a></li>`)
+        .map(sb => `<li><a class="link" href="#${escapeHtml(sb.doc._id)}">${escapeHtml(sb.doc.title)}</a></li>`)
         .join('');
     } catch (err) {
       console.error('Error loading favorite songbooks:', err);
@@ -1328,7 +1369,7 @@ function mapSongbookRowToValue(row) {
   + 'addedBy:' + stripAccents(row.doc.addedBy.slice(2)) + '\0'
   + 'editedBy:' + stripAccents(row.doc.editedBy.slice(2)) + '\0',
     'link': '#'+row.doc._id,
-    'name': row.doc.title
+    'name': escapeHtml(row.doc.title) // List.js shows it as page code: make it text
   };
 }
 function mapSongRowToValue(row) {
@@ -1372,7 +1413,7 @@ function mapSongRowToValue(row) {
     'song-status':              status,
     'song-deleted':             deleted,
     'link': '#'+window.songbook._id+'&'+id,
-    'name': title,
+    'name': escapeHtml(title), // List.js shows it as page code: make it text (a section's title too)
     'facts': (deleted || row.id == "section") ? null : songFacts(row.doc), // for the song filter (#84)
   };
 }
@@ -1398,7 +1439,7 @@ function setSongbookInfo(songbook) {
   
   // Update title
   const isSpecial = ['sb-allSongs', 'sb-favoriteSongs'].includes(songbook._id);
-  titleEl.innerHTML = isSpecial ? `<i>${songbook.title}</i>` : songbook.title;
+  titleEl.innerHTML = isSpecial ? `<i>${escapeHtml(songbook.title)}</i>` : escapeHtml(songbook.title); // text, not page code
   titleEl.dataset.rev = songbook._rev;
   titleEl.dataset.songbookId = songbook._id;
   
@@ -2299,8 +2340,8 @@ async function editSong() {
     // search: the name without accents, which is what list.min.js compares the query with
     const options = { valueNames: ['name', { data: ['search'] }], item: 'category-template' };
     const values = categories.categories
-      .filter(cat => !window.categories_list?.get('name', cat).length)
-      .map(cat => ({ name: cat, search: stripAccents(cat) }));
+      .filter(cat => !window.categories_list?.get('name', escapeHtml(cat)).length)
+      .map(cat => ({ name: escapeHtml(cat), search: stripAccents(cat) })); // shown as page code by List.js: make it text
     
     window.categories_list = new List('categories', options, values);
     bindSearchToList(window.categories_list, '#categories');
@@ -3032,7 +3073,7 @@ async function loadInfo(song = true) {
       songbookContent += "Couldn't check";
     } else if (songbooks.length > 0) {
       songbookContent += songbooks.map(sb => 
-        `<a href="#${sb.doc._id}&${window.song._id}">${sb.doc.title}</a>`
+        `<a href="#${escapeHtml(sb.doc._id)}&${escapeHtml(window.song._id)}">${escapeHtml(sb.doc.title)}</a>`
       ).join('<br>');
     } else {
       songbookContent += 'Not used in any songbook';

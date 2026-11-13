@@ -296,7 +296,7 @@ function dbChanges() {
       if (change.doc._id === window.user._id) {
         window.user = change.doc;
         updateUser();
-        notyf.info(`User Updated "${change.doc.name}"`, 'var(--edit-color)');
+        notyf.info(`User Updated "${escapeHtml(change.doc.name)}"`, 'var(--edit-color)');
         
         // Update favorites display
         const favSongbooks = change.doc.fav_sbs || [];
@@ -1868,15 +1868,16 @@ function loadSong(song_id, song_rev = false) {
         document.querySelector('#song .float-menu').innerHTML = floatMenu;
       }
 
-      // Build song HTML
+      // Build song HTML, from a copy whose text shows as text (see displaySong in lib.js)
+      const shown = displaySong(song);
       let songHtml = `
-        <song class="${songElClassList.join(' ')}" 
-              data-rev="${song._rev}" 
-              rev-info="${window.users[song.editedBy] || song.editedBy.slice(2)}: ${formatDate(song.edited)}"
-              data-id="${song._id}" 
+        <song class="${songElClassList.join(' ')}"
+              data-rev="${escapeHtml(song._rev)}"
+              rev-info="${escapeHtml(window.users[song.editedBy] || song.editedBy?.slice(2))}: ${formatDate(song.edited)}"
+              data-id="${escapeHtml(song._id)}"
               data-user-fav="${window.user.fav_songs.includes(song._id) ? 'true' : 'false'}">
           <div class="column_header title" id="song_header">
-            <stitle><a data-song class="title_link">${song.title}</a></stitle>
+            <stitle><a data-song class="title_link">${shown.title}</a></stitle>
             <span class="buttonsRight">
               ${song_rev ? `${canEdit(window.song) ? `<button onclick="restoreSongRev('${escapeHtml(song._rev)}')" class="btn btn-tiny" title="Make this the current version">↶ Restore</button>` : ''}<button onclick="this.closest('song').remove()" class="close-icon">&times;</button>` : `
                 <span class="star" onclick="event.stopPropagation(); toggleFavorite(this.closest('song').dataset.id,'fav_songs')"></span>
@@ -1887,16 +1888,16 @@ function loadSong(song_id, song_rev = false) {
           </div>
           ${deleted ? `<p class="deleted-note">Deleted${song.deletedBy ? ' by ' + escapeHtml(window.users?.[song.deletedBy] || song.deletedBy.replace(/^u-/, '')) : ''}${song.deletedAt ? ', ' + formatDate(song.deletedAt) : ''}.
             ${song.deletedAt && canEdit(song) ? `<button class="btn btn-tiny" onclick="restoreOpenSong(this)">↶ Restore</button>` : ''}</p>` : ''}
-          <authors><author>${song.authors.join('</author>, <author>')}</author></authors>
-          <scripture_ref><scrip_ref>${song.scripture_ref.join('</scrip_ref>, <scrip_ref>')}</scrip_ref></scripture_ref>
-          ${!song_rev ? `<span id="keyToggleContainer"><span id="keyToggleFilter">` : ''}<key>${song.key}</key>${!song_rev ? `<button id="keyToggle" type="button" aria-expanded="false" title="Change the key">Key: <b class="key-name">${escapeHtml(song.key)}</b><span class="chevron" aria-hidden="true"></span></button><label class="chord-switch" hidden><input type="checkbox" id="chordSwitch"><span class="switch-track" aria-hidden="true"></span>Chords</label></span></span>` : ''}
-          <categories><cat>${song.categories.sort().join('</cat>, <cat>')}</cat></categories>
-          <cclis>${(song.cclis ? (!isNaN(song.cclis) ? 'CCLI Song #: '+song.cclis : 'In CCLI') : '')}</cclis>
-          <introduction>${song.introduction}</introduction>
+          <authors><author>${shown.authors.join('</author>, <author>')}</author></authors>
+          <scripture_ref><scrip_ref>${shown.scripture_ref.join('</scrip_ref>, <scrip_ref>')}</scrip_ref></scripture_ref>
+          ${!song_rev ? `<span id="keyToggleContainer"><span id="keyToggleFilter">` : ''}<key>${shown.key}</key>${!song_rev ? `<button id="keyToggle" type="button" aria-expanded="false" title="Change the key">Key: <b class="key-name">${shown.key}</b><span class="chevron" aria-hidden="true"></span></button><label class="chord-switch" hidden><input type="checkbox" id="chordSwitch"><span class="switch-track" aria-hidden="true"></span>Chords</label></span></span>` : ''}
+          <categories><cat>${shown.categories.sort().join('</cat>, <cat>')}</cat></categories>
+          <cclis>${(song.cclis ? (!isNaN(song.cclis) ? 'CCLI Song #: ' + shown.cclis : 'In CCLI') : '')}</cclis>
+          <introduction>${shown.introduction}</introduction>
       `;
 
       // Add song content chunks
-      song.content.forEach(chunk => {
+      shown.content.forEach(chunk => {
         songHtml += `<chunk type="${chunk[0].type.toLowerCase()}">`;
         chunk[1].forEach(line => {
           songHtml += `<line>${line}</line>`;
@@ -1904,7 +1905,7 @@ function loadSong(song_id, song_rev = false) {
         songHtml += '</chunk>';
       });
 
-      songHtml += `<copyright>${song.copyright}</copyright></song>`;
+      songHtml += `<copyright>${shown.copyright}</copyright></song>`;
 
       // Insert song HTML
       const songContainer = document.querySelector('#song .content');

@@ -182,7 +182,7 @@ document.addEventListener('DOMContentLoaded', function() {
       current_song.chunk_index = current_song.doc.content.length - 1;
       
       document.querySelector('#cur_slide .content').innerHTML = '<div style="width: calc(100% - 2rem);position: absolute; top: 40%;"><div style="width: 100%;text-align: center"><h1>Presenting</h1><h2><i id="pres_title">Lorem Ipsum</i></h2></div></div></div>';
-      document.getElementById('pres_title').innerHTML = window.songbook.title;
+      document.getElementById('pres_title').textContent = window.songbook.title; // text, not page code
       window.document.title = "yCanta2: Presenting " + window.songbook.title;
     },300);
 });

@@ -1331,7 +1331,8 @@ async function _handleSongbookRoute(piece, oldHashOb) { // bodyClassList removed
         return false;
       }
 
-      const songs = result.rows.filter(song => song.key != "section" && song.doc); // no doc: deleted song
+      // no doc: deleted song. Presentation shows the songs' text as text, like the main page (displaySong)
+      const songs = result.rows.filter(song => song.key != "section" && song.doc).map(row => ({ ...row, doc: displaySong(row.doc) }));
       const myString = JSON.stringify({
         songs,
         title: window.songbook.title
