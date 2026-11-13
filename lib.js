@@ -1259,7 +1259,8 @@ function mapSongRowToValue(row) {
     'song-status':              status,
     'song-deleted':             deleted,
     'link': '#'+window.songbook._id+'&'+id,
-    'name': title
+    'name': title,
+    'facts': (deleted || row.id == "section") ? null : songFacts(row.doc), // for the song filter (#84)
   };
 }
 
@@ -1333,26 +1334,22 @@ function buildSongbookList(songs, target_class='songbook_content',
 
   const values = songs.map(song => mapSongRowToValue(song));
 
-  // Load categories
+  // The church's categories, for the song filter's Category choices
   db.get('categories').then(categories => {
-    const categoryFilter = document.getElementById('category_filter').querySelector('select');
-    categoryFilter.innerHTML = `
-      <option value=""></option>
-      <option value="c:!c">No Category</option>
-      ${categories.categories.map(cat => `<option value="c:${cat}">${cat}</option>`).join('')}`;
-    // and the songbook editor's "Add a song?" list (#84); a new editor starts on All
-    const adderFilter = document.getElementById('adder_category');
-    const keep = edit ? '' : adderFilter.value;
-    adderFilter.innerHTML = '<option value="">All</option><option value="!c">No category</option>' +
-      categories.categories.map(cat => `<option value="${escapeHtml(cat)}">${escapeHtml(cat)}</option>`).join('');
-    adderFilter.value = [...adderFilter.options].some(o => o.value === keep) ? keep : '';
-    if (edit) filterSongAdder();
+    window.songCategories = categories.categories || [];
+    renderSongFilter(edit ? 'adder' : 'book');
   }).catch(err => reportDbError(err, 'load the category filter'));
 
   // Create list
   if (!edit) {
+    // Clear right before building: loadSongbook clears first too, but reloads that overlap (several sync
+    // changes at once) each build between one's clear and the next, and the list ended up with every song
+    // several times
+    window.songbook_list?.clear();
     window.songbook_list = new List(target_class, options, values);
     bindSearchToList(window.songbook_list, '#songbook_content');
+    window.songbook_list.on('searchComplete', () => renderSongFilter('book'));
+    applySongFilter('book');
     const searchInput = document.querySelector('#songbook_content .search');
     searchInput.dispatchEvent(new KeyboardEvent('keyup'));
   } else {
@@ -1368,25 +1365,251 @@ function buildSongbookList(songs, target_class='songbook_content',
       }
     });
     bindSearchToList(window.songbook_edit_togglesongs_list, '#songListEdit');
+    window.songbook_edit_togglesongs_list.on('searchComplete', () => renderSongFilter('adder'));
+    clearSongFilter('adder'); // a new editor starts with everything shown
   }
   // A list rebuilt by a sync change has no hrefs or current-song highlight yet
   if (window.songbook && window.song) updateAllLinks();
 }
 
-// The Category menu in the songbook editor's "Add a song?" list (#84). It works together with the search
-// box, and "New Section" always stays.
-function filterSongAdder() {
-  const adder = window.songbook_edit_togglesongs_list;
-  const want = document.getElementById('adder_category')?.value;
-  if (!adder) return;
-  if (!want) {
-    adder.filter();
+// ---- The song filter (#84): a Filter button beside a song list's search box, its panel, and chips
+// for what's on. Two lists have one: 'book' (the open songbook's songs) and 'adder' ("Add a song?" in the
+// songbook editor). Each keeps its own choices for the visit. Filters work together with the search box.
+const SONG_FILTER_HAS = [
+  ['chords', 'Chords', facts => facts.chords],
+  ['video', 'A video', facts => facts.yt > 0],
+  ['ccli', 'CCLI number', facts => facts.ccli],
+  ['scripture', 'Scripture', facts => facts.scripture],
+];
+const SONG_FILTER_SORTS = [['title', 'Title'], ['added', 'Recently added'], ['edited', 'Recently edited']];
+const NO_CATEGORY = '!c';
+const songFilters = {};
+const songFilterState = name => songFilters[name] ||= { cat: new Set(), key: new Set(), has: new Set(), yt: new Set(), sort: 'title' };
+const songFilterList = name => name === 'adder' ? window.songbook_edit_togglesongs_list : window.songbook_list;
+const songFilterCount = f => f.cat.size + f.key.size + f.has.size + f.yt.size;
+const videoLabel = n => n ? String(n) : 'None';
+// Sorting only where there's no order of its own to keep: All Songs, Favorite Songs and "Add a song?"
+const songFilterSorts = name => name === 'adder' || ['sb-allSongs', 'sb-favoriteSongs'].includes(window.songbook?._id);
+
+// What the filter needs to know about a song, from its doc (null for a deleted one)
+function songFacts(doc) {
+  if (!doc) return null;
+  return {
+    cats: (doc.categories || []).filter(Boolean),
+    key: doc.key || '',
+    chords: JSON.stringify(doc.content || []).includes('<c>'),
+    yt: Number(doc.yt) || 0,
+    ccli: !!doc.cclis,
+    scripture: (doc.scripture_ref || []).some(ref => ref.trim()),
+    added: doc.added || 0,
+    edited: doc.edited || 0,
+  };
+}
+
+// Does a song pass the filter? `skip` leaves one group out, to count that group's choices.
+function songFilterPasses(f, facts, skip) {
+  if (!facts) return false;
+  if (skip !== 'cat' && f.cat.size && ![...f.cat].some(c => c === NO_CATEGORY ? !facts.cats.length : facts.cats.includes(c))) return false;
+  if (skip !== 'key' && f.key.size && !f.key.has(facts.key)) return false;
+  if (skip !== 'has' && SONG_FILTER_HAS.some(([id, , test]) => f.has.has(id) && !test(facts))) return false;
+  if (skip !== 'yt' && f.yt.size && !f.yt.has(videoLabel(facts.yt))) return false;
+  return true;
+}
+
+// Apply a list's filter and sort, then redraw its button, chips and (open) panel
+function applySongFilter(name) {
+  const list = songFilterList(name);
+  const f = songFilterState(name);
+  if (list) {
+    if (songFilterCount(f)) {
+      list.filter(item => {
+        const v = item.values();
+        if (v['song-id'] === 'section') return name === 'adder'; // "New Section" stays; a book's sections hide
+        return songFilterPasses(f, v.facts);
+      });
+    } else {
+      list.filter();
+    }
+    if (songFilterSorts(name)) {
+      const key = item => item.values()['song-id'] === 'section' ? -Infinity : item.values().facts;
+      const byTitle = (a, b) => (a.values()['song-id'] === 'section' ? -1 : b.values()['song-id'] === 'section' ? 1 : (a.values().name || '').localeCompare(b.values().name || ''));
+      list.sort('name', {
+        sortFunction: f.sort === 'title' ? byTitle : (a, b) => {
+          const ka = key(a), kb = key(b);
+          if (ka === -Infinity || kb === -Infinity) return ka === -Infinity ? -1 : 1;
+          return ((kb?.[f.sort] || 0) - (ka?.[f.sort] || 0)) || byTitle(a, b);
+        },
+      });
+    }
+  }
+  renderSongFilter(name);
+}
+
+function clearSongFilter(name) {
+  const f = songFilterState(name);
+  ['cat', 'key', 'has', 'yt'].forEach(group => f[group].clear());
+  f.sort = 'title';
+  applySongFilter(name);
+}
+
+// The Filter button and × for a list, built once beside its search box
+function songFilterControls(name) {
+  const nav = document.querySelector(`.song-filter[data-list="${name}"]`);
+  if (nav && !nav.dataset.ready) {
+    nav.dataset.ready = '1';
+    nav.innerHTML = `<button type="button" class="filter-btn" aria-haspopup="dialog" aria-expanded="false" title="Filter songs">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v2.2a2 2 0 0 1-.6 1.4L15 12v7l-6 2v-8.5L4.6 7.6A2 2 0 0 1 4 6.2z"/></svg><span class="filter-label">Filter</span><span class="filter-count"></span></button><button type="button" class="filter-clear" title="Clear filters" aria-label="Clear filters" hidden>&times;</button>`;
+    nav.querySelector('.filter-btn').addEventListener('click', () => toggleSongFilterPanel(name));
+    nav.querySelector('.filter-clear').addEventListener('click', () => clearSongFilter(name));
+  }
+  return nav;
+}
+
+function renderSongFilter(name) {
+  const f = songFilterState(name);
+  const count = songFilterCount(f);
+  const sorted = songFilterSorts(name) && f.sort !== 'title';
+  const nav = songFilterControls(name);
+  if (nav) {
+    nav.classList.toggle('on', count > 0 || sorted);
+    nav.querySelector('.filter-count').textContent = count || '';
+    nav.querySelector('.filter-clear').hidden = !(count || sorted);
+  }
+  // the chips under the search box
+  const chips = document.querySelector(`.filter-chips[data-list="${name}"]`);
+  if (chips) {
+    const hasLabel = id => SONG_FILTER_HAS.find(([h]) => h === id)[1].toLowerCase();
+    const items = [
+      ...[...f.cat].map(c => ['cat', c, c === NO_CATEGORY ? 'No category' : c]),
+      ...[...f.key].map(k => ['key', k, `Key: ${k}`]),
+      ...[...f.has].map(h => ['has', h, `Has ${hasLabel(h)}`]),
+      ...[...f.yt].map(n => ['yt', n, n === 'None' ? 'No videos' : `Videos: ${n}`]),
+    ];
+    if (sorted) items.push(['sort', f.sort, `Sort: ${SONG_FILTER_SORTS.find(([s]) => s === f.sort)[1].toLowerCase()}`]);
+    chips.hidden = !items.length;
+    chips.innerHTML = items.map(([group, value, label]) =>
+      `<button type="button" class="filter-chip sel" data-group="${group}" data-value="${escapeHtml(value)}" title="Remove">${escapeHtml(label)} <span aria-hidden="true">&times;</span></button>`).join('') +
+      (items.length > 1 ? '<button type="button" class="filter-clear-all">Clear all</button>' : '');
+  }
+  const panel = document.getElementById(`filter_panel_${name}`);
+  if (panel?.classList.contains('open')) fillSongFilterPanel(name, panel);
+}
+
+// The panel's choices, each with how many songs it would leave given the other choices and the search
+function fillSongFilterPanel(name, panel) {
+  const f = songFilterState(name);
+  const list = songFilterList(name);
+  const songs = (list?.items || []).filter(item => item.values()['song-id'] !== 'section' && (!list.searched || item.found)).map(item => item.values().facts).filter(Boolean);
+  const countWith = (group, test) => songs.filter(facts => songFilterPasses(f, facts, group) && test(facts)).length;
+  const chip = (group, value, label, n) => `<button type="button" class="filter-chip${f[group].has(value) ? ' sel' : ''}${n === 0 && !f[group].has(value) ? ' none' : ''}" data-group="${group}" data-value="${escapeHtml(value)}" aria-pressed="${f[group].has(value)}">${escapeHtml(label)} <span class="n">${n}</span></button>`;
+  const section = (title, html) => html ? `<div class="filter-section"><h4>${title}</h4><div class="filter-options">${html}</div></div>` : '';
+  const cats = [...(window.songCategories || []), NO_CATEGORY];
+  const keys = [...new Set(songs.map(facts => facts.key).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const videos = [...new Set(songs.map(facts => videoLabel(facts.yt)))].sort((a, b) => (a === 'None' ? -1 : +a) - (b === 'None' ? -1 : +b));
+  const shown = list ? list.visibleItems.filter(item => item.values()['song-id'] !== 'section').length : 0;
+  panel.innerHTML = `<div class="filter-grip" aria-hidden="true"></div>` +
+    section('Category', cats.map(c => chip('cat', c, c === NO_CATEGORY ? 'No category' : c, countWith('cat', facts => c === NO_CATEGORY ? !facts.cats.length : facts.cats.includes(c)))).join('')) +
+    section('Key', keys.map(k => chip('key', k, k, countWith('key', facts => facts.key === k))).join('')) +
+    section('Has', SONG_FILTER_HAS.map(([id, label, test]) => chip('has', id, label, countWith('has', test))).join('')) +
+    section('Video links', videos.length > 1 ? videos.map(v => chip('yt', v, v, countWith('yt', facts => videoLabel(facts.yt) === v))).join('') : '') +
+    (songFilterSorts(name) ? section('Sort', SONG_FILTER_SORTS.map(([id, label]) =>
+      `<button type="button" class="filter-chip${f.sort === id ? ' sel' : ''}" data-sort="${id}" aria-pressed="${f.sort === id}">${label}</button>`).join('')) : '') +
+    `<div class="filter-actions"><button type="button" class="btn btn-small filter-clear-all"${songFilterCount(f) || f.sort !== 'title' ? '' : ' hidden'}>Clear all</button><button type="button" class="btn btn-small filter-done">Show ${shown} song${shown === 1 ? '' : 's'}</button></div>`;
+}
+
+function songFilterPanel(name) {
+  let panel = document.getElementById(`filter_panel_${name}`);
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = `filter_panel_${name}`;
+    panel.className = 'filter-panel';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-label', 'Filter songs');
+    panel.addEventListener('click', e => {
+      const chip = e.target.closest('.filter-chip');
+      const f = songFilterState(name);
+      if (chip?.dataset.sort) {
+        f.sort = chip.dataset.sort;
+        applySongFilter(name);
+      } else if (chip) {
+        const set = f[chip.dataset.group];
+        set.has(chip.dataset.value) ? set.delete(chip.dataset.value) : set.add(chip.dataset.value);
+        applySongFilter(name);
+      } else if (e.target.closest('.filter-clear-all')) {
+        clearSongFilter(name);
+      } else if (e.target.closest('.filter-done')) {
+        toggleSongFilterPanel(name, false);
+      }
+    });
+    document.body.append(panel);
+  }
+  return panel;
+}
+
+const songFilterPhone = () => window.matchMedia('(max-width: 39.99rem)').matches;
+
+function toggleSongFilterPanel(name, open) {
+  const panel = songFilterPanel(name);
+  open ??= !panel.classList.contains('open');
+  document.querySelectorAll('.filter-panel.open').forEach(other => { if (other !== panel) toggleSongFilterPanel(other.id.replace('filter_panel_', ''), false); });
+  const button = document.querySelector(`.song-filter[data-list="${name}"] .filter-btn`);
+  let scrim = document.getElementById('filter_scrim');
+  if (!scrim) {
+    scrim = document.createElement('div');
+    scrim.id = 'filter_scrim';
+    scrim.addEventListener('click', () => document.querySelectorAll('.filter-panel.open').forEach(p => toggleSongFilterPanel(p.id.replace('filter_panel_', ''), false)));
+    document.body.append(scrim);
+  }
+  button?.setAttribute('aria-expanded', open);
+  if (!open) {
+    panel.classList.remove('open');
+    scrim.classList.remove('open');
     return;
   }
-  // a song's search text holds "c:Joy c:Praise\0", or "c:!c\0" when it has no category
-  const match = want === '!c' ? /\0c:!c\0/ : new RegExp(`\\0c:(?:[^\\0]* c:)?${escapeRegExp(stripAccents(want))}(?: c:|\\0)`);
-  adder.filter(item => item.values()['song-id'] === 'section' || match.test(item.values()['song-search'] || ''));
+  fillSongFilterPanel(name, panel);
+  const phone = songFilterPhone();
+  panel.classList.toggle('sheet', phone);
+  panel.style.top = panel.style.left = '';
+  if (!phone && button) { // drop down under the button, over the list
+    const r = button.getBoundingClientRect();
+    panel.style.top = `${r.bottom + 6}px`;
+    panel.style.left = `${Math.max(8, Math.min(r.right - panel.offsetWidth, window.innerWidth - panel.offsetWidth - 8))}px`;
+  }
+  scrim.classList.toggle('open', phone);
+  requestAnimationFrame(() => panel.classList.add('open'));
+  panel.querySelector('.filter-chip, button')?.focus({ preventScroll: true });
 }
+
+// Close an open panel: Esc, a click outside it (on desktop), a new screen or a resize
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  document.querySelectorAll('.filter-panel.open').forEach(panel => {
+    const name = panel.id.replace('filter_panel_', '');
+    toggleSongFilterPanel(name, false);
+    document.querySelector(`.song-filter[data-list="${name}"] .filter-btn`)?.focus();
+  });
+});
+document.addEventListener('pointerdown', e => {
+  if (e.target.closest('.filter-panel, .filter-btn, #filter_scrim')) return;
+  document.querySelectorAll('.filter-panel.open:not(.sheet)').forEach(panel => toggleSongFilterPanel(panel.id.replace('filter_panel_', ''), false));
+});
+['hashchange', 'resize'].forEach(type => window.addEventListener(type, () =>
+  document.querySelectorAll('.filter-panel.open').forEach(panel => toggleSongFilterPanel(panel.id.replace('filter_panel_', ''), false))));
+// The chips under the search box: × takes one away, "Clear all" takes them all
+document.addEventListener('click', e => {
+  const row = e.target.closest('.filter-chips');
+  if (!row) return;
+  const name = row.dataset.list;
+  const chip = e.target.closest('.filter-chip');
+  if (chip) {
+    const f = songFilterState(name);
+    if (chip.dataset.group === 'sort') f.sort = 'title';
+    else f[chip.dataset.group].delete(chip.dataset.value);
+    applySongFilter(name);
+  } else if (e.target.closest('.filter-clear-all')) {
+    clearSongFilter(name);
+  }
+});
 function dataxInBookUpdate(song, remove = false) {
    const songId = song.getAttribute('data-song-id');
 
@@ -1541,7 +1764,9 @@ async function editSongbook() {
     searchInput.dispatchEvent(new KeyboardEvent('keyup'));
     searchInput.parentElement.classList.add('disabled-hidden');
     searchInput.disabled = true;
-    document.querySelector('#songbook_content nav').classList.add('disabled-hidden');
+    // and any filter, for the same reason (#84)
+    clearSongFilter('book');
+    document.querySelectorAll('#songbook_content .song-filter, #songbook_content .filter-chips').forEach(el => el.classList.add('disabled-hidden'));
   };
 
   // Add status and comments toggle buttons
@@ -1664,13 +1889,11 @@ function bindAdderSong(song) {
 }
 
 // A song that shows up while the songbook editor is open (restored or added, maybe on another device):
-// put it in "Add a song?" in title order, after New Section
+// put it in "Add a song?" in the list's order (title, unless the filter sorts it), after New Section
 function addToSongAdder(values) {
   const adder = window.songbook_edit_togglesongs_list;
   const [item] = adder.add(values);
-  const key = it => it.values()['song-id'] === 'section' ? '' : (it.values().name || ' ');
-  adder.sort('name', { sortFunction: (a, b) => key(a).localeCompare(key(b)) });
-  filterSongAdder(); // a new item isn't filtered yet
+  applySongFilter('adder'); // a new item isn't filtered or sorted yet
   if (item?.elm) bindAdderSong(item.elm);
 }
 
