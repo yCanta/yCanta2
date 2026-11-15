@@ -537,10 +537,47 @@ try {
     await touchDrag(190, 650, 320, 250); // scrolling up the song, drifting 130px right
     ok((await hash()) === onSong, 'phone: scrolling a song with sideways drift stays on the song', await hash());
     await shot('song-after-drift');
-    // a real sideways swipe still moves on (this book has one song, so it goes back to the book)
-    await touchDrag(120, 500, 330, 510);
-    await sleep(500);
-    ok((await hash()) === `#${bookId}`, 'phone: a sideways swipe on a song still moves on', await hash());
+    // quick sideways flicks (starting in the middle half of the screen) still go to the next and previous song
+    const flickLeft = () => touchDrag(280, 500, 100, 505, 4);
+    const flickRight = () => touchDrag(110, 500, 290, 505, 4);
+    const order = await bookOrder();
+    const at = order.indexOf(songId);
+    const next = order[at + 1], prev = order[at - 1];
+    if (next) {
+      await flickLeft();
+      await until(`location.hash === '#${bookId}&${next}'`, 'the next song', 3000).catch(() => {});
+      ok((await hash()) === `#${bookId}&${next}`, 'phone: a quick flick left goes to the next song', await hash());
+      await sleep(800);
+      await flickRight();
+      await until(`location.hash === '#${bookId}&${songId}'`, 'the song again', 3000).catch(() => {});
+      ok((await hash()) === `#${bookId}&${songId}`, 'phone: a quick flick right goes to the previous song', await hash());
+      await sleep(800);
+    }
+    if (!prev) { // from the first song, a flick right goes back to the book
+      await flickRight();
+      await until(`location.hash === '#${bookId}'`, 'the book', 3000).catch(() => {});
+      ok((await hash()) === `#${bookId}`, 'phone: a flick right on the first song goes back to the book', await hash());
+      await sleep(800);
+    }
+    // and on a songbook's list of songs, they go to the next and previous songbook
+    if ((await hash()) !== `#${bookId}`) { await ev(`location.hash = '#${bookId}'`); await sleep(1200); }
+    await until(`document.body.classList.contains('songList') && !document.body.classList.contains('song')`, 'the songbook on a phone');
+    const books = await ev(`[...document.querySelectorAll('#songbooks_container ul.list > li')].map(li => li.dataset.songbookId)`);
+    const bookAt = books.indexOf(bookId);
+    const nextBook = books[bookAt + 1], prevBook = books[bookAt - 1];
+    if (nextBook) {
+      await flickLeft();
+      await until(`location.hash === '#${nextBook}'`, 'the next songbook', 3000).catch(() => {});
+      ok((await hash()) === `#${nextBook}`, 'phone: a quick flick left on a songbook goes to the next songbook', await hash());
+      await sleep(800);
+      await flickRight();
+      await until(`location.hash === '#${bookId}'`, 'the songbook again', 3000).catch(() => {});
+      ok((await hash()) === `#${bookId}`, 'phone: a quick flick right on a songbook goes to the previous one', await hash());
+    } else if (prevBook) {
+      await flickRight();
+      await until(`location.hash === '#${prevBook}'`, 'the previous songbook', 3000).catch(() => {});
+      ok((await hash()) === `#${prevBook}`, 'phone: a quick flick right on a songbook goes to the previous one', await hash());
+    }
     await phoneMode(false);
   }
 

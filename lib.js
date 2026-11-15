@@ -2933,6 +2933,15 @@ function read_config_form(){
   }
   return new_opts;
 }
+// The id of the row before or after the open one in a list (a songbook's songs, or the songbooks), as the
+// list shows it now; section headings are skipped. null at either end.
+function neighborRow(listSel, idKey, currentId, before) {
+  const ids = [...document.querySelectorAll(`${listSel} > li`)].map(li => li.dataset[idKey]).filter(id => id && id !== 'section');
+  const at = ids.indexOf(currentId);
+  if (at < 0) return null;
+  return ids[before ? at - 1 : at + 1] || null;
+}
+
 // Touch gestures on a phone. The side panels (Song Categories, "Add a song?", the export Preview) open and
 // close with a sideways swipe or a tap on their tab ('right'); the columns pull down to close, slide out the
 // column behind, or swipe to the next song ('top').
@@ -3017,9 +3026,10 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
       slideback = true;
     } else if (startx < window.innerWidth / 5) {
       slideout = true;
-    } else if (window.innerWidth * .25 < startx && startx < window.innerWidth * .75 &&
-               document.body.classList.contains('song') && row) {
-      navigate = true;
+    } else if (window.innerWidth * .25 < startx && startx < window.innerWidth * .75 && row &&
+               (document.body.classList.contains('song') ? dragEl.id === 'song' :
+                 dragEl.id === 'songList' && document.body.classList.contains('songList') && !document.body.classList.contains('export'))) {
+      navigate = true; // a song: to the next or previous song; a songbook's list: to the next or previous songbook
     } else {
       return;
     }
@@ -3111,17 +3121,16 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
     } else if (navigate) {
       if (Math.abs(dx) > 100) {
         if (e.cancelable) e.preventDefault();
-        let currentSong = document.querySelector("#songbook_content [data-song-id='"+window.song._id+"']");
-        if (currentSong && dx > 0 && currentSong.previousElementSibling) {
-          row.style.transform = 'translate3d(-100%, 0, 0)';
-          location.hash = '#' + formatSbID(window.songbook._id) + '&' +
-                          currentSong.previousElementSibling.getAttribute('data-song-id');
-        } else if (currentSong && dx < 0 && currentSong.nextElementSibling) {
-          row.style.transform = 'translate3d(100%, 0, 0)';
-          location.hash = '#' + formatSbID(window.songbook._id) + '&' +
-                          currentSong.nextElementSibling.getAttribute('data-song-id');
+        // a swipe right goes back (the one before), a swipe left goes on (the one after); past either end, up
+        const back = dx > 0;
+        const songView = dragEl.id === 'song';
+        const neighbor = songView ? neighborRow('#songbook_content ul.list', 'songId', window.song._id, back)
+                                  : neighborRow('#songbooks_container ul.list', 'songbookId', window.songbook._id, back);
+        if (neighbor) {
+          row.style.transform = back ? 'translate3d(-100%, 0, 0)' : 'translate3d(100%, 0, 0)';
+          location.hash = songView ? '#' + formatSbID(window.songbook._id) + '&' + neighbor : '#' + neighbor;
         } else {
-          location.hash = '#' + formatSbID(window.songbook._id);
+          location.hash = songView ? '#' + formatSbID(window.songbook._id) : '#songbooks';
         }
       }
       setTimeout(() => row.removeAttribute('style'), 30);

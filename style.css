@@ -1109,14 +1109,15 @@ info:after {
   display: none;
 }
 .song .edit .wrap > .drag-grip {
+  /* at the right end of the type menu's row, clear of the menu and of an empty part's hint */
   display: inline-block;
+  float: right;
+  margin-top: 1rem;
   padding: .25rem .6rem;
-  margin-left: .25rem;
   font-size: 1.3rem;
   line-height: 1;
   color: gray;
   cursor: grab;
-  vertical-align: middle;
 }
 .list {
   min-height: 2rem;
@@ -1913,9 +1914,16 @@ input[type="number"] {
     overflow-x: hidden;
     overflow-y: auto;
   }
-  /* a closed panel shows only its tab, and doesn't scroll */
+  /* a closed panel shows only its tab: the rest of its edge is see-through, lets touches through to the page
+     under it, and doesn't scroll */
+  body .column .sidebar:not(.sidebar-open) {
+    background: transparent;
+    box-shadow: none;
+    pointer-events: none;
+  }
   body .column .sidebar:not(.sidebar-open) > :not(.sidebar-tab) {
     overflow: hidden;
+    visibility: hidden;
   }
   .songList #songList.edit .sidebar:not(.sidebar-open) > .sidebar-tab,
   .song #song.edit .sidebar:not(.sidebar-open) > .sidebar-tab,
@@ -1923,11 +1931,12 @@ input[type="number"] {
     display: flex;
   }
   .sidebar-tab {
-    position: absolute; /* against the panel's left edge */
-    top: 0;
-    bottom: 0;
+    position: absolute; /* against the panel's left edge, halfway down */
+    top: calc(50% - 5rem);
     left: 0;
+    height: 10rem;
     width: var(--tab-width);
+    pointer-events: auto;
     z-index: 3;
     flex-direction: column;
     align-items: center;
@@ -1964,9 +1973,29 @@ input[type="number"] {
     transform: translate3d(calc(100% - var(--tab-width)), 0, 0);
     width: 13.5rem;
   }
+  /* a song open over the songbook editor: its panel and tab go fully off screen, or they peek out above the song */
+  body.song #songList.edit .sidebar:not(.sidebar-open) {
+    transform: translate3d(100%, 0, 0);
+  }
+  body.song #songList.edit .sidebar:not(.sidebar-open) > .sidebar-tab {
+    display: none;
+  }
+  body.song #songList.edit .subcolumn:first-child > div {
+    padding-right: 1rem; /* no room needed for the tab, and none showing as a dark strip above the song */
+  }
   /* room on the right of the editor, so the closed panel's tab covers none of its boxes */
   #song.edit .subcolumn:first-child > div {
     padding-right: 3.25rem;
+  }
+  /* while the bands across the top still reach the right edge */
+  #song.edit song > .edit_buttons:first-child,
+  #song.edit #song_header {
+    margin-right: -3.25rem;
+  }
+  #songList.edit #songbook_content > .edit_buttons:first-child,
+  #songList.edit #songbook_header,
+  #export .subcolumn:first-child > div > .column_header {
+    margin-right: -3rem;
   }
   .songList #songList.edit .sidebar-open,
   .song #song.edit .sidebar-open {
