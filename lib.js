@@ -458,6 +458,7 @@ let margins = [];
 margins['narrow'] = [.5,.5,.5,.5,.5,0];
 margins['wide'] = [1,2,1,2,1,1];
 margins['normal'] = [1,1,1,1,1,1];
+margins['phone'] = [.3,.3,.3,.3,.3,0]; // a 4" wide phone page (#146)
 
 let text = [];
 text['default'] = [
@@ -523,7 +524,7 @@ let def_configs = [];
 def_configs['1-column'] = [
   {name: 'font_face',           value: 'Times-Roman'}, // Text Options
   {name: 'display_chords',      value: 'no'},
-  {name: 'start_song_on_new_page', value: false},
+  {name: 'start_song_on_new_page', value: 'no'},
   {name: 'hide_booktitle',      value: 'yes'},
   {name: 'songtitle_format',    value: '${num} '},
   {name: 'scripture_location',  value: 'under-title'},
@@ -543,7 +544,7 @@ def_configs['1-column'] = [
 def_configs['2-column'] = [
   {name: 'font_face',           value: 'Times-Roman'}, // Text Options
   {name: 'display_chords',      value: 'no'},
-  {name: 'start_song_on_new_page', value: false},
+  {name: 'start_song_on_new_page', value: 'no'},
   {name: 'hide_booktitle',      value: 'yes'},
   {name: 'songtitle_format',    value: '${num} '},
   {name: 'scripture_location',  value: 'under-title'},
@@ -562,7 +563,7 @@ def_configs['2-column'] = [
 def_configs['3-column'] = [
   {name: 'font_face',           value: 'Times-Roman'}, // Text Options
   {name: 'display_chords',      value: 'no'},
-  {name: 'start_song_on_new_page', value: false},
+  {name: 'start_song_on_new_page', value: 'no'},
   {name: 'hide_booktitle',      value: 'yes'},
   {name: 'songtitle_format',    value: '${num} '},
   {name: 'scripture_location',  value: 'under-title'},
@@ -578,6 +579,32 @@ def_configs['3-column'] = [
   {name: 'display_scrip_index', value: 'no-index'},
   {name: 'index',               value: 'default'}
 ];
+// To read on a phone or send in a chat: 4" wide, a page per song, each as long as its song (#146, #39)
+def_configs['Phone'] = [
+  {name: 'font_face',           value: 'Times-Roman'}, // Text Options
+  {name: 'display_chords',      value: 'no'},
+  {name: 'start_song_on_new_page', value: 'page'},
+  {name: 'hide_booktitle',      value: 'yes'},
+  {name: 'songtitle_format',    value: '${num} '},
+  {name: 'scripture_location',  value: 'under-title'},
+  {name: 'text',                value: 'default' },
+  {name: 'columns',             value: '1'},           // Page Options
+  {name: 'page_layout',         value: 'single-sided'},
+  {name: 'paper_orientation',   value: 'portrait'},
+  {name: 'paper_size',          value: 'PHONE'},
+  {name: 'margin',              value: 'phone'},
+  {name: 'display_index',       value: 'no-index'},    // Index Options
+  {name: 'include_first_line',  value: false},
+  {name: 'display_cat_index',   value: 'no-index'},
+  {name: 'display_scrip_index', value: 'no-index'},
+  {name: 'index',               value: 'default'}
+];
+
+// "Start each song" was an on/off switch: saved setups have true (a new column) or false (#145)
+function exportSettingValue(element, value) {
+  if (element.id === 'start_song_on_new_page' && typeof value === 'boolean') return value ? 'on' : 'no';
+  return value;
+}
 
 export_form.margins = margins;
 export_form.text = text;
@@ -592,7 +619,7 @@ function set_value_by_id(list) {
       element.checked = item.value;
     }
     else{
-      element.value = item.value;
+      element.value = exportSettingValue(element, item.value);
     }
     if(['margin','text','index'].includes(item.name)){
       document.getElementById(item.name).dispatchEvent(new Event('change', { bubbles: true })); //trigger specifics
@@ -2566,27 +2593,31 @@ async function prepExport() {
       endkey: `cfg-${window.exportObject._id}\ufff0`,
     });
 
-    let innerHTML = '';
     const userIdCfg = `cfg-${window.exportObject._id}${window.user._id}`;
     const cfgButtons = document.getElementById('cfg_buttons');
     cfgButtons.innerHTML = '';
 
+    // The menu's order: your Default, your other setups, other people's, then the built-in ones. The first is
+    // what an export starts with (#146, #131).
+    let myDefault = '', mine = '', others = '';
     result.rows.forEach(row => {
-      if (row.doc._id.match(userIdCfg)) {
-        if (row.doc._id !== userIdCfg) {
-          cfgButtons.insertAdjacentHTML('beforeend', `
-            <button class="btn" onclick="blueHighlight(this);">
-              <span data-name="${escapeHtml(row.doc.name || 'Default')}" onclick="saveExport(this.dataset.name);">
-                Save as ${escapeHtml(row.doc.name || 'Default')}
-              </span>              <span class="export_close" onclick="event.preventDefault(); deleteExportCfg('${row.doc._id}');">×</span>
-            </button>`);
-        }
-        innerHTML = `<option value="${escapeHtml(JSON.stringify(row.doc.cfg))}">Your ${escapeHtml(row.doc.name || 'Default')}</option>${innerHTML}`;
+      const option = label => `<option value="${escapeHtml(JSON.stringify(row.doc.cfg))}">${label}</option>`;
+      if (row.doc._id === userIdCfg) {
+        myDefault = option(`Your ${escapeHtml(row.doc.name || 'Default')}`);
+      } else if (row.doc._id.startsWith(userIdCfg + ':')) { // a named one (saveExport adds ':' and the name)
+        cfgButtons.insertAdjacentHTML('beforeend', `
+          <button class="btn" onclick="blueHighlight(this);">
+            <span data-name="${escapeHtml(row.doc.name || 'Default')}" onclick="saveExport(this.dataset.name);">
+              Save as ${escapeHtml(row.doc.name || 'Default')}
+            </span>              <span class="export_close" onclick="event.preventDefault(); deleteExportCfg('${row.doc._id}');">×</span>
+          </button>`);
+        mine += option(`Your ${escapeHtml(row.doc.name || 'Default')}`);
       } else {
-        const userId = row.doc._id.match(/u\-.*/)[0];
-        innerHTML += `<option value="${escapeHtml(JSON.stringify(row.doc.cfg))}">${escapeHtml(window.users[userId])}'s ${escapeHtml(row.doc.name || 'Default')}</option>`;
+        const userId = row.doc._id.match(/u-[^:]*/)?.[0]; // up to the ':' of a named setup
+        others += option(`${escapeHtml(window.users?.[userId] || userId?.slice(2) || 'Someone')}'s ${escapeHtml(row.doc.name || 'Default')}`);
       }
     });
+    let innerHTML = myDefault + mine + others;
 
     // Add default button
     cfgButtons.insertAdjacentHTML('afterbegin', `
@@ -2619,6 +2650,14 @@ async function prepExport() {
     reportDbError(error, 'load the export setups');
   }
 }
+// An export that's just been opened starts with the first setup in the menu: your Default if you saved one,
+// else 1-column (#146). (It used to start with the form's built-in values, which match no setup: "Custom".)
+function applyFirstExportSetup() {
+  const formatSelect = document.getElementById('format');
+  if (!formatSelect.options.length) return;
+  formatSelect.selectedIndex = 0;
+  formatSelect.dispatchEvent(new Event('change', { bubbles: true }));
+}
 function export_form_summary_update() {
   // Helper function to get element value
   const getValue = (id) => {
@@ -2637,8 +2676,10 @@ function export_form_summary_update() {
     // Use every() to check all objects
     return a.every((objA, i) => {
       const objB = b[i];
-      // Check if the name and value strings are strictly equal
-      return objA.name === objB.name && objA.value === objB.value;
+      // Check if the name and value strings are strictly equal (an old saved true/false read as the form shows it)
+      const element = document.getElementById(objB.name);
+      return objA.name === objB.name &&
+        (element ? exportSettingValue(element, objA.value) === exportSettingValue(element, objB.value) : objA.value === objB.value);
     });
   };
 

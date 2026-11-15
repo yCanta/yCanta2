@@ -872,6 +872,13 @@ function paginate(songbook, cfg) {
     if(cfg.START_SONG_ON_NEW_PAGE && songs_have_been_added || page_height(p) + song.height + height_of_introduction_plus_first_chunk(song.chunks) > USABLE_HEIGHT) {
       pages.push(p);
       p = []; // new page
+      // A "page" here is one column. To start on a new sheet (or booklet page), leave the rest of this one's
+      // columns empty (#145).
+      if(cfg.START_SONG_ON_NEW_PAGE == 'page' && songs_have_been_added) {
+        while(pages.length % cfg.COLUMNS != 0) {
+          pages.push([]);
+        }
+      }
     }
 
     // song header will fit
@@ -1603,7 +1610,15 @@ function format(songbook, cfg) {
   doc.info = {Title: songbook.title};
 
   for(const [i, physical_page] of Object.entries(pages_ordered)) {
-    doc.addPage();
+    if(cfg.PHONE) {
+      // as long as what's on it, plus the margins and a line's space so nothing is cut off (#146)
+      const used = Math.max(...physical_page.map(mapping => page_height(mapping.page)), 0);
+      const margins = cfg.PAPER_MARGIN_TOP + cfg.PAGE_MARGIN_TOP + cfg.PAPER_MARGIN_BOTTOM + cfg.PAGE_MARGIN_BOTTOM;
+      doc.addPage({size: [cfg.PAPER_WIDTH, Math.ceil(used + margins + cfg.SONGLINE_SPACE)]});
+    }
+    else {
+      doc.addPage();
+    }
     for(const page_mapping of physical_page) {
       format_page(doc, cfg, page_mapping);
     }
@@ -1722,6 +1737,14 @@ function read_config(config_array, export_object = {}) {
   if (options.SONGS_TO_PRINT == '' || !export_object.showStatus) {
     options.SONGS_TO_PRINT = 'anr';
   }
+  // A phone page (#146, #39): 4 inches wide and as long as each song, for sharing a song to read on a phone.
+  // It's laid out on a very tall sheet (200 inches, the most a PDF page can be), one song to a page, and
+  // format() then cuts each page to the length of what's on it.
+  options.PHONE = options.PAPER_SIZE == 'PHONE';
+  if (options.PHONE) {
+    options.PAPER_SIZE = [4 * 72, 200 * 72];
+    options.PAPER_ORIENTATION = 'portrait';
+  }
   let opts = {size: options.PAPER_SIZE, layout: options.PAPER_ORIENTATION, autoFirstPage: true};
   let doc = new PDFDocument(opts);
   options.PAPER_WIDTH = doc.page.width;
@@ -1746,8 +1769,14 @@ function read_config(config_array, export_object = {}) {
     options.HIDE_BOOKTITLE = false;
   }
 
-  if (options.START_SONG_ON_NEW_PAGE && options.START_SONG_ON_NEW_PAGE.toLowerCase() == 'on') {
-    options.START_SONG_ON_NEW_PAGE = true;
+  // Where each song starts (#145): 'column' the next column, 'page' the next page, false wherever the last song
+  // ended. 'on' is the old switch (saved setups still have it), which always meant the next column.
+  const startSongOn = String(options.START_SONG_ON_NEW_PAGE || '').toLowerCase();
+  if (startSongOn == 'on' || startSongOn == 'column') {
+    options.START_SONG_ON_NEW_PAGE = 'column';
+  }
+  else if (startSongOn == 'page') {
+    options.START_SONG_ON_NEW_PAGE = 'page';
   }
   else {
     options.START_SONG_ON_NEW_PAGE = false;
@@ -1825,6 +1854,12 @@ function read_config(config_array, export_object = {}) {
   options.PAPER_MARGIN_GUTTER = options.PAPER_MARGIN_GUTTER * inch;
   options.COLUMN_GUTTER = options.COLUMN_GUTTER * inch;
 
+  if (options.PHONE) { // one column, one song a page, no room left for a binder
+    options.COLUMNS = 1;
+    options.PAGE_LAYOUT_NAME = 'single-sided';
+    options.PAPER_MARGIN_GUTTER = 0;
+    options.START_SONG_ON_NEW_PAGE = 'page';
+  }
 
   // page layout init after almost everything so it can play with options as needed
   options.page_layout     = new page_layouts[options.PAGE_LAYOUT_NAME](options); 

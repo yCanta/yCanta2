@@ -264,9 +264,17 @@ try {
     await sleep(2000);
     ok((await remote(bookId))._rev === book._rev, 'Cancel on a songbook saves nothing');
     ok((await ev(`document.getElementById('songbook_title').textContent.trim()`)) === `${RUN} Book`, 'Cancel on a songbook shows the saved book');
+
+    // 6. An export starts with the first setup in its menu, not "Custom" (#146)
+    await ev(`location.hash = '#${bookId}?export'`);
+    await until(`document.getElementById('format').options.length > 1`, 'the export setups');
+    await sleep(500);
+    const setup = await ev(`(() => { const f = document.getElementById('format'); return { picked: f.options[f.selectedIndex].textContent, first: f.options[0].textContent, columns: document.getElementById('columns').value }; })()`);
+    ok(setup.picked === setup.first && setup.picked !== 'Custom', 'an export starts with the first setup in its menu', JSON.stringify(setup));
+    await ev(`location.hash = '#${bookId}'`);
   }
 
-  // 6. Cancel a new songbook: back to the songbooks list, nothing saved (#149)
+  // 7. Cancel a new songbook: back to the songbooks list, nothing saved (#149)
   await openNewSongbook();
   await type('#songbook_title', `${RUN} Cancelled Book`);
   await click('#songbook_content .edit_buttons button:nth-child(2)');

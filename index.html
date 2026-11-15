@@ -347,11 +347,12 @@
                       </select>
                     </div>
                     <div class="t3 hide_for_songs">
-                      <label>Start songs on new pages:</label>
-                      <label class="switch">
-                        <input type="checkbox" id="start_song_on_new_page" name="start_song_on_new_page">
-                        <div class="slider"></div>
-                      </label>
+                      <label for="start_song_on_new_page">Start each song:</label>
+                      <select size="1" id="start_song_on_new_page" name="start_song_on_new_page">
+                        <option value="no">where the last ends</option>
+                        <option value="on">in a new column</option>
+                        <option value="page">on a new page</option>
+                      </select>
                     </div>
                     <div class="t3 hide_for_songs">
                       <label for="hide_booktitle">Hide book title?</label>
@@ -497,13 +498,14 @@
                     <div class="t3">
                       <label for="paper_size">Paper Size</label>
                       <select size="1" id="paper_size" name="paper_size" style="display: inline-block;">
-                        <option value="A0">A0</option><option value="A1">A1</option><option value="A2">A2</option><option value="A3">A3</option><option value="A4">A4</option><option value="A5">A5</option><option value="A6">A6</option><option value="B0">B0</option><option value="B1">B1</option><option value="B2">B2</option><option value="B3">B3</option><option value="B4">B4</option><option value="B5">B5</option><option value="B6">B6</option><option value="TABLOID">11x17</option><option value="LEGAL">LEGAL</option><option value="LETTER" selected>LETTER</option>
+                        <option value="A0">A0</option><option value="A1">A1</option><option value="A2">A2</option><option value="A3">A3</option><option value="A4">A4</option><option value="A5">A5</option><option value="A6">A6</option><option value="B0">B0</option><option value="B1">B1</option><option value="B2">B2</option><option value="B3">B3</option><option value="B4">B4</option><option value="B5">B5</option><option value="B6">B6</option><option value="TABLOID">11x17</option><option value="LEGAL">LEGAL</option><option value="LETTER" selected>LETTER</option><option value="PHONE">Phone: 4" wide, each song as long as it is</option>
                       </select>
                     </div>
                     <h4 class="expandedTableHeader collapsed" onclick="this.classList.toggle('collapsed');">Margins<select id="margin" class="fr" onclick="event.stopPropagation()" onchange="if(this.value == 'custom') {this.parentElement.classList.remove('collapsed')}">
                       <option value='normal'>Normal</option>
                       <option value='narrow'>Narrow</option>
                       <option value='wide'>Wide</option>
+                      <option value='phone'>Phone</option>
                       <option value='custom'>Custom</option>
                     </select></h4>
                     <table id="margin_table" class="table expandedTable">
@@ -1237,8 +1239,7 @@ async function _handleSongRoute(piece, context) { // bodyClassList removed
       }
 
       await prepExport();
-      // Apply the selected export preset, like the old $('#format').trigger('change')
-      setTimeout(() => document.getElementById('format').dispatchEvent(new Event('change', { bubbles: true })), 300);
+      applyFirstExportSetup();
       window.document.title = "yCanta2: Exporting " + window.song.title;
     }
   }
@@ -1310,6 +1311,7 @@ async function _handleSongbookRoute(piece, oldHashOb) { // bodyClassList removed
         .filter(song => song.key != "section" && song.doc);
 
       await prepExport();
+      applyFirstExportSetup();
     }
   }
   // Handle presentation mode
