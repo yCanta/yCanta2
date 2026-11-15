@@ -1979,8 +1979,13 @@ const SORTABLE_DRAG = {
 // The dragged row: a short highlight once it lands, and on screen
 function landed(row) {
   scrollIntoViewIfNeed(row);
-  setTimeout(() => row.classList.add('highlightBg'), 200);
-  setTimeout(() => row.classList.remove('highlightBg'), 3200);
+  setTimeout(() => flash(row), 200);
+}
+// A short highlight that fades: on a song row's pill (its link), the shape it has while dragged; else the box
+function flash(row) {
+  const pill = row.querySelector(':scope > a') || row;
+  pill.classList.add('highlightBg');
+  setTimeout(() => pill.classList.remove('highlightBg'), 3000);
 }
 // While a song is held, the song column (or the empty column, with no song open) is a place to drop it to
 // open it. The browser's own drop does this with a mouse (sortable.js); with a finger, where it let go.
@@ -2310,8 +2315,7 @@ function bindAdderSong(song) {
     const copySong = newBookRow(song);
     document.querySelector('#songbook_content .list').appendChild(copySong);
     scrollIntoViewIfNeed(copySong);
-    copySong.classList.add('highlightBg');
-    setTimeout(() => copySong.classList.remove('highlightBg'), 3000);
+    flash(copySong);
   });
 }
 
@@ -2962,6 +2966,8 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
 
   // the swipe has begun: things follow the finger with no animation
   function begin() {
+    // a side panel shows in full while it's dragged, not just its tab (style.css)
+    if (dragSide === 'right') dragEl.classList.add('sidebar-dragging');
     if (dragSide === 'right' || dragTop) {
       dragEl.style.transition = 'all 0s';
       if (dragTop && active) active.style.transition = 'all 0s';
@@ -2975,6 +2981,7 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
   }
   // put back everything the swipe moved, so the page's own layout takes over again
   function putBack() {
+    if (dragSide === 'right') dragEl.classList.remove('sidebar-dragging');
     if (dragSide === 'right' || dragTop) {
       dragEl.style.removeProperty('transform');
       dragEl.style.removeProperty('transition');

@@ -1916,18 +1916,18 @@ input[type="number"] {
   }
   /* a closed panel shows only its tab: the rest of its edge is see-through, lets touches through to the page
      under it, and doesn't scroll */
-  body .column .sidebar:not(.sidebar-open) {
+  body .column .sidebar:not(.sidebar-open):not(.sidebar-dragging) {
     background: transparent;
     box-shadow: none;
     pointer-events: none;
   }
-  body .column .sidebar:not(.sidebar-open) > :not(.sidebar-tab) {
+  body .column .sidebar:not(.sidebar-open):not(.sidebar-dragging) > :not(.sidebar-tab) {
     overflow: hidden;
     visibility: hidden;
   }
-  .songList #songList.edit .sidebar:not(.sidebar-open) > .sidebar-tab,
-  .song #song.edit .sidebar:not(.sidebar-open) > .sidebar-tab,
-  .export #export .sidebar:not(.sidebar-open) > .sidebar-tab {
+  .songList #songList.edit .sidebar:not(.sidebar-open):not(.sidebar-dragging) > .sidebar-tab,
+  .song #song.edit .sidebar:not(.sidebar-open):not(.sidebar-dragging) > .sidebar-tab,
+  .export #export .sidebar:not(.sidebar-open):not(.sidebar-dragging) > .sidebar-tab {
     display: flex;
   }
   .sidebar-tab {
@@ -1996,6 +1996,14 @@ input[type="number"] {
   #songList.edit #songbook_header,
   #export .subcolumn:first-child > div > .column_header {
     margin-right: -3rem;
+  }
+  /* and what's in a band lines up with the boxes below it */
+  .song #song.edit #song_header {
+    padding-right: 3.25rem;
+  }
+  .songList #songList.edit #songbook_header,
+  #export .subcolumn:first-child > div > .column_header {
+    padding-right: 3rem;
   }
   .songList #songList.edit .sidebar-open,
   .song #song.edit .sidebar-open {
@@ -2910,18 +2918,12 @@ only screen and (max-height: 31.25rem) {
   animation-duration: 3s;
   animation-name: highlight;
 }
-@keyframes highlight {
-  0% {
-    background-color: transparent;
-  }
+@keyframes highlight { /* from and back to the element's own color (no start or end given) */
   1% {
     background-color: var(--highlight-color);
   }
   50% {
     background-color: var(--highlight-color);
-  }
-  100% {
-    background-color: transparent;
   }
 }
 
