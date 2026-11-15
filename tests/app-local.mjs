@@ -74,6 +74,7 @@ const pending = new Map();
 const pageErrors = [];
 const dialogs = [];
 let intercepted = null;
+let dialogAnswer = true;
 const send = (method, params = {}) => new Promise((resolve, reject) => {
   const i = ++id; pending.set(i, { resolve, reject }); ws.send(JSON.stringify({ id: i, method, params }));
 });
@@ -93,8 +94,8 @@ async function connect() {
           } else if (m.method === 'Runtime.exceptionThrown') {
             pageErrors.push(m.params.exceptionDetails.exception?.description || m.params.exceptionDetails.text);
           } else if (m.method === 'Page.javascriptDialogOpening') {
-            dialogs.push(m.params.message); // confirm "leave without saving?" and the like: say yes
-            send('Page.handleJavaScriptDialog', { accept: true });
+            dialogs.push(m.params.message); // confirm "leave without saving?" and the like: say yes (or dialogAnswer)
+            send('Page.handleJavaScriptDialog', { accept: dialogAnswer });
           } else if (m.method === 'Input.dragIntercepted') {
             intercepted = m.params.data; // a mouse drag began (see mouseDrag)
           }
@@ -503,8 +504,30 @@ try {
     ok((await bookOrder()).length === rowsBefore + 1, 'finger: a song dragged from "Add a song?" is added to the book', JSON.stringify(await bookOrder()));
     await ev(`document.getElementById('songListEdit').classList.remove('sidebar-open')`);
     await sleep(400);
-    await click('#songbook_content .edit_buttons button:nth-child(2)'); // Cancel
-    await until(`!location.hash.includes('?edit') && !document.querySelector('#songbook_content .edit_buttons')`, 'leaving the songbook editor');
+    // pulling down from the top still leaves the editor, as it always has, asking first about unsaved changes:
+    // answering Cancel keeps you editing, with everything back in place
+    const editHash = await hash();
+    let asked = dialogs.length;
+    dialogAnswer = false;
+    await touchDrag(200, 95, 205, 420, 14);
+    await sleep(1200);
+    dialogAnswer = true;
+    const kept = await ev(`({ hash: location.hash, editing: window.songbookEditing, buttons: !!document.querySelector('#songbook_content .edit_buttons'),
+      moved: [...document.querySelectorAll('.column')].filter(c => c.style.transform).map(c => c.id) })`);
+    ok(dialogs.length > asked && kept.hash === editHash && kept.editing && kept.buttons && kept.moved.length === 0,
+      'phone: pulling down while editing asks, and Cancel keeps you editing with nothing moved', JSON.stringify(kept));
+    asked = dialogs.length;
+    await touchDrag(200, 95, 205, 420, 14);
+    await until(`!location.hash.includes('?edit')`, 'leaving the songbook editor by pulling down', 5000).catch(() => {});
+    ok(!(await hash()).includes('?edit') && dialogs.length > asked, 'phone: pulling down while editing and answering OK leaves the editor', `${await hash()}, asked: ${dialogs.length > asked}`);
+    if ((await hash()).includes('?edit')) {
+      await click('#songbook_content .edit_buttons button:nth-child(2)'); // Cancel
+      await until(`!location.hash.includes('?edit')`, 'leaving the songbook editor');
+    }
+    // the book opens fresh afterwards, not still looking like the editor
+    await ev(`location.hash = '#${bookId}'`);
+    await until(`location.hash === '#${bookId}' && !document.querySelector('#songbook_content .edit_buttons')`, 'the book, not the editor', 5000).catch(() => {});
+    ok(!(await ev(`!!document.querySelector('#songbook_content .edit_buttons')`)), 'phone: after leaving the editor the book opens fresh');
 
     await ev(`location.hash = '#${bookId}&${songId}?edit'`);
     await until(`!!document.querySelector('#song .edit_buttons')`, 'the song editor on a phone');

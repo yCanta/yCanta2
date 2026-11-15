@@ -3019,8 +3019,9 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
       return;
     }
 
-    // 'top': not over a side panel (it has its own swipe), and not while editing
-    if (e.target.closest('.sidebar') || window.songEditing || window.songbookEditing) return;
+    // 'top': not over a side panel (it has its own swipe)
+    if (e.target.closest('.sidebar')) return;
+    const editing = window.songEditing || window.songbookEditing;
     active = document.getElementsByClassName('active')[0];
     if (active === dragEl) active = null;
     slideoutEl = (!document.body.classList.contains('song') && document.body.classList.contains('export') ?
@@ -3028,7 +3029,9 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
     row = dragEl.getElementsByClassName('row')[0];
     [baseX, baseY] = at(dragEl);
     if (starty < remToPx(7.5)) {
-      dragTop = true;
+      dragTop = true; // pull down to close, editing too (leaving an editor asks about unsaved changes)
+    } else if (editing) {
+      return; // the sideways gestures aren't used while editing
     } else if (dragEl.classList.contains('slidout')) {
       slideback = true;
     } else if (startx < window.innerWidth / 5) {
@@ -3145,8 +3148,9 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
       if (dy > 200) { // pulled down far enough: close this column
         dragAction();
         if (e.cancelable) e.preventDefault();
-        // the new page's layout clears these; put them back anyway if it didn't
-        setTimeout(putBack, 1000);
+        // right after the move (and its "are you sure?" when editing): it slides on to the new page, or, when
+        // the move was cancelled to keep editing, back to where it was
+        setTimeout(putBack, 0);
         return;
       }
       putBack();
