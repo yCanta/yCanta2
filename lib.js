@@ -2811,180 +2811,214 @@ function read_config_form(){
   }
   return new_opts;
 }
-function getTranslate3d (el) {
-  var values = window.getComputedStyle(el).transform.split(/\w+\(|\);?/);
-  if (!values[1] || !values[1].length) {
-      return [];
-  }
-  return values[1].split(/,\s?/g);
-}
-
-//Making things work with touch coolness
+// Touch gestures on a phone. The side panels (Song Categories, "Add a song?", the export Preview) open and
+// close with a sideways swipe or a tap on their tab ('right'); the columns pull down to close, slide out the
+// column behind, or swipe to the next song ('top').
+// A touch is either a scroll or a swipe, decided by its first few pixels of movement. Once it goes up or
+// down it's a scroll and nothing here moves, so scrolling a list never opens or closes a panel. Nothing is
+// moved until a touch is known to be a swipe, and everything moved is put back if it's cancelled.
+const isPhone = () => window.matchMedia('(max-width: 39.99rem)').matches; // the phone layout in style.css
 function makeDraggable(dragEl, dragAction, dragSide='right') {
-  let startx = 0;
-  let starty = 0;
-  let dist = 0;
-  let disty = 0;
-  let width = 0;
-  let height = 0;
-  let active;
-  let dragTop = false;
-  let slideout = false;
-  let slideoutEl;
-  let slideback = false;
-  let navigate = false;
+  const DECIDE = 10;    // px of movement before a touch counts as a scroll or a swipe
+  const SIDEWAYS = 1.5; // a swipe goes at least this much more sideways than up or down
+  let armed = false;    // this touch may become a swipe
+  let axis = null;      // 'x' sideways, 'y' up or down, null not decided yet
+  let startx = 0, starty = 0, baseX = 0, baseY = 0;
+  let active = null, slideoutEl = null, row = null;
+  let dragTop = false, slideout = false, slideback = false, navigate = false;
+
+  const at = el => { const m = new DOMMatrixReadOnly(getComputedStyle(el).transform); return [m.m41, m.m42]; };
+
+  // the swipe has begun: things follow the finger with no animation
+  function begin() {
+    if (dragSide === 'right' || dragTop) {
+      dragEl.style.transition = 'all 0s';
+      if (dragTop && active) active.style.transition = 'all 0s';
+    } else if (slideout) {
+      slideoutEl.style.transition = 'all 0s';
+    } else if (slideback) {
+      dragEl.style.transition = 'all 0s';
+    } else if (navigate) {
+      row.style.transition = 'transform 0s';
+    }
+  }
+  // put back everything the swipe moved, so the page's own layout takes over again
+  function putBack() {
+    if (dragSide === 'right' || dragTop) {
+      dragEl.style.removeProperty('transform');
+      dragEl.style.removeProperty('transition');
+      if (dragTop && active) {
+        active.style.removeProperty('transform');
+        active.style.removeProperty('transition');
+      }
+    } else if (slideout) {
+      slideoutEl.removeAttribute('style');
+    } else if (slideback) {
+      dragEl.removeAttribute('style');
+      dragEl.classList.add('slidout');
+    } else if (navigate) {
+      row.removeAttribute('style');
+    }
+  }
 
   dragEl.addEventListener('touchstart', function(e) {
-    var touchobj = e.changedTouches[0];
-    startx = parseInt(touchobj.clientX);
-    starty = parseInt(touchobj.clientY);
-    width = getTranslate3d(dragEl)[4];
-    height = getTranslate3d(dragEl)[5];
-    active = document.getElementsByClassName('active')[0];
-    dragTop = false;
-    slideout = false;
-    slideoutEl = (!document.body.classList.contains('song') && 
-                 document.body.classList.contains('export') ? 
-                 dragEl.previousElementSibling.previousElementSibling : 
-                 dragEl.previousElementSibling);
-    slideback = false;
-    navigate = false;
+    armed = false;
+    axis = null;
+    dragTop = slideout = slideback = navigate = false;
+    if (!isPhone() || e.touches.length > 1) return; // not the phone layout, or a pinch
+    const touch = e.changedTouches[0];
+    startx = touch.clientX;
+    starty = touch.clientY;
 
-    if (dragSide === 'right' && screen.width < 640) {
-      if ((window.songEditing && e.target.closest('#song')) || 
-          (window.songbookEditing && e.target.closest('#songList')) || 
-          e.target.closest('#export')) {
-        dragEl.style.transition = 'all 0s';
-      } else {
-        startx = false;
-      }
-    } else if (dragSide === 'top' && screen.width < 640) {
-      if (starty < remToPx(7.5)) {
-        if (active === dragEl) {
-          active = 0;
-        } else {
-          active.style.transition = 'all 0s';
-        }
-        dragEl.style.transition = 'all 0s';
-        dragTop = true;
-      } else if (!window.songEditing && !window.songbookEditing) {
-        if (dragEl.classList.contains('slidout')) {
-          slideback = true;
-          dragEl.style.transition = 'all 0s';
-        } else if (startx < screen.width/5) {
-          slideout = true;
-          slideoutEl.style.transition = 'all 0s';
-        } else if (screen.width * .25 < startx && startx < screen.width *.75 && 
-                   document.body.classList.contains('song') && 
-                   e.target.closest('.sidebar-open') === null) {
-          navigate = true;
-          dragEl.getElementsByClassName('row')[0].style.transition = 'transform 0s';
-        } else {
-          startx = false;
-        }
-      } else {
-        startx = false;
-      }
-    } else {
-      startx = false;
+    if (dragSide === 'right') {
+      const inUse = (window.songEditing && e.target.closest('#song')) ||
+                    (window.songbookEditing && e.target.closest('#songList')) ||
+                    e.target.closest('#export');
+      // a closed panel swipes open from its tab (all that shows of it); an open one from anywhere on it
+      if (!inUse || (!dragEl.classList.contains('sidebar-open') && !e.target.closest('.sidebar-tab'))) return;
+      baseX = at(dragEl)[0];
+      armed = true;
+      return;
     }
+
+    // 'top': not over a side panel (it has its own swipe), and not while editing
+    if (e.target.closest('.sidebar') || window.songEditing || window.songbookEditing) return;
+    active = document.getElementsByClassName('active')[0];
+    if (active === dragEl) active = null;
+    slideoutEl = (!document.body.classList.contains('song') && document.body.classList.contains('export') ?
+                  dragEl.previousElementSibling.previousElementSibling : dragEl.previousElementSibling);
+    row = dragEl.getElementsByClassName('row')[0];
+    [baseX, baseY] = at(dragEl);
+    if (starty < remToPx(7.5)) {
+      dragTop = true;
+    } else if (dragEl.classList.contains('slidout')) {
+      slideback = true;
+    } else if (startx < window.innerWidth / 5) {
+      slideout = true;
+    } else if (window.innerWidth * .25 < startx && startx < window.innerWidth * .75 &&
+               document.body.classList.contains('song') && row) {
+      navigate = true;
+    } else {
+      return;
+    }
+    armed = true;
   }, {passive: true});
 
   dragEl.addEventListener('touchmove', function(e) {
-    if (startx) {
-      var touchobj = e.changedTouches[0];
-      var dist = parseInt(width) + parseInt((touchobj.clientX) - startx);
-      var disty = Math.max(parseInt(height) + parseInt((touchobj.clientY) - starty), 0);
+    if (!armed) return;
+    if (e.touches.length > 1) { // a second finger: a pinch, not a swipe
+      if (axis) putBack();
+      armed = false;
+      return;
+    }
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - startx;
+    const dy = touch.clientY - starty;
 
-      if (dragSide === 'right') {
-        dragEl.style.transform = 'translate3d(' + Math.max(parseInt(dist),0) + 'px, 0, 0)';
-      } else if (dragSide === 'top') {
-        if (slideout) {
-          if (dist > 25) {
-            slideoutEl.style.transform = 'translate3d(' + -(parseInt(dist)-25)*4 + 'px, 0, 0)';
-          }
-        } else if (slideback) {
-          if (dist < -25) {
-            dragEl.classList.remove('slidout');
-            dragEl.style.transform = 'translate3d(' + (parseInt(dist)+25)*4 + 'px, 8rem, 0)';
-            dragEl.style.width = 'min(80%, 300px)';
-            dragEl.style.height = 'calc(100vh - 8rem)';
-            if (dist < -100) {
-              dragEl.style['z-index'] = '2';
-            } else {
-              dragEl.style['z-index'] = '7';
-            }
-          }
-        } else if (navigate) {
-          if (Math.abs(dist) > 50) {
-            dragEl.getElementsByClassName('row')[0].style.transform = 'translate3d(' + (dist) + 'px, 0, 0)';
-            dragEl.getElementsByClassName('row')[0].style.opacity = '0.5';
-          }
-        } else {
-          dragEl.style.transform = 'translate3d(0,' + parseInt(disty) + 'px, 0)';
-          if (active) {
-            active.style.transform = 'translate3d(0, calc(' + parseInt(disty) + 'px + 4rem), 0)';
-          }
-          e.preventDefault();
-        }
+    if (!axis) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < DECIDE) return;
+      axis = Math.abs(dx) > SIDEWAYS * Math.abs(dy) ? 'x' : 'y';
+      // a pull-down goes down; everything else here goes sideways. Anything else is a scroll: let it be.
+      if (axis !== (dragTop ? 'y' : 'x')) {
+        armed = false;
+        return;
+      }
+      begin();
+    }
+    if (e.cancelable) e.preventDefault(); // it's a swipe: the page doesn't scroll along with it
+
+    const dist = baseX + dx;
+    if (dragSide === 'right') {
+      dragEl.style.transform = 'translate3d(' + Math.min(Math.max(dist, 0), dragEl.offsetWidth) + 'px, 0, 0)';
+    } else if (dragTop) {
+      const disty = Math.max(baseY + dy, 0);
+      dragEl.style.transform = 'translate3d(0,' + disty + 'px, 0)';
+      if (active) {
+        active.style.transform = 'translate3d(0, calc(' + disty + 'px + 4rem), 0)';
+      }
+    } else if (slideout) {
+      if (dist > 25) {
+        slideoutEl.style.transform = 'translate3d(' + -(dist - 25) * 4 + 'px, 0, 0)';
+      }
+    } else if (slideback) {
+      if (dist < -25) {
+        dragEl.classList.remove('slidout');
+        dragEl.style.transform = 'translate3d(' + (dist + 25) * 4 + 'px, 8rem, 0)';
+        dragEl.style.width = 'min(80%, 300px)';
+        dragEl.style.height = 'calc(100vh - 8rem)';
+        dragEl.style['z-index'] = dist < -100 ? '2' : '7';
+      }
+    } else if (navigate) {
+      if (Math.abs(dist) > 50) {
+        row.style.transform = 'translate3d(' + dist + 'px, 0, 0)';
+        row.style.opacity = '0.5';
       }
     }
   }, false);
 
   dragEl.addEventListener('touchend', function(e) {
-    if (startx) {
-      var touchobj = e.changedTouches[0];
-      var dist = parseInt(touchobj.clientX) - startx;
-      var disty = Math.abs(parseInt(touchobj.clientY) - starty);
-      
-      if (startx && dragSide === 'right' && Math.abs(dist) > 50) {
-        dragAction(dragEl); // Call the provided callback
-        e.preventDefault();
-      } else if (slideback) {
-        if (dist < -100) {
-          e.preventDefault();
+    const swiped = armed && axis;
+    armed = false;
+    if (!swiped) return; // a tap or a scroll: nothing was moved
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - startx;
+    const dy = touch.clientY - starty;
+
+    if (dragSide === 'right') {
+      // open with a swipe left and close with a swipe right, a quarter of the panel's width or more
+      const open = dragEl.classList.contains('sidebar-open');
+      const far = Math.max(50, dragEl.offsetWidth / 4);
+      if ((!open && dx < -far) || (open && dx > far)) {
+        dragAction(dragEl);
+        if (e.cancelable) e.preventDefault();
+      }
+      putBack();
+    } else if (slideback) {
+      if (dx < -100) {
+        if (e.cancelable) e.preventDefault();
+        dragEl.removeAttribute('style'); // stays slid back
+      } else {
+        putBack();
+      }
+    } else if (slideout) {
+      if (dx > 100) {
+        if (e.cancelable) e.preventDefault();
+        slideoutEl.classList.add('slidout');
+      }
+      slideoutEl.removeAttribute('style');
+    } else if (navigate) {
+      if (Math.abs(dx) > 100) {
+        if (e.cancelable) e.preventDefault();
+        let currentSong = document.querySelector("#songbook_content [data-song-id='"+window.song._id+"']");
+        if (currentSong && dx > 0 && currentSong.previousElementSibling) {
+          row.style.transform = 'translate3d(-100%, 0, 0)';
+          location.hash = '#' + formatSbID(window.songbook._id) + '&' +
+                          currentSong.previousElementSibling.getAttribute('data-song-id');
+        } else if (currentSong && dx < 0 && currentSong.nextElementSibling) {
+          row.style.transform = 'translate3d(100%, 0, 0)';
+          location.hash = '#' + formatSbID(window.songbook._id) + '&' +
+                          currentSong.nextElementSibling.getAttribute('data-song-id');
         } else {
-          dragEl.classList.add('slidout');
+          location.hash = '#' + formatSbID(window.songbook._id);
         }
-        dragEl.removeAttribute('style');
-      } else if (slideout) {
-        if (dist > 100) {
-          e.preventDefault();
-          slideoutEl.classList.add('slidout');
-        }
-        slideoutEl.removeAttribute('style');
-      } else if (navigate) {
-        if (Math.abs(dist) > 100) {
-          e.preventDefault();
-          let currentSong = document.querySelector("#songbook_content [data-song-id='"+window.song._id+"']");
-          if (currentSong && dist > 0 && currentSong.previousElementSibling) {
-            dragEl.getElementsByClassName('row')[0].style.transform = 'translate3d(-100%, 0, 0)';
-            location.hash = '#' + formatSbID(window.songbook._id) + '&' +
-                            currentSong.previousElementSibling.getAttribute('data-song-id');
-          } else if (currentSong && dist < 0 && currentSong.nextElementSibling) {
-            dragEl.getElementsByClassName('row')[0].style.transform = 'translate3d(100%, 0, 0)';
-            location.hash = '#' + formatSbID(window.songbook._id) + '&' +
-                            currentSong.nextElementSibling.getAttribute('data-song-id');
-          } else {
-            location.hash = '#' + formatSbID(window.songbook._id);
-          }
-        }
-        setTimeout(function() {
-          dragEl.getElementsByClassName('row')[0].removeAttribute('style');
-        }, 30);
-      } else if (dragTop && disty > 200) {
+      }
+      setTimeout(() => row.removeAttribute('style'), 30);
+    } else if (dragTop) {
+      if (dy > 200) { // pulled down far enough: close this column
         dragAction();
-        e.preventDefault();
+        if (e.cancelable) e.preventDefault();
+        // the new page's layout clears these; put them back anyway if it didn't
+        setTimeout(putBack, 1000);
         return;
       }
+      putBack();
     }
-    
-    if (active) {
-      active.style.removeProperty('transform');
-      active.style.removeProperty('transition');
-    }
-    dragEl.style.removeProperty('transform');
-    dragEl.style.removeProperty('transition');
+  }, false);
+
+  // the browser took the touch over (or a call, an alert): put everything back
+  dragEl.addEventListener('touchcancel', function() {
+    if (armed && axis) putBack();
+    armed = false;
   }, false);
 }
 

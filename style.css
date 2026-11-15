@@ -731,6 +731,10 @@ legend {
   --background-color: var(--edit-color);
   background-color: var(--background-color);
 }
+/* The tab a closed side panel shows on a phone (see the phone rules); wider screens show the whole panel */
+.sidebar-tab {
+  display: none;
+}
 #pdf {
   width:100%; 
   height: calc(100vh - 12rem);
@@ -1876,16 +1880,73 @@ input[type="number"] {
     right: 0;
     width: 90vw;
     transform: translate3d(90vw, 0, 0);
+    --tab-width: 2.75rem; /* a finger's width */
+    /* the browser scrolls a panel up and down; a sideways move is left to the swipe in lib.js */
+    touch-action: pan-y;
+  }
+  /* the panel holds still and what's in it scrolls, so its tab stays put however far the list was scrolled */
+  body .column .sidebar {
+    overflow: hidden;
+  }
+  body .column .sidebar > :not(.sidebar-tab) {
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+  /* a closed panel shows only its tab, and doesn't scroll */
+  body .column .sidebar:not(.sidebar-open) > :not(.sidebar-tab) {
+    overflow: hidden;
+  }
+  .songList #songList.edit .sidebar:not(.sidebar-open) > .sidebar-tab,
+  .song #song.edit .sidebar:not(.sidebar-open) > .sidebar-tab,
+  .export #export .sidebar:not(.sidebar-open) > .sidebar-tab {
+    display: flex;
+  }
+  .sidebar-tab {
+    position: absolute; /* against the panel's left edge */
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: var(--tab-width);
+    z-index: 3;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .75rem;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 1rem 0 0 1rem;
+    background-color: var(--highlight-color);
+    box-shadow: var(--box-shadow-var);
+    color: var(--text-color);
+    font: inherit;
+    cursor: pointer;
+  }
+  .sidebar-tab .tab-chevron {
+    font-size: 1.75rem;
+    line-height: 1;
+  }
+  .sidebar-tab .tab-label {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font-size: .95rem;
+    white-space: nowrap;
   }
 
   /*Focus edit*/
+  /* closed: moved right by its own width (100%) less the tab, so only the tab shows */
   .songList #songList.edit .sidebar { /*songbook*/
-    transform: translate3d(15.5rem, 0, 0);
+    transform: translate3d(calc(100% - var(--tab-width)), 0, 0);
     width: 17.5rem;
   }
   .song #song.edit .sidebar {/*song*/
-    transform: translate3d(13.5rem, 0, 0);
+    transform: translate3d(calc(100% - var(--tab-width)), 0, 0);
     width: 13.5rem;
+  }
+  /* room on the right of the editor, so the closed panel's tab covers none of its boxes */
+  #song.edit .subcolumn:first-child > div {
+    padding-right: 3.25rem;
   }
   .songList #songList.edit .sidebar-open,
   .song #song.edit .sidebar-open {
@@ -1909,7 +1970,7 @@ input[type="number"] {
     opacity: 1;
   }
   .export #export .sidebar {
-    transform: translate3d(80vw, 0, 0);
+    transform: translate3d(calc(100% - var(--tab-width)), 0, 0);
   }
   .export #export .sidebar-open {
     transform: translate3d(0, 0, 0);

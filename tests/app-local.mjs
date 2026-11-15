@@ -165,6 +165,95 @@ const remoteWhen = async (docId, test, ms = 10000) => {
   return doc;
 };
 const hash = () => ev('location.hash');
+// ---------- phone helpers ----------
+// A phone-sized screen with touch, like a 390px-wide phone
+const phoneMode = async on => {
+  if (on) {
+    await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true, screenWidth: 390, screenHeight: 844 });
+    await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
+  } else {
+    await send('Emulation.clearDeviceMetricsOverride');
+    await send('Emulation.setTouchEmulationEnabled', { enabled: false });
+  }
+  await sleep(600);
+};
+// A finger moving from (x0, y0) to (x1, y1) in small steps, like a real swipe or scroll
+const touchDrag = async (x0, y0, x1, y1, steps = 12) => {
+  await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x0, y: y0 }] });
+  for (let i = 1; i <= steps; i++) {
+    await send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x0 + (x1 - x0) * i / steps, y: y0 + (y1 - y0) * i / steps }] });
+    await sleep(16);
+  }
+  await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await sleep(500); // the panel's slide
+};
+const tap = async (x, y) => {
+  await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+  await sleep(50);
+  await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await sleep(500);
+};
+// Screenshots when SHOTS is set to a folder
+const shot = async name => {
+  if (!process.env.SHOTS) return;
+  const { mkdirSync, writeFileSync } = await import('node:fs');
+  mkdirSync(process.env.SHOTS, { recursive: true });
+  const { data } = await send('Page.captureScreenshot', { format: 'png' });
+  writeFileSync(join(process.env.SHOTS, `${name}.png`), Buffer.from(data, 'base64'));
+};
+const panel = sel => ev(`(() => { const p = document.querySelector(${JSON.stringify(sel)}); const r = p.getBoundingClientRect();
+  return { open: p.classList.contains('sidebar-open'), left: Math.round(r.left), width: Math.round(r.width) }; })()`);
+// The closed panel's visible part (its tab) covers nothing that can be tapped or typed in
+const coveredByTab = sel => ev(`(() => { const p = document.querySelector(${JSON.stringify(sel)});
+  const tab = p.querySelector('.sidebar-tab') || p; const t = tab.getBoundingClientRect();
+  const left = Math.max(t.left, 0); if (left >= innerWidth) return [];
+  const column = p.closest('.column');
+  return [...column.querySelectorAll('input, button, a, [contenteditable="true"], select, textarea, li')]
+    .filter(el => !p.contains(el) && el.getClientRects().length)
+    .filter(el => { const r = el.getBoundingClientRect(); return r.right > left + 1 && r.bottom > t.top && r.top < t.bottom && r.top < innerHeight && r.bottom > 0; })
+    .map(el => el.tagName.toLowerCase() + (el.className && typeof el.className === 'string' ? '.' + el.className.split(' ')[0] : '') + ' ' + (el.textContent || el.value || '').trim().slice(0, 20)); })()`);
+// Checks for one sidebar at phone size: scrolling must never open or close it, and a real swipe or tap must
+// (swipeY: where a swipe on the open panel starts; the export Preview's PDF is its own page and gets the
+// touches over it, so that panel is swiped by its header)
+async function phonePanel(name, sel, swipeY = 420) {
+  const W = 390;
+  await shot(`${name}-closed`);
+  const covered = await coveredByTab(sel);
+  ok(covered.length === 0, `${name}: the closed panel's tab covers nothing`, covered.slice(0, 5).join(' | '));
+  // scrolling down along the right edge, drifting 70px sideways, leaves it closed
+  await touchDrag(W - 12, 650, W - 82, 300);
+  ok(!(await panel(sel)).open, `${name}: a scroll with sideways drift doesn't open the closed panel`);
+  // a tap on its tab opens it
+  const tabAt = await ev(`(() => { const p = document.querySelector(${JSON.stringify(sel)}); const t = (p.querySelector('.sidebar-tab') || p).getBoundingClientRect();
+    return { x: Math.min(t.left + t.width / 2, ${W} - 4), y: Math.min(t.top + t.height / 2, innerHeight / 2) }; })()`);
+  await tap(tabAt.x, tabAt.y);
+  ok((await panel(sel)).open, `${name}: a tap on the tab opens the panel`);
+  if (!(await panel(sel)).open) await ev(`document.querySelector(${JSON.stringify(sel)}).classList.add('sidebar-open')`);
+  await shot(`${name}-open`);
+  // an open panel's list still scrolls (when it's longer than the screen)
+  const scroller = `document.querySelector(${JSON.stringify(sel)} + ' > :not(.sidebar-tab)')`;
+  const canScroll = await ev(`(() => { const s = ${scroller}; s.scrollTop = 0; return s.scrollHeight > s.clientHeight + 20; })()`);
+  if (canScroll && swipeY > 200) {
+    await touchDrag(W - 100, 700, W - 100, 300);
+    ok((await ev(`${scroller}.scrollTop`)) > 50, `${name}: the open panel's list scrolls`);
+  }
+  // scrolling the open panel's list with sideways drift, either way, leaves it open
+  await touchDrag(W - 120, 700, W - 50, 300);
+  ok((await panel(sel)).open, `${name}: a scroll drifting right doesn't close the open panel`);
+  await touchDrag(W - 60, 700, W - 130, 300);
+  ok((await panel(sel)).open, `${name}: a scroll drifting left doesn't close the open panel`);
+  // a real swipe to the right closes it; a real swipe to the left from the tab opens it again
+  const openLeft = (await panel(sel)).left; // start the swipe on the panel itself (they differ in width)
+  await touchDrag(openLeft + 20, swipeY, W - 10, swipeY + 10);
+  ok(!(await panel(sel)).open, `${name}: a swipe right closes the panel`);
+  const under = await ev(`(() => { const el = document.elementFromPoint(${W - 8}, 420); return el ? el.tagName + '.' + el.className + ' in ' + (el.closest('[id]')?.id || '') : 'nothing'; })()`);
+  await touchDrag(W - 8, 420, W - 250, 430);
+  const afterSwipe = await panel(sel);
+  ok(afterSwipe.open, `${name}: a swipe left from the tab opens the panel`, `under the finger: ${under}; panel ${JSON.stringify(afterSwipe)}; editing ${await ev('!!window.songEditing')}`);
+  await ev(`document.querySelector(${JSON.stringify(sel)}).classList.remove('sidebar-open')`);
+  await sleep(400);
+}
+
 // "+ Add SB" above the songbooks list
 const openNewSongbook = async () => {
   await ev(`location.hash = '#songbooks'`);
@@ -272,6 +361,41 @@ try {
     const setup = await ev(`(() => { const f = document.getElementById('format'); return { picked: f.options[f.selectedIndex].textContent, first: f.options[0].textContent, columns: document.getElementById('columns').value }; })()`);
     ok(setup.picked === setup.first && setup.picked !== 'Custom', 'an export starts with the first setup in its menu', JSON.stringify(setup));
     await ev(`location.hash = '#${bookId}'`);
+
+    // 7. On a phone: the three side panels (scrolling never flips them; a swipe or a tap on the tab does),
+    // and scrolling through a song doesn't swipe to another one
+    await phoneMode(true);
+    await ev(`location.hash = '#${bookId}?edit'`);
+    await until(`!!document.querySelector('#songbook_content .edit_buttons')`, 'the songbook editor on a phone');
+    await sleep(800);
+    await phonePanel('add-a-song', '#songListEdit');
+    await click('#songbook_content .edit_buttons button:nth-child(2)'); // Cancel
+    await until(`!location.hash.includes('?edit') && !document.querySelector('#songbook_content .edit_buttons')`, 'leaving the songbook editor');
+
+    await ev(`location.hash = '#${bookId}&${songId}?edit'`);
+    await until(`!!document.querySelector('#song .edit_buttons')`, 'the song editor on a phone');
+    await sleep(800);
+    await phonePanel('song-categories', '#song-edit');
+    await click('#song .edit_buttons a'); // Cancel
+    await until(`!location.hash.includes('?edit') && !document.querySelector('#song .edit_buttons')`, 'leaving the song editor');
+
+    await ev(`location.hash = '#${bookId}?export'`);
+    await until(`document.getElementById('format').options.length > 1`, 'the export on a phone');
+    await sleep(800);
+    await phonePanel('export-preview', '#exportPreview', 100);
+
+    await ev(`location.hash = '#${bookId}&${songId}'`);
+    await until(`!!document.querySelector('#song song') && document.body.classList.contains('song') && !document.body.classList.contains('export')`, 'the song on a phone');
+    await sleep(800);
+    const onSong = await hash();
+    await touchDrag(190, 650, 320, 250); // scrolling up the song, drifting 130px right
+    ok((await hash()) === onSong, 'phone: scrolling a song with sideways drift stays on the song', await hash());
+    await shot('song-after-drift');
+    // a real sideways swipe still moves on (this book has one song, so it goes back to the book)
+    await touchDrag(120, 500, 330, 510);
+    await sleep(500);
+    ok((await hash()) === `#${bookId}`, 'phone: a sideways swipe on a song still moves on', await hash());
+    await phoneMode(false);
   }
 
   // 7. Cancel a new songbook: back to the songbooks list, nothing saved (#149)
