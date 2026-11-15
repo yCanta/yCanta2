@@ -1920,6 +1920,12 @@ input[type="number"] {
     background: transparent;
     box-shadow: none;
     pointer-events: none;
+    /* closing: it slides away, then goes see-through */
+    transition: transform .25s, background-color 0s .25s, box-shadow 0s .25s;
+  }
+  /* opening: the drawer is solid at once and only slides (the page fades every change, see index.html) */
+  body .column .sidebar {
+    transition: transform .25s;
   }
   body .column .sidebar:not(.sidebar-open):not(.sidebar-dragging) > :not(.sidebar-tab) {
     overflow: hidden;
