@@ -2833,9 +2833,9 @@ async function loadSongbook(songbook_id, forceReload=false) {
       return 'songbook already loaded';
     }
 
-    if (window.songbook_list) {
-      window.songbook_list.clear();
-    }
+    // The list isn't emptied here: buildSongbookList swaps the old rows for the new ones in one go, once the new
+    // book has loaded. Emptying it first left a moment with no rows, and on a phone the songbook bar above an
+    // open song went blank for a frame when switching books (#148).
 
     // Handle special songbooks (All Songs/Favorites)
     if (!songbook_id || songbook_id === 'sb-allSongs' || songbook_id === 'sb-favoriteSongs') {
@@ -2891,6 +2891,7 @@ async function loadSongbook(songbook_id, forceReload=false) {
   function handleNewSongbook() {
     // A fresh object, so the new book doesn't start with the last book's status and comment switches
     window.songbook = {title: '', _id: 'sb-new-songbook', songrefs: []};
+    window.songbook_list?.clear(); // a new book starts empty
     setSongbookInfo(window.songbook);
   }
 
