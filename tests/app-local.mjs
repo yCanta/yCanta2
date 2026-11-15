@@ -19,9 +19,10 @@ import { fileURLToPath } from 'node:url';
 
 // The local test server as alice (her password is the local-only one from database/lib.mjs)
 const as = name => name;
-async function req(name, method, path) {
+async function req(name, method, path, body) {
   const res = await fetch('http://127.0.0.1:5984' + path, { method,
-    headers: { Authorization: 'Basic ' + Buffer.from(`${name}:local-test-${name}`).toString('base64') } });
+    headers: { Authorization: 'Basic ' + Buffer.from(`${name}:local-test-${name}`).toString('base64'), 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body) });
   return { status: res.status, json: await res.json().catch(() => null) };
 }
 
@@ -72,6 +73,7 @@ let ws, id = 0;
 const pending = new Map();
 const pageErrors = [];
 const dialogs = [];
+let intercepted = null;
 const send = (method, params = {}) => new Promise((resolve, reject) => {
   const i = ++id; pending.set(i, { resolve, reject }); ws.send(JSON.stringify({ id: i, method, params }));
 });
@@ -93,6 +95,8 @@ async function connect() {
           } else if (m.method === 'Page.javascriptDialogOpening') {
             dialogs.push(m.params.message); // confirm "leave without saving?" and the like: say yes
             send('Page.handleJavaScriptDialog', { accept: true });
+          } else if (m.method === 'Input.dragIntercepted') {
+            intercepted = m.params.data; // a mouse drag began (see mouseDrag)
           }
         };
         return;
@@ -193,6 +197,55 @@ const tap = async (x, y) => {
   await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await sleep(500);
 };
+// Where an element is on screen (scrolled into view first)
+const spot = sel => ev(`(async () => { const el = document.querySelector(${JSON.stringify(sel)}); if (!el) return null;
+  el.scrollIntoView({ block: 'center' }); await new Promise(r => setTimeout(r, 300)); const r = el.getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2, top: r.top, bottom: r.bottom, left: r.left, right: r.right }; })()`);
+// A finger that presses, holds still, then drags (a phone's drag; a quick move is a scroll)
+const touchHoldDrag = async (from, to, hold = 400, steps = 16) => {
+  await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: from.x, y: from.y }] });
+  await sleep(hold);
+  for (let i = 1; i <= steps; i++) {
+    await send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: from.x + (to.x - from.x) * i / steps, y: from.y + (to.y - from.y) * i / steps }] });
+    await sleep(30);
+  }
+  await sleep(200);
+  await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await sleep(700);
+};
+// A mouse drag through the browser's own drag-and-drop (what SortableJS uses with a mouse)
+const mouseDrag = async (from, to, steps = 10) => {
+  await send('Input.setInterceptDrags', { enabled: true });
+  intercepted = null;
+  await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: from.x, y: from.y });
+  await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: from.x, y: from.y, button: 'left', buttons: 1, clickCount: 1 });
+  for (let i = 1; i <= 6 && !intercepted; i++) {
+    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: from.x, y: from.y + i * 3, button: 'left', buttons: 1 });
+    await sleep(40);
+  }
+  for (let i = 0; i < 20 && !intercepted; i++) await sleep(50);
+  if (!intercepted) {
+    await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: from.x, y: from.y, button: 'left', clickCount: 1 });
+    await send('Input.setInterceptDrags', { enabled: false });
+    throw new Error('the mouse drag did not start');
+  }
+  const data = intercepted;
+  await send('Input.dispatchDragEvent', { type: 'dragEnter', x: from.x, y: from.y, data });
+  for (let i = 1; i <= steps; i++) {
+    await send('Input.dispatchDragEvent', { type: 'dragOver', x: from.x + (to.x - from.x) * i / steps, y: from.y + (to.y - from.y) * i / steps, data });
+    await sleep(60);
+  }
+  await send('Input.dispatchDragEvent', { type: 'dragOver', x: to.x, y: to.y, data });
+  await sleep(200);
+  await send('Input.dispatchDragEvent', { type: 'drop', x: to.x, y: to.y, data });
+  await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: to.x, y: to.y, button: 'left', clickCount: 1 });
+  await send('Input.setInterceptDrags', { enabled: false });
+  await sleep(600);
+};
+// The grip of a song's nth part (0 is the first) in the song editor
+const gripOf = n => `#song song .wrap:nth-child(${n + 1} of .wrap) .drag-grip`;
+const bookOrder = () => ev(`[...document.querySelectorAll('#songbook_content ul.list > li')].map(li => li.dataset.songId)`);
+const chunkOrder = () => ev(`[...document.querySelectorAll('#song song .wrap chunk')].map(c => c.textContent.trim().split('\\n')[0])`);
 // Screenshots when SHOTS is set to a folder
 const shot = async name => {
   if (!process.env.SHOTS) return;
@@ -292,6 +345,18 @@ try {
   const closeNotices = () => ev(`document.querySelectorAll('.notyf__toast').forEach(t => t.remove()); 'ok'`);
   await closeNotices();
 
+  // A song in three parts, for dragging parts around (made on the server, as another device would)
+  const partsId = `s-${Date.now()}`;
+  const now = Date.now();
+  const put = await req(as('alice'), 'PUT', `${DB}/${partsId}`, {
+    _id: partsId, title: `${RUN} Parts`, authors: [''], scripture_ref: [''], introduction: '', key: '', categories: [''],
+    cclis: false, copyright: '', yt: '', chords: '', search: `t:${RUN} Parts\0`,
+    content: [[{ type: 'verse' }, ['First part']], [{ type: 'chorus' }, ['Second part']], [{ type: 'verse' }, ['Third part']]],
+    added: now, addedBy: 'u-alice', edited: now, editedBy: 'u-alice' });
+  if (put.status === 201) made.push(partsId);
+  ok(put.status === 201, 'a three-part test song is made on the server', JSON.stringify(put.json));
+  await until(`db.get('${partsId}').then(() => true, () => false)`, 'the three-part song to reach this browser', 20000);
+
   // 1. Add a song from All Songs (#150)
   await ev(`location.hash = '#sb-allSongs'`);
   await until(`document.querySelectorAll('#songbook_content .list > li').length > 0`, 'All Songs');
@@ -336,6 +401,21 @@ try {
     await type('#songbook_title', `${RUN} Book`);
     await until(`!!document.querySelector('#songbook_edit_togglesongs li[data-song-id="${songId}"]')`, 'the song in "Add a song?"');
     await click(`#songbook_edit_togglesongs li[data-song-id="${songId}"]`);
+    // with a mouse: drag the three-part song in from "Add a song?" below it, then up above it
+    await until(`!!document.querySelector('#songbook_edit_togglesongs li[data-song-id="${partsId}"]')`, 'the three-part song in "Add a song?"');
+    const adderRow = `#songbook_edit_togglesongs li[data-song-id="${partsId}"]`;
+    const firstRow = await spot(`#songbook_content ul.list > li[data-song-id="${songId}"]`);
+    await mouseDrag(await spot(adderRow), { x: firstRow.x, y: firstRow.bottom - 4 });
+    const added = await bookOrder();
+    ok(added.length === 2 && added.includes(partsId) && added.includes(songId), 'mouse: a song dragged from "Add a song?" is added to the book', JSON.stringify(added));
+    ok(await ev(`!!document.querySelector('${adderRow}') && document.querySelector('${adderRow}').getAttribute('data-xInBook') === '1'`),
+      'mouse: "Add a song?" keeps the song, marked as in the book once');
+    // drag the bottom song to the top
+    const bottomId = added[1];
+    const top = await spot(`#songbook_content ul.list > li:first-child`);
+    await mouseDrag(await spot(`#songbook_content ul.list > li:last-child`), { x: top.x, y: top.top + 4 });
+    const moved = await bookOrder();
+    ok(moved[0] === bottomId && moved.length === 2, 'mouse: a song dragged up in the book moves up', JSON.stringify(moved));
     await click('#songbook_content .edit_buttons button');
     await until(`/^#sb-(?!new)/.test(location.hash) && !location.hash.includes('?edit')`, 'the saved songbook');
     const bookId = (await hash()).slice(1).split('&')[0];
@@ -343,11 +423,20 @@ try {
     const book = await remoteWhen(bookId, d => d.title === `${RUN} Book`);
     ok(book.title === `${RUN} Book`, 'the new songbook is saved with its title', book.title);
     ok(book.songrefs?.some(ref => ref.id === songId), 'the new songbook holds the song');
+    ok(JSON.stringify(book.songrefs?.map(ref => ref.id)) === JSON.stringify(moved), 'the dragged order is saved', JSON.stringify(book.songrefs?.map(ref => ref.id)));
 
     // 5. Cancel an edit of the songbook: nothing is saved
     await ev(`location.hash = '#${bookId}?edit'`);
     await until(`!!document.querySelector('#songbook_content .edit_buttons')`, 'the songbook editor');
     await type('#songbook_title', `${RUN} Book Should Not Save`, true);
+    // with a mouse: drag a song from the book back to "Add a song?" to take it out (then Cancel keeps it)
+    const outId = (await bookOrder())[0];
+    const adderList = await spot('#songbook_edit_togglesongs ul.list > li:nth-child(3)');
+    await mouseDrag(await spot(`#songbook_content ul.list > li:first-child`), adderList);
+    const left = await bookOrder();
+    ok(left.length === 1 && !left.includes(outId), 'mouse: a song dragged back to "Add a song?" comes out of the book', JSON.stringify(left));
+    ok(await ev(`!document.querySelector('#songbook_edit_togglesongs li[data-song-id="${outId}"]').hasAttribute('data-xInBook')`),
+      'mouse: "Add a song?" no longer marks it as in the book');
     await click('#songbook_content .edit_buttons button:nth-child(2)');
     await until(`location.hash === '#${bookId}'`, 'leaving the songbook editor');
     await sleep(2000);
@@ -362,6 +451,31 @@ try {
     ok(setup.picked === setup.first && setup.picked !== 'Custom', 'an export starts with the first setup in its menu', JSON.stringify(setup));
     await ev(`location.hash = '#${bookId}'`);
 
+    // 6a. With a mouse: in the book editor, with a song open, drop the other song on the song to open it
+    await ev(`location.hash = '#${bookId}?edit&${songId}'`);
+    await until(`!!document.querySelector('#songbook_content .edit_buttons') && !!document.querySelector('#song song')`, 'the book editor with a song open');
+    await sleep(800);
+    await mouseDrag(await spot(`#songbook_content ul.list > li[data-song-id="${partsId}"]`), await spot('#song song'));
+    ok((await hash()) === `#${bookId}?edit&${partsId}`, 'mouse: a song dropped on the open song opens it', await hash());
+    ok((await bookOrder()).length === 2, 'mouse: dropping it there leaves the book as it was', JSON.stringify(await bookOrder()));
+    await click('#songbook_content .edit_buttons button:nth-child(2)'); // Cancel
+    await until(`!location.hash.includes('?edit')`, 'leaving the book editor');
+
+    // 6b. With a mouse: drag a song's last part to the top in the song editor, and save
+    await ev(`location.hash = '#${bookId}&${partsId}?edit'`);
+    await until(`document.querySelectorAll('#song song .wrap').length === 3`, 'the three-part song in the editor');
+    await sleep(500);
+    const firstPart = await spot(gripOf(0));
+    await mouseDrag(await spot(gripOf(2)), { x: firstPart.x, y: firstPart.top - 6 });
+    ok(JSON.stringify(await chunkOrder()) === JSON.stringify(['Third part', 'First part', 'Second part']), 'mouse: a part dragged to the top moves there', JSON.stringify(await chunkOrder()));
+    // a click in a part's words still puts the cursor there (it doesn't start a drag)
+    await click('#song song .wrap chunk');
+    ok(await ev(`!!document.activeElement?.closest('chunk')`), 'mouse: a click in a part\'s words puts the cursor there');
+    await click('#song .edit_buttons button');
+    await until(`!location.hash.includes('?edit') && !!document.querySelector('#song song[data-rev^="2-"]')`, 'the saved three-part song');
+    const parts = await remoteWhen(partsId, d => d._rev.startsWith('2-'));
+    ok(JSON.stringify(parts.content?.map(c => c[1][0])) === JSON.stringify(['Third part', 'First part', 'Second part']), 'the dragged parts order is saved', JSON.stringify(parts.content?.map(c => c[1])));
+
     // 7. On a phone: the three side panels (scrolling never flips them; a swipe or a tap on the tab does),
     // and scrolling through a song doesn't swipe to another one
     await phoneMode(true);
@@ -369,6 +483,26 @@ try {
     await until(`!!document.querySelector('#songbook_content .edit_buttons')`, 'the songbook editor on a phone');
     await sleep(800);
     await phonePanel('add-a-song', '#songListEdit');
+    // with a finger: a quick swipe over the book's songs scrolls, it doesn't move one
+    const before = JSON.stringify(await bookOrder());
+    const lastRow = await spot(`#songbook_content ul.list > li:last-child`);
+    await touchDrag(lastRow.x, lastRow.y, lastRow.x, lastRow.y - 120);
+    ok(JSON.stringify(await bookOrder()) === before, 'finger: a quick swipe over the songs moves none', JSON.stringify(await bookOrder()));
+    // press, hold, and drag the last song to the top
+    const firstPhoneRow = await spot(`#songbook_content ul.list > li:first-child`);
+    const movingId = await ev(`document.querySelector('#songbook_content ul.list > li:last-child').dataset.songId`);
+    // (the same row the quick swipe was on: a scroll mustn't leave it ignoring the next press-and-hold)
+    await touchHoldDrag(await spot(`#songbook_content ul.list > li:last-child`), { x: firstPhoneRow.x, y: firstPhoneRow.top + 4 });
+    ok((await bookOrder())[0] === movingId, 'finger: press, hold and drag moves a song in the book, even right after a scroll over it', JSON.stringify(await bookOrder()));
+    // open "Add a song?" with its tab and drag a song from it into the book
+    await ev(`document.getElementById('songListEdit').classList.add('sidebar-open')`);
+    await sleep(500);
+    const rowsBefore = (await bookOrder()).length;
+    const target = await ev(`(() => { const r = document.querySelector('#songbook_content ul.list > li:first-child').getBoundingClientRect(); return { x: Math.max(r.left + 30, 20), y: r.bottom - 4 }; })()`);
+    await touchHoldDrag(await spot(`#songbook_edit_togglesongs li[data-song-id="${songId}"]`), target);
+    ok((await bookOrder()).length === rowsBefore + 1, 'finger: a song dragged from "Add a song?" is added to the book', JSON.stringify(await bookOrder()));
+    await ev(`document.getElementById('songListEdit').classList.remove('sidebar-open')`);
+    await sleep(400);
     await click('#songbook_content .edit_buttons button:nth-child(2)'); // Cancel
     await until(`!location.hash.includes('?edit') && !document.querySelector('#songbook_content .edit_buttons')`, 'leaving the songbook editor');
 
@@ -376,6 +510,18 @@ try {
     await until(`!!document.querySelector('#song .edit_buttons')`, 'the song editor on a phone');
     await sleep(800);
     await phonePanel('song-categories', '#song-edit');
+    await click('#song .edit_buttons a'); // Cancel
+    await until(`!location.hash.includes('?edit') && !document.querySelector('#song .edit_buttons')`, 'leaving the song editor');
+
+    // with a finger: press, hold and drag a song's last part (by its grip) to the top
+    await ev(`location.hash = '#${bookId}&${partsId}?edit'`);
+    await until(`document.querySelectorAll('#song song .wrap').length === 3`, 'the three-part song in the editor on a phone');
+    await sleep(800);
+    const partsBefore = await chunkOrder();
+    const topPart = await spot(gripOf(0));
+    await touchHoldDrag(await spot(gripOf(2)), { x: topPart.x, y: topPart.top - 6 });
+    const partsAfter = await chunkOrder();
+    ok(partsAfter[0] === partsBefore[2], 'finger: press, hold and drag moves a part to the top', JSON.stringify(partsAfter));
     await click('#song .edit_buttons a'); // Cancel
     await until(`!location.hash.includes('?edit') && !document.querySelector('#song .edit_buttons')`, 'leaving the song editor');
 

@@ -1081,22 +1081,42 @@ info:after {
 .songList .edit #songbook_content ul li{
   border: 1px #EEE dashed;
 }
-/*Overt,overb, moving are for sortable*/
-.overt > * { 
-  box-shadow: var(--highlight-color) 0px -10px;
-  transform: translateY(10px);
-  background-color: var(--edit-color);
-  z-index: 10;
+/* Dragging with SortableJS (lib.js): the gap where the row or chunk will land, and the one being held */
+.sortable-ghost {
+  opacity: .35;
 }
-.overb > * { 
-  box-shadow: var(--highlight-color) 0px 10px;
-  transform: translateY(-10px);
-  background-color: var(--edit-color);
-  z-index: 10;
-}
-.moving > * { 
-  transform: scale(0.8); 
+.sortable-ghost > * {
   background-color: var(--highlight-color) !important;
+}
+.sortable-chosen > * {
+  box-shadow: var(--btn-shadow-var);
+}
+/* rows and chunks being dragged don't select text or bring up a phone's copy menu when held */
+.edit #songbook_content li,
+.edit #songListEdit li,
+.song .edit .wrap > select,
+.drag-grip {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+/* a held link would start the browser's own drag of the link (and cancel the finger's touch): the row moves */
+.edit #songbook_content li a,
+.edit #songListEdit li a {
+  -webkit-user-drag: none;
+}
+.drag-grip {
+  display: none;
+}
+.song .edit .wrap > .drag-grip {
+  display: inline-block;
+  padding: .25rem .6rem;
+  margin-left: .25rem;
+  font-size: 1.3rem;
+  line-height: 1;
+  color: gray;
+  cursor: grab;
+  vertical-align: middle;
 }
 .list {
   min-height: 2rem;

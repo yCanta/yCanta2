@@ -77,9 +77,8 @@ function convertChunksToEditable(chunks) {
 
     chunk.textContent = text.slice(0, offset).replace(/\n$/, ''); // drop the newline from the first Enter
     newChunk.textContent = text.slice(offset).replace(/^\n/, '');
-    wrap.after(newWrap);
+    wrap.after(newWrap); // it can be dragged like the others: SortableJS watches the whole song (lib.js)
 
-    bind_chunk_edit(newWrap); // drag and drop handlers
     convertChunksToEditable([newChunk]);
     scrollIntoViewIfNeed(newChunk);
 

@@ -1,179 +1,24 @@
-var selected;
+// Dragging in yCanta. Reordering songs in a songbook, adding them from "Add a song?" and reordering a
+// song's chunks is done by SortableJS (Sortable.min.js), set up in lib.js (makeSongbookSortable,
+// makeChunksSortable). It replaced the hand-made HTML5 drag-and-drop that was here, which phones and
+// Firefox on Android couldn't use. This file keeps the floating dialog's drag (dragDialog) and the drop
+// that opens a song.
 
-function dragOver(e) {
-  e.preventDefault();
-  if (e.target.contentEditable == 'true') {
-    e.dataTransfer.dropEffect = 'none';
-  } else {
-    e.dataTransfer.dropEffect = 'move';
-  }
-  return false;
-}
-
-function dragEnd(e, selector = 'ul li') {
-  document.querySelectorAll(selector).forEach(function(song) {
-    song.classList.remove('moving', 'overt', 'overb');
-    song.parentNode.classList.remove('sorting');
-  });
-
-  if (e.target.closest('song')) {
-    e.target.closest('song').querySelectorAll('.wrap .contenteditable-disabled').forEach(function(el) {
-      el.classList.remove('contenteditable-disabled');
-      el.setAttribute('contentEditable', 'true');
-    });
-  }
-  scrollIntoViewIfNeed(e.target);
-  selected = null;
-  setTimeout(() => {
-    e.target.classList.add('highlightBg');
-  }, 200);
-  setTimeout(() => {
-    e.target.classList.remove('highlightBg');
-  }, 3200);
-  document.querySelector('.dropHere')?.classList.remove('dropHere');
-}
-
-function dragStart(e, selector = 'li') {
-  e.dataTransfer.effectAllowed = "move";
-  e.dataTransfer.setData("text/plain", '');
-  selected = e.target.closest(selector);
-  selected.classList.add('moving');
-  setTimeout(() => {
-    selected.parentNode.classList.add('sorting');
-  }, 100);
-
-  if (e.target.closest('song')) {
-    e.target.closest('song').querySelectorAll('.wrap [contentEditable="true"]').forEach(function(el) {
-      el.classList.add('contenteditable-disabled');
-      el.removeAttribute('contenteditable');
-    });
-  } else {
-    if (e.target.href.indexOf('s-') < 0) return;
-    if (document.body.classList.contains('song')) {
-      document.getElementById('song').classList.add('dropHere');
-    } else {
-      document.getElementById('column-filler').classList.add('dropHere');
-    }
-  }
-}
-
-function dragEnter(e, selector = 'li') {
-  e.preventDefault();
-  var li = e.target.closest(selector);
-  if (isVerboten(li)) return;
-
-  document.querySelectorAll(selector).forEach(function(song) {
-    song.classList.remove('overt', 'overb');
-  });
-
-  if (li !== selected) {
-    if (isBefore(selected, li)) {
-      li.classList.add('overt');
-    } else {
-      li.classList.add('overb');
-    }
-  }
-}
-
-function dragLeave(e) {}
-
-function dragDrop(e, selector = 'li') {
-  e.preventDefault();
-  var li = e.target.closest(selector) || e.target;
-  if (e.stopPropagation) e.stopPropagation();
-
-  // Dropped on the empty part of the row's own list: move it to the end (the add-song list keeps its order)
-  if (li.nodeName === 'UL' && li === selected.parentNode) {
-    if (!isVerboten(li)) li.append(selected);
-    return;
-  }
-
-  if (isVerboten(li)) {
-    if (li.parentNode != selected.parentNode) {
-      dataxInBookUpdate(selected, true);
-      selected.remove();
-    }
-  } else if (li.parentNode != selected.parentNode) {
-    dataxInBookUpdate(selected);
-    let songEl = selected.cloneNode(true);
-    bind_songbook_edit(songEl);
-
-    if (songEl.getAttribute('data-song-id') == "section") {
-      add_edit_pencil(songEl);
-    }
-
-    const button = document.createElement('button');
-    button.innerHTML = '&#128465;';
-    songEl.querySelector('a').after(button);
-    button.addEventListener('click', function(e) {
-      dataxInBookUpdate(songEl, true);
-      scaleRemove(songEl);
-    });
-
-    songEl.setAttribute('data-song-status', 'n');
-
-    if (li.nodeName === 'UL') {
-      li.append(songEl);
-    } else if (isBefore(selected, li)) {
-      li.parentNode.insertBefore(songEl, li);
-    } else {
-      li.parentNode.insertBefore(songEl, li.nextSibling);
-    }
-
-    if (location.hash.indexOf('s-') > -1) {
-      let newHash = selected.querySelector('a').href
-        .replace(window.songbook._id, window.songbook._id + '?edit')
-        .replace(/^.*#/, '#');
-      if (newHash.indexOf('s-') > -1) {
-        location.hash = newHash;
-      }
-    }
-
-    songEl.classList.add('highlightBg');
-    setTimeout(() => songEl.classList.remove('highlightBg'), 3000);
-  } else {
-    if (isBefore(selected, li)) {
-      li.parentNode.insertBefore(selected, li);
-    } else {
-      li.parentNode.insertBefore(selected, li.nextSibling);
-    }
-
-    if (location.hash.indexOf('s-') > -1) {
-      let newHash = selected.querySelector('a').href
-        .replace(window.songbook._id, window.songbook._id + '?edit')
-        .replace(/^.*#/, '#');
-      if (newHash.indexOf('s-') > -1) {
-        location.hash = newHash;
-      }
-    }
-  }
-  window.songbook_list.reIndex();
-  e.dataTransfer.clearData();
-}
-function isVerboten(target) {
-  return target.closest('#songListEdit') !== null;
-}
-
-function isBefore(el1, el2) {
-  if (el2.parentNode === el1.parentNode) {
-    for (let cur = el1.previousSibling; cur; cur = cur.previousSibling) {
-      if (cur === el2) return true;
-    }
-  }
-  return false;
-}
-
+// Dropping a song from a list onto the song column (marked .dropHere while a song is held) opens it.
+// With a mouse this is the browser's own drop; with a finger SortableJS has no drop event, so lib.js
+// checks where the finger let go instead (see dragViewEnd).
 const target = document.documentElement;
 target.addEventListener("dragover", (e) => {
-  if (e.target.classList.contains('dropHere')) {
+  if (e.target.closest?.('.dropHere')) {
     e.preventDefault();
   }
 });
 
 target.addEventListener("drop", (e) => {
+  if (!window.draggedSongId || !e.target.closest?.('.dropHere')) return; // a file or text dragged in from outside, or not a song
   e.preventDefault();
-  if (!selected) return; // a file or text dragged in from outside the app
-  location.hash = `${location.hash.replace('#','').split('&')[0]}&${selected.getAttribute('data-song-id')}`;
+  window.songDropOpened = true; // SortableJS hears of the drop after this: lib.js undoes any move on the way
+  openDroppedSong(window.draggedSongId);
 });
 
 function dragDialog() {

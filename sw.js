@@ -27,6 +27,7 @@ var prefetchedURLs = [
   'presentation.html',
   'presentation.js',
   'sortable.js',
+  'Sortable.min.js',
   'notyf.min.css',
   'style.css',
   'myTransposer.css',

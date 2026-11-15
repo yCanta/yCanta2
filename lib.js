@@ -1955,28 +1955,170 @@ function editHash(e) {
 }
 function bind_songbook_edit(song){
   song.addEventListener('click', editHash, false);
-
-  song.setAttribute('draggable', 'true');  // Enable columns to be draggable.
-  song.addEventListener('dragstart', dragStart, false);
-  song.addEventListener('dragenter', dragEnter, false);
-  song.addEventListener('dragover', dragOver, false);
-  song.addEventListener('dragleave', dragLeave, false);
-  song.addEventListener('drop', dragDrop, false);
-  song.addEventListener('dragend', dragEnd, false);
 }
-function bind_chunk_edit(chunk){
-  chunk.setAttribute('draggable', 'true');  // Enable columns to be draggable.
-  // Firefox won't move the cursor on a click inside editable text whose parent is draggable (#123),
-  // so a press on the text turns dragging off; a press anywhere else in the box turns it back on.
-  chunk.addEventListener('pointerdown', function(event){
-    chunk.setAttribute('draggable', event.target.closest('chunk') ? 'false' : 'true');
-  }, true);
-  chunk.addEventListener('dragstart', function(event){dragStart(event,'.wrap');}, false);
-  chunk.addEventListener('dragenter', function(event){dragEnter(event,'.wrap');}, false);
-  chunk.addEventListener('dragover', dragOver, false);
-  chunk.addEventListener('dragleave', function(event){dragLeave(event,'.wrap');}, false);
-  chunk.addEventListener('drop', function(event){dragDrop(event,'.wrap');}, false);
-  chunk.addEventListener('dragend', function(event){dragEnd(event,'.wrap');}, false);
+
+// ---- Dragging to reorder, with SortableJS (Sortable.min.js) ----
+// The same for every list: with a mouse a drag starts right away; with a finger, after holding still for a
+// moment, so a quick swipe is still a scroll.
+const SORTABLE_DRAG = {
+  // a row picked up (held long enough) until it's let go: the side panels' swipe stays out of the way
+  onChoose() { window.sortableHolding = true; },
+  onUnchoose() { window.sortableHolding = false; },
+  // touch and mouse events, not pointer events: with pointer events, a scroll that the browser takes over
+  // leaves SortableJS stuck, and the row scrolled over ignores the next press-and-hold
+  supportPointer: false,
+  animation: 150,
+  delay: 200,              // ms to hold before a finger drags
+  delayOnTouchOnly: true,
+  touchStartThreshold: 6,  // px a finger can wander while holding; more is a scroll
+  fallbackTolerance: 3,
+  ghostClass: 'sortable-ghost',
+  chosenClass: 'sortable-chosen',
+  dragClass: 'sortable-drag',
+};
+// The dragged row: a short highlight once it lands, and on screen
+function landed(row) {
+  scrollIntoViewIfNeed(row);
+  setTimeout(() => row.classList.add('highlightBg'), 200);
+  setTimeout(() => row.classList.remove('highlightBg'), 3200);
+}
+// While a song is held, the song column (or the empty column, with no song open) is a place to drop it to
+// open it. The browser's own drop does this with a mouse (sortable.js); with a finger, where it let go.
+function dragViewStart(evt) {
+  const id = evt.item.getAttribute('data-song-id');
+  window.draggedSongId = id && id !== 'section' ? id : null;
+  if (!window.draggedSongId) return;
+  document.getElementById(document.body.classList.contains('song') ? 'song' : 'column-filler').classList.add('dropHere');
+}
+// Was the song let go over the song column, to open it? (The browser's drop said so, or a finger let go there.)
+function droppedToOpen(evt) {
+  if (window.songDropOpened) return true;
+  const e = evt.originalEvent;
+  const point = e?.changedTouches?.[0] || (e && /^(pointer|touch)/.test(e.type) ? e : null);
+  return !!(point && window.draggedSongId && document.elementFromPoint(point.clientX, point.clientY)?.closest('.dropHere'));
+}
+// Put a row back where it was picked up: on the way to the song column it may have passed over a list,
+// and SortableJS moves a row into whatever list it's over
+function putRowBack(evt) {
+  evt.item.remove();
+  evt.from.insertBefore(evt.item, evt.from.children[evt.oldIndex] || null);
+}
+function dragViewEnd(evt) {
+  if (droppedToOpen(evt) && !window.songDropOpened) openDroppedSong(window.draggedSongId); // a finger's drop
+  document.querySelector('.dropHere')?.classList.remove('dropHere');
+  window.draggedSongId = null;
+  window.songDropOpened = false;
+}
+function openDroppedSong(songId) {
+  location.hash = `${location.hash.replace('#', '').split('&')[0]}&${songId}`;
+}
+// A song that's open while its row is moved or added in the editor follows it, as it always has
+function openMovedSong(row) {
+  if (!/&s-/.test(location.hash)) return;
+  const href = row.querySelector('a')?.getAttribute('href') || '';
+  const hash = href.replace(/^.*#/, '#').replace(window.songbook._id, window.songbook._id + '?edit');
+  if (/&s-/.test(hash)) location.hash = hash;
+}
+// The trash button, and the pencil for a section, on a row in the book being edited
+function addBookRowButtons(row) {
+  if (row.getAttribute('data-song-id') === 'section') add_edit_pencil(row);
+  const deleteButton = document.createElement('button');
+  deleteButton.innerHTML = '&#128465;';
+  deleteButton.addEventListener('click', () => {
+    dataxInBookUpdate(row, true);
+    scaleRemove(row);
+  });
+  row.appendChild(deleteButton);
+}
+// A new row for the book, copied from a row in "Add a song?" (a click or a drag adds one)
+function newBookRow(adderRow) {
+  const row = adderRow.cloneNode(true);
+  row.removeAttribute('data-xInBook');
+  row.classList.remove('sortable-chosen', 'sortable-ghost', 'sortable-drag');
+  row.removeAttribute('style');
+  bind_songbook_edit(row);
+  dataxInBookUpdate(row);
+  addBookRowButtons(row);
+  row.setAttribute('data-song-status', 'n');
+  return row;
+}
+// The songbook editor: the book's songs reorder; a song dragged in from "Add a song?" is added (that list
+// keeps its own, in order); a song dragged from the book back to "Add a song?" comes out of the book.
+// Made once per list; they only drag while the book is being edited.
+function makeSongbookSortable() {
+  const book = document.querySelector('#songbook_content ul.list');
+  const adder = document.querySelector('#songbook_edit_togglesongs ul.list');
+  const notEditing = (evt) => !window.songbookEditing || !!evt.target.closest('button'); // buttons still click
+  const changed = () => window.songbook_list?.reIndex();
+  if (book && !Sortable.get(book)) {
+    Sortable.create(book, {
+      ...SORTABLE_DRAG,
+      group: { name: 'book', pull: true, put: ['adder'] },
+      filter: notEditing,
+      preventOnFilter: false,
+      onStart: dragViewStart,
+      onEnd: dragViewEnd,
+      onUpdate(evt) { // moved within the book
+        if (droppedToOpen(evt)) return putRowBack(evt);
+        changed();
+        landed(evt.item);
+        openMovedSong(evt.item);
+      },
+      onAdd(evt) { // dragged in from "Add a song?": a new row where it was dropped, and the original goes back
+        const original = evt.item;
+        const spot = document.createTextNode('');
+        original.before(spot);
+        if (evt.clone) evt.clone.replaceWith(original); // SortableJS's stand-in, in "Add a song?"
+        original.classList.remove('sortable-chosen', 'sortable-ghost', 'sortable-drag');
+        if (droppedToOpen(evt)) return spot.remove(); // it was only passing over the book
+        const row = newBookRow(original); // after the original is back, so its "in the book" count goes up
+        spot.replaceWith(row);
+        changed();
+        landed(row);
+        openMovedSong(row);
+      },
+    });
+  }
+  if (adder && !Sortable.get(adder)) {
+    Sortable.create(adder, {
+      ...SORTABLE_DRAG,
+      group: { name: 'adder', pull: 'clone', put: ['book'] },
+      sort: false, // it stays in title order
+      filter: notEditing,
+      preventOnFilter: false,
+      onStart: dragViewStart,
+      onEnd: dragViewEnd,
+      onAdd(evt) { // a song dragged back from the book: it comes out of the book
+        if (droppedToOpen(evt)) return putRowBack(evt); // it was only passing over this list
+        evt.item.remove(); // first, so the count below is on this list's own row, not the dropped one
+        dataxInBookUpdate(evt.item, true);
+        changed();
+      },
+    });
+  }
+}
+// The song editor: a song's chunks reorder by dragging their box (or the grip), not the text in it, so a
+// click in the text still puts the cursor there. (This also takes care of #123, Firefox's cursor.)
+function makeChunksSortable(songElement) {
+  Sortable.create(songElement, {
+    ...SORTABLE_DRAG,
+    draggable: '.wrap',
+    filter: 'chunk, select',
+    preventOnFilter: false,
+    onStart() { // no dropping the chunk into some text while it moves
+      songElement.querySelectorAll('.wrap [contenteditable="true"]').forEach(el => {
+        el.classList.add('contenteditable-disabled');
+        el.removeAttribute('contenteditable');
+      });
+    },
+    onEnd(evt) {
+      songElement.querySelectorAll('.wrap .contenteditable-disabled').forEach(chunk => {
+        chunk.classList.remove('contenteditable-disabled');
+        chunk.setAttribute('contenteditable', 'true');
+      });
+      if (evt.oldIndex !== evt.newIndex) landed(evt.item);
+    },
+  });
 }
 function add_edit_pencil(song) {
   // Create edit pencil button
@@ -2145,16 +2287,7 @@ async function editSongbook() {
     songList.forEach((song) => {
       bind_songbook_edit(song);
       dataxInBookUpdate(song);
-      if (song.getAttribute('data-song-id') === 'section') {
-        add_edit_pencil(song);
-      }
-      const deleteButton = document.createElement('button');
-      deleteButton.innerHTML = '&#128465;';
-      deleteButton.addEventListener('click', () => {
-        dataxInBookUpdate(song, true);
-        scaleRemove(song);
-      });
-      song.appendChild(deleteButton);
+      addBookRowButtons(song);
     });
 
     document.querySelectorAll('#songList #songbook_edit_togglesongs ul li').forEach(bindAdderSong);
@@ -2167,31 +2300,14 @@ async function editSongbook() {
   addStatusAndCommentsToggle();
   await loadSongsIntoAdder();
   bindSongbookListEvents();
-  // Let songs be dropped onto the list itself (empty songbook, or below the last song)
-  document.querySelectorAll('#songList ul.list').forEach(ul => {
-    ul.addEventListener('drop', dragDrop, false);
-    ul.addEventListener('dragover', dragOver, false);
-  });
+  makeSongbookSortable(); // drag to reorder, to add from "Add a song?" and to take out
 }
 
-// One song in the songbook editor's "Add a song?" list: clicking it adds a copy to the book
+// One song in the songbook editor's "Add a song?" list: clicking it adds a copy to the end of the book
 function bindAdderSong(song) {
   bind_songbook_edit(song);
   song.addEventListener('click', () => {
-    const copySong = song.cloneNode(true);
-    bind_songbook_edit(copySong);
-    dataxInBookUpdate(copySong);
-    if (copySong.getAttribute('data-song-id') === 'section') {
-      add_edit_pencil(copySong);
-    }
-    const deleteButton = document.createElement('button');
-    deleteButton.innerHTML = '&#128465;';
-    deleteButton.addEventListener('click', () => {
-      dataxInBookUpdate(copySong, true);
-      scaleRemove(copySong);
-    });
-    copySong.appendChild(deleteButton);
-    copySong.setAttribute('data-song-status', 'n');
+    const copySong = newBookRow(song);
     document.querySelector('#songbook_content .list').appendChild(copySong);
     scrollIntoViewIfNeed(copySong);
     copySong.classList.add('highlightBg');
@@ -2347,11 +2463,17 @@ async function editSong() {
     
     select.value = chunk.getAttribute('type').toLowerCase();
     wrapper.appendChild(select);
+    // something to hold to drag the chunk, easy to find with a finger (the whole box works too)
+    const grip = document.createElement('span');
+    grip.className = 'drag-grip';
+    grip.title = 'Drag to move';
+    grip.setAttribute('aria-hidden', 'true');
+    grip.textContent = '⠿';
+    wrapper.appendChild(grip);
     chunk.parentNode.insertBefore(wrapper, chunk);
     wrapper.appendChild(chunk);
-    
-    bind_chunk_edit(wrapper);
   });
+  makeChunksSortable(songElement); // drag the chunks to reorder them
 
   // Update metadata fields
   const updateField = (selector, joinChar = ', ') => {
@@ -2906,7 +3028,7 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
 
   dragEl.addEventListener('touchmove', function(e) {
     if (!armed) return;
-    if (e.touches.length > 1) { // a second finger: a pinch, not a swipe
+    if (e.touches.length > 1 || window.sortableHolding) { // a pinch, or a row being dragged: not a swipe
       if (axis) putBack();
       armed = false;
       return;
