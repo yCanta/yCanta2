@@ -1996,8 +1996,10 @@ function cancelSongbook(el) {
     window.songbookEditing = false; // Reset editing state first
     const confirmed = confirmWhenEditing(); // Then check for confirmation
     if (!confirmed) {
+      // A new songbook that was never saved has nowhere to go back to: show the songbooks list (#149)
+      const isNew = window.songbook._id === 'sb-new-songbook';
       window.songbook._id = '';
-      window.location.hash = el.getAttribute('href'); // a button has no .href property
+      window.location.hash = isNew ? '#songbooks' : el.getAttribute('href'); // a button has no .href property
       window.songEditing = false;
     } else {
       window.songbookEditing = true; // Restore editing state if not confirmed

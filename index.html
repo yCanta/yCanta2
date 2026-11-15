@@ -1319,24 +1319,15 @@ async function _handleSongbookRoute(piece, oldHashOb) { // bodyClassList removed
       window.document.title = `yCanta2: Presenting ${window.songbook.title}`;
 
       // Load all songs for presentation
-      const sb_song_ids = window.songbook.songrefs.map(row => row.id);
-      let result;
+      let myString;
       try {
-        result = await db.allDocs({
-          include_docs: true,
-          keys: sb_song_ids
-        });
+        myString = JSON.stringify(await presentationData(window.songbook));
       } catch (err) {
         reportDbError(err, 'load the songs to present');
         return false;
       }
-
-      // no doc: deleted song. Presentation shows the songs' text as text, like the main page (displaySong)
-      const songs = result.rows.filter(song => song.key != "section" && song.doc).map(row => ({ ...row, doc: displaySong(row.doc) }));
-      const myString = JSON.stringify({
-        songs,
-        title: window.songbook.title
-      });
+      // Changes to this book or its songs go to the presentation while it's open (#147)
+      window.presentedSongbook = { _id: window.songbook._id, title: window.songbook.title, songrefs: window.songbook.songrefs };
 
       // Load presentation resources
       const [presHtmlRes, presentationRes] = await Promise.all([

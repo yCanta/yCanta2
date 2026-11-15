@@ -161,20 +161,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     //PREPROCESS THE SONGBOOK OBJECT
     setTimeout(function(){
-      let procesed_song = [];
-      for(song of window.songbook.songs) {
-        // -- REMOVE ALL COMMENTS
-        for(var i = song.doc.content.length - 1; i >= 0; i--) {
-          if(song.doc.content[i][0].type === 'comment') {
-            song.doc.content.splice(i, 1);
-          }
-        }
-        // -- REMOVE ALL EMPTY SONGS
-        if(song.doc.content.length != 0) {
-          procesed_song.push(song);        
-        }
-      }
-      window.songbook.songs = procesed_song;
+      window.songbook.songs = presentableSongs(window.songbook.songs);
 
       //Put default song
       window.songbook.song_index = window.songbook.songs.length - 1;
@@ -186,6 +173,47 @@ document.addEventListener('DOMContentLoaded', function() {
       window.document.title = "yCanta2: Presenting " + window.songbook.title;
     },300);
 });
+
+// Comments aren't shown, and a song with nothing else is left out
+function presentableSongs(songs) {
+  return songs.filter(song => {
+    song.doc.content = song.doc.content.filter(chunk => chunk[0].type !== 'comment');
+    return song.doc.content.length != 0;
+  });
+}
+
+// The main page sends the book again when the book or one of its songs changes while it's presented (#147).
+// The screen stays on the same song and verse. A song taken out of the book leaves the screen at the same
+// place in the book, on the first verse of the song that's there now.
+function updateSongbook(json) {
+  const data = JSON.parse(json);
+  const songs = presentableSongs(data.songs);
+  if (!window.songbook || !songs.length) return;
+  window.songbook.title = data.title;
+  window.document.title = "yCanta2: Presenting " + data.title;
+
+  const titleSlide = document.getElementById('pres_title');
+  const oldIndex = window.songbook.song_index;
+  const oldId = current_song && current_song.id;
+  const oldChunk = current_song ? current_song.chunk_index : 0;
+  window.songbook.songs = songs;
+
+  if (titleSlide || !current_song) { // still on the "Presenting" screen: next goes to the first song, as at the start
+    if (titleSlide) titleSlide.textContent = data.title;
+    window.songbook.song_index = songs.length - 1;
+    current_song = songs[window.songbook.song_index];
+    current_song.chunk_index = current_song.doc.content.length - 1;
+    return;
+  }
+  // the same place if the song is still there (a song can be in a book twice), else the first copy of it
+  let index = songs[oldIndex] && songs[oldIndex].id === oldId ? oldIndex : songs.findIndex(song => song.id === oldId);
+  const sameSong = index !== -1;
+  if (!sameSong) index = Math.min(oldIndex, songs.length - 1);
+  window.songbook.song_index = index;
+  current_song = songs[index];
+  current_song.chunk_index = sameSong ? Math.min(oldChunk, current_song.doc.content.length - 1) : 0;
+  if (inPresentation() && !isSearching()) showChunk();
+}
 
 function myEscape(text) { return text.replace('<', '&lt;').replace('>', '&gt;'); }
 

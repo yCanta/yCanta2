@@ -132,6 +132,40 @@ function clearAllData() {
     location.reload();
   }
 }
+// What a presentation shows: the book's songs in order, their text as text (displaySong).
+// Sections and deleted songs are left out.
+async function presentationData(songbook) {
+  const result = await db.allDocs({ include_docs: true, keys: songbook.songrefs.map(row => row.id) });
+  const songs = result.rows.filter(row => row.key != 'section' && row.doc).map(row => ({ ...row, doc: displaySong(row.doc) }));
+  return { songs, title: songbook.title };
+}
+
+// A presentation that's open gets changes to its book or the book's songs right away (#147)
+let presentationUpdates = 0;
+async function updatePresentation(change) {
+  const frame = window.presentationFrame;
+  const book = window.presentedSongbook;
+  try {
+    if (!frame || frame.closed || !book || typeof frame.updateSongbook !== 'function') return;
+  } catch (err) {
+    return; // the presentation window is gone
+  }
+  const bookChanged = change.id === book._id;
+  if (!bookChanged && !book.songrefs.some(ref => ref.id === change.id)) return;
+  if (bookChanged && change.deleted) return; // the main page already leaves a deleted book
+  if (bookChanged) {
+    window.presentedSongbook = { _id: book._id, title: change.doc.title, songrefs: change.doc.songrefs };
+  }
+  const mine = ++presentationUpdates;
+  try {
+    const data = JSON.stringify(await presentationData(window.presentedSongbook));
+    if (mine !== presentationUpdates) return; // a newer change is on its way
+    frame.updateSongbook(data);
+  } catch (err) {
+    console.error('Could not update the presentation:', err);
+  }
+}
+
 function dbChanges() {
   window.changeHandler = db.changes({
     since: 'now',
@@ -139,6 +173,7 @@ function dbChanges() {
     include_docs: true
   }).on('change', function (change) {
     if (change.id.startsWith('h-')) return; // a kept old version (#138): nothing to show
+    updatePresentation(change);
     // A song or songbook was deleted or restored: keep an open Trash current (#138)
     if (/^(s|sb)-/.test(change.id) && document.querySelector('#trash:not(.closed)')) {
       loadTrash();
@@ -1930,15 +1965,16 @@ function loadSong(song_id, song_rev = false) {
         return;
       }
       
+      // The song just put in: the last song in the column. Not looked up by its rev, since a new song has none (#150).
+      const songEl = songContainer.querySelector(':scope > song:last-of-type');
       const urlRegex = /(((http|https|ftp):\/\/)*[\w?=&.\/-;#~%-]+\.[\w?=&.\/-;#~%-]+(?![\w\s?&.\/;#~%"=-]*>))/g;
-      const commentChunks = document.querySelectorAll(`song[data-rev="${song._rev}"] chunk[type="comment"]`);
+      const commentChunks = songEl.querySelectorAll('chunk[type="comment"]');
 
       commentChunks.forEach(function(chunk) {
         chunk.innerHTML = chunk.innerHTML.replace(urlRegex, '<a href="$1" target="_blank">$1</a> ');
       });
 
       // Set YouTube links
-      const songEl = document.querySelector(`song[data-rev="${song._rev}"]`);
       let regex = /(https?:\/\/)?(?:www\.)?(youtu(?:\.be\/([-\w]+)|be\.com\/watch\?v=([-\w]+)))\w/g;
       const textContent = songEl.textContent;
       window.youtube_links = textContent.match(regex) || [];
