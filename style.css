@@ -1905,31 +1905,23 @@ input[type="number"] {
     /* the browser scrolls a panel up and down; a sideways move is left to the swipe in lib.js */
     touch-action: pan-y;
   }
-  /* the panel holds still and what's in it scrolls, so its tab stays put however far the list was scrolled */
+  /* The drawer: closed, it's slid all the way off the right edge and its tab hangs outside its left edge, so
+     only the tab shows. Opening and closing are one smooth slide, with the tab riding along. */
   body .column .sidebar {
-    overflow: hidden;
+    overflow: visible; /* the tab hangs outside it; what's in it scrolls (below), so the tab stays put */
+    transition: transform .25s; /* only the slide (the page fades every change, see index.html) */
   }
   body .column .sidebar > :not(.sidebar-tab) {
     height: 100%;
     overflow-x: hidden;
     overflow-y: auto;
   }
-  /* a closed panel shows only its tab: the rest of its edge is see-through, lets touches through to the page
-     under it, and doesn't scroll */
   body .column .sidebar:not(.sidebar-open):not(.sidebar-dragging) {
-    background: transparent;
-    box-shadow: none;
-    pointer-events: none;
-    /* closing: it slides away, then goes see-through */
-    transition: transform .25s, background-color 0s .25s, box-shadow 0s .25s;
-  }
-  /* opening: the drawer is solid at once and only slides (the page fades every change, see index.html) */
-  body .column .sidebar {
-    transition: transform .25s;
+    box-shadow: none; /* none cast on the page's edge */
+    transition: transform .25s, box-shadow 0s .25s;
   }
   body .column .sidebar:not(.sidebar-open):not(.sidebar-dragging) > :not(.sidebar-tab) {
     overflow: hidden;
-    visibility: hidden;
   }
   .songList #songList.edit .sidebar:not(.sidebar-open):not(.sidebar-dragging) > .sidebar-tab,
   .song #song.edit .sidebar:not(.sidebar-open):not(.sidebar-dragging) > .sidebar-tab,
@@ -1937,12 +1929,11 @@ input[type="number"] {
     display: flex;
   }
   .sidebar-tab {
-    position: absolute; /* against the panel's left edge, halfway down */
+    position: absolute; /* outside the drawer's left edge, halfway down */
     top: calc(50% - 5rem);
-    left: 0;
+    left: calc(-1 * var(--tab-width));
     height: 10rem;
     width: var(--tab-width);
-    pointer-events: auto;
     z-index: 3;
     flex-direction: column;
     align-items: center;
@@ -1970,13 +1961,13 @@ input[type="number"] {
   }
 
   /*Focus edit*/
-  /* closed: moved right by its own width (100%) less the tab, so only the tab shows */
+  /* closed: moved right by its own width (100%), all the way off; only its tab shows */
   .songList #songList.edit .sidebar { /*songbook*/
-    transform: translate3d(calc(100% - var(--tab-width)), 0, 0);
+    transform: translate3d(100%, 0, 0);
     width: 17.5rem;
   }
   .song #song.edit .sidebar {/*song*/
-    transform: translate3d(calc(100% - var(--tab-width)), 0, 0);
+    transform: translate3d(100%, 0, 0);
     width: 13.5rem;
   }
   /* a song open over the songbook editor: its panel and tab go fully off screen, or they peek out above the song */
@@ -2033,7 +2024,7 @@ input[type="number"] {
     opacity: 1;
   }
   .export #export .sidebar {
-    transform: translate3d(calc(100% - var(--tab-width)), 0, 0);
+    transform: translate3d(100%, 0, 0);
   }
   .export #export .sidebar-open {
     transform: translate3d(0, 0, 0);
