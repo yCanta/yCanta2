@@ -763,15 +763,15 @@ legend {
 #playerDock .player-controls .btn {
   padding: 5px;
 }
-/* 2. The pill: docked at the bottom beside the floating button, the same height (48px, 24px in from the
+/* 2. The pill: docked at the bottom, as wide as the page's content and short of any floating button, its height (48px, 24px in from the
    bottom), with a small live video, the title, next, and a way back to the window. The columns get room at
    the bottom so a song's last lines scroll clear of it. */
 #playerDock[data-look="pill"] {
   transform: none !important;
   top: auto;
   bottom: 24px;
-  left: 16px;
-  right: var(--pill-right, 80px); /* stops short of this page's floating button (lib.js placePill) */
+  left: 1rem; /* in line with the page's content */
+  right: var(--pill-right, 1rem); /* to the content's edge, or short of this page's floating button (lib.js placePill) */
   height: 48px;
   display: flex;
   align-items: center;

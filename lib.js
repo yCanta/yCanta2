@@ -3552,8 +3552,9 @@ function setPlayerLook(look, side) {
   }
 }
 
-// The pill stops short of the floating button showing at the bottom right. Its width changes from page to
-// page (a round "+", or a labeled button like "Add SB" or "Close"), so it's measured each time.
+// The pill spans the page and stops short of the floating button showing at the bottom right, if there is
+// one. Its width changes from page to page (a round "+", or a labeled button like "Add SB" or "Close"), so
+// it's measured each time.
 function placePill() {
   const dock = document.getElementById('playerDock');
   if (!dock || dock.hidden || dock.dataset.look !== 'pill') return;
@@ -3567,9 +3568,14 @@ function placePill() {
     if (!button.contains(onTop)) return;
     left = Math.min(left, r.left);
   });
-  // always the round button's room at least (80px, as in style.css), so the pill keeps one size on pages
-  // with no button; more when this page's button is wider
-  dock.style.setProperty('--pill-right', Math.max(80, window.innerWidth - left + 8) + 'px');
+  // With no button it spans the page like the rest of its content (1rem in from each side), clear of a
+  // scrollbar if the page shows one (phones don't)
+  let scrollbar = 0;
+  for (let el = document.elementsFromPoint(window.innerWidth / 2, window.innerHeight / 2).find(e => !dock.contains(e)); el; el = el.parentElement) {
+    if (el.scrollHeight > el.clientHeight && /(auto|scroll)/.test(getComputedStyle(el).overflowY)) { scrollbar = el.offsetWidth - el.clientWidth; break; }
+  }
+  const edge = remToPx(1) + scrollbar;
+  dock.style.setProperty('--pill-right', (left < window.innerWidth ? Math.max(edge, window.innerWidth - left + 8) : edge) + 'px');
 }
 window.addEventListener('resize', placePill);
 window.addEventListener('hashchange', () => { placePill(); setTimeout(placePill, 500); }); // after the columns slide
