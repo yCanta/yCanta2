@@ -370,7 +370,7 @@ function dbChanges() {
         }
         
         // Update current song favorite status
-        const currentSong = document.querySelector('#song song');
+        const currentSong = document.querySelector('#song .song-card');
         if (currentSong) {
           currentSong.dataset.userFav = window.user.fav_songs.includes(currentSong.dataset.id);
         }
@@ -1683,7 +1683,9 @@ async function changeOwnPassword(username, change) {
   location.reload();
 }
 
-function saveSong(song_id, songElement = document.querySelector('#song song'), change_url = true) {
+// songElement: the open song's card (its title is in the card's header), or a song read from a yCanta v1 file
+// (its title is in <stitle>)
+function saveSong(song_id, songElement = document.querySelector('#song .song-card'), change_url = true) {
 
   return new Promise(async (resolve, reject) => {
     let new_song = false;
@@ -1698,7 +1700,7 @@ function saveSong(song_id, songElement = document.querySelector('#song song'), c
       // The editor flattens <author>, <scrip_ref> and <cat> into comma text, so split the parent text
       const fieldList = (selector, separators = /,/) => fieldText(selector).split(separators).map(item => item.trim());
 
-      const stitle = fieldText('stitle').trim();
+      const stitle = fieldText('.song-title, stitle').trim();
       song.title = stitle || "New Song";
       song.authors = fieldList('authors', /[,|]/);
       song.scripture_ref = fieldList('scripture_ref');
@@ -1897,24 +1899,29 @@ function loadSong(song_id, song_rev = false) {
         document.querySelector('#song .float-menu').innerHTML = floatMenu;
       }
 
-      // Build song HTML, from a copy whose text shows as text (see displaySong in lib.js)
+      // Build song HTML, from a copy whose text shows as text (see displaySong in lib.js). Each song shown is
+      // a card: the column's usual header (its title and buttons), then <song>, the song itself. An old
+      // version opens as another card beside it, with its own header (Restore, ×).
       const shown = displaySong(song);
       let songHtml = `
-        <song class="${songElClassList.join(' ')}"
+        <section class="song-card ${songElClassList.join(' ')}"
               data-rev="${escapeHtml(song._rev)}"
               rev-info="${escapeHtml(window.users[song.editedBy] || song.editedBy?.slice(2))}: ${formatDate(song.edited)}"
               data-id="${escapeHtml(song._id)}"
               data-user-fav="${window.user.fav_songs.includes(song._id) ? 'true' : 'false'}">
-          <div class="column_header title" id="song_header">
-            <stitle><a data-song class="title_link">${shown.title}</a></stitle>
-            <span class="buttonsRight">
-              ${song_rev ? `${canEdit(window.song) ? `<button onclick="restoreSongRev('${escapeHtml(song._rev)}')" class="btn btn-tiny" title="Make this the current version">↶ Restore</button>` : ''}<button onclick="this.closest('song').remove()" class="close-icon">&times;</button>` : `
-                <span class="star" onclick="event.stopPropagation(); toggleFavorite(this.closest('song').dataset.id,'fav_songs')"></span>
-                <info onclick="event.stopPropagation(); loadInfo();"></info>
-                <span class="fsButton" onclick="toggleFullscreen(this)"></span>
-              `}
-            </span>
+          <div class="column_header">
+            <div class="title">
+              <h3 class="song-title"><a data-song class="title_link">${shown.title}</a></h3>
+              <span class="buttonsRight">
+                ${song_rev ? `${canEdit(window.song) ? `<button onclick="restoreSongRev('${escapeHtml(song._rev)}')" class="btn btn-tiny" title="Make this the current version">↶ Restore</button>` : ''}<button type="button" onclick="this.closest('.song-card').remove()" class="close-icon" aria-label="Close">&times;</button>` : `
+                  <span class="star" onclick="event.stopPropagation(); toggleFavorite(this.closest('.song-card').dataset.id,'fav_songs')"></span>
+                  <info onclick="event.stopPropagation(); loadInfo();"></info>
+                  <span class="fsButton" onclick="toggleFullscreen(this)"></span>
+                `}
+              </span>
+            </div>
           </div>
+          <song>
           ${deleted ? `<p class="deleted-note">Deleted${song.deletedBy ? ' by ' + escapeHtml(window.users?.[song.deletedBy] || song.deletedBy.replace(/^u-/, '')) : ''}${song.deletedAt ? ', ' + formatDate(song.deletedAt) : ''}.
             ${song.deletedAt && canEdit(song) ? `<button class="btn btn-tiny" onclick="restoreOpenSong(this)">↶ Restore</button>` : ''}</p>` : ''}
           <authors><author>${shown.authors.join('</author>, <author>')}</author></authors>
@@ -1934,7 +1941,7 @@ function loadSong(song_id, song_rev = false) {
         songHtml += '</chunk>';
       });
 
-      songHtml += `<copyright>${shown.copyright}</copyright></song>`;
+      songHtml += `<copyright>${shown.copyright}</copyright></song></section>`;
 
       // Insert song HTML
       const songContainer = document.querySelector('#song .content');
@@ -1943,7 +1950,7 @@ function loadSong(song_id, song_rev = false) {
       } else if (!song_rev) {
         songContainer.innerHTML = songHtml;
       } else {
-        document.querySelectorAll(`song[data-rev="${song._rev}"]`).forEach(el => {
+        document.querySelectorAll(`.song-card[data-rev="${song._rev}"]`).forEach(el => {
           el.classList.add('current_rev');
         });
         if (document.getElementById('dialog').style.display === "block" && document.getElementById('dialog').dataset.use === "info") {
@@ -1952,8 +1959,8 @@ function loadSong(song_id, song_rev = false) {
         return;
       }
       
-      // The song just put in: the last song in the column. Not looked up by its rev, since a new song has none (#150).
-      const songEl = songContainer.querySelector(':scope > song:last-of-type');
+      // The song just put in: the last song card in the column. Not looked up by its rev, since a new song has none (#150).
+      const songEl = songContainer.querySelector(':scope > .song-card:last-of-type');
       const urlRegex = /(((http|https|ftp):\/\/)*[\w?=&.\/-;#~%-]+\.[\w?=&.\/-;#~%-]+(?![\w\s?&.\/;#~%"=-]*>))/g;
       const commentChunks = songEl.querySelectorAll('chunk[type="comment"]');
 
@@ -1972,7 +1979,6 @@ function loadSong(song_id, song_rev = false) {
         youtubeButton.className = 'btn yt-play';
         youtubeButton.classList.toggle('yt-search', window.youtube_links.length === 0);
         youtubeButton.title = window.youtube_links.length ? "Play this song's videos" : 'Search YouTube for this song';
-        youtubeButton.style.cssText = 'padding: 5px 8px; margin: 0 .5rem 0 0; background-color: var(--highlight-color);';
         youtubeButton.textContent = '▶';
         youtubeButton.onclick = loadSongPlayer;
         keyElement.before(youtubeButton);

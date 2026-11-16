@@ -152,17 +152,25 @@
     </header>
     <main>
       <div class="column active" id="songbookList">
+        <!-- Every column and side panel has the same parts:
+             .float-menu: the floating buttons, its main one last (lib.js placePill measures that one)
+             .row > .subcolumn: the column's own part, then any .subcolumn.sidebar (the editors' side panels)
+             .column_header: sticky at the top, with
+               .title: the title row, an h3 (the song's: .song-title) and its .buttonsRight (star, info, ×…)
+               .search-row: the search box, and the Filter button where a list has one
+               .filter-chips: what the filter shows
+             Each song shown is a .song-card (db.js loadSong): its own header, then <song>, the song itself. -->
         <div class="float-menu">
-          <div>
-            <a data-songbook-edit="new" class="float-menu-item"><span class="float-menu-icon">+</span> Add SB </a>
-          </div>
+          <a data-songbook-edit="new" class="float-menu-item"><span class="float-menu-icon">+</span> Add SB </a>
         </div>
         <div class="row">
           <div class="subcolumn">
             <div id="songbooks_container"> <!-- not "songbooks": a #songbooks link would jump to it and lose the scroll position (issue #127) -->
               <div id="songbooks_header" class="column_header">
-                <div>
+                <div class="title">
                   <h3><a class="title_link" href="#songbooks">Songbooks</a></h3>
+                </div>
+                <div class="search-row">
                   <input aria-label="Search" class="search deletable" type="text" data-target="#songbooks_container" data-trigger="change" placeholder="Search">
                 </div>
               </div>
@@ -212,7 +220,10 @@
             <button type="button" class="sidebar-tab" onclick="this.parentElement.classList.add('sidebar-open')" aria-label="Open Add a song?"><span class="tab-chevron" aria-hidden="true">‹</span><span class="tab-label">Add songs</span></button>
             <div id="songbook_edit_togglesongs">
               <div class="column_header">
-                <h3>Add a song?<button onclick="this.closest('.sidebar-open').classList.remove('sidebar-open');" class="icon-fl-right close-icon-mobile">&times;</button></h3>
+                <div class="title">
+                  <h3>Add a song?</h3>
+                  <span class="buttonsRight"><button type="button" onclick="this.closest('.sidebar-open').classList.remove('sidebar-open');" class="close-icon-mobile" aria-label="Close">&times;</button></span>
+                </div>
                 <div class="search-row">
                   <input aria-label="Search" class="search deletable" type="text" data-target="#songbook_edit_togglesongs" data-trigger="change" placeholder="Search">
                   <nav class="song-filter" data-list="adder" aria-label="Filter songs"></nav>
@@ -248,8 +259,13 @@
             <button type="button" class="sidebar-tab" onclick="this.parentElement.classList.add('sidebar-open')" aria-label="Open Song Categories"><span class="tab-chevron" aria-hidden="true">‹</span><span class="tab-label">Categories</span></button>
             <div id="categories">
               <div class="column_header">
-                <h3>Song Categories<button onclick="this.closest('#song-edit').classList.remove('sidebar-open');" class="icon-fl-right close-icon-mobile">&times;</button></h3>
-                <input aria-label="Search" class="search deletable" type="text" data-target="#categories" data-trigger="change" placeholder="Search">
+                <div class="title">
+                  <h3>Song Categories</h3>
+                  <span class="buttonsRight"><button type="button" onclick="this.closest('.sidebar-open').classList.remove('sidebar-open');" class="close-icon-mobile" aria-label="Close">&times;</button></span>
+                </div>
+                <div class="search-row">
+                  <input aria-label="Search" class="search deletable" type="text" data-target="#categories" data-trigger="change" placeholder="Search">
+                </div>
               </div>
               <ul class="list">
               </ul>
@@ -273,7 +289,9 @@
           <div class="subcolumn">
             <div class="content">
               <div class="column_header">
-                <h3 class="export_header">Export</h3>
+                <div class="title">
+                  <h3 class="export_header">Export</h3>
+                </div>
               </div>
               <table>
                 <tr>
@@ -718,12 +736,15 @@
             <button type="button" class="sidebar-tab" onclick="this.parentElement.classList.add('sidebar-open')" aria-label="Open the Preview"><span class="tab-chevron" aria-hidden="true">‹</span><span class="tab-label">Preview</span></button>
             <div>
               <div>
-                <div class="column_header title">
-                  <h3>Preview
-                    <button onclick="this.closest('#exportPreview').classList.remove('sidebar-open');" class="icon-fl-right close-icon-mobile">&times;</button>
-                    <span style="float: right; margin-right: 2rem;" class="fsButton" onclick="toggleFullscreen(this)"></span>
-                    <span style="float: right; margin-right: 4rem; font-size: 1rem;" id="downloadPDF"></span>
-                  </h3>
+                <div class="column_header">
+                  <div class="title">
+                    <h3>Preview</h3>
+                    <span class="buttonsRight">
+                      <span id="downloadPDF"></span>
+                      <span class="fsButton" onclick="toggleFullscreen(this)"></span>
+                      <button type="button" onclick="this.closest('.sidebar-open').classList.remove('sidebar-open');" class="close-icon-mobile" aria-label="Close">&times;</button>
+                    </span>
+                  </div>
                 </div>
                 <iframe id="pdf"></iframe>
               </div>

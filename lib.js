@@ -1585,7 +1585,7 @@ function setSongbookInfo(songbook) {
       <button data-songbook-present class="float-menu-item" id="present"><span class="float-menu-icon">&#128253;</span>Present</button>
       <a data-songbook-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span>Export</a>
       ${editable ? '<a data-songbook-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span>Edit</a>' : ''}
-      <span class="float-menu-item float-menu-toggle"><button class="float-menu-icon">+</button></span>`;
+      <span class="float-menu-item float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>`;
   }
 
   // Handle info dialog
@@ -2307,9 +2307,9 @@ async function editSongbook() {
     const buttons = document.createElement('div');
     buttons.className = 'edit_buttons';
     buttons.innerHTML = `
-      <button data-songbook class="btn" style="background-color: var(--edit-color);" onclick="saveSongbookFromEditor();">Save</button>
-      <button data-songbook class="btn" style="background-color: var(--edit-color);" onclick="cancelSongbook(this);">Cancel</button>
-      <button data-songbook class="btn" style="background-color: var(--edit-color);" onclick="resetSongbook();">Reset</button>`;
+      <button data-songbook class="btn" onclick="saveSongbookFromEditor();">Save</button>
+      <button data-songbook class="btn" onclick="cancelSongbook(this);">Cancel</button>
+      <button data-songbook class="btn" onclick="resetSongbook();">Reset</button>`;
     const buttonsClone = buttons.cloneNode(true); // Create a deep copy
     document.getElementById('songbook_content').prepend(buttons);
     document.getElementById('songbook_content').append(buttonsClone);
@@ -2549,19 +2549,19 @@ async function editSong() {
   // Create and add edit buttons
   const buttonsHTML = `
     <div class="edit_buttons">
-      <button data-song class="btn" style="background-color: var(--edit-color);" onclick="prepSaveSong(this)">Save</button>
+      <button data-song class="btn" onclick="prepSaveSong(this)">Save</button>
       <a ${window.song._id === 's-new-song' ? 'data-songbook' : 'data-song'} 
-              class="btn" style="background-color: var(--edit-color);" 
+              class="btn" 
               onclick="window.songEditing=false; delete window.song; window.location.hash=this.getAttribute('href');">
         Cancel
       </a>
-      <button data-song class="btn" style="background-color: var(--edit-color);" 
+      <button data-song class="btn" 
               onclick="window.songEditing=false; location.reload()">
         Reset
       </button>
     </div>`;
   
-  const songElement = document.getElementsByTagName('song')[0]
+  const songElement = document.querySelector('#song .song-card'); // the card: the buttons go above its header and below the song
 
   songElement.insertAdjacentHTML('afterbegin', buttonsHTML);
   songElement.insertAdjacentHTML('beforeend', buttonsHTML);
@@ -2608,7 +2608,7 @@ async function editSong() {
     chunk.parentNode.insertBefore(wrapper, chunk);
     wrapper.appendChild(chunk);
   });
-  makeChunksSortable(songElement); // drag the chunks to reorder them
+  makeChunksSortable(songElement.querySelector("song")); // drag the chunks to reorder them (they are <song>'s children)
 
   // Update metadata fields
   const updateField = (selector, joinChar = ', ') => {
@@ -2698,7 +2698,7 @@ async function editSong() {
   window.songEditing = true;
   updateAllLinks();
 
-  const elements = songElement.querySelectorAll('stitle .title_link, authors, scripture_ref, introduction, key, chunk, copyright, cclis');
+  const elements = songElement.querySelectorAll('.song-title .title_link, authors, scripture_ref, introduction, key, chunk, copyright, cclis');
   convertChunksToEditable(elements);
 }
 // The songbook editor's Save button. A failed save keeps the editor open and says why (#1).
@@ -2713,7 +2713,7 @@ async function saveSongbookFromEditor() {
 }
 
 async function prepSaveSong() {
-  if(document.getElementsByTagName('stitle')[0].textContent.trim() === ''){
+  if (!document.querySelector('#song .song-card .song-title')?.textContent.trim()) {
     alert('Please add a title before you save');
     return;
   }
@@ -2721,7 +2721,7 @@ async function prepSaveSong() {
     window.songEditing=false;
   }
   // Save from a copy of the editor, so a failed save leaves the editor and its edits in place (#1)
-  const editor = document.querySelector('#song song');
+  const editor = document.querySelector('#song .song-card'); // the card: its header holds the title
   const songElement = editor.cloneNode(true);
   const ccliCheckbox = document.getElementById('ccli-checkbox');
   const ccliElement = songElement.querySelector('cclis');
@@ -2819,7 +2819,7 @@ async function prepExport() {
       if (e.data[0] === 'pdf') {
         const downloadLink = document.getElementById('downloadPDF');
         downloadLink.innerHTML = `
-          <a class="btn" href="${escapeHtml(e.data[1])}" style="margin-top:0;" target="_blank" download="${escapeHtml(window.exportObject.title)}.pdf">
+          <a class="btn" href="${escapeHtml(e.data[1])}" target="_blank" download="${escapeHtml(window.exportObject.title)}.pdf">
             Download ⭳
           </a>`;
 
@@ -3364,7 +3364,7 @@ function confirmWhenEditing(oldHashList, newHashList) {
 
   // Check song editing state
   if (window.songEditing) {
-    const songTitle = document.querySelector('stitle a')?.textContent || 'Current Song';
+    const songTitle = document.querySelector('#song .song-title a')?.textContent || 'Current Song';
     // No oldHashList means a direct call (e.g. logout), so always ask
     if (!oldHashList || oldHashList[1]?.[1] === 'edit') {
       confirmMessages.push('songEditing');

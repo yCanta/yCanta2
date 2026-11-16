@@ -86,19 +86,19 @@
 "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans",
 "Droid Sans", "Helvetica Neue", sans-serif;
 }
-#song:has(song:nth-child(1)) {
+#song:has(.song-card:nth-child(1)) {
   --count: 1;
 }
-#song:has(song:nth-child(2)) {
+#song:has(.song-card:nth-child(2)) {
   --count: 2;
 }
-#song:has(song:nth-child(3)) {
+#song:has(.song-card:nth-child(3)) {
   --count: 3;
 }
-#song:has(song:nth-child(4)) {
+#song:has(.song-card:nth-child(4)) {
   --count: 4;
 }
-#song:has(song:nth-child(5)) {
+#song:has(.song-card:nth-child(5)) {
   --count: 5;
 }
 /*normalize*/
@@ -751,6 +751,11 @@ legend {
 .yt-play {
   position: relative;
 }
+#song .yt-play { /* ▶ under a song's title: smaller than other buttons, in the song's color */
+  padding: .3125rem .5rem;
+  margin: 0 .5rem 0 0;
+  background-color: var(--highlight-color);
+}
 .yt-play.yt-search::after {
   content: '🔍';
   position: absolute;
@@ -1087,7 +1092,7 @@ body.player-pill .subcolumn:not(.sidebar)::after {
 .deleted-song copyright {
   opacity: .6;
 }
-.revision song:before {
+.revision .song-card::before { /* an old version: who saved it, when (its rev-info) */
   position: absolute;
   display: block;
   content: attr(rev-info);
@@ -1271,11 +1276,11 @@ stitle, cat, author, scrip_ref, key, copyright, cclis {
   background-color: var(--edit-color);
   border: 1px gray dashed;
 }
-.edit .buttonsRight { 
+.edit .subcolumn:not(.sidebar) .buttonsRight { /* the star, info and full screen, while editing (a side panel keeps its ×) */
   display: none;
 }
 .edit #songbook_header a,
-.edit song stitle a {
+.edit .song-title a {
   display: block;
 }
 #songbookList a[href="#sb-allSongs"],
@@ -1327,7 +1332,7 @@ info:after {
   display: none;
   cursor: pointer;
 }
-#song song[data-user-fav="true"] .star:after,
+#song .song-card[data-user-fav="true"] .star:after,
 #songbookList li[data-user-fav="true"] .star:after,
 #songbook_header .title[data-user-fav="true"] .star:after {
   content: '★';
@@ -1342,11 +1347,49 @@ info:after {
   margin: 0 -1rem 0 -1rem;
   padding: 0.1px 1rem 0.5rem 1rem;
 }
-.column:not(.edit) .subcolumn:first-child .title {
+/* A header's title row: the title, then its buttons on the right (index.html has the parts every column and
+   side panel share). While editing, the column's title takes the whole row. */
+.column:not(.edit) .subcolumn:first-child .title,
+.sidebar .column_header .title {
   display: flex;
+}
+.sidebar .column_header .title {
+  align-items: center;
 }
 .title > * {
   flex: auto;
+}
+.sidebar .column_header .buttonsRight { /* a side panel's buttons, in line with its title */
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding-top: 0;
+}
+.buttonsRight > .close-icon-mobile { /* a side panel's × (phones only), the size of its title */
+  font-size: 1.17em;
+  width: 1.75em;
+  height: 1.75em;
+  text-align: center;
+}
+.buttonsRight > .btn, /* a button with words (an old version's Restore) is as wide as they are */
+.buttonsRight > #downloadPDF { /* the export Preview's Download button */
+  width: auto;
+  font-size: 1rem;
+}
+.buttonsRight > #downloadPDF .btn {
+  margin: 0;
+}
+.sidebar .buttonsRight > .fsButton { /* the Preview's full screen, in line with Download */
+  height: 1.5rem;
+}
+/* Each song shown (db.js loadSong): its header, then <song>. Old versions open as more cards beside it. */
+.song-card {
+  flex-grow: 1;
+  margin-bottom: 1rem;
+}
+.song-card > song {
+  display: block;
+  margin-bottom: 0;
 }
 #song .subcolumn:first-child .column_header {
   padding: 0px 1rem 0.5rem 1rem;
@@ -1368,10 +1411,12 @@ info:after {
 .subcolumn:first-child .column_header {
   background: linear-gradient(180deg, var(--highlight-color) 0%, var(--background-color) 90%, rgba(255,255,255,0) 100%);
 }
-.song #song.edit #song_header,
-.songList #songList.edit #songbook_header {
+.edit .subcolumn:first-child .column_header { /* an editor's header: under its Save band (4rem) */
   top: 4rem;
   padding-right: 1rem;
+}
+.edit_buttons .btn { /* an editor's Save, Cancel and Reset */
+  background-color: var(--edit-color);
 }
 .edit_buttons:first-child {
   position: sticky;
@@ -2171,10 +2216,10 @@ input[type="number"] {
   .edit .sidebar-open {
     overflow: auto;
   }
-  song {
+  .song-card { /* a phone shows only the last song opened (an old version beside it takes its place) */
     display: none !important;
   }
-  song:last-child{
+  .song-card:last-child {
     display: block !important;
   }
   ul li a{
@@ -2364,35 +2409,32 @@ input[type="number"] {
   body.song #songList.edit .subcolumn:first-child > div {
     padding-right: 1rem; /* no room needed for the tab, and none showing as a dark strip above the song */
   }
-  /* room on the right of the editor, so the closed panel's tab covers none of its boxes */
-  #song.edit .subcolumn:first-child > div {
-    padding-right: 3.25rem;
+  /* A column with a side panel (the song and songbook editors, and the export) keeps room on its right
+     (--tab-room), so the closed panel's tab covers none of its boxes; the bands across its top (its header,
+     an editor's Save band) still reach the right edge, and what's in them lines up with the boxes below */
+  .column {
+    --tab-room: 3rem; /* the closed panel's tab (--tab-width, 2.75rem) and a little gap */
   }
-  /* while the bands across the top still reach the right edge */
-  #song.edit song > .edit_buttons:first-child,
-  #song.edit #song_header {
-    margin-right: -3.25rem;
+  #song.edit .subcolumn:first-child > div,
+  #songList.edit .subcolumn:first-child > div,
+  #export .subcolumn:first-child > div {
+    padding-right: var(--tab-room);
   }
-  #songList.edit #songbook_content > .edit_buttons:first-child,
-  #songList.edit #songbook_header,
-  #export .subcolumn:first-child > div > .column_header {
-    margin-right: -3rem;
+  #song.edit .subcolumn:first-child .edit_buttons:first-child,
+  #songList.edit .subcolumn:first-child .edit_buttons:first-child,
+  #song.edit .subcolumn:first-child .column_header,
+  #songList.edit .subcolumn:first-child .column_header,
+  #export .subcolumn:first-child .column_header {
+    margin-right: calc(-1 * var(--tab-room));
   }
-  /* and what's in a band lines up with the boxes below it */
-  .song #song.edit #song_header {
-    padding-right: 3.25rem;
-  }
-  .songList #songList.edit #songbook_header,
-  #export .subcolumn:first-child > div > .column_header {
-    padding-right: 3rem;
+  #song.edit .subcolumn:first-child .column_header,
+  #songList.edit .subcolumn:first-child .column_header,
+  #export .subcolumn:first-child .column_header {
+    padding-right: var(--tab-room);
   }
   .songList #songList.edit .sidebar-open,
   .song #song.edit .sidebar-open {
     transform: translate3d(0, 0, 0);
-  }
-  #export .subcolumn:first-child > div,  
-  #songList.edit .subcolumn:first-child > div {
-    padding: 0 3rem 0 1rem;
   }
 
   /*Export */
@@ -2434,7 +2476,7 @@ input[type="number"] {
   .column {
     position: relative;
   }
-  .song .title {
+  .song #songbook_header .title { /* clear of the account button */
     padding-left: 1rem;
   }
   body.song #songbookList .title_link {
@@ -2450,8 +2492,7 @@ input[type="number"] {
   body.songbookList header h2 {
     margin-top: .5rem;
   }
-  .edit stitle,
-  .edit #songbook_header {
+  .edit .subcolumn:first-child .column_header { /* a short screen: an editor's header scrolls away under its Save band */
     position: initial;
   }
   #pdf {
@@ -2766,7 +2807,7 @@ only screen and (max-height: 31.25rem) {
     z-index: 6 !important;
   }
   #songbook_header .title[data-user-fav="true"] .star:hover:after,
-  #song song[data-user-fav="true"] .star:hover:after {
+  #song .song-card[data-user-fav="true"] .star:hover:after {
     content: '☆';
     color: black;
   }

@@ -386,8 +386,8 @@ try {
   ok(await ev(`(() => { const ids = [...document.querySelectorAll('#songbook_content .list > li')].map(li => li.dataset.songId); return ids.includes(${JSON.stringify(partsId)}) && ids.includes(${JSON.stringify(badSongId)}); })()`),
     'bad records: the bad songbook opens, listing its songs');
   await ev(`location.hash = '#${badBookId}&${badSongId}'`);
-  await until(`!!document.querySelector('#song stitle')`, 'the bad song', 10000).catch(() => {});
-  ok(await ev(`document.querySelector('#song stitle')?.textContent.includes('12345')`), 'bad records: the bad song opens and shows its title');
+  await until(`!!document.querySelector('#song .song-title a')`, 'the bad song', 10000).catch(() => {});
+  ok(await ev(`document.querySelector('#song .song-title a')?.textContent.includes('12345')`), 'bad records: the bad song opens and shows its title');
   // the song editor, the export and the presentation read the same fields
   await ev(`location.hash = location.hash + '?edit'`);
   await until(`!!document.querySelector('#song .edit_buttons')`, 'the bad song editor', 10000).catch(() => {});
@@ -411,10 +411,10 @@ try {
   await click('[data-song-edit="new"]');
   await until(`!!document.querySelector('#song .edit_buttons')`, 'the new song editor', 5000).catch(() => {});
   if (ok(await ev(`!!document.querySelector('#song .edit_buttons')`), 'Add Song opens the editor', `at ${await hash()}`)) {
-    await type('#song stitle', `${RUN} Song`);
+    await type('#song .song-title a', `${RUN} Song`);
     await type('#song chunk', 'A line from the app test');
     await click('#song .edit_buttons button');
-    await until(`/&s-\\d/.test(location.hash) && !location.hash.includes('?edit') && !!document.querySelector('#song song[data-rev^="1-"]')`, 'the saved song');
+    await until(`/&s-\\d/.test(location.hash) && !location.hash.includes('?edit') && !!document.querySelector('#song .song-card[data-rev^="1-"]')`, 'the saved song');
     const songId = (await hash()).split('&')[1];
     made.push(songId);
     const doc = await remoteWhen(songId, d => d.title === `${RUN} Song`);
@@ -426,22 +426,22 @@ try {
     // 2. Edit it
     await ev(`location.hash = location.hash + '?edit'`);
     await until(`!!document.querySelector('#song .edit_buttons')`, 'the song editor');
-    await type('#song stitle', `${RUN} Song Edited`, true);
+    await type('#song .song-title a', `${RUN} Song Edited`, true);
     await click('#song .edit_buttons button');
-    await until(`!location.hash.includes('?edit') && !!document.querySelector('#song song[data-rev^="2-"]')`, 'the edited song');
+    await until(`!location.hash.includes('?edit') && !!document.querySelector('#song .song-card[data-rev^="2-"]')`, 'the edited song');
     const edited = await remoteWhen(songId, d => d.title === `${RUN} Song Edited`);
     ok(edited.title === `${RUN} Song Edited`, 'an edit is saved', edited.title);
 
     // 3. Cancel an edit: nothing is saved
     await ev(`location.hash = location.hash + '?edit'`);
     await until(`!!document.querySelector('#song .edit_buttons')`, 'the song editor');
-    await type('#song stitle', `${RUN} Should Not Save`, true);
+    await type('#song .song-title a', `${RUN} Should Not Save`, true);
     await click('#song .edit_buttons a');
     await until(`!location.hash.includes('?edit') && !document.querySelector('#song .edit_buttons')`, 'leaving the editor');
     await sleep(2000); // time for a save to reach the server, if one were (wrongly) made
     const afterCancel = await remote(songId);
     ok(afterCancel.title === `${RUN} Song Edited` && afterCancel._rev.startsWith('2-'), 'Cancel on a song saves nothing');
-    ok((await ev(`document.querySelector('#song stitle').textContent.trim()`)) === `${RUN} Song Edited`, 'Cancel on a song shows the saved song');
+    ok((await ev(`document.querySelector('#song .song-title a').textContent.trim()`)) === `${RUN} Song Edited`, 'Cancel on a song shows the saved song');
 
     // 4. Make a songbook with that song in it
     await openNewSongbook();
@@ -537,7 +537,7 @@ try {
     await click('#song song .wrap chunk');
     ok(await ev(`!!document.activeElement?.closest('chunk')`), 'mouse: a click in a part\'s words puts the cursor there');
     await click('#song .edit_buttons button');
-    await until(`!location.hash.includes('?edit') && !!document.querySelector('#song song[data-rev^="2-"]')`, 'the saved three-part song');
+    await until(`!location.hash.includes('?edit') && !!document.querySelector('#song .song-card[data-rev^="2-"]')`, 'the saved three-part song');
     const parts = await remoteWhen(partsId, d => d._rev.startsWith('2-'));
     ok(JSON.stringify(parts.content?.map(c => c[1][0])) === JSON.stringify(['Third part', 'First part', 'Second part']), 'the dragged parts order is saved', JSON.stringify(parts.content?.map(c => c[1])));
 
