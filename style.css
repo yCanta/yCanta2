@@ -794,7 +794,7 @@ legend {
   display: block;
   margin: .35rem auto 0;
   width: min(98%, 14rem);
-  font-size: .75rem;
+  font-size: .65rem;
 }
 #playerDock[data-look="pill"] .player-caption { /* in the pill it's beside the song's title instead */
   display: none !important;
