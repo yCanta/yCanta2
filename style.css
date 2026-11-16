@@ -1870,6 +1870,15 @@ input[type="number"] {
 .expandedTableHeader.collapsed {
   border-radius: 2rem;
 }
+/* the same arrow as the Key button's, so it's clear Text Details and Index Details open (#131) */
+.expandedTableHeader::after {
+  content: '▴';
+  margin-left: .35rem;
+  font-size: .85em;
+}
+.expandedTableHeader.collapsed::after {
+  content: '▾';
+}
 .expandedTableHeader.collapsed + .expandedTable {
   display: none;
 }
@@ -1995,6 +2004,21 @@ input[type="number"] {
 }
 #export .btn { /* the export's buttons stay on one line ("Export JSON" wrapped in its narrow table cell) */
   white-space: nowrap;
+}
+/* The export's text and number boxes: a clear edge, so they read as boxes to type in on the dark panel
+   (they had the page's background and a faint inset edge, #131) */
+#export input[type="number"],
+#export input[type="text"] {
+  border: 1px solid var(--light-text-color);
+  border-radius: .4rem;
+  padding: .15rem .4rem;
+}
+@media (max-width: 39.99rem) { /* bigger on a phone, so a finger can hit them */
+  #export td input[type="number"] {
+    width: 3.5rem;
+    height: 2.4rem;
+    font-size: 1rem;
+  }
 }
 #cfg_buttons {
   display: contents; /* its buttons sit in the group's row, beside "+ Save new Config" */

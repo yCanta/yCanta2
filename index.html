@@ -388,26 +388,26 @@
                       </tr>
                       <tr class="hide_for_songs">
                         <td>Book Title</td>
-                        <td><input type="number" id="booktitle_size" name="booktitle_size" value="24"></td>
-                        <td><input type="number" id="booktitle_space" name="booktitle_space" value="12"></td>
+                        <td><input type="number" inputmode="decimal" id="booktitle_size" name="booktitle_size" value="24"></td>
+                        <td><input type="number" inputmode="decimal" id="booktitle_space" name="booktitle_space" value="12"></td>
                         <td></td>
                       </tr>
                       <tr>
                         <td>Song Title</td>
-                        <td><input type="number" id="songtitle_size" name="songtitle_size" value="14"></td>
-                        <td><input type="number" id="songtitle_space" name="songtitle_space" value="6"></td>
+                        <td><input type="number" inputmode="decimal" id="songtitle_size" name="songtitle_size" value="14"></td>
+                        <td><input type="number" inputmode="decimal" id="songtitle_space" name="songtitle_space" value="6"></td>
                         <td></td>
                       </tr>
                       <tr>
                         <td><small>Small Text</small></td>
-                        <td><input type="number" id="small_size" name="small_size" value="8"></td>
-                        <td><input type="number" id="small_space" name="small_space" value="8"></td>
+                        <td><input type="number" inputmode="decimal" id="small_size" name="small_size" value="8"></td>
+                        <td><input type="number" inputmode="decimal" id="small_space" name="small_space" value="8"></td>
                         <td></td>
                       </tr>
                       <tr>
                         <td>Line</td>
-                        <td><input type="number" id="songline_size" name="songline_size" value="12"></td>
-                        <td><input type="number" id="songline_space" name="songline_space" value="4"></td>
+                        <td><input type="number" inputmode="decimal" id="songline_size" name="songline_size" value="12"></td>
+                        <td><input type="number" inputmode="decimal" id="songline_space" name="songline_space" value="4"></td>
                         <td rel="tooltip" title="Allow automatic reduction of font size to this percentage of the set font size">
                           <select size="1" id="resize_percent" name="resize_percent">
                             <option value="100">100%</option><option value="95">95%</option><option value="90">90%</option><option value="85">85%</option><option value="80">80%</option><option value="75">75%</option><option value="70">70%</option><option value="65">65%</option><option value="60">60%</option><option value="55">55%</option><option value="50">50%</option>
@@ -417,24 +417,24 @@
                       </tr>
                       <tr>
                         <td>Chord</td>
-                        <td><input type="number" id="songchord_size" name="songchord_size" value="12"></td>
-                        <td><input type="number" id="songchord_space" name="songchord_space" value="1"></td>
+                        <td><input type="number" inputmode="decimal" id="songchord_size" name="songchord_size" value="12"></td>
+                        <td><input type="number" inputmode="decimal" id="songchord_space" name="songchord_space" value="1"></td>
                         <td></td>
                       </tr>
                       <tr>
                         <td colspan=2 rel="tooltip" title="Spacing after Chorus/Verse/Bridge/etc">Block Spacing</td>
-                        <td><input type="number" id="songchunk_b4" name="songchunk_b4" value="12"></td>
+                        <td><input type="number" inputmode="decimal" id="songchunk_b4" name="songchunk_b4" value="12"></td>
                         <td></td>
                       </tr>
                       <tr>
                         <td colspan=2 rel="tooltip" title="Spacing after the end of the song">Song Spacing</td>
-                        <td><input type="number" id="song_space_after" name="song_space_after" value="12"></td>
+                        <td><input type="number" inputmode="decimal" id="song_space_after" name="song_space_after" value="12"></td>
                         <td></td>
                       </tr>
                       <tr>
                         <td>Copyright</td>
-                        <td><input type="number" id="copyright_size" name="copyright_size" value="8"></td>
-                        <td><input type="number" id="copyright_space_b4" name="copyright_space_b4" value="3"></td>
+                        <td><input type="number" inputmode="decimal" id="copyright_size" name="copyright_size" value="8"></td>
+                        <td><input type="number" inputmode="decimal" id="copyright_space_b4" name="copyright_space_b4" value="3"></td>
                         <td></td>
                       </tr>
                     </table>
@@ -477,7 +477,7 @@
                     <div class="t3">
                       <label for="columns" rel="tooltip" title="Number of columns">Columns</label>
                       <span>
-                        <input type="number" id="columns" name="columns" value="1">
+                        <input type="number" inputmode="decimal" id="columns" name="columns" value="1">
                       </span>
                     </div>
                     <div class="t3">
@@ -526,13 +526,13 @@
                             Top
                           </td>
                           <td>
-                            <input type="number" id="paper_margin_top" name="paper_margin_top" value="1" step="0.1" min="0">
+                            <input type="number" inputmode="decimal" id="paper_margin_top" name="paper_margin_top" value="1" step="0.1" min="0">
                           </td>
                           <td>
                             Bottom
                           </td>
                           <td>
-                            <input type="number" id="paper_margin_bottom" name="paper_margin_bottom" value="1" step="0.1" min="0">
+                            <input type="number" inputmode="decimal" id="paper_margin_bottom" name="paper_margin_bottom" value="1" step="0.1" min="0">
                           </td>
                         </tr>
                         <tr>
@@ -540,13 +540,13 @@
                             <span data-booklet="Inside">Left</span>
                           </td>
                           <td>
-                            <input type="number" id="paper_margin_left" name="paper_margin_left" value="1" step="0.1" min="0">
+                            <input type="number" inputmode="decimal" id="paper_margin_left" name="paper_margin_left" value="1" step="0.1" min="0">
                           </td>
                           <td>
                             <span data-booklet="Outside">Right</span>
                           </td>
                           <td>
-                            <input type="number" id="paper_margin_right" name="paper_margin_right" value="1" step="0.1" min="0">
+                            <input type="number" inputmode="decimal" id="paper_margin_right" name="paper_margin_right" value="1" step="0.1" min="0">
                           </td>
                         </tr>
                         <tr>
@@ -554,13 +554,13 @@
                             Gutter
                           </td>
                           <td>
-                            <input type="number" id="paper_margin_gutter" name="paper_margin_gutter" value="0" step="0.1" min="0">
+                            <input type="number" inputmode="decimal" id="paper_margin_gutter" name="paper_margin_gutter" value="0" step="0.1" min="0">
                           </td>
                           <td>
                             Column Gutter
                           </td>
                           <td>
-                            <input type="number" id="column_gutter" name="column_gutter" value="1" step="0.1" min="0">
+                            <input type="number" inputmode="decimal" id="column_gutter" name="column_gutter" value="1" step="0.1" min="0">
                             <select size="1" id="gutter_side" name="gutter_side">
                               <option value="left">Left</option>
                               <option value="top">Top</option>
@@ -635,8 +635,8 @@
                       </tr>
                       <tr>
                         <td>Index</td>
-                        <td><input type="number" id="index_title_size" name="index_title_size" value="18"></td>
-                        <td><input type="number" id="index_title_space" name="index_title_space" value="6"></td>
+                        <td><input type="number" inputmode="decimal" id="index_title_size" name="index_title_size" value="18"></td>
+                        <td><input type="number" inputmode="decimal" id="index_title_space" name="index_title_space" value="6"></td>
                         <td>
                           <select size="1" id="index_title_font" name="index_title_font">
                             <option value="Courier">Courier</option><option value="Courier-Bold">Courier-Bold</option><option value="Courier-BoldOblique">Courier-BoldOblique</option><option value="Courier-Oblique">Courier-Oblique</option><option value="Helvetica">Helvetica</option><option value="Helvetica-Bold">Helvetica-Bold</option><option value="Helvetica-BoldOblique">Helvetica-BoldOblique</option><option value="Helvetica-Oblique">Helvetica-Oblique</option><option value="Symbol">Symbol</option><option value="Times-Bold">Times-Bold</option><option value="Times-BoldItalic">Times-BoldItalic</option><option value="Times-Italic">Times-Italic</option><option value="Times-Roman">Times-Roman</option><option value="ZapfDingbats">ZapfDingbats</option>
@@ -645,13 +645,13 @@
                       </tr>
                       <tr>
                         <td rel="tooltip" title="Spacing between songs and the Index if index on same page as songs" colspan=2 class="art"><small>Space Before</small></td>
-                        <td><input type="number" id="index_title_b4" name="index_title_b4" value="20"></td>
+                        <td><input type="number" inputmode="decimal" id="index_title_b4" name="index_title_b4" value="20"></td>
                         <td></td>
                       </tr>
                       <tr>
                         <td>Category</td>
-                        <td><input type="number" id="index_cat_size" name="index_cat_size" value="14"></td>
-                        <td><input type="number" id="index_cat_space" name="index_cat_space" value="6"></td>
+                        <td><input type="number" inputmode="decimal" id="index_cat_size" name="index_cat_size" value="14"></td>
+                        <td><input type="number" inputmode="decimal" id="index_cat_space" name="index_cat_space" value="6"></td>
                         <td>
                           <select size="1" id="index_cat_font" name="index_cat_font">
                             <option value="Courier">Courier</option><option value="Courier-Bold">Courier-Bold</option><option value="Courier-BoldOblique">Courier-BoldOblique</option><option value="Courier-Oblique">Courier-Oblique</option><option value="Helvetica">Helvetica</option><option value="Helvetica-Bold">Helvetica-Bold</option><option value="Helvetica-BoldOblique">Helvetica-BoldOblique</option><option value="Helvetica-Oblique">Helvetica-Oblique</option><option value="Symbol">Symbol</option><option value="Times-Bold">Times-Bold</option><option value="Times-BoldItalic">Times-BoldItalic</option><option value="Times-Italic">Times-Italic</option><option value="Times-Roman">Times-Roman</option><option value="ZapfDingbats">ZapfDingbats</option>
@@ -660,7 +660,7 @@
                       </tr>
                       <tr>
                         <td rel="tooltip" title="Spacing before catedories in the category index" colspan=2 class="art"><small>Space Before</small></td>
-                        <td><input type="number" id="index_cat_b4" name="index_cat_b4" value="12"></td>
+                        <td><input type="number" inputmode="decimal" id="index_cat_b4" name="index_cat_b4" value="12"></td>
                         <td></td>
                       </tr>
                       <tr>
@@ -670,8 +670,8 @@
                       </tr>
                       <tr>
                         <td>Song Title</td>
-                        <td><input type="number" id="index_song_size" name="index_song_size" value="12"></td>
-                        <td><input type="number" id="index_song_space" name="index_song_space" value="4"></td>
+                        <td><input type="number" inputmode="decimal" id="index_song_size" name="index_song_size" value="12"></td>
+                        <td><input type="number" inputmode="decimal" id="index_song_space" name="index_song_space" value="4"></td>
                         <td>
                           <select size="1" id="index_song_font" name="index_song_font">
                             <option value="Courier">Courier</option><option value="Courier-Bold">Courier-Bold</option><option value="Courier-BoldOblique">Courier-BoldOblique</option><option value="Courier-Oblique">Courier-Oblique</option><option value="Helvetica">Helvetica</option><option value="Helvetica-Bold">Helvetica-Bold</option><option value="Helvetica-BoldOblique">Helvetica-BoldOblique</option><option value="Helvetica-Oblique">Helvetica-Oblique</option><option value="Symbol">Symbol</option><option value="Times-Bold">Times-Bold</option><option value="Times-BoldItalic">Times-BoldItalic</option><option value="Times-Italic">Times-Italic</option><option value="Times-Roman">Times-Roman</option><option value="ZapfDingbats">ZapfDingbats</option>
@@ -680,8 +680,8 @@
                       </tr>
                       <tr>
                         <td>First Line</td>
-                        <td><input type="number" id="index_first_line_size" name="index_first_line_size" value="11"></td>
-                        <td><input type="number" id="index_first_line_space" name="index_first_line_space" value="4"></td>
+                        <td><input type="number" inputmode="decimal" id="index_first_line_size" name="index_first_line_size" value="11"></td>
+                        <td><input type="number" inputmode="decimal" id="index_first_line_space" name="index_first_line_space" value="4"></td>
                         <td>
                           <select size="1" id="index_first_line_font" name="index_first_line_font">
                             <option value="Courier">Courier</option><option value="Courier-Bold">Courier-Bold</option><option value="Courier-BoldOblique">Courier-BoldOblique</option><option value="Courier-Oblique">Courier-Oblique</option><option value="Helvetica">Helvetica</option><option value="Helvetica-Bold">Helvetica-Bold</option><option value="Helvetica-BoldOblique">Helvetica-BoldOblique</option><option value="Helvetica-Oblique">Helvetica-Oblique</option><option value="Symbol">Symbol</option><option value="Times-Bold">Times-Bold</option><option value="Times-BoldItalic">Times-BoldItalic</option><option value="Times-Italic">Times-Italic</option><option value="Times-Roman">Times-Roman</option><option value="ZapfDingbats">ZapfDingbats</option>
