@@ -716,7 +716,7 @@ legend {
   cursor: pointer;
   overflow-wrap: break-word;
 }
-#playerDock .player-video-title { /* the YouTube video's own title: only in the pill (the window shows the video) */
+#playerDock .player-video-title { /* the YouTube video's own title, under the song's (known before play for found videos) */
   display: none;
   color: var(--light-text-color);
 }
@@ -789,6 +789,12 @@ legend {
   display: block;
   margin: .25rem auto .75rem;
   width: min(98%, 12.5rem);
+}
+#playerDock[data-look="dialog"] .player-video-title:not(:empty) {
+  display: block;
+  margin: -.5rem auto .5rem;
+  width: min(98%, 14rem);
+  font-size: .75rem;
 }
 #playerDock[data-look="dialog"] .player-video {
   aspect-ratio: 16 / 9;
@@ -867,7 +873,7 @@ legend {
   font-size: 1.1rem;
   border-radius: 50%;
 }
-#playerDock .player-pill-buttons .player-unfold { /* ▴, the opposite of the window's "▾ Fold" */
+#playerDock .player-pill-buttons .player-unfold { /* ▴, the opposite of the window's "▾ Dock" */
   font-size: 1.6rem;
   line-height: 1;
 }

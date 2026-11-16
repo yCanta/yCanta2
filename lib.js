@@ -3683,9 +3683,13 @@ async function songVideoIds(song, button) {
     });
     const answer = await response.json();
     if (answer.error) throw new Error(answer.error);
-    const ids = (answer.results || []).map(result => result.videoId).filter(id => /^[-\w]{11}$/.test(id));
-    if (!ids.length) throw new Error('YouTube found no videos for this song.');
-    return youtubeSearches[song._id] = { ids, found: true };
+    const results = (answer.results || []).filter(result => /^[-\w]{11}$/.test(result.videoId));
+    if (!results.length) throw new Error('YouTube found no videos for this song.');
+    return youtubeSearches[song._id] = {
+      ids: results.map(result => result.videoId),
+      titles: Object.fromEntries(results.map(result => [result.videoId, result.title])), // shown before play
+      found: true,
+    };
   } catch (err) {
     throw err instanceof TypeError || err instanceof SyntaxError ? new Error("Couldn't reach YouTube search. Try again later.") : err;
   } finally {
@@ -3744,13 +3748,11 @@ async function loadSongPlayer(event) {
   setPlayerLook('dialog');
 
   // Already a player: swap this song's videos in. A playing one goes straight on to the new song.
-  if (window.player?.cuePlaylist) {
-    if (!sameSong) {
-      if (window.player.getPlayerState?.() === 1) window.player.loadPlaylist(ids);
-      else window.player.cuePlaylist(ids);
-    }
+  if (window.player?.cueVideoById) {
+    if (!sameSong) setPlayerQueue(ids, videos.titles, window.player.getPlayerState?.() === 1);
     return;
   }
+  setPlayerQueue(ids, videos.titles, false, false); // the player starts it when it's ready (onPlayerReady)
 
   // Helper function to create YouTube player
   const createYouTubePlayer = () => {
@@ -3857,40 +3859,66 @@ function makeUserNameDraggable() {
 }
 makeUserNameDraggable();
 
+// The player's list: the song's videos, which one is on, and whether the list repeats. yCanta keeps it and
+// loads one video at a time, rather than handing YouTube a playlist: once a video had played, a new
+// playlist (loadPlaylist/cuePlaylist) often kept showing the old video, or failed ("invalid parameter").
+const playerQueue = { ids: [], titles: {}, index: 0, loop: false };
+
+// a new list: cued at its first video, or playing it (start), and on screen if the player is ready (load)
+function setPlayerQueue(ids, titles = {}, start = false, load = true) {
+  playerQueue.ids = ids;
+  playerQueue.titles = titles || {};
+  playerQueue.index = 0;
+  if (load) playQueueAt(0, start);
+  else showPlayerQueue();
+}
+function playQueueAt(index, start) {
+  const n = playerQueue.ids.length;
+  if (!n || !window.player?.cueVideoById) return;
+  playerQueue.index = (index + n) % n;
+  const id = playerQueue.ids[playerQueue.index];
+  if (start) window.player.loadVideoById(id);
+  else window.player.cueVideoById(id);
+  showPlayerQueue();
+}
+function playerPrev() { playQueueAt(playerQueue.index - 1, true); }
+function playerNext() { playQueueAt(playerQueue.index + 1, true); }
+
+// "2/5", and the video's title: from the search (known before it plays), else from YouTube once it's loaded
+function showPlayerQueue() {
+  const n = playerQueue.ids.length;
+  const count = document.querySelector('#playerDock .player-count');
+  if (count) count.textContent = n > 1 ? `${playerQueue.index + 1}/${n}` : '';
+  const id = playerQueue.ids[playerQueue.index];
+  const fromYouTube = window.player?.getVideoData?.();
+  const title = playerQueue.titles[id] || (fromYouTube?.video_id === id ? fromYouTube.title : '') || '';
+  const videoTitle = document.querySelector('#playerDock .player-video-title');
+  if (videoTitle) videoTitle.textContent = title;
+}
+
 function onPlayerReady(event) {
   // the videos of the song whose ▶ was pressed last (it may have changed while YouTube's code loaded)
-  window.player.cuePlaylist(document.getElementById('playerDock').dataset.ids.split(' '));
-  window.player.loop = false;
+  playQueueAt(0, false);
 }
 
 function onPlayerStateChange(event){
-  const count = document.querySelector('#playerDock .player-count');
-  if (count && window.player && window.player.getPlaylist) {
-    const list = window.player.getPlaylist() || [];
-    count.textContent = list.length > 1 ? (window.player.getPlaylistIndex() + 1) + '/' + list.length : '';
+  const state = window.player.getPlayerState();
+  // a video ended: on to the next in the list; after the last, back to the first only when repeating
+  if (state === 0) {
+    const last = playerQueue.index >= playerQueue.ids.length - 1;
+    if (!last || playerQueue.loop) return playQueueAt(playerQueue.index + 1, true);
   }
-  // the pill shows the YouTube video's own title under the song's
-  const videoTitle = document.querySelector('#playerDock .player-video-title');
-  if (videoTitle) videoTitle.textContent = window.player.getVideoData?.()?.title || '';
+  showPlayerQueue();
   // every play button of the player (the window's and the tab's) shows play or pause
-  const playing = window.player.getPlayerState() === 1;
+  const playing = state === 1;
   document.querySelectorAll('#playerDock .player-play').forEach(button => { button.textContent = playing ? '⏸' : '▶'; });
   document.getElementById('playerDock').classList.toggle('playing', playing);
 }
 
+// 🔁: the list starts over after its last video (a single video plays again)
 function toggleLoop(){
-  const loopEl = document.getElementById('loop');
-  switch(window.player.loop) {
-    case true: 
-      window.player.loop = false;
-      if (loopEl) loopEl.classList.remove('looping');
-      break;
-    case false: 
-      window.player.loop = true;
-      if (loopEl) loopEl.classList.add('looping');
-      break;
-  }
-  window.player.setLoop(window.player.loop);
+  playerQueue.loop = !playerQueue.loop;
+  document.getElementById('loop')?.classList.toggle('looping', playerQueue.loop);
 }
 
 function pauseVideo() {
