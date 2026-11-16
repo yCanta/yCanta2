@@ -1343,6 +1343,7 @@ info:after {
 #song .subcolumn:first-child .column_header {
   padding: 0px 1rem 0.5rem 1rem;
   overflow: hidden;
+  z-index: 4; /* over the ▶, Key and Chords row (z-index 3, so its key list opens over the song) as it scrolls under */
 }
 .title > * > * {
   position: relative;

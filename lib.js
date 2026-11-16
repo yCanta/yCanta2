@@ -4060,6 +4060,17 @@ if (typeof document.addEventListener !== "undefined" && visibilityChange) {
   console.log("Your browser doesn't support playing music in background");
 }
 
+// #142: back in the installed app on an Android phone, Chrome sometimes shows old pieces of the other
+// pages (and of the player) through the open one, until a scroll redraws them. Coming back, everything
+// is marked to be drawn again: hidden and shown again before the screen updates, so nothing blinks, and
+// nothing moves or loses its scroll spot.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  document.body.style.visibility = 'hidden';
+  getComputedStyle(document.body).visibility; // makes the browser take the change in
+  document.body.style.visibility = '';
+});
+
 /* crc32.js (C) 2014-present SheetJS -- http://sheetjs.com */
 /* vim: set ts=2: */
 /*exported CRC32 */
