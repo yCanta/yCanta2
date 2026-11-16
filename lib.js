@@ -1976,6 +1976,10 @@ const SORTABLE_DRAG = {
   chosenClass: 'sortable-chosen',
   dragClass: 'sortable-drag',
 };
+// Chrome on Android opens its link menu ("Open in new tab") on a long press, which takes the finger away
+// from the drag. Not while a row is picked up; a tap still opens the song, and a mouse's right-click still
+// gets its menu (a mouse never picks a row up by holding).
+document.addEventListener('contextmenu', (e) => { if (window.sortableHolding) e.preventDefault(); }, true);
 // The dragged row: a short highlight once it lands, and on screen
 function landed(row) {
   scrollIntoViewIfNeed(row);

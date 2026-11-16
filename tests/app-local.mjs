@@ -489,6 +489,21 @@ try {
     const lastRow = await spot(`#songbook_content ul.list > li:last-child`);
     await touchDrag(lastRow.x, lastRow.y, lastRow.x, lastRow.y - 120);
     ok(JSON.stringify(await bookOrder()) === before, 'finger: a quick swipe over the songs moves none', JSON.stringify(await bookOrder()));
+    // Chrome on Android's long-press link menu (it would end the drag) is cancelled while a song is held,
+    // and only then. (This browser never opens that menu itself, so the test sends the menu's event.)
+    const menuCancelled = `(() => { const e = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+      document.querySelector('#songbook_content ul.list > li:first-child a').dispatchEvent(e); return e.defaultPrevented; })()`;
+    const heldHash = await hash();
+    const heldRow = await spot(`#songbook_content ul.list > li:first-child a`);
+    await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: heldRow.x, y: heldRow.y }] });
+    await sleep(400);
+    const cancelledWhileHeld = await ev(menuCancelled);
+    await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await sleep(700);
+    const cancelledAfter = await ev(menuCancelled);
+    ok(cancelledWhileHeld && !cancelledAfter, "finger: the long-press link menu is held back while a song is picked up, and only then",
+      JSON.stringify({ cancelledWhileHeld, cancelledAfter }));
+    if (await hash() !== heldHash) { await ev(`location.hash = ${JSON.stringify(heldHash)}`); await sleep(800); }
     // press, hold, and drag the last song to the top
     const firstPhoneRow = await spot(`#songbook_content ul.list > li:first-child`);
     const movingId = await ev(`document.querySelector('#songbook_content ul.list > li:last-child').dataset.songId`);
