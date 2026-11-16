@@ -1921,7 +1921,7 @@ function loadSong(song_id, song_rev = false) {
             </div>
           </div>
           <song>
-          ${song_rev ? `<p class="rev-note">${escapeHtml(window.users[song.editedBy] || song.editedBy?.slice(2))}: ${formatDate(song.edited)}</p>` : ''}
+          ${song_rev ? `<p class="rev-note">Old version${song.editedBy ? ', saved by ' + escapeHtml(window.users?.[song.editedBy] || song.editedBy.replace(/^u-/, '')) : ''}${song.edited ? ', ' + formatDate(song.edited) : ''}.</p>` : ''}
           ${deleted ? `<p class="deleted-note">Deleted${song.deletedBy ? ' by ' + escapeHtml(window.users?.[song.deletedBy] || song.deletedBy.replace(/^u-/, '')) : ''}${song.deletedAt ? ', ' + formatDate(song.deletedAt) : ''}.
             ${song.deletedAt && canEdit(song) ? `<button class="btn btn-tiny" onclick="restoreOpenSong(this)">↶ Restore</button>` : ''}</p>` : ''}
           <authors><author>${shown.authors.join('</author>, <author>')}</author></authors>
