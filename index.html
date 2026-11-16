@@ -266,7 +266,7 @@
       </div>
       <div class="column" id="export">
         <div class="float-menu">
-          <button class="float-menu-item" onclick="window.location.hash=window.location.hash.replace('?export','');"><span class="float-menu-icon">&#128465;</span> Cancel</button>
+          <button class="float-menu-item" onclick="window.location.hash=window.location.hash.replace('?export','');"><span class="float-menu-icon">&#10005;</span> Close</button>
         </div>
         <div class="row">
           <div class="subcolumn">
@@ -701,10 +701,19 @@
                   </div>
                 </div>
               </form>
-              <div id="cfg_buttons"></div>
-              <button class="btn" id="export_new_config" onclick="createExportCfg();">+ Save new Config</button>
-              <button class="btn" id="export_copy" onclick="copyToClipboard(JSON.stringify(serializeForm('export_form')));" style="position: relative;">📄 Copy</button>
-              <button class="btn" id="export_paste" onclick="pasteFromClipboard();">📋Paste</button>
+              <!-- Saving these settings, then sharing them: two groups, so the Save buttons sit together (#131) -->
+              <div class="export-actions">
+                <div class="export-actions-group">
+                  <b>Save these settings</b>
+                  <div id="cfg_buttons"></div>
+                  <button class="btn" id="export_new_config" onclick="createExportCfg();">+ Save new Config</button>
+                </div>
+                <div class="export-actions-group">
+                  <b>Share them</b>
+                  <button class="btn" id="export_copy" onclick="copyToClipboard(JSON.stringify(serializeForm('export_form')));">📄 Copy</button>
+                  <button class="btn" id="export_paste" onclick="pasteFromClipboard();">📋 Paste</button>
+                </div>
+              </div>
             </div>
           </div>
           <div class="subcolumn sidebar" id="exportPreview">

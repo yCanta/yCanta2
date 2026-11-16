@@ -366,7 +366,7 @@ function dbChanges() {
     // Config changes
     else if (change.doc._id.startsWith('cfg-') && change.doc._id.includes(window.user._id)) {
       notyf.info(
-        (change.doc.name || 'Default') + ' config ' + (change.deleted ? 'deleted' : 'saved'),
+        escapeHtml(change.doc.name || 'Default') + ' config ' + (change.deleted ? 'deleted' : 'saved'),
         'var(--export-color)'
       );
     }
@@ -3107,25 +3107,42 @@ async function saveRawDbObject(element) {
   }
 }
 
-function createExportCfg(){
-  let configName = prompt("What do you want call your new config?");
-  if(configName && configName != '') { 
-    saveExport(configName);
-  }
+// "+ Save new Config": ask for a name in the app's own dialog (not the browser's prompt), then save
+async function createExportCfg(){
   blueHighlight(document.getElementById('export_new_config'));
+  const dialog = new TaskDialog('Save new config');
+  const done = await dialog.run({
+    text: 'Save these export settings under a name, so you can pick them from the Format menu later.',
+    fields: [{ name: 'name', label: 'Name', maxlength: 40 }],
+    submit: 'Save',
+    working: 'Saving…',
+    action: async values => {
+      const name = values.name.trim();
+      if (!name.replaceAll(/[^A-Za-z0-9 -]/g, '')) throw new Error('Please use at least one letter or number.');
+      if (!await saveExport(name)) throw new Error("Couldn't save it. Please try again.");
+    },
+  });
+  if (done !== null) dialog.close();
 }
 async function deleteExportCfg(cfgId){
+  let doc;
   try {
-    const doc = await db.get(cfgId);
-    if (confirm(`Are you sure you want to delete ${doc.name} config?`)) {
-      await db.remove(doc);
-      console.log("Deleted:", doc.name);
-    }
+    doc = await db.get(cfgId);
   } catch (err) {
-    console.error("Error deleting cfg:", err); 
-    alert("An error occurred while deleting the cfg.");
+    reportDbError(err, 'find that export config');
+    return;
   }
-  prepExport();
+  const dialog = new TaskDialog(`Delete "${doc.name || 'Default'}"?`);
+  const done = await dialog.run({
+    text: 'This config will be gone from the Format menu. The export settings on screen stay as they are.',
+    submit: 'Delete',
+    danger: true,
+    working: 'Deleting…',
+    action: () => db.remove(doc),
+  });
+  if (done === null) return;
+  dialog.close();
+  await loadExportSetups();
 }
 function serializeForm(formId) {
   const form = document.getElementById(formId);
@@ -3152,12 +3169,20 @@ async function saveExport(name) {
     } catch (err) {
       if (err.status !== 404) throw err; // 404: a new config
     }
-    const info = await db.put(cfg);
-    console.log("id of record: " + info.id);
-    prepExport();
+    await db.put(cfg);
   } catch (err) {
     reportDbError(err, 'save this export setup');
+    return false;
   }
+  // The buttons are rebuilt, so light up the new one (lighting up the clicked one was lost, #131), and
+  // show this setup in the Format menu. (The sync handler says "saved".)
+  await loadExportSetups();
+  const formatSelect = document.getElementById('format');
+  const saved = [...formatSelect.options].find(option => option.value === JSON.stringify(opts));
+  if (saved) formatSelect.value = saved.value;
+  const button = [...document.querySelectorAll('#cfg_buttons [data-save-name]')].find(b => b.dataset.saveName === (name || ''));
+  if (button) blueHighlight(button);
+  return true;
 }
 
 async function toggleFavorite(itemId, favoriteType) { // Make it more generic

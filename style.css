@@ -1705,11 +1705,37 @@ input[type="number"] {
 }
 /*End Switch*/
 
-#export_copy::before {
-  content: '📄';
-  position: absolute;
-  top: .5em;
-  left: 1.15em;
+/* The export's Save and Share buttons, in two groups (#131) */
+.export-actions {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+  margin-top: 1rem;
+  margin-bottom: 5rem; /* room to scroll the last buttons above the floating Close button, so it covers none */
+}
+.export-actions-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+  padding: .5rem .75rem .75rem;
+  border: 1px solid var(--edit-color);
+  border-radius: 1rem;
+}
+.export-actions-group > b {
+  flex-basis: 100%;
+  font-size: .9rem;
+}
+.export-actions-group .btn {
+  margin: 0;
+}
+#cfg_buttons {
+  display: contents; /* its buttons sit in the group's row, beside "+ Save new Config" */
+}
+/* Saving over your Default changes what every export of this songbook starts with: it looks different */
+#cfg_buttons .export-default {
+  background-color: var(--export-color); /* bisque in light mode, green in dark: dark text reads on both */
+  color: #222;
 }
 /* Old versions window (showHistory in db.js, #138) */
 .task-dialog .history-list {

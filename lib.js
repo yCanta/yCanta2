@@ -308,14 +308,26 @@ const copyToClipboard = str => {
   notyf.info('Config copied to your clipboard', 'var(--export-color)');
   blueHighlight(document.getElementById('export_copy'));
 };
-function pasteFromClipboard() {
-  navigator.clipboard.readText().then(text => {
-    set_value_by_id(JSON.parse(text));
-     document.getElementById('paper_margin_top').dispatchEvent(new Event('change', { bubbles: true }));
-  }).catch(err => {
-    console.error('Failed to read clipboard contents: ', err);
-  }); 
+// Paste export settings someone copied. It says so only once they're in, and says plainly when the
+// clipboard holds something else, or the browser won't let the app read it (#131).
+async function pasteFromClipboard() {
   blueHighlight(document.getElementById('export_paste'));
+  let settings;
+  try {
+    settings = JSON.parse(await navigator.clipboard.readText());
+  } catch (err) {
+    console.warn('Could not paste export settings:', err);
+    notyf.error(err instanceof SyntaxError
+      ? "The clipboard doesn't hold export settings. Use Copy on an export first."
+      : "Couldn't read the clipboard. Allow this site to paste, or try again.");
+    return;
+  }
+  if (!Array.isArray(settings) || !settings.every(s => s && typeof s.name === 'string')) {
+    notyf.error("The clipboard doesn't hold export settings. Use Copy on an export first.");
+    return;
+  }
+  set_value_by_id(settings);
+  document.getElementById('paper_margin_top').dispatchEvent(new Event('change', { bubbles: true }));
   notyf.info('Config pasted from your clipboard', 'var(--export-color)');
 }
 function blueHighlight(highlightElement){
@@ -634,8 +646,9 @@ export_form.index = index;
 window.export = export_form;
 
 function set_value_by_id(list) {
-  for(item of list) {
+  for(const item of list) {
     let element = document.getElementById(item.name);
+    if (!element) continue; // a setting this version of the app doesn't have (pasted, or from an older config)
     if(element.type == 'checkbox'){
       element.checked = item.value;
     }
@@ -2761,7 +2774,12 @@ async function prepExport() {
     };
   }
 
-  // Load export configurations
+  await loadExportSetups();
+}
+
+// The export setups: the Format menu and the Save buttons. Saving or deleting a setup refreshes just
+// these (it used to run all of prepExport, which also blanked the preview).
+async function loadExportSetups() {
   try {
     const result = await db.allDocs({
       include_docs: true,
@@ -2781,11 +2799,12 @@ async function prepExport() {
       if (row.doc._id === userIdCfg) {
         myDefault = option(`Your ${escapeHtml(row.doc.name || 'Default')}`);
       } else if (row.doc._id.startsWith(userIdCfg + ':')) { // a named one (saveExport adds ':' and the name)
+        // The whole button saves (it used to be only its label); the × deletes. saveExport lights up the
+        // new button once the list is rebuilt, since this one is replaced then (#131).
         cfgButtons.insertAdjacentHTML('beforeend', `
-          <button class="btn" onclick="blueHighlight(this);">
-            <span data-name="${escapeHtml(row.doc.name || 'Default')}" onclick="saveExport(this.dataset.name);">
-              Save as ${escapeHtml(row.doc.name || 'Default')}
-            </span>              <span class="export_close" onclick="event.preventDefault(); deleteExportCfg('${row.doc._id}');">×</span>
+          <button class="btn" data-save-name="${escapeHtml(row.doc.name || 'Default')}" onclick="saveExport(this.dataset.saveName);">
+            Save as ${escapeHtml(row.doc.name || 'Default')}<span class="export_close" title="Delete this config"
+              onclick="event.stopPropagation(); deleteExportCfg(${escapeHtml(JSON.stringify(row.doc._id))});">×</span>
           </button>`);
         mine += option(`Your ${escapeHtml(row.doc.name || 'Default')}`);
       } else {
@@ -2797,8 +2816,7 @@ async function prepExport() {
 
     // Add default button
     cfgButtons.insertAdjacentHTML('afterbegin', `
-      <button class="btn" onclick="blueHighlight(this);">
-        <span onclick="saveExport('');">Save as Default</span>      </button>`);
+      <button class="btn export-default" data-save-name="" onclick="saveExport('');">Save as Default</button>`);
 
     // Add predefined options
     const opts = window.export.def_configs;

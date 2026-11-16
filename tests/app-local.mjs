@@ -495,6 +495,24 @@ try {
     await sleep(500);
     const setup = await ev(`(() => { const f = document.getElementById('format'); return { picked: f.options[f.selectedIndex].textContent, first: f.options[0].textContent, columns: document.getElementById('columns').value }; })()`);
     ok(setup.picked === setup.first && setup.picked !== 'Custom', 'an export starts with the first setup in its menu', JSON.stringify(setup));
+    // #131: "+ Save new Config" asks for a name in the app's own dialog, saves, shows the new setup in the
+    // menu and its button, and doesn't restart the preview; the × deletes it after asking
+    await ev(`document.getElementById('pdf').contentWindow.appTestMark = 1; 'ok'`); // a restarted preview is a new window, without it
+    await click('#export_new_config');
+    await until(`!!document.querySelector('dialog[open] input[name="name"]')`, 'the new config dialog');
+    await type('dialog[open] input[name="name"]', `${RUN} Cfg`);
+    await ev(`document.querySelector('dialog[open] form').requestSubmit()`);
+    await until(`[...document.querySelectorAll('#cfg_buttons [data-save-name]')].some(b => b.dataset.saveName === ${JSON.stringify(`${RUN} Cfg`)})`, 'the new config button', 10000).catch(() => {});
+    const savedCfg = await ev(`({ menu: document.getElementById('format').selectedOptions[0]?.textContent, dialog: !!document.querySelector('dialog[open]'),
+      viewer: document.getElementById('pdf').contentWindow?.appTestMark === 1 })`);
+    ok(savedCfg.menu === `Your ${RUN} Cfg` && !savedCfg.dialog, 'export: a new config is saved and picked in the Format menu', JSON.stringify(savedCfg));
+    ok(savedCfg.viewer, "export: saving a config doesn't restart the preview");
+    await ev(`[...document.querySelectorAll('#cfg_buttons [data-save-name]')].find(b => b.dataset.saveName === ${JSON.stringify(`${RUN} Cfg`)}).querySelector('.export_close').click()`);
+    await until(`!!document.querySelector('dialog[open]')`, 'the delete config dialog');
+    await ev(`document.querySelector('dialog[open] form').requestSubmit()`);
+    await until(`![...document.querySelectorAll('#cfg_buttons [data-save-name]')].some(b => b.dataset.saveName === ${JSON.stringify(`${RUN} Cfg`)})`, 'the config to go', 10000).catch(() => {});
+    ok(!(await ev(`[...document.getElementById('format').options].some(o => o.textContent === ${JSON.stringify(`Your ${RUN} Cfg`)})`)), 'export: the × deletes a config, after asking');
+    ok((await ev(`document.querySelector('#export .float-menu').textContent.trim()`)) === '✕ Close', 'export: its float button says Close, not a trash can');
     await ev(`location.hash = '#${bookId}'`);
 
     // 6a. With a mouse: in the book editor, with a song open, drop the other song on the song to open it
