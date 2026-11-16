@@ -108,11 +108,12 @@
               <div class="content">
                 <label>
                   <b>Font Size:</b> <output id="fontSizeOutput">16px</output><br><br>
-                  <input type="range" min="12" max="20" value="16" id="fontSize" name="fontSize" list="tickmarks" onchange="document.getElementById('fontSizeOutput').value=this.value+'px'; document.documentElement.style.fontSize = this.value+'px'; localStorage.setItem(window.user._id+'fontSize', this.value); logData('fontSize', this.value);" style="width:100%; display: block;">
+                  <input type="range" min="12" max="22" value="16" id="fontSize" name="fontSize" list="tickmarks" onchange="document.getElementById('fontSizeOutput').value=this.value+'px'; document.documentElement.style.fontSize = this.value+'px'; localStorage.setItem(window.user._id+'fontSize', this.value); logData('fontSize', this.value);" style="width:100%; display: block;">
                   <datalist id="tickmarks">
                     <option value="12" label="12px"></option>
                     <option value="16" label="16px"></option>
                     <option value="20" label="20px"></option>
+                    <option value="22" label="22px"></option>
                   </datalist>
                 </label>
               </div>
@@ -823,7 +824,7 @@
       })();
       setTimeout(function(){sheet.insertRule("* { transition: all 0.25s, color 0s, font-size 0s; }", 0); },300);
       dragDialog();
-      dragDialog(document.getElementById('playerDock'), playerDockSettled);
+      dragDialog(document.getElementById('playerDock'), playerDockSettled, playerDockFlung);
 
       bindToSongEdit();
       bindSearch('cat', 'c:');

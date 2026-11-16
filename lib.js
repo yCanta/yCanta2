@@ -3579,9 +3579,21 @@ function setPlayerLook(look, side) {
     }
     dock.dataset.side = side || dock.dataset.side || 'right';
   }
+  // The video keeps the window's size in every look; the pill only shrinks it on screen (a CSS scale).
+  // Resizing YouTube's player made it redraw, and maybe change quality, which was slow on a phone.
+  const frame = dock.querySelector('.player-video iframe');
+  if (dock.dataset.look === 'dialog' && look !== 'dialog' && frame) {
+    const r = frame.getBoundingClientRect();
+    if (r.height) {
+      dock.style.setProperty('--video-w', r.width + 'px');
+      dock.style.setProperty('--video-h', r.height + 'px');
+      dock.style.setProperty('--video-scale', remToPx(3) / r.height); // to the pill's height (3rem)
+    }
+  }
+  // the pill's width is measured first, so it shows up at its width instead of easing to it
+  if (look === 'pill') placePill(true);
   dock.dataset.look = look;
   document.body.classList.toggle('player-pill', !dock.hidden && look === 'pill');
-  if (look === 'pill') placePill();
   if (look === 'dialog') {
     // back on screen: where it was, pulled in from any edge it was flung past
     const m = new DOMMatrixReadOnly(getComputedStyle(dock).transform);
@@ -3594,10 +3606,10 @@ function setPlayerLook(look, side) {
 
 // The pill spans the page and stops short of the floating button showing at the bottom right, if there is
 // one. Its width changes from page to page (a round "+", or a labeled button like "Add SB" or "Close"), so
-// it's measured each time.
-function placePill() {
+// it's measured each time. ahead: measured just before the player turns into the pill.
+function placePill(ahead = false) {
   const dock = document.getElementById('playerDock');
-  if (!dock || dock.hidden || dock.dataset.look !== 'pill') return;
+  if (!dock || dock.hidden || (dock.dataset.look !== 'pill' && !ahead)) return;
   let left = window.innerWidth;
   document.querySelectorAll('.float-menu > :last-child').forEach(button => {
     const r = button.getBoundingClientRect();
@@ -3629,6 +3641,16 @@ function playerDockSettled(x) {
   const w = dock.offsetWidth;
   if (x < -w / 2) setPlayerLook('tab', 'left');
   else if (x > window.innerWidth - w / 2) setPlayerLook('tab', 'right');
+}
+// a fling that would carry it more than half off a side tucks it into the tab right away
+function playerDockFlung(x) {
+  const dock = document.getElementById('playerDock');
+  const w = dock.offsetWidth;
+  if (x < -w / 2 || x > window.innerWidth - w / 2) {
+    playerDockSettled(x);
+    return true;
+  }
+  return false;
 }
 
 function closePlayer() {

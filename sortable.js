@@ -23,7 +23,9 @@ target.addEventListener("drop", (e) => {
 
 // Drags a floating window (the Info window, or the video player). onSettle(x, y), if given, is called
 // when it comes to rest after a drag or a fling (the player tucks into a tab when flung off the side).
-function dragDialog(dialogEl = document.getElementById('dialog'), onSettle = null) {
+// onFling(x, y), if given, is called as a fling starts with where it would come to rest; if it returns
+// true, it has handled the fling (the player tucks right away instead of coasting to the edge first).
+function dragDialog(dialogEl = document.getElementById('dialog'), onSettle = null, onFling = null) {
   function AnimationLoop(){
     var animations = [],
         animating = true,
@@ -194,6 +196,12 @@ function dragDialog(dialogEl = document.getElementById('dialog'), onSettle = nul
           this.decelX = ( xOffset / timeOffset ) || 0;
           this.decelY = ( yOffset / timeOffset ) || 0;
           this.decelerating = true;
+          // each frame the speed drops by friction, so it travels speed * f / (1 - f) more in all
+          const coast = this.friction / (1 - this.friction);
+          if (onFling && onFling(this.x + this.decelX * coast, this.y + this.decelY * coast)) {
+            this.decelerating = false;
+            loop.stop();
+          }
         } else {
           this.settled();
         }
@@ -213,8 +221,12 @@ function dragDialog(dialogEl = document.getElementById('dialog'), onSettle = nul
           this.x += this.decelX;
           this.y += this.decelY;
           
-          if ( Math.abs(this.decelX) < 0.01 ) { this.decelX = 0; }
-          if ( Math.abs(this.decelY) < 0.01 ) { this.decelY = 0; }
+          // stopped by an edge, or too slow to see (under a tenth of a pixel a frame): done on that axis,
+          // instead of coasting on for a second or two with nothing moving before it settles
+          const maxX = this.bounds.x - 90, minX = 100 - this.el.offsetWidth;
+          const maxY = this.bounds.y - 100, minY = 100 - this.el.offsetHeight;
+          if ( Math.abs(this.decelX) < 0.1 || this.x >= maxX || this.x <= minX ) { this.decelX = 0; }
+          if ( Math.abs(this.decelY) < 0.1 || this.y >= maxY || this.y <= minY ) { this.decelY = 0; }
           if ( this.decelX === 0 && this.decelY === 0 ) {
             this.decelerating = false;
             loop.stop();    //We stop the loop when we're finished with any animation - ok if you only have 1 going on at a time.

@@ -699,6 +699,11 @@ legend {
 #playerDock[hidden] {
   display: none !important;
 }
+/* nothing inside eases between looks (the app's "* { transition }" did): the video was resized step by
+   step for a quarter second, and YouTube redrew its player at each step, which was slow on a phone */
+#playerDock * {
+  transition: none;
+}
 #playerDock button:not(.btn) {
   background: none;
   border: 0;
@@ -818,22 +823,22 @@ legend {
 #playerDock .player-controls .btn {
   padding: 5px;
 }
-/* 2. The pill: docked at the bottom, as wide as the page's content and short of any floating button, its height (48px, 24px in from the
+/* 2. The pill: docked at the bottom, as wide as the page's content and short of any floating button, its height (3rem, 1.5rem in from the
    bottom), with a small live video, the title, next, and a way back to the window. The columns get room at
    the bottom so a song's last lines scroll clear of it. */
 #playerDock[data-look="pill"] {
   transform: none !important;
   transition: right .2s; /* eases to a new page's floating button */
   top: auto;
-  bottom: 24px;
+  bottom: 1.5rem; /* the floating button's size and spot, which grow with the text size setting */
   left: 1rem; /* in line with the page's content */
   right: var(--pill-right, 1rem); /* to the content's edge, or short of this page's floating button (lib.js placePill) */
-  height: 48px;
+  height: 3rem;
   display: flex;
   align-items: center;
   gap: .25rem;
   padding: 0 .25rem 0 0;
-  border-radius: 24px;
+  border-radius: 1.5rem;
   overflow: hidden;
 }
 #playerDock[data-look="pill"] .player-head,
@@ -844,12 +849,33 @@ legend {
 }
 #playerDock[data-look="pill"] .player-video {
   order: -1;
-  height: 48px;
+  height: 3rem;
   aspect-ratio: 16 / 9;
   flex: none;
-  border-radius: 24px 0 0 24px;
+  border-radius: 1.5rem 0 0 1.5rem;
   overflow: hidden;
 }
+/* the video keeps the window's size (lib.js setPlayerLook) and is only drawn smaller: YouTube's player
+   never gets resized, which was slow on a phone */
+#playerDock[data-look="pill"] .player-video iframe {
+  width: var(--video-w, 240px);
+  height: var(--video-h, 135px);
+  transform: scale(var(--video-scale, .356));
+  transform-origin: 0 0;
+}
+/* it rises into place, and the tab slides in from its edge, so the change reads as a move, not a jump */
+#playerDock[data-look="pill"] {
+  animation: player-pill-in .18s ease-out;
+}
+#playerDock[data-look="tab"][data-side="right"] {
+  animation: player-tab-in-right .18s ease-out;
+}
+#playerDock[data-look="tab"][data-side="left"] {
+  animation: player-tab-in-left .18s ease-out;
+}
+@keyframes player-pill-in { from { translate: 0 1.5rem; opacity: .3; } }
+@keyframes player-tab-in-right { from { translate: 100% 0; } }
+@keyframes player-tab-in-left { from { translate: -100% 0; } }
 #playerDock[data-look="pill"] .player-titles {
   flex: 1;
   min-width: 0;
@@ -925,8 +951,8 @@ body.player-pill .column::after {
   position: fixed;
   left: 100vw;
   top: 0;
-  width: 200px;
-  height: 113px;
+  width: var(--video-w, 200px); /* the window's size, so YouTube's player isn't resized */
+  height: var(--video-h, 113px);
 }
 #playerDock[data-look="tab"] .player-tab {
   display: flex;
