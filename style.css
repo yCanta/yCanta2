@@ -785,6 +785,9 @@ legend {
   padding: 5px .6rem;
   margin: .25rem 0 0;
 }
+#playerDock .player-min span { /* only the word gets smaller; the button keeps the X button's size */
+  font-size: .8em;
+}
 #playerDock[data-look="dialog"] .player-title {
   display: block;
   margin: .25rem auto .75rem;
@@ -794,7 +797,7 @@ legend {
   display: block;
   margin: .35rem auto 0;
   width: min(98%, 14rem);
-  font-size: .65rem;
+  font-size: .75rem;
 }
 #playerDock[data-look="pill"] .player-caption { /* in the pill it's beside the song's title instead */
   display: none !important;
