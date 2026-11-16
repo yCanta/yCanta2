@@ -545,30 +545,17 @@ try {
       // 7. On a phone: the three side panels (scrolling never flips them; a swipe or a tap on the tab does),
       // and scrolling through a song doesn't swipe to another one
       await phoneMode(true);
-      // #6: the browser's pull-to-refresh is allowed on a list, but not sideways, not in a side panel, not
-      // while editing; and the app's own pull-down (top of a column) holds it back from its first move
+      // #6: the browser's pull-to-refresh and sideways "back" stay off, on the page and in the side panels
+      // (set only there now, not on every element)
       await ev(`location.hash = '#${bookId}'`);
       await until(`document.querySelectorAll('#songbook_content .list > li').length > 0`, 'the songbook on a phone');
       await sleep(800);
       const overscroll = sel => ev(`(() => { const s = getComputedStyle(document.querySelector(${JSON.stringify(sel)})); return s.overscrollBehaviorX + ' ' + s.overscrollBehaviorY; })()`);
-      ok((await overscroll('html')) === 'contain auto', 'pull-to-refresh: on, up and down only, while reading', await overscroll('html'));
+      ok((await overscroll('html')) === 'contain contain', 'pull-to-refresh: off on the page', await overscroll('html'));
       ok((await overscroll('#songListEdit')) === 'contain contain', 'pull-to-refresh: off in a side panel', await overscroll('#songListEdit'));
-      // (synthetic touches, so the first move is exactly 4px: the browser's own touches skip the first few)
-      const firstPull = await ev(`(() => {
-        const r = document.getElementById('songList').getBoundingClientRect();
-        const x = r.left + r.width / 2, y = Math.min(r.top + 40, 100), target = document.elementFromPoint(x, y);
-        const at = dy => [new Touch({ identifier: 1, target, clientX: x, clientY: y + dy })];
-        const touch = (type, dy, touches = at(dy)) => { const ev = new TouchEvent(type, { bubbles: true, cancelable: true, touches, targetTouches: touches, changedTouches: at(dy) }); target.dispatchEvent(ev); return ev; };
-        touch('touchstart', 0);
-        const move = touch('touchmove', 4);
-        touch('touchcancel', 4, []);
-        return { prevented: move.defaultPrevented, on: target.closest('.column')?.id || target.tagName };
-      })()`);
-      await sleep(300);
-      ok(firstPull.prevented === true, "pull-to-refresh: the app's pull-down holds it back from the first move", JSON.stringify(firstPull));
+      ok((await overscroll('#songbook_content')) === 'auto auto', 'overscroll set only where needed, not on every element', await overscroll('#songbook_content'));
       await ev(`location.hash = '#${bookId}?edit'`);
       await until(`!!document.querySelector('#songbook_content .edit_buttons')`, 'the songbook editor on a phone');
-      ok((await overscroll('html')).endsWith('contain'), 'pull-to-refresh: off while editing', await overscroll('html'));
       await sleep(800);
       await phonePanel('add-a-song', '#songListEdit');
       // with a finger: a quick swipe over the book's songs scrolls, it doesn't move one

@@ -3126,9 +3126,6 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
     const dy = touch.clientY - starty;
 
     if (!axis) {
-      // A pull down from the top of a column is the app's (pull down to close): keep the browser's own
-      // pull-to-refresh from starting during the first few pixels, before the app has decided (#6)
-      if (dragTop && dy > 0 && dy >= Math.abs(dx) && e.cancelable) e.preventDefault();
       if (Math.max(Math.abs(dx), Math.abs(dy)) < DECIDE) return;
       axis = Math.abs(dx) > SIDEWAYS * Math.abs(dy) ? 'x' : 'y';
       // a pull-down goes down; everything else here goes sideways. Anything else is a scroll: let it be.
