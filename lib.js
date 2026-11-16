@@ -1905,12 +1905,52 @@ function songFilterPanel(name) {
         toggleSongFilterPanel(name, false);
       }
     });
+    makeSheetDismissable(panel, () => toggleSongFilterPanel(name, false));
     document.body.append(panel);
   }
   return panel;
 }
 
 const songFilterPhone = () => window.matchMedia('(max-width: 39.99rem)').matches;
+
+// A bottom sheet (.sheet, like the song filter on a phone) follows a finger pulled down and closes when let
+// go far enough down or flicked, like the columns' pull-down to close; otherwise it springs back. Only from
+// the sheet's top: while its content is scrolled down, a pull scrolls it back up instead.
+function makeSheetDismissable(sheet, close) {
+  let startY = null, startX = 0, startTime = 0, dy = 0, pulling = false;
+  sheet.addEventListener('touchstart', e => {
+    startY = null;
+    if (!sheet.classList.contains('sheet') || e.touches.length > 1 || sheet.scrollTop > 0) return;
+    startY = e.touches[0].clientY;
+    startX = e.touches[0].clientX;
+    startTime = Date.now();
+    dy = 0;
+    pulling = false;
+  }, { passive: true });
+  sheet.addEventListener('touchmove', e => {
+    if (startY === null) return;
+    dy = e.touches[0].clientY - startY;
+    const dx = e.touches[0].clientX - startX;
+    if (!pulling) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < 10) return; // not decided yet
+      if (dy <= 0 || Math.abs(dx) > Math.abs(dy)) { startY = null; return; } // a scroll up, or sideways
+      pulling = true;
+      sheet.style.transition = 'none'; // it follows the finger
+    }
+    if (e.cancelable) e.preventDefault();
+    sheet.style.transform = `translateY(${Math.max(dy, 0)}px)`;
+  }, { passive: false });
+  const letGo = () => {
+    if (startY === null || !pulling) { startY = null; return; }
+    startY = null;
+    const flicked = dy > 40 && Date.now() - startTime < 250;
+    sheet.style.removeProperty('transition'); // slides the rest of the way down, or back up
+    sheet.style.removeProperty('transform');
+    if (flicked || dy > Math.min(120, sheet.offsetHeight / 3)) close();
+  };
+  sheet.addEventListener('touchend', letGo);
+  sheet.addEventListener('touchcancel', () => { dy = 0; letGo(); });
+}
 
 function toggleSongFilterPanel(name, open) {
   const panel = songFilterPanel(name);
