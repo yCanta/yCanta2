@@ -7,7 +7,7 @@
 //   - Chrome, Brave or Edge (or set BROWSER to its path)
 //   - nothing else on port 8765 except this app (it starts its own file server there if the port is free;
 //     the local CouchDB only lets http://localhost:8765 in)
-// usage: node tests/app-local.mjs            (SHOW=1 to watch it in a real window)
+// usage: node tests/app-local.mjs            (SHOW=1 to watch it in a real window; QUICK=1 skips the phone part)
 //
 // It only adds docs whose titles start with "App Test", and takes them out again at the end.
 import { spawn } from 'node:child_process';
@@ -479,155 +479,158 @@ try {
     const parts = await remoteWhen(partsId, d => d._rev.startsWith('2-'));
     ok(JSON.stringify(parts.content?.map(c => c[1][0])) === JSON.stringify(['Third part', 'First part', 'Second part']), 'the dragged parts order is saved', JSON.stringify(parts.content?.map(c => c[1])));
 
-    // 7. On a phone: the three side panels (scrolling never flips them; a swipe or a tap on the tab does),
-    // and scrolling through a song doesn't swipe to another one
-    await phoneMode(true);
-    await ev(`location.hash = '#${bookId}?edit'`);
-    await until(`!!document.querySelector('#songbook_content .edit_buttons')`, 'the songbook editor on a phone');
-    await sleep(800);
-    await phonePanel('add-a-song', '#songListEdit');
-    // with a finger: a quick swipe over the book's songs scrolls, it doesn't move one
-    const before = JSON.stringify(await bookOrder());
-    const lastRow = await spot(`#songbook_content ul.list > li:last-child`);
-    await touchDrag(lastRow.x, lastRow.y, lastRow.x, lastRow.y - 120);
-    ok(JSON.stringify(await bookOrder()) === before, 'finger: a quick swipe over the songs moves none', JSON.stringify(await bookOrder()));
-    // Chrome on Android's long-press link menu (it would end the drag) is cancelled while a song is held,
-    // and only then. (This browser never opens that menu itself, so the test sends the menu's event.)
-    const menuCancelled = `(() => { const e = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
-      document.querySelector('#songbook_content ul.list > li:first-child a').dispatchEvent(e); return e.defaultPrevented; })()`;
-    const heldHash = await hash();
-    const heldRow = await spot(`#songbook_content ul.list > li:first-child a`);
-    await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: heldRow.x, y: heldRow.y }] });
-    await sleep(400);
-    const cancelledWhileHeld = await ev(menuCancelled);
-    await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-    await sleep(700);
-    const cancelledAfter = await ev(menuCancelled);
-    ok(cancelledWhileHeld && !cancelledAfter, "finger: the long-press link menu is held back while a song is picked up, and only then",
-      JSON.stringify({ cancelledWhileHeld, cancelledAfter }));
-    if (await hash() !== heldHash) { await ev(`location.hash = ${JSON.stringify(heldHash)}`); await sleep(800); }
-    // press, hold, and drag the last song to the top
-    const firstPhoneRow = await spot(`#songbook_content ul.list > li:first-child`);
-    const movingId = await ev(`document.querySelector('#songbook_content ul.list > li:last-child').dataset.songId`);
-    // (the same row the quick swipe was on: a scroll mustn't leave it ignoring the next press-and-hold)
-    // the row following the finger is solid, so the rows under it (and its own gap) don't show through it
-    let floating = null;
-    await touchHoldDrag(await spot(`#songbook_content ul.list > li:last-child`), { x: firstPhoneRow.x, y: firstPhoneRow.top + 4 }, 400, 16,
-      async () => {
-        await shot('finger-drag-midway');
-        floating = await ev(`(() => { const el = document.querySelector('.sortable-drag'); if (!el) return null;
-          return { opacity: getComputedStyle(el).opacity, background: getComputedStyle(el.querySelector(':scope > a')).backgroundColor }; })()`);
-      });
-    ok(floating && floating.opacity === '1' && !/rgba\(.*, 0\)|transparent/.test(floating.background),
-      'finger: the dragged song is solid, nothing shows through it', JSON.stringify(floating));
-    ok((await bookOrder())[0] === movingId, 'finger: press, hold and drag moves a song in the book, even right after a scroll over it', JSON.stringify(await bookOrder()));
-    // open "Add a song?" with its tab and drag a song from it into the book
-    await ev(`document.getElementById('songListEdit').classList.add('sidebar-open')`);
-    await sleep(500);
-    const rowsBefore = (await bookOrder()).length;
-    const target = await ev(`(() => { const r = document.querySelector('#songbook_content ul.list > li:first-child').getBoundingClientRect(); return { x: Math.max(r.left + 30, 20), y: r.bottom - 4 }; })()`);
-    await touchHoldDrag(await spot(`#songbook_edit_togglesongs li[data-song-id="${songId}"]`), target);
-    ok((await bookOrder()).length === rowsBefore + 1, 'finger: a song dragged from "Add a song?" is added to the book', JSON.stringify(await bookOrder()));
-    await ev(`document.getElementById('songListEdit').classList.remove('sidebar-open')`);
-    await sleep(400);
-    // pulling down from the top still leaves the editor, as it always has, asking first about unsaved changes:
-    // answering Cancel keeps you editing, with everything back in place
-    const editHash = await hash();
-    let asked = dialogs.length;
-    dialogAnswer = false;
-    await touchDrag(200, 95, 205, 420, 14);
-    await sleep(1200);
-    dialogAnswer = true;
-    const kept = await ev(`({ hash: location.hash, editing: window.songbookEditing, buttons: !!document.querySelector('#songbook_content .edit_buttons'),
-      moved: [...document.querySelectorAll('.column')].filter(c => c.style.transform).map(c => c.id) })`);
-    ok(dialogs.length > asked && kept.hash === editHash && kept.editing && kept.buttons && kept.moved.length === 0,
-      'phone: pulling down while editing asks, and Cancel keeps you editing with nothing moved', JSON.stringify(kept));
-    asked = dialogs.length;
-    await touchDrag(200, 95, 205, 420, 14);
-    await until(`!location.hash.includes('?edit')`, 'leaving the songbook editor by pulling down', 5000).catch(() => {});
-    ok(!(await hash()).includes('?edit') && dialogs.length > asked, 'phone: pulling down while editing and answering OK leaves the editor', `${await hash()}, asked: ${dialogs.length > asked}`);
-    if ((await hash()).includes('?edit')) {
-      await click('#songbook_content .edit_buttons button:nth-child(2)'); // Cancel
-      await until(`!location.hash.includes('?edit')`, 'leaving the songbook editor');
-    }
-    // the book opens fresh afterwards, not still looking like the editor
-    await ev(`location.hash = '#${bookId}'`);
-    await until(`location.hash === '#${bookId}' && !document.querySelector('#songbook_content .edit_buttons')`, 'the book, not the editor', 5000).catch(() => {});
-    ok(!(await ev(`!!document.querySelector('#songbook_content .edit_buttons')`)), 'phone: after leaving the editor the book opens fresh');
-
-    await ev(`location.hash = '#${bookId}&${songId}?edit'`);
-    await until(`!!document.querySelector('#song .edit_buttons')`, 'the song editor on a phone');
-    await sleep(800);
-    await phonePanel('song-categories', '#song-edit');
-    await click('#song .edit_buttons a'); // Cancel
-    await until(`!location.hash.includes('?edit') && !document.querySelector('#song .edit_buttons')`, 'leaving the song editor');
-
-    // with a finger: press, hold and drag a song's last part (by its grip) to the top
-    await ev(`location.hash = '#${bookId}&${partsId}?edit'`);
-    await until(`document.querySelectorAll('#song song .wrap').length === 3`, 'the three-part song in the editor on a phone');
-    await sleep(800);
-    const partsBefore = await chunkOrder();
-    const topPart = await spot(gripOf(0));
-    await touchHoldDrag(await spot(gripOf(2)), { x: topPart.x, y: topPart.top - 6 });
-    const partsAfter = await chunkOrder();
-    ok(partsAfter[0] === partsBefore[2], 'finger: press, hold and drag moves a part to the top', JSON.stringify(partsAfter));
-    await click('#song .edit_buttons a'); // Cancel
-    await until(`!location.hash.includes('?edit') && !document.querySelector('#song .edit_buttons')`, 'leaving the song editor');
-
-    await ev(`location.hash = '#${bookId}?export'`);
-    await until(`document.getElementById('format').options.length > 1`, 'the export on a phone');
-    await sleep(800);
-    await phonePanel('export-preview', '#exportPreview', 100);
-
-    await ev(`location.hash = '#${bookId}&${songId}'`);
-    await until(`!!document.querySelector('#song song') && document.body.classList.contains('song') && !document.body.classList.contains('export')`, 'the song on a phone');
-    await sleep(800);
-    const onSong = await hash();
-    await touchDrag(190, 650, 320, 250); // scrolling up the song, drifting 130px right
-    ok((await hash()) === onSong, 'phone: scrolling a song with sideways drift stays on the song', await hash());
-    await shot('song-after-drift');
-    // quick sideways flicks (starting in the middle half of the screen) still go to the next and previous song
-    const flickLeft = () => touchDrag(280, 500, 100, 505, 4);
-    const flickRight = () => touchDrag(110, 500, 290, 505, 4);
-    const order = await bookOrder();
-    const at = order.indexOf(songId);
-    const next = order[at + 1], prev = order[at - 1];
-    if (next) {
-      await flickLeft();
-      await until(`location.hash === '#${bookId}&${next}'`, 'the next song', 3000).catch(() => {});
-      ok((await hash()) === `#${bookId}&${next}`, 'phone: a quick flick left goes to the next song', await hash());
+    // (QUICK=1 skips the phone part, about 50 of the run's ~80 seconds; releases run it all)
+    if (!process.env.QUICK) {
+      // 7. On a phone: the three side panels (scrolling never flips them; a swipe or a tap on the tab does),
+      // and scrolling through a song doesn't swipe to another one
+      await phoneMode(true);
+      await ev(`location.hash = '#${bookId}?edit'`);
+      await until(`!!document.querySelector('#songbook_content .edit_buttons')`, 'the songbook editor on a phone');
       await sleep(800);
-      await flickRight();
-      await until(`location.hash === '#${bookId}&${songId}'`, 'the song again', 3000).catch(() => {});
-      ok((await hash()) === `#${bookId}&${songId}`, 'phone: a quick flick right goes to the previous song', await hash());
+      await phonePanel('add-a-song', '#songListEdit');
+      // with a finger: a quick swipe over the book's songs scrolls, it doesn't move one
+      const before = JSON.stringify(await bookOrder());
+      const lastRow = await spot(`#songbook_content ul.list > li:last-child`);
+      await touchDrag(lastRow.x, lastRow.y, lastRow.x, lastRow.y - 120);
+      ok(JSON.stringify(await bookOrder()) === before, 'finger: a quick swipe over the songs moves none', JSON.stringify(await bookOrder()));
+      // Chrome on Android's long-press link menu (it would end the drag) is cancelled while a song is held,
+      // and only then. (This browser never opens that menu itself, so the test sends the menu's event.)
+      const menuCancelled = `(() => { const e = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+        document.querySelector('#songbook_content ul.list > li:first-child a').dispatchEvent(e); return e.defaultPrevented; })()`;
+      const heldHash = await hash();
+      const heldRow = await spot(`#songbook_content ul.list > li:first-child a`);
+      await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: heldRow.x, y: heldRow.y }] });
+      await sleep(400);
+      const cancelledWhileHeld = await ev(menuCancelled);
+      await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await sleep(700);
+      const cancelledAfter = await ev(menuCancelled);
+      ok(cancelledWhileHeld && !cancelledAfter, "finger: the long-press link menu is held back while a song is picked up, and only then",
+        JSON.stringify({ cancelledWhileHeld, cancelledAfter }));
+      if (await hash() !== heldHash) { await ev(`location.hash = ${JSON.stringify(heldHash)}`); await sleep(800); }
+      // press, hold, and drag the last song to the top
+      const firstPhoneRow = await spot(`#songbook_content ul.list > li:first-child`);
+      const movingId = await ev(`document.querySelector('#songbook_content ul.list > li:last-child').dataset.songId`);
+      // (the same row the quick swipe was on: a scroll mustn't leave it ignoring the next press-and-hold)
+      // the row following the finger is solid, so the rows under it (and its own gap) don't show through it
+      let floating = null;
+      await touchHoldDrag(await spot(`#songbook_content ul.list > li:last-child`), { x: firstPhoneRow.x, y: firstPhoneRow.top + 4 }, 400, 16,
+        async () => {
+          await shot('finger-drag-midway');
+          floating = await ev(`(() => { const el = document.querySelector('.sortable-drag'); if (!el) return null;
+            return { opacity: getComputedStyle(el).opacity, background: getComputedStyle(el.querySelector(':scope > a')).backgroundColor }; })()`);
+        });
+      ok(floating && floating.opacity === '1' && !/rgba\(.*, 0\)|transparent/.test(floating.background),
+        'finger: the dragged song is solid, nothing shows through it', JSON.stringify(floating));
+      ok((await bookOrder())[0] === movingId, 'finger: press, hold and drag moves a song in the book, even right after a scroll over it', JSON.stringify(await bookOrder()));
+      // open "Add a song?" with its tab and drag a song from it into the book
+      await ev(`document.getElementById('songListEdit').classList.add('sidebar-open')`);
+      await sleep(500);
+      const rowsBefore = (await bookOrder()).length;
+      const target = await ev(`(() => { const r = document.querySelector('#songbook_content ul.list > li:first-child').getBoundingClientRect(); return { x: Math.max(r.left + 30, 20), y: r.bottom - 4 }; })()`);
+      await touchHoldDrag(await spot(`#songbook_edit_togglesongs li[data-song-id="${songId}"]`), target);
+      ok((await bookOrder()).length === rowsBefore + 1, 'finger: a song dragged from "Add a song?" is added to the book', JSON.stringify(await bookOrder()));
+      await ev(`document.getElementById('songListEdit').classList.remove('sidebar-open')`);
+      await sleep(400);
+      // pulling down from the top still leaves the editor, as it always has, asking first about unsaved changes:
+      // answering Cancel keeps you editing, with everything back in place
+      const editHash = await hash();
+      let asked = dialogs.length;
+      dialogAnswer = false;
+      await touchDrag(200, 95, 205, 420, 14);
+      await sleep(1200);
+      dialogAnswer = true;
+      const kept = await ev(`({ hash: location.hash, editing: window.songbookEditing, buttons: !!document.querySelector('#songbook_content .edit_buttons'),
+        moved: [...document.querySelectorAll('.column')].filter(c => c.style.transform).map(c => c.id) })`);
+      ok(dialogs.length > asked && kept.hash === editHash && kept.editing && kept.buttons && kept.moved.length === 0,
+        'phone: pulling down while editing asks, and Cancel keeps you editing with nothing moved', JSON.stringify(kept));
+      asked = dialogs.length;
+      await touchDrag(200, 95, 205, 420, 14);
+      await until(`!location.hash.includes('?edit')`, 'leaving the songbook editor by pulling down', 5000).catch(() => {});
+      ok(!(await hash()).includes('?edit') && dialogs.length > asked, 'phone: pulling down while editing and answering OK leaves the editor', `${await hash()}, asked: ${dialogs.length > asked}`);
+      if ((await hash()).includes('?edit')) {
+        await click('#songbook_content .edit_buttons button:nth-child(2)'); // Cancel
+        await until(`!location.hash.includes('?edit')`, 'leaving the songbook editor');
+      }
+      // the book opens fresh afterwards, not still looking like the editor
+      await ev(`location.hash = '#${bookId}'`);
+      await until(`location.hash === '#${bookId}' && !document.querySelector('#songbook_content .edit_buttons')`, 'the book, not the editor', 5000).catch(() => {});
+      ok(!(await ev(`!!document.querySelector('#songbook_content .edit_buttons')`)), 'phone: after leaving the editor the book opens fresh');
+
+      await ev(`location.hash = '#${bookId}&${songId}?edit'`);
+      await until(`!!document.querySelector('#song .edit_buttons')`, 'the song editor on a phone');
       await sleep(800);
-    }
-    if (!prev) { // from the first song, a flick right goes back to the book
-      await flickRight();
-      await until(`location.hash === '#${bookId}'`, 'the book', 3000).catch(() => {});
-      ok((await hash()) === `#${bookId}`, 'phone: a flick right on the first song goes back to the book', await hash());
+      await phonePanel('song-categories', '#song-edit');
+      await click('#song .edit_buttons a'); // Cancel
+      await until(`!location.hash.includes('?edit') && !document.querySelector('#song .edit_buttons')`, 'leaving the song editor');
+
+      // with a finger: press, hold and drag a song's last part (by its grip) to the top
+      await ev(`location.hash = '#${bookId}&${partsId}?edit'`);
+      await until(`document.querySelectorAll('#song song .wrap').length === 3`, 'the three-part song in the editor on a phone');
       await sleep(800);
-    }
-    // and on a songbook's list of songs, they go to the next and previous songbook
-    if ((await hash()) !== `#${bookId}`) { await ev(`location.hash = '#${bookId}'`); await sleep(1200); }
-    await until(`document.body.classList.contains('songList') && !document.body.classList.contains('song')`, 'the songbook on a phone');
-    const books = await ev(`[...document.querySelectorAll('#songbooks_container ul.list > li')].map(li => li.dataset.songbookId)`);
-    const bookAt = books.indexOf(bookId);
-    const nextBook = books[bookAt + 1], prevBook = books[bookAt - 1];
-    if (nextBook) {
-      await flickLeft();
-      await until(`location.hash === '#${nextBook}'`, 'the next songbook', 3000).catch(() => {});
-      ok((await hash()) === `#${nextBook}`, 'phone: a quick flick left on a songbook goes to the next songbook', await hash());
+      const partsBefore = await chunkOrder();
+      const topPart = await spot(gripOf(0));
+      await touchHoldDrag(await spot(gripOf(2)), { x: topPart.x, y: topPart.top - 6 });
+      const partsAfter = await chunkOrder();
+      ok(partsAfter[0] === partsBefore[2], 'finger: press, hold and drag moves a part to the top', JSON.stringify(partsAfter));
+      await click('#song .edit_buttons a'); // Cancel
+      await until(`!location.hash.includes('?edit') && !document.querySelector('#song .edit_buttons')`, 'leaving the song editor');
+
+      await ev(`location.hash = '#${bookId}?export'`);
+      await until(`document.getElementById('format').options.length > 1`, 'the export on a phone');
       await sleep(800);
-      await flickRight();
-      await until(`location.hash === '#${bookId}'`, 'the songbook again', 3000).catch(() => {});
-      ok((await hash()) === `#${bookId}`, 'phone: a quick flick right on a songbook goes to the previous one', await hash());
-    } else if (prevBook) {
-      await flickRight();
-      await until(`location.hash === '#${prevBook}'`, 'the previous songbook', 3000).catch(() => {});
-      ok((await hash()) === `#${prevBook}`, 'phone: a quick flick right on a songbook goes to the previous one', await hash());
+      await phonePanel('export-preview', '#exportPreview', 100);
+
+      await ev(`location.hash = '#${bookId}&${songId}'`);
+      await until(`!!document.querySelector('#song song') && document.body.classList.contains('song') && !document.body.classList.contains('export')`, 'the song on a phone');
+      await sleep(800);
+      const onSong = await hash();
+      await touchDrag(190, 650, 320, 250); // scrolling up the song, drifting 130px right
+      ok((await hash()) === onSong, 'phone: scrolling a song with sideways drift stays on the song', await hash());
+      await shot('song-after-drift');
+      // quick sideways flicks (starting in the middle half of the screen) still go to the next and previous song
+      const flickLeft = () => touchDrag(280, 500, 100, 505, 4);
+      const flickRight = () => touchDrag(110, 500, 290, 505, 4);
+      const order = await bookOrder();
+      const at = order.indexOf(songId);
+      const next = order[at + 1], prev = order[at - 1];
+      if (next) {
+        await flickLeft();
+        await until(`location.hash === '#${bookId}&${next}'`, 'the next song', 3000).catch(() => {});
+        ok((await hash()) === `#${bookId}&${next}`, 'phone: a quick flick left goes to the next song', await hash());
+        await sleep(800);
+        await flickRight();
+        await until(`location.hash === '#${bookId}&${songId}'`, 'the song again', 3000).catch(() => {});
+        ok((await hash()) === `#${bookId}&${songId}`, 'phone: a quick flick right goes to the previous song', await hash());
+        await sleep(800);
+      }
+      if (!prev) { // from the first song, a flick right goes back to the book
+        await flickRight();
+        await until(`location.hash === '#${bookId}'`, 'the book', 3000).catch(() => {});
+        ok((await hash()) === `#${bookId}`, 'phone: a flick right on the first song goes back to the book', await hash());
+        await sleep(800);
+      }
+      // and on a songbook's list of songs, they go to the next and previous songbook
+      if ((await hash()) !== `#${bookId}`) { await ev(`location.hash = '#${bookId}'`); await sleep(1200); }
+      await until(`document.body.classList.contains('songList') && !document.body.classList.contains('song')`, 'the songbook on a phone');
+      const books = await ev(`[...document.querySelectorAll('#songbooks_container ul.list > li')].map(li => li.dataset.songbookId)`);
+      const bookAt = books.indexOf(bookId);
+      const nextBook = books[bookAt + 1], prevBook = books[bookAt - 1];
+      if (nextBook) {
+        await flickLeft();
+        await until(`location.hash === '#${nextBook}'`, 'the next songbook', 3000).catch(() => {});
+        ok((await hash()) === `#${nextBook}`, 'phone: a quick flick left on a songbook goes to the next songbook', await hash());
+        await sleep(800);
+        await flickRight();
+        await until(`location.hash === '#${bookId}'`, 'the songbook again', 3000).catch(() => {});
+        ok((await hash()) === `#${bookId}`, 'phone: a quick flick right on a songbook goes to the previous one', await hash());
+      } else if (prevBook) {
+        await flickRight();
+        await until(`location.hash === '#${prevBook}'`, 'the previous songbook', 3000).catch(() => {});
+        ok((await hash()) === `#${prevBook}`, 'phone: a quick flick right on a songbook goes to the previous one', await hash());
+      }
+      await phoneMode(false);
     }
-    await phoneMode(false);
   }
 
   // 7. Cancel a new songbook: back to the songbooks list, nothing saved (#149)
