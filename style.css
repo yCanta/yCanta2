@@ -732,8 +732,10 @@ legend {
   margin-top: .25rem;
   color: var(--light-text-color);
 }
-#playerDock.found .player-found a {
+#playerDock.found .player-found a { /* plain underlined links, like the login page's, not the colored ones */
   color: inherit;
+  background: none;
+  text-decoration: underline;
 }
 #playerDock.can-keep .player-keep {
   display: inline-block;
