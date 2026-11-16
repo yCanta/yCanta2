@@ -168,8 +168,8 @@ function checkPasswordWith(name, password) {
 
 // ---- Church admins ----
 
-// The caller must sign in as themselves, and be on this church's admin list (or a server admin, or carry
-// the older "<db>-admin" tag). Returns the church's security list.
+// The caller must sign in as themselves, and be on this church's admin list (or a server admin).
+// Returns the church's security list.
 function checkChurchAdmin(db, adminName, adminPassword) {
   if (!adminName || !adminPassword) fail('Please enter your own name and password.');
   const login = checkPasswordWith(adminName, adminPassword);
@@ -180,7 +180,6 @@ function checkChurchAdmin(db, adminName, adminPassword) {
   if (sec.status !== 200) fail('You are not part of that church.');
   const admins = (sec.json && sec.json.admins) || {};
   const isAdmin = roles.indexOf('_admin') !== -1 ||
-    roles.indexOf(db + '-admin') !== -1 ||
     (admins.names || []).indexOf(adminName) !== -1 ||
     (admins.roles || []).some(function (r) { return roles.indexOf(r) !== -1; });
   if (!isAdmin) fail('Only a church admin can do that.');
@@ -204,9 +203,9 @@ function createAccount(church, name, password) {
   return { ok: true, existed: false };
 }
 
-// Only for people in the caller's church who are not admins anywhere. A church admin can put any name on
-// their own list, so being on the list isn't enough: the account must carry this church's older tag (only
-// server admins set those) or have been made for this church by the helper.
+// Only for people in the caller's church who aren't its admins. A church admin can put any name on their
+// own list, so being on the list isn't enough: the account must also have been made for (marked with) this
+// church. Never for server admins or the helper's own account.
 function resetPassword(church, name, password) {
   const sec = church.sec;
   const listed = function (group) { return !!group && (group.names || []).indexOf(name) !== -1; };
@@ -214,14 +213,13 @@ function resetPassword(church, name, password) {
   if (name === PropertiesService.getScriptProperties().getProperty('MAKER_NAME')) fail(notYours);
   const user = couch('get', userPath(name), { maker: true });
   if (user.status !== 200) fail(notYours);
-  const tags = user.json.roles || [];
-  if (listed(sec.admins) || tags.some(function (t) { return /(^_|-admin$)/.test(t); })) {
+  const roles = user.json.roles || [];
+  if (listed(sec.admins) || roles.some(function (r) { return r.charAt(0) === '_'; })) {
     fail('Church admins change their own password, or use "Forgot password?".');
   }
-  const taggedHere = tags.indexOf(church.db + '-viewer') !== -1 || tags.indexOf(church.db + '-editor') !== -1;
   const madeHere = user.json.created_for === church.db;
   const onList = listed(sec.members) || listed(sec.editors);
-  if (!(taggedHere || (madeHere && onList))) fail(notYours);
+  if (!(madeHere && onList)) fail(notYours);
   return setPassword(name, password);
 }
 

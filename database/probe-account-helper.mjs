@@ -18,7 +18,6 @@ out.anonymousSignupNowClosed = (await req(null, 'PUT', '/_users/org.couchdb.user
 out.makerCreatesAccount = (await req(as('maker'), 'PUT', '/_users/org.couchdb.user:made1', userDoc('made1'))).status;
 const vera = (await req(as('maker'), 'GET', '/_users/org.couchdb.user:vera')).json;
 out.makerResetsPassword = (await req(as('maker'), 'PUT', '/_users/org.couchdb.user:vera', { ...vera, password: pw('vera') })).status;
-out.makerGivesOldEditorTag = (await req(as('maker'), 'PUT', '/_users/org.couchdb.user:made2', userDoc('made2', ['church_a-editor']))).status;
 out.makerGivesServerAdmin = (await req(as('maker'), 'PUT', '/_users/org.couchdb.user:made3', userDoc('made3', ['_admin']))).json;
 out.makerReadsChurch = (await req(as('maker'), 'GET', '/church_a/_all_docs')).status;
 out.makerReadsServerConfig = (await req(as('maker'), 'GET', '/_node/_local/_config')).status;

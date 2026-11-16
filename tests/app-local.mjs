@@ -627,6 +627,15 @@ try {
   ok((await hash()) === '#songbooks', 'Cancel on a new songbook goes back to the songbooks list', await hash());
   const books = (await req(as('alice'), 'GET', `${DB}/_all_docs?startkey=%22sb-%22&endkey=%22sb-%EF%BF%B0%22&include_docs=true`)).json.rows;
   ok(!books.some(row => row.doc.title === `${RUN} Cancelled Book`), 'a cancelled new songbook is not saved');
+
+  // The Admin panel (a church admin's view of the people list) comes from the lists only (#144): leo's
+  // old "church_a-editor" tag doesn't make him an editor, and there's no note about older tags
+  await ev(`loadAllUsers()`);
+  await until(`!!document.querySelector('#all_users .people-list')`, 'the Admin people list');
+  const adminView = await ev(`(() => { const level = n => document.querySelector('#all_users li[data-name="' + n + '"] select')?.value;
+    return { alice: level('alice'), eddie: level('eddie'), leo: level('leo'), text: document.getElementById('all_users').textContent }; })()`);
+  ok(adminView.alice === 'admin' && adminView.eddie === 'editor' && adminView.leo === 'viewer' && !/older|tag/i.test(adminView.text),
+    'Admin panel: levels come from the lists only, with no note about older tags', JSON.stringify({ ...adminView, text: adminView.text.slice(0, 200) }));
 } catch (err) {
   ok(false, 'the test ran to the end', err.message);
 } finally {

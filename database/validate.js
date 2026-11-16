@@ -3,7 +3,6 @@ function (newDoc, oldDoc, userCtx, secObj) {
   // The same function goes into every church database, as _design/auth. canEdit() in lib.js mirrors it.
   var name = userCtx.name;
   var roles = userCtx.roles || [];
-  var db = userCtx.db;
   var id = newDoc._id;
   var me = 'u-' + name;
 
@@ -22,8 +21,8 @@ function (newDoc, oldDoc, userCtx, secObj) {
   // "All Songs" and "Favorite Songs" are built into the app, never saved
   if (id === 'sb-allSongs' || id === 'sb-favoriteSongs') no('That songbook is built in and can\'t be saved.');
 
-  // Church admins: server admins, names in the church's admins list, or the older "<db>-admin" tag
-  if (has(roles, '_admin') || inGroup(secObj.admins) || has(roles, db + '-admin')) return;
+  // Church admins: server admins, and the church's admins list
+  if (has(roles, '_admin') || inGroup(secObj.admins)) return;
   if (!name) no('Please log in to save.');
 
   // Kept old versions of songs and songbooks (#138): "h-<doc id>|<revision number, 6 digits>-<revision hash>".
@@ -40,8 +39,8 @@ function (newDoc, oldDoc, userCtx, secObj) {
     return;
   }
 
-  // Editors: names in the church's editors list, or the older "<db>-editor" tag
-  var isEditor = inGroup(secObj.editors) || has(roles, db + '-editor');
+  // Editors: the church's editors list
+  var isEditor = inGroup(secObj.editors);
 
   // Songs and songbooks: editors change any; everyone else only the ones they added
   if (/^(s|sb)-/.test(id)) {

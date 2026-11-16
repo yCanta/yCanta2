@@ -7,8 +7,8 @@ CouchDB runs it on every save, including saves that arrive by sync, so the rules
 | Who | How the server knows | Can save |
 |---|---|---|
 | Server admin | CouchDB server admin | Anything |
-| Church admin | Name in the database's `_security.admins`, or the older `<db>-admin` tag | Anything in that church, including this rule |
-| Editor | Name in `_security.editors`, or the older `<db>-editor` tag | Any song, songbook, comment, and the category list |
+| Church admin | Name in the database's `_security.admins` | Anything in that church, including this rule |
+| Editor | Name in `_security.editors` | Any song, songbook, comment, and the category list |
 | Everyone else in `_security.members` | | Their own songs and songbooks (`addedBy`), new comments of their own, their own export settings (`cfg-`) and profile (`u-`) |
 
 Everyone in the church can also add **kept old versions** (`h-` docs, issue #138): before the app saves a song or
@@ -28,8 +28,6 @@ songbooks (`sb-allSongs`, `sb-favoriteSongs`) can never be saved.
   crafts such a revision can make their version of someone else's song the visible one. The original
   is kept as a conflict (`GET /db/doc?conflicts=true`), so nothing is lost and it can be put back.
   The rule stops mistakes and casual changes, not a member set on misusing their access.
-- **Older account tags.** While an account has `<db>-editor` or `<db>-admin`, it keeps that level, even
-  if the church's lists say less. Take the tag off the account to really lower someone.
 - **Refused saves stay on the device.** The app says which item the server refused, but the refused
   version stays in that device's own copy (issue #139).
 

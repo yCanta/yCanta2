@@ -10,7 +10,7 @@ for (const u of ['alice', 'eddie', 'vera', 'vic', 'olly']) await makeUser(u);
 await makeUser('leo', ['church_a-editor']);
 await req(as('admin'), 'PUT', `/${DB}/_security`, {
   admins: { names: ['alice'], roles: [] },
-  members: { names: ['eddie', 'vera', 'vic'], roles: ['church_a-editor'] },
+  members: { names: ['eddie', 'vera', 'vic', 'leo'], roles: ['_admin'] }, // leo: a member whose account still has an old tag
   editors: { names: ['eddie'] },
 });
 const ddoc = await req(as('admin'), 'PUT', `/${DB}/_design/auth`, { validate_doc_update: validate });
@@ -38,7 +38,7 @@ await put('viewer edits own song', true, 'vera', { ...(await get('s-vera1')), ti
 await put("viewer edits editor's song", false, 'vera', { ...(await get('s-eddie1')), title: 'nope' });
 await put("viewer hands own song to someone else", false, 'vera', { ...(await get('s-vera1')), addedBy: 'u-vic' });
 await put("editor edits viewer's song", true, 'eddie', { ...(await get('s-vera1')), title: 'Eddie edited' });
-await put("old-tag editor edits viewer's song", true, 'leo', { ...(await get('s-vera1')), title: 'Leo edited' });
+await put("an old 'church_a-editor' tag no longer makes an editor (#144)", false, 'leo', { ...(await get('s-vera1')), title: 'Leo edited' });
 await put("church admin edits anything", true, 'alice', { ...(await get('s-eddie1')), title: 'Alice edited' });
 await put("other viewer edits viewer's song", false, 'vic', { ...(await get('s-vera1')), title: 'vic' });
 await put('viewer adds own songbook', true, 'vera', { _id: 'sb-vera1', title: 'Book', songrefs: [], addedBy: 'u-vera' });

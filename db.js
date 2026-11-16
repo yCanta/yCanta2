@@ -97,8 +97,7 @@ async function loginRemoteDb(remote_url, username, pwd) {
   };
   const batman = await remoteDb.logIn(username, pwd, ajaxOpts);
   console.log("I'm Batman.", batman);
-  // The server decides who may open a church: its own lists, or an older "<db>-..." tag.
-  // Someone on neither gets a 403 here.
+  // The server decides who may open a church: its own lists. Someone not on them gets a 403 here.
   try {
     await remoteDb.info();
   } catch (err) {
@@ -1041,19 +1040,18 @@ function initializeSongbooksList(){
 // Each church database lists its own people in its security settings: "admins" (church admins),
 // "members" (everyone who may open it) and "editors" (members who may change anyone's songs). The
 // server enforces the same lists on every save with _design/auth (database/validate.js); canEdit()
-// mirrors it for the buttons. Older accounts may still carry "<db>-viewer"/"<db>-editor"/"<db>-admin"
-// tags, and both the server and the app still honor them.
+// mirrors it for the buttons. (The older "<db>-viewer"/"-editor"/"-admin" account tags no longer count, #144.)
 
 // the yCanta Accounts web app (accounts-backend/), deployed from info.ycanta@gmail.com
 window.accountsURL = 'https://script.google.com/macros/s/AKfycbzQvNIHM0lvuhT-yXVEjSKHvO9nHGMmithevWRmNgiFlZhFj-8T7MDY4DxuP3M7vDai9A/exec';
 
-// What this person may do in this church, from its security lists and their account tags
+// What this person may do in this church, from its security lists (and whether they're a server admin)
 function churchAccessFrom(sec, roles, name, dbId) {
   roles = roles || {};
   const inGroup = group => !!group && ((group.names || []).includes(name) || (group.roles || []).some(role => roles[role]));
   const serverAdmin = !!roles._admin;
-  const admin = serverAdmin || !!roles[dbId + '-admin'] || inGroup(sec.admins);
-  const editor = admin || !!roles[dbId + '-editor'] || inGroup(sec.editors);
+  const admin = serverAdmin || inGroup(sec.admins);
+  const editor = admin || inGroup(sec.editors);
   return { db: dbId, serverAdmin, admin, editor };
 }
 
@@ -1176,7 +1174,6 @@ async function loadAllUsers() {
   // (their sign-in lives in the server's settings, so resetting their account wouldn't change it)
   const serverAdmins = window.church.serverAdmin ? await getServerAdminNames() : null;
   const canReset = (name, level) => name !== me && (level !== 'admin' || (serverAdmins && !serverAdmins.includes(name)));
-  const oldTags = (sec.members?.roles || []).concat(sec.admins?.roles || []).filter(role => role !== '_admin');
 
   let html = `<div class="people-header"><b>Users in this church</b><button class="btn btn-small" onclick="addChurchPerson()">+ Add</button></div>`;
   if (people.length > 5) {
@@ -1197,12 +1194,9 @@ async function loadAllUsers() {
   }).join('') + '</ul>';
   if (!people.length) html += '<p>Nobody is on the list yet.</p>';
   else html += '<p class="people-none" hidden>No one matches that search.</p>';
-  if (oldTags.length) {
-    html += `<p class="old-tags"><small>Also let in by older account tags: ${oldTags.map(escapeHtml).join(', ')}. Someone with one of these tags keeps that access even if they're removed or set lower here, until the tag comes off their account.</small></p>`;
-  }
-  html += '<p class="backup-tools"><button class="btn btn-small" onclick="restoreFromBackup()">↶ Restore from a backup</button></p>';
+  html +='<p class="backup-tools"><button class="btn btn-small" onclick="restoreFromBackup()">↶ Restore from a backup</button></p>';
   if (window.church.serverAdmin) {
-    const [rules, moves] = await Promise.all([saveRulesStatus(), oldTags.length ? findTaggedMoves().catch(() => null) : []]);
+    const rules = await saveRulesStatus();
     const rulesLine = {
       latest: 'Save rules: up to date.',
       outdated: 'Save rules: an update is available.',
@@ -1211,12 +1205,8 @@ async function loadAllUsers() {
     }[rules.state];
     const rulesButton = rules.state === 'latest' ? '' :
       `<button class="btn btn-small" onclick="installSaveRules()">${rules.state === 'outdated' ? 'Update' : 'Install'} the save rules</button>`;
-    let movesLine = '';
-    if (moves === null) movesLine = "<p>Couldn't check the older tags.</p>";
-    else if (moves.length) movesLine = `<p>${moves.length === 1 ? '1 person with an older tag isn\'t' : moves.length + ' people with older tags aren\'t'} on the list yet. <button class="btn btn-small" onclick="moveTaggedPeople()">Move them onto the list</button></p>`;
-    else if (oldTags.length) movesLine = '<p>Everyone with an older tag is on the list.</p>';
     html += `<div class="server-tools"><b>Server admin tools</b>
-      <p>${rulesLine} ${rulesButton}</p>${movesLine}</div>`;
+      <p>${rulesLine} ${rulesButton}</p></div>`;
   }
   box.innerHTML = html;
   filterChurchPeople(people.length > 5 ? peopleSearch : '');
@@ -1473,11 +1463,9 @@ async function setChurchPersonLevel(select) {
 
 async function removeChurchPerson(button) {
   const name = button.closest('li').dataset.name;
-  const hasOldTags = !!document.querySelector('#all_users .old-tags');
   const dialog = new TaskDialog(`Remove ${name}?`);
   const done = await dialog.run({
-    text: `${name} won't be able to open this church anymore. Their account stays, so another church can still use it.` +
-      (hasOldTags ? '\n\nIf their account also has one of the older tags listed under the users, that tag still lets them in until Carl or Evan removes it.' : ''),
+    text: `${name} won't be able to open this church anymore. Their account stays, so another church can still use it.`,
     submit: 'Remove',
     danger: true,
     working: 'Removing…',
@@ -1506,55 +1494,6 @@ async function resetChurchPassword(button) {
   });
   if (done === null) return;
   await dialog.finish(`Changed. Let ${name} know the new password.`);
-}
-
-// Server admins: who has this church's older account tags but isn't on the lists at that level yet.
-// [[name, level], ...]. Accounts and tags aren't changed, so the tags keep working too.
-async function findTaggedMoves() {
-  const dbId = window.church.db;
-  const res = await serverAdminFetch('_users/_all_docs?include_docs=true&startkey="org.couchdb.user:"&endkey="org.couchdb.user:\ufff0"');
-  if (!res.ok) throw new Error(`Could not read the accounts (${res.status})`);
-  const rows = (await res.json()).rows.map(row => row.doc).filter(Boolean);
-  const people = churchPeople(await getChurchSecurity());
-  const rank = { viewer: 1, editor: 2, admin: 3 };
-  const moves = [];
-  for (const user of rows) {
-    const roles = user.roles || [];
-    const level = roles.includes(dbId + '-admin') ? 'admin'
-      : roles.includes(dbId + '-editor') ? 'editor'
-      : roles.includes(dbId + '-viewer') ? 'viewer' : null;
-    if (level && (rank[level] > (rank[people.get(user.name)] || 0))) moves.push([user.name, level]);
-  }
-  return moves;
-}
-
-async function moveTaggedPeople() {
-  const dialog = new TaskDialog('Move tagged people onto the list');
-  dialog.working('Reading the accounts…');
-  let moves;
-  try {
-    moves = await findTaggedMoves();
-  } catch (err) {
-    await dialog.finish(err.message || String(err), { error: true });
-    return;
-  }
-  if (!moves.length) {
-    loadAllUsers();
-    await dialog.finish('Everyone with a tag is already on the list.');
-    return;
-  }
-  const done = await dialog.run({
-    text: moves.length === 1
-      ? 'This person gets onto the list. Their account and tags stay as they are.'
-      : `These ${moves.length} people get onto the list. Their accounts and tags stay as they are.`,
-    html: '<ul>' + moves.map(([name, level]) => `<li>${escapeHtml(name)}: ${levelLabels[level]}</li>`).join('') + '</ul>',
-    submit: 'Move them',
-    working: 'Saving the list…',
-    action: () => updateChurchPeople(moves),
-  });
-  if (done === null) return;
-  loadAllUsers();
-  await dialog.finish(`Moved ${moves.length} ${moves.length === 1 ? 'person' : 'people'} onto the list.`);
 }
 
 // Server admins: is database/validate.js this church's save rules (_design/auth)?

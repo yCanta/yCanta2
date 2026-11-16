@@ -1,6 +1,7 @@
 // A small, realistic church on the LOCAL test CouchDB for trying the app: church_a with a church admin
-// (alice), an editor (eddie), members (vera, vic), an old-style tagged editor (leo), the save rules,
-// a category list, and a few songs and a songbook by different people.
+// (alice), an editor (eddie), members (vera, vic), a member (leo) whose account still has an old
+// "church_a-editor" tag (it no longer counts, #144), the save rules, a category list, and a few songs and
+// a songbook by different people.
 import { readFileSync } from 'node:fs';
 import { req, as, makeUser, freshDb } from './lib.mjs';
 
@@ -10,7 +11,7 @@ for (const u of ['alice', 'eddie', 'vera', 'vic', 'olly']) await makeUser(u);
 await makeUser('leo', ['church_a-editor']);
 await req(as('admin'), 'PUT', `/${DB}/_security`, {
   admins: { names: ['alice'], roles: [] },
-  members: { names: ['eddie', 'vera', 'vic'], roles: ['church_a-editor', '_admin'] },
+  members: { names: ['eddie', 'vera', 'vic', 'leo'], roles: ['_admin'] },
   editors: { names: ['eddie'] },
 });
 await req(as('admin'), 'PUT', `/${DB}/_design/auth`, { validate_doc_update: readFileSync(new URL('./validate.js', import.meta.url), 'utf8') });

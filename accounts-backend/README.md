@@ -14,8 +14,9 @@ Every request is written to the sheet's **Log** tab, without passwords.
    - `createAccount`: make an account with no tags, marked `created_for: <church>`. An existing account is left
      alone. The app then adds the name to the church's list itself.
    - `resetPassword`: a church admin can put any name on their own list, so the list alone isn't enough. The
-     account must also carry that church's older `<db>-viewer`/`<db>-editor` tag (only server admins set those)
-     or have been made for that church. Never for admins anywhere, the helper's own account, or anyone else.
+     account must also have been made for (marked `created_for`) that church. Never for that church's admins,
+     server admins, the helper's own account, or anyone else. (One gap: the helper can't see other churches'
+     lists, so an account made for this church that is also an admin somewhere else could be reset here.)
 
 ## Your own account and forgotten passwords
 

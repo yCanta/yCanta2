@@ -316,7 +316,6 @@ html._admin .admin, html.churchAdmin .admin {display: revert;}
 /* Long notes wrap to the width the rest of the box already has, instead of stretching the box (the
    settings boxes size themselves to their widest content) */
 .fit-text,
-#all_users .old-tags,
 #all_users .people-none,
 .server-tools p,
 #recovery_email p {

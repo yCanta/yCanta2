@@ -55,9 +55,17 @@ check("another church's admin is refused", !r.ok, r);
 await addToChurchA('newperson');
 r = call(admin('alice', { action: 'resetPassword', name: 'newperson', password: 'second-pass-2' }));
 check('church admin resets an account made for this church', r.ok && await canLogIn('newperson', 'second-pass-2'), r);
+// leo is on church_a's list and his account still has an old "church_a-editor" tag: the tag no longer
+// counts (#144), so until his account is marked for church_a (the server cleanup does that), it's refused
+await addToChurchA('leo');
 r = call(admin('alice', { action: 'resetPassword', name: 'leo', password: 'new-leo-pass' }));
-check('church admin resets an old-tag member', r.ok && await canLogIn('leo', 'new-leo-pass'), r);
+check("an old tag no longer lets a church admin reset someone", !r.ok && await canLogIn('leo', pw('leo')), r);
+await putUser({ ...(await userDoc('leo')), created_for: 'church_a' });
+r = call(admin('alice', { action: 'resetPassword', name: 'leo', password: 'new-leo-pass' }));
+check('once marked for the church, a church admin resets them', r.ok && await canLogIn('leo', 'new-leo-pass'), r);
 call(admin('alice', { action: 'resetPassword', name: 'leo', password: pw('leo') }));
+const { created_for, ...leoUnmarked } = await userDoc('leo');
+await putUser(leoUnmarked);
 r = call(admin('alice', { action: 'resetPassword', name: 'eddie', password: 'hijack-eddie' }));
 check("can't reset someone who is only on the list (a church admin controls the list)", !r.ok && await canLogIn('eddie', pw('eddie')), r);
 await addToChurchA('bob');
