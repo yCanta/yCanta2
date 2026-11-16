@@ -1993,6 +1993,9 @@ input[type="number"] {
 .export-actions-group .btn {
   margin: 0;
 }
+#export .btn { /* the export's buttons stay on one line ("Export JSON" wrapped in its narrow table cell) */
+  white-space: nowrap;
+}
 #cfg_buttons {
   display: contents; /* its buttons sit in the group's row, beside "+ Save new Config" */
 }

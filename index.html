@@ -277,12 +277,12 @@
               <table>
                 <tr>
                   <td>
-                    <button style="background-color: var(--edit-color);" class="btn" onclick="download(JSON.stringify(window.exportObject),window.exportObject.title+'.json','application/json')" title="Download what's being exported as a yCanta JSON file">Export JSON file</button>
+                    <button style="background-color: var(--edit-color);" class="btn" onclick="download(JSON.stringify(window.exportObject),window.exportObject.title+'.json','application/json')" title="Download what's being exported as a yCanta JSON file">Export JSON</button>
                   </td>
                 </tr>
                 <tr>
                   <td>
-                    <button style="background-color: var(--edit-color);" class="btn" onclick="pdfFormatter.postMessage([window.exportObject,read_config_form()]);">GeneratePDF</button>
+                    <button style="background-color: var(--edit-color);" class="btn" onclick="pdfFormatter.postMessage([window.exportObject,read_config_form()]);">Generate PDF</button>
                     <small style="margin-left: 1rem;"><input id="auto_refresh" name="auto_refresh" type="checkbox" checked><label for="auto_refresh"> Auto refresh?</label></small>
                   </td>
                   <td style="width: 100%">
