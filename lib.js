@@ -40,21 +40,42 @@ function safeSongLine(line) {
   }).join('');
   return walk(box.content);
 }
+// A copy of a song in the shape the app expects, whatever an old import, a bug or another app saved: text
+// where text belongs, lists where lists belong, and its words as parts of lines. Used before showing,
+// presenting or exporting a song, so one bad record can't stop them. The song itself never changes.
+function songShape(doc) {
+  if (!doc) return doc;
+  const textOf = value => (value == null ? '' : String(value));
+  const listOf = value => (Array.isArray(value) ? value : [value]).map(textOf); // a missing one is ['']
+  const content = Array.isArray(doc.content) ? doc.content
+    : doc.content == null ? [] : [[{ type: 'verse' }, [doc.content]]]; // plain text or a number: one verse
+  return {
+    ...doc,
+    title: textOf(doc.title), key: textOf(doc.key), introduction: textOf(doc.introduction), copyright: textOf(doc.copyright),
+    authors: listOf(doc.authors), scripture_ref: listOf(doc.scripture_ref),
+    categories: doc.categories == null ? [] : listOf(doc.categories),
+    content: content.map(chunk => [
+      { ...(chunk?.[0] && typeof chunk[0] === 'object' ? chunk[0] : {}), type: textOf(chunk?.[0]?.type || 'verse') },
+      (Array.isArray(chunk?.[1]) ? chunk[1] : chunk?.[1] == null ? [] : [chunk[1]]).map(textOf),
+    ]),
+  };
+}
+
 // A copy of a song to show: its fields as text, its lines through safeSongLine. The song itself (saved,
 // edited, kept in old versions) never changes.
 function displaySong(doc) {
   if (!doc) return doc;
+  doc = songShape(doc);
   const text = value => escapeHtml(value);
-  const list = value => (Array.isArray(value) ? value : [value ?? '']).map(text);
   return {
     ...doc,
     title: text(doc.title), key: text(doc.key), introduction: text(doc.introduction), copyright: text(doc.copyright),
-    authors: list(doc.authors), scripture_ref: list(doc.scripture_ref), categories: list(doc.categories ?? []),
+    authors: doc.authors.map(text), scripture_ref: doc.scripture_ref.map(text), categories: doc.categories.map(text),
     cclis: typeof doc.cclis === 'string' ? text(doc.cclis) : doc.cclis,
     search: typeof doc.search === 'string' ? text(doc.search) : doc.search,
-    content: (doc.content || []).map(chunk => [
-      { ...chunk?.[0], type: String(chunk?.[0]?.type || 'verse').replace(/[^a-z -]/gi, '') },
-      (chunk?.[1] || []).map(safeSongLine),
+    content: doc.content.map(chunk => [
+      { ...chunk[0], type: chunk[0].type.replace(/[^a-z -]/gi, '') },
+      chunk[1].map(safeSongLine),
     ]),
   };
 }
@@ -1128,7 +1149,7 @@ async function updateUser() {
       });
       
       profileHtml += result.rows
-        .sort((a, b) => (a.doc?.title || '').localeCompare(b.doc?.title || ''))
+        .sort((a, b) => String(a.doc?.title ?? '').localeCompare(String(b.doc?.title ?? '')))
         .filter(sb => sb.doc)
         .map(sb => `<li><a class="link" href="#${escapeHtml(sb.doc._id)}">${escapeHtml(sb.doc.title)}</a></li>`)
         .join('');
@@ -1158,7 +1179,7 @@ async function updateUser() {
         deleted: !row.doc
       })));
       profileHtml += favorites
-        .sort((a, b) => (a.title || '').localeCompare(b.title || ''))
+        .sort((a, b) => String(a.title ?? '').localeCompare(String(b.title ?? '')))
         .map(fav => {
           const label = fav.deleted ? `<s>${fav.title || 'deleted song'}</s> (deleted)` : fav.title;
           return `<li><a class="link" href="#sb-favoriteSongs&${fav.id}">${label}</a></li>`;
@@ -1426,14 +1447,31 @@ function setLogoutState() {
   }
 }
 
+// A user field ("u-name") as the name, '' when it's missing or odd (a bad record mustn't break a list)
+const userName = by => (typeof by === 'string' ? by.slice(2) : '');
+
+// Build list rows one record at a time, leaving out (and noting in the console) any record that can't be
+// shown, so one bad record doesn't stop a whole list from loading
+function rowsFrom(records, toRow) {
+  const rows = [];
+  for (const record of records) {
+    try {
+      rows.push(toRow(record));
+    } catch (err) {
+      console.warn('Left a record out of the list (it has missing or odd fields):', record?.id || record?.doc?._id, err);
+    }
+  }
+  return rows;
+}
+
 function mapSongbookRowToValue(row) {
   return { 'songbook-id':           row.doc._id,
     'songbook-rev':                 row.doc._rev,
     'songbook-title':        't:' + stripAccents(row.doc.title) + '\0'
-  + 'addedBy:' + stripAccents(row.doc.addedBy.slice(2)) + '\0'
-  + 'editedBy:' + stripAccents(row.doc.editedBy.slice(2)) + '\0',
+  + 'addedBy:' + stripAccents(userName(row.doc.addedBy)) + '\0'
+  + 'editedBy:' + stripAccents(userName(row.doc.editedBy)) + '\0',
     'link': '#'+row.doc._id,
-    'name': escapeHtml(row.doc.title) // List.js shows it as page code: make it text
+    'name': escapeHtml(row.doc.title ?? '(no title)') // List.js shows it as page code: make it text
   };
 }
 function mapSongRowToValue(row) {
@@ -1467,9 +1505,9 @@ function mapSongRowToValue(row) {
   else {
     id = row.doc._id;
     rev = row.doc._rev;
-    search = row.doc.search;
+    title = row.doc.title ?? '(no title)';
+    search = typeof row.doc.search === 'string' ? row.doc.search : 't:' + title; // a record without one still turns up by title
     status = status;
-    title = row.doc.title;
   }
   return { 'song-id':           id,
     'song-rev':                 rev,
@@ -1518,13 +1556,20 @@ function setSongbookInfo(songbook) {
 
   // Update float menu
   const editable = canEdit(songbook);
-  document.querySelector('#songList .float-menu').innerHTML = `
-    ${songbook._id === 'sb-allSongs' ? '<a data-song-edit="new" class="float-menu-item"><span class="float-menu-icon">+</span>Add Song</a>' : ''}
-    ${editable ? `<button data-home onclick="deleteSongbook('${songbook._id}')" class="float-menu-item delete"><span class="float-menu-icon">&#128465;</span>Delete</button>` : ''}
-    <button data-songbook-present class="float-menu-item" id="present"><span class="float-menu-icon">&#128253;</span>Present</button>
-    <a data-songbook-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span>Export</a>
-    ${editable ? '<a data-songbook-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span>Edit</a>' : ''}
-    <span class="float-menu-item float-menu-toggle"><button class="float-menu-icon">+</button></span>`;
+  // Rebuilt only when it would change: All Songs reloads on every synced change, and a menu replaced
+  // under a finger (or a click) loses that tap, as "Add Song" did in the app test
+  const floatMenu = document.querySelector('#songList .float-menu');
+  const menuKey = `${songbook._id}|${editable}`;
+  if (floatMenu.dataset.builtFor !== menuKey) {
+    floatMenu.dataset.builtFor = menuKey;
+    floatMenu.innerHTML = `
+      ${songbook._id === 'sb-allSongs' ? '<a data-song-edit="new" class="float-menu-item"><span class="float-menu-icon">+</span>Add Song</a>' : ''}
+      ${editable ? `<button data-home onclick="deleteSongbook('${songbook._id}')" class="float-menu-item delete"><span class="float-menu-icon">&#128465;</span>Delete</button>` : ''}
+      <button data-songbook-present class="float-menu-item" id="present"><span class="float-menu-icon">&#128253;</span>Present</button>
+      <a data-songbook-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span>Export</a>
+      ${editable ? '<a data-songbook-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span>Edit</a>' : ''}
+      <span class="float-menu-item float-menu-toggle"><button class="float-menu-icon">+</button></span>`;
+  }
 
   // Handle info dialog
   const dialog = document.getElementById('dialog');
@@ -1550,7 +1595,7 @@ function buildSongbookList(songs, target_class='songbook_content',
     item: template
   };
 
-  const values = songs.map(song => mapSongRowToValue(song));
+  const values = rowsFrom(songs, mapSongRowToValue);
 
   // The church's categories, for the song filter's Category choices
   db.get('categories').then(categories => {
@@ -1622,16 +1667,17 @@ const songFilterSorts = name => name === 'adder' || ['sb-allSongs', 'sb-favorite
 // What the filter needs to know about a song, from its doc (null for a deleted one)
 function songFacts(doc) {
   if (!doc) return null;
+  const list = value => (Array.isArray(value) ? value : []); // a bad record's field may be text, a number or missing
   return {
-    cats: (doc.categories || []).filter(Boolean),
-    key: doc.key || '',
-    chords: (doc.content || []).some(chunk => (chunk?.[1] || []).some(line => String(line).includes('<c>'))), // stops at the first
+    cats: list(doc.categories).filter(cat => typeof cat === 'string' && cat),
+    key: typeof doc.key === 'string' ? doc.key : '',
+    chords: list(doc.content).some(chunk => list(chunk?.[1]).some(line => String(line).includes('<c>'))), // stops at the first
 
     yt: Number(doc.yt) || 0,
     ccli: !!doc.cclis,
-    scripture: (doc.scripture_ref || []).some(ref => ref.trim()),
-    added: doc.added || 0,
-    edited: doc.edited || 0,
+    scripture: list(doc.scripture_ref).some(ref => String(ref ?? '').trim()),
+    added: Number(doc.added) || 0,
+    edited: Number(doc.edited) || 0,
   };
 }
 
@@ -2284,7 +2330,7 @@ async function editSongbook() {
       return;
     }
 
-    const songs = result.rows.sort((a, b) => (a.doc?.title || '').localeCompare(b.doc?.title || ''));
+    const songs = result.rows.sort((a, b) => String(a.doc?.title ?? '').localeCompare(String(b.doc?.title ?? ''))); // a bad record's title may be a number
     songs.unshift({ id: 'section', title: 'New Section', search: 'new section' });
 
     buildSongbookList(songs, 'songbook_edit_togglesongs', 'song-item-template-edit', true);

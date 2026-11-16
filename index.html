@@ -1234,7 +1234,7 @@ async function _handleSongRoute(piece, context) { // bodyClassList removed
       document.getElementById('export').classList.remove('showStatus');
 
       // Comments stay in the export object, so the JSON export keeps them; the PDF maker skips them (#62)
-      window.exportObject = window.song;
+      window.exportObject = songShape(window.song); // a copy in the usual shape, so a bad record can't stop the PDF maker
 
       if (!window.exportObject.content.some(chunk => chunk[0].type != 'comment')) {
         alert("You can't export a song with no verses, chorus, or other text");
@@ -1312,7 +1312,8 @@ async function _handleSongbookRoute(piece, oldHashOb) { // bodyClassList removed
       window.exportObject.songs = result.rows
         .map((song, i) => ({...song, status: window.songbook.songrefs[i].status || 'n'}))
         // Comments stay in, for the JSON export; the PDF maker skips them and songs with nothing else (#62)
-        .filter(song => song.key != "section" && song.doc);
+        .filter(song => song.key != "section" && song.doc)
+        .map(song => ({ ...song, doc: songShape(song.doc) })); // the usual shape, so a bad record can't stop the PDF maker
 
       await prepExport();
       applyFirstExportSetup();

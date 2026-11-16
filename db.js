@@ -997,7 +997,7 @@ function initializeSongbooksList(){
                      'user-fav': 'false',
                      'link': '#sb-favoriteSongs',
                      'name': 'Favorite Songs'}];
-      songbooks.map(function(row) {
+      songbooks.forEach(function(row) { try { // one bad songbook record is left out, not the whole list
         if(window.songbooks_list != undefined){
           var songbookIdInList = window.songbooks_list.get('songbook-id',row.doc._id);
           if(songbookIdInList.length > 0){
@@ -1011,10 +1011,12 @@ function initializeSongbooksList(){
             return
           }
         }
-        let sb_vals = mapSongbookRowToValue(row); 
+        let sb_vals = mapSongbookRowToValue(row);
         sb_vals['user-fav'] = (user_sb_favs.indexOf(row.doc._id) == -1 ? 'false' : 'true');
         values.push(sb_vals);
-      });
+      } catch (err) {
+        console.warn('Left a songbook out of the list (it has missing or odd fields):', row?.id, err);
+      } });
       //Creates list.min.js list for viewing all the songbooks
       // index.html renamed it from "songbooks"; accept both for the one load where the browser has an old copy cached
       const containerId = document.getElementById('songbooks_container') ? 'songbooks_container' : 'songbooks';
@@ -2316,7 +2318,7 @@ async function backupDifferences(backup) {
       return status && { doc, current, status };
     })
     .filter(Boolean)
-    .sort((a, b) => (a.doc.title || a.doc.name || a.doc._id).localeCompare(b.doc.title || b.doc.name || b.doc._id));
+    .sort((a, b) => String(a.doc.title || a.doc.name || a.doc._id).localeCompare(String(b.doc.title || b.doc.name || b.doc._id)));
 }
 
 function backupItemKind(id) {
@@ -2817,7 +2819,7 @@ async function loadSongbook(songbook_id, forceReload=false) {
     // Sort songs alphabetically by title
     result.rows.sort((a, b) => {
       if (!a.doc || !b.doc) return 0;
-      return a.doc.title?.localeCompare(b.doc.title);
+      return String(a.doc.title ?? '').localeCompare(String(b.doc.title ?? '')); // a bad record's title may be a number
     });
 
     window.songbook.songrefs = result.rows.map(row => ({id: row.id, status: 'n'}));
@@ -2836,6 +2838,9 @@ async function loadSongbook(songbook_id, forceReload=false) {
 
   async function loadRegularSongbook(sbId) {
     const result = await db.get(sbId);
+    // A bad record may have no song list, or empty spots in it: leave those out rather than fail to open
+    result.songrefs = (Array.isArray(result.songrefs) ? result.songrefs : [])
+      .filter(ref => ref && typeof ref.id === 'string');
     window.songbook = result;
 
     const songIds = result.songrefs.map(row => row.id);

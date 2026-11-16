@@ -360,6 +360,49 @@ try {
   ok(put.status === 201, 'a three-part test song is made on the server', JSON.stringify(put.json));
   await until(`db.get('${partsId}').then(() => true, () => false)`, 'the three-part song to reach this browser', 20000);
 
+  // 0. Bad records don't break the lists: a song and a songbook with odd or missing fields (from an old
+  // import, a bug, or another app), arriving by sync. Each list still loads, with every other row.
+  const badSongId = `s-${Date.now()}-bad`, badBookId = `sb-${Date.now()}-bad`;
+  const badSong = await req(as('alice'), 'PUT', `${DB}/${badSongId}`, {
+    _id: badSongId, title: 12345, content: 'la la', categories: 'Joy', scripture_ref: 'John 3:16', authors: null,
+    key: 7, yt: 'not a number', addedBy: 'u-alice', editedBy: 'u-alice' }); // no search, added or edited
+  const badBook = await req(as('alice'), 'PUT', `${DB}/${badBookId}`, {
+    _id: badBookId, title: `${RUN} Bad Book`, songrefs: [{ id: badSongId, status: 'n' }, null, { id: partsId }] }); // no addedBy or editedBy
+  if (badSong.status === 201) made.push(badSongId);
+  if (badBook.status === 201) made.push(badBookId);
+  ok(badSong.status === 201 && badBook.status === 201, 'a bad song and a bad songbook are put on the server', JSON.stringify([badSong.json, badBook.json]));
+  await until(`db.get('${badBookId}').then(() => true, () => false)`, 'the bad records to reach this browser', 20000);
+  await ev(`location.hash = '#songbooks'`);
+  await until(`document.querySelectorAll('#songbooks_container .list > li, #songbooks .list > li').length > 2`, 'the songbooks list', 10000).catch(() => {});
+  ok(await ev(`[...document.querySelectorAll('#songbooks_container .list > li, #songbooks .list > li')].some(li => li.textContent.includes(${JSON.stringify(`${RUN} Bad Book`)}))`),
+    'bad records: the songbooks list loads, the bad songbook too');
+  await ev(`location.hash = '#sb-allSongs'`);
+  await until(`[...document.querySelectorAll('#songbook_content .list > li')].some(li => li.dataset.songId === ${JSON.stringify(partsId)})`, 'All Songs', 10000).catch(() => {});
+  ok(await ev(`(() => { const ids = [...document.querySelectorAll('#songbook_content .list > li')].map(li => li.dataset.songId); return ids.includes(${JSON.stringify(partsId)}) && ids.includes(${JSON.stringify(badSongId)}); })()`),
+    'bad records: All Songs loads, with the bad song and the others');
+  await ev(`location.hash = '#${badBookId}'`);
+  await until(`[...document.querySelectorAll('#songbook_content .list > li')].some(li => li.dataset.songId === ${JSON.stringify(partsId)})`, 'the bad songbook', 10000).catch(() => {});
+  ok(await ev(`(() => { const ids = [...document.querySelectorAll('#songbook_content .list > li')].map(li => li.dataset.songId); return ids.includes(${JSON.stringify(partsId)}) && ids.includes(${JSON.stringify(badSongId)}); })()`),
+    'bad records: the bad songbook opens, listing its songs');
+  await ev(`location.hash = '#${badBookId}&${badSongId}'`);
+  await until(`!!document.querySelector('#song stitle')`, 'the bad song', 10000).catch(() => {});
+  ok(await ev(`document.querySelector('#song stitle')?.textContent.includes('12345')`), 'bad records: the bad song opens and shows its title');
+  // the song editor, the export and the presentation read the same fields
+  await ev(`location.hash = location.hash + '?edit'`);
+  await until(`!!document.querySelector('#song .edit_buttons')`, 'the bad song editor', 10000).catch(() => {});
+  ok(await ev(`!!document.querySelector('#song .edit_buttons')`), 'bad records: the bad song opens in the editor');
+  await click('#song .edit_buttons a'); // Cancel: nothing is saved
+  await until(`!location.hash.includes('?edit')`, 'leaving the bad song editor', 10000).catch(() => {});
+  await ev(`location.hash = '#${badBookId}?export'`);
+  await until(`document.getElementById('format')?.options.length > 1`, 'the export of the bad songbook', 10000).catch(() => {});
+  await until(`!!document.querySelector('#downloadPDF a[href^="blob:"]')`, 'the PDF of the bad songbook', 20000).catch(() => {});
+  ok(await ev(`!!document.querySelector('#downloadPDF a[href^="blob:"]')`), 'bad records: the bad songbook exports to a PDF');
+  await ev(`location.hash = '#${badBookId}?present'`);
+  await sleep(3000);
+  await ev(`location.hash = '#songbooks'`);
+  await sleep(1500);
+  ok(pageErrors.length === 0, 'bad records: no page errors so far (lists, song, editor, export, presentation)', pageErrors.join(' | ').slice(0, 600));
+
   // 1. Add a song from All Songs (#150)
   await ev(`location.hash = '#sb-allSongs'`);
   await until(`document.querySelectorAll('#songbook_content .list > li').length > 0`, 'All Songs');
