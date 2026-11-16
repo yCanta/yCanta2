@@ -1084,10 +1084,25 @@ info:after {
 .sortable-ghost {
   opacity: .35;
 }
-.sortable-ghost > * {
+.sortable-ghost > :not(button) {
   background-color: var(--highlight-color) !important;
 }
-.sortable-chosen > * {
+/* the row or chunk that follows a finger: its pill is filled in, so the rows under it and its own gap don't
+   show through (SortableJS makes it 80% see-through, and the pills have no background of their own);
+   the row's own dashed box isn't drawn, only the pill */
+.sortable-drag {
+  opacity: 1 !important;
+}
+li.sortable-drag {
+  border-color: transparent !important;
+}
+li.sortable-drag > a {
+  background-color: var(--edit-color);
+}
+.wrap.sortable-drag {
+  background-color: var(--edit-color);
+}
+.sortable-chosen > :not(button) {
   box-shadow: var(--btn-shadow-var);
 }
 /* rows and chunks being dragged don't select text or bring up a phone's copy menu when held */

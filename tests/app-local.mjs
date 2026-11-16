@@ -203,12 +203,14 @@ const spot = sel => ev(`(async () => { const el = document.querySelector(${JSON.
   el.scrollIntoView({ block: 'center' }); await new Promise(r => setTimeout(r, 300)); const r = el.getBoundingClientRect();
   return { x: r.left + r.width / 2, y: r.top + r.height / 2, top: r.top, bottom: r.bottom, left: r.left, right: r.right }; })()`);
 // A finger that presses, holds still, then drags (a phone's drag; a quick move is a scroll)
-const touchHoldDrag = async (from, to, hold = 400, steps = 16) => {
+// (`during` runs halfway, while the row is still being dragged)
+const touchHoldDrag = async (from, to, hold = 400, steps = 16, during = null) => {
   await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: from.x, y: from.y }] });
   await sleep(hold);
   for (let i = 1; i <= steps; i++) {
     await send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: from.x + (to.x - from.x) * i / steps, y: from.y + (to.y - from.y) * i / steps }] });
     await sleep(30);
+    if (during && i === Math.floor(steps / 2)) await during();
   }
   await sleep(200);
   await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
@@ -508,7 +510,16 @@ try {
     const firstPhoneRow = await spot(`#songbook_content ul.list > li:first-child`);
     const movingId = await ev(`document.querySelector('#songbook_content ul.list > li:last-child').dataset.songId`);
     // (the same row the quick swipe was on: a scroll mustn't leave it ignoring the next press-and-hold)
-    await touchHoldDrag(await spot(`#songbook_content ul.list > li:last-child`), { x: firstPhoneRow.x, y: firstPhoneRow.top + 4 });
+    // the row following the finger is solid, so the rows under it (and its own gap) don't show through it
+    let floating = null;
+    await touchHoldDrag(await spot(`#songbook_content ul.list > li:last-child`), { x: firstPhoneRow.x, y: firstPhoneRow.top + 4 }, 400, 16,
+      async () => {
+        await shot('finger-drag-midway');
+        floating = await ev(`(() => { const el = document.querySelector('.sortable-drag'); if (!el) return null;
+          return { opacity: getComputedStyle(el).opacity, background: getComputedStyle(el.querySelector(':scope > a')).backgroundColor }; })()`);
+      });
+    ok(floating && floating.opacity === '1' && !/rgba\(.*, 0\)|transparent/.test(floating.background),
+      'finger: the dragged song is solid, nothing shows through it', JSON.stringify(floating));
     ok((await bookOrder())[0] === movingId, 'finger: press, hold and drag moves a song in the book, even right after a scroll over it', JSON.stringify(await bookOrder()));
     // open "Add a song?" with its tab and drag a song from it into the book
     await ev(`document.getElementById('songListEdit').classList.add('sidebar-open')`);
