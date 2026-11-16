@@ -1092,14 +1092,11 @@ body.player-pill .subcolumn:not(.sidebar)::after {
 .deleted-song copyright {
   opacity: .6;
 }
-.revision .song-card::before { /* an old version: who saved it, when (its rev-info) */
-  position: absolute;
-  display: block;
-  content: attr(rev-info);
-  font-weight: bold;
+/* An old version: who saved it and when, under its header (like the deleted note) */
+.rev-note {
   color: red;
-  margin-top: .15rem;
-  z-index: 2;
+  font-weight: bold;
+  margin: 0 0 .5rem;
 }
 li[data-song-deleted="true"] a {
   color: gray;
