@@ -787,7 +787,7 @@ legend {
   gap: .5rem;
 }
 #playerDock .player-foot .btn {
-  padding: 5px .6rem;
+  padding: .3rem .6rem;
   margin: .25rem 0 0;
 }
 #playerDock .player-min span { /* only the word gets smaller; the button keeps the X button's size */
@@ -821,7 +821,7 @@ legend {
   margin: 0 .25rem;
 }
 #playerDock .player-controls .btn {
-  padding: 5px;
+  padding: .3rem;
 }
 /* 2. The pill: docked at the bottom, as wide as the page's content and short of any floating button, its height (3rem, 1.5rem in from the
    bottom), with a small live video, the title, next, and a way back to the window. The columns get room at
@@ -855,9 +855,10 @@ legend {
   border-radius: 1.5rem 0 0 1.5rem;
   overflow: hidden;
 }
-/* the video keeps the window's size (lib.js setPlayerLook) and is only drawn smaller: YouTube's player
-   never gets resized, which was slow on a phone */
-#playerDock[data-look="pill"] .player-video iframe {
+/* while the pill rises into place, the video keeps the window's size and is only drawn smaller; once it's
+   there (data-landed, lib.js setPlayerLook) it takes the pill's size in one resize. Resizing YouTube's
+   player step by step was slow on a phone. */
+#playerDock[data-look="pill"]:not([data-landed]) .player-video iframe {
   width: var(--video-w, 240px);
   height: var(--video-h, 135px);
   transform: scale(var(--video-scale, .356));
@@ -915,7 +916,9 @@ legend {
     width: 22rem;
   }
 }
-body.player-pill .column::after {
+/* at the end of the part that scrolls (the subcolumn), not the column around it: there it made the whole
+   column 5rem taller than the screen, so scrolling past the end of a list moved the column, + and all */
+body.player-pill .subcolumn:not(.sidebar)::after {
   content: '';
   display: block;
   height: 5rem;
@@ -2900,7 +2903,7 @@ only screen and (max-height: 31.25rem) {
   display: inline-flex;
   align-items: center;
   gap: .35rem;
-  padding: 4px 12px;
+  padding: .25rem .75rem;
   border: 0;
   border-radius: 2rem;
   font-weight: bold;
@@ -3008,7 +3011,7 @@ only screen and (max-height: 31.25rem) {
   display: inline-flex;
   align-items: center;
   gap: .3rem;
-  padding: 2px 10px;
+  padding: .125rem .625rem;
   border: 1px solid rgba(128, 128, 128, .45);
   border-radius: 2rem;
   font-size: .85rem;
@@ -3031,7 +3034,7 @@ only screen and (max-height: 31.25rem) {
 .filter-clear-all:not(.btn) {
   border: 0;
   background: none;
-  padding: 2px 4px;
+  padding: .125rem .25rem;
   font-size: .85rem;
   text-decoration: underline;
   color: var(--light-text-color);
@@ -3050,7 +3053,7 @@ only screen and (max-height: 31.25rem) {
   box-shadow: var(--box-shadow-var), inset 0 0 0 1px var(--btn-edge);
   visibility: hidden;
   opacity: 0;
-  transform: translateY(-4px);
+  transform: translateY(-.25rem);
   transition: opacity .15s, transform .15s, visibility .15s;
 }
 .filter-panel.open {
@@ -3080,9 +3083,9 @@ only screen and (max-height: 31.25rem) {
 .sheet .filter-grip {
   display: block;
   width: 2.5rem;
-  height: 4px;
+  height: .25rem;
   margin: .25rem auto .5rem;
-  border-radius: 4px;
+  border-radius: .25rem;
   background-color: rgba(128, 128, 128, .5);
 }
 .filter-section h4 {
@@ -3098,7 +3101,7 @@ only screen and (max-height: 31.25rem) {
 .filter-find {
   width: 100%;
   margin: .5rem 0 .2rem;
-  padding: 3px 12px;
+  padding: .2rem .75rem;
   border: 1px solid rgba(128, 128, 128, .5);
   border-radius: 2rem;
   font-size: .85rem;
@@ -3156,7 +3159,7 @@ only screen and (max-height: 31.25rem) {
 }
 .sheet .filter-done {
   flex: 1;
-  padding: 8px 15px;
+  padding: .5rem 1rem;
   background-color: var(--song-color);
   color: black;
 }

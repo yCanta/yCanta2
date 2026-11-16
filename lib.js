@@ -3575,12 +3575,15 @@ function setPlayerLook(look, side) {
     // the tab sits at the height the window was flung from
     if (dock.dataset.look === 'dialog') {
       const y = new DOMMatrixReadOnly(getComputedStyle(dock).transform).m42;
-      dock.style.setProperty('--tab-y', Math.min(Math.max(y, 8), window.innerHeight - 120) + 'px');
+      dock.style.setProperty('--tab-y', Math.min(Math.max(y, remToPx(.5)), window.innerHeight - remToPx(7.5)) + 'px');
     }
     dock.dataset.side = side || dock.dataset.side || 'right';
   }
-  // The video keeps the window's size in every look; the pill only shrinks it on screen (a CSS scale).
-  // Resizing YouTube's player made it redraw, and maybe change quality, which was slow on a phone.
+  // While the pill rises into place, the video keeps the window's size and is only drawn smaller (a CSS
+  // scale). Once it's there (data-landed) it takes the pill's real size: one resize, not one per step,
+  // which was slow on a phone, and YouTube shows its small player instead of a shrunken copy of the big one.
+  clearTimeout(dock.landTimer);
+  delete dock.dataset.landed;
   const frame = dock.querySelector('.player-video iframe');
   if (dock.dataset.look === 'dialog' && look !== 'dialog' && frame) {
     const r = frame.getBoundingClientRect();
@@ -3593,13 +3596,15 @@ function setPlayerLook(look, side) {
   // the pill's width is measured first, so it shows up at its width instead of easing to it
   if (look === 'pill') placePill(true);
   dock.dataset.look = look;
+  if (look === 'pill') dock.landTimer = setTimeout(() => { dock.dataset.landed = ''; }, 200); // after the .18s rise
   document.body.classList.toggle('player-pill', !dock.hidden && look === 'pill');
   if (look === 'dialog') {
     // back on screen: where it was, pulled in from any edge it was flung past
     const m = new DOMMatrixReadOnly(getComputedStyle(dock).transform);
     const w = dock.offsetWidth, h = dock.offsetHeight;
-    const x = Math.min(Math.max(m.m41, 8), window.innerWidth - w - 8);
-    const y = Math.min(Math.max(m.m42, 8), window.innerHeight - h - 8);
+    const gap = remToPx(.5);
+    const x = Math.min(Math.max(m.m41, gap), window.innerWidth - w - gap);
+    const y = Math.min(Math.max(m.m42, gap), window.innerHeight - h - gap);
     dock.style.transform = `translate3d(${x}px, ${y}px, 0)`;
   }
 }
@@ -3627,7 +3632,7 @@ function placePill(ahead = false) {
     if (el.scrollHeight > el.clientHeight && /(auto|scroll)/.test(getComputedStyle(el).overflowY)) { scrollbar = el.offsetWidth - el.clientWidth; break; }
   }
   const edge = remToPx(1) + scrollbar;
-  dock.style.setProperty('--pill-right', (left < window.innerWidth ? Math.max(edge, window.innerWidth - left + 8) : edge) + 'px');
+  dock.style.setProperty('--pill-right', (left < window.innerWidth ? Math.max(edge, window.innerWidth - left + remToPx(.5)) : edge) + 'px');
 }
 window.addEventListener('resize', placePill);
 // on a page change, only once the columns have slid into place: measured during the slide, the new page's
@@ -3674,7 +3679,7 @@ function closePlayer() {
     const dx = e.changedTouches[0].clientX - startX, dy = e.changedTouches[0].clientY - startY;
     startX = null;
     if (Math.abs(dx) > 60 && Math.abs(dx) > 2 * Math.abs(dy)) {
-      dock.style.setProperty('--tab-y', (window.innerHeight - 180) + 'px');
+      dock.style.setProperty('--tab-y', (window.innerHeight - remToPx(11)) + 'px');
       setPlayerLook('tab', dx > 0 ? 'right' : 'left');
     }
   });
