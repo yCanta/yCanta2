@@ -1965,10 +1965,13 @@ function loadSong(song_id, song_rev = false) {
       let regex = /(https?:\/\/)?(?:www\.)?(youtu(?:\.be\/([-\w]+)|be\.com\/watch\?v=([-\w]+)))\w/g;
       const textContent = songEl.textContent;
       window.youtube_links = textContent.match(regex) || [];
-      if (window.youtube_links.length > 0 && !song_rev) {
+      // Every song gets ▶ (#151): one with links plays them; one without searches YouTube, marked with a badge
+      if (!song_rev) {
         const keyElement = songEl.querySelector('key');
         const youtubeButton = document.createElement('button');
-        youtubeButton.className = 'btn';
+        youtubeButton.className = 'btn yt-play';
+        youtubeButton.classList.toggle('yt-search', window.youtube_links.length === 0);
+        youtubeButton.title = window.youtube_links.length ? "Play this song's videos" : 'Search YouTube for this song';
         youtubeButton.style.cssText = 'padding: 5px 8px; margin: 0 .5rem 0 0; background-color: var(--highlight-color);';
         youtubeButton.textContent = '▶';
         youtubeButton.onclick = loadSongPlayer;

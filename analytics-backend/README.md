@@ -1,9 +1,10 @@
 # Analytics backend (Apps Script)
 
-These are two files from the "yCanta - Analytics" Apps Script project. `Config.gs`, `Auth.gs` and `Youtube.gs` live only in Apps Script.
+These are three files from the "yCanta - Analytics" Apps Script project. `Config.gs` and `Auth.gs` live only in Apps Script (Config holds a password).
 
 - `Analytics.gs` replaces `Responses.gs`.
 - `Server.gs` replaces `Server.gs`.
+- `Youtube.gs` answers the app's YouTube searches for songs with no video links (#151). It uses Apps Script's built-in YouTube service (no API key), turned on in the project's manifest (`enabledAdvancedServices`: YouTube v3), keeps answers 30 days in a "YouTube" tab, and allows 90 new searches a day. The first deploy with it asks the deploying yCanta account for a YouTube permission.
 
 ## Tabs it writes
 

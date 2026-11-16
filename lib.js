@@ -3664,15 +3664,76 @@ function openPlayingSong() {
   if (hash && location.hash !== hash) location.hash = hash;
 }
 
-function loadSongPlayer() {
+// A song's own YouTube links; or, for a song with none, the top results of a YouTube search for its title
+// and authors (#151), done by the analytics Apps Script (analytics-backend/Youtube.gs), which keeps them a
+// month. Here they're kept for the visit, so ▶ again doesn't ask again.
+const youtubeSearches = {};
+async function songVideoIds(song, button) {
+  const own = youtubeIds(window.youtube_links || []);
+  if (own.length) return { ids: own, found: false };
+  if (youtubeSearches[song._id]) return youtubeSearches[song._id];
+  if (!navigator.onLine) throw new Error("You're offline, so YouTube can't be searched.");
+  const authors = Array.isArray(song.authors) ? song.authors.join(' ') : '';
+  button?.classList.add('searching');
+  try {
+    const response = await fetch(window.analyticsURL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // no CORS preflight, which Apps Script can't answer
+      body: JSON.stringify({ action: 'search', query: `${String(song.title || '')} ${authors}`.trim() }),
+    });
+    const answer = await response.json();
+    if (answer.error) throw new Error(answer.error);
+    const ids = (answer.results || []).map(result => result.videoId).filter(id => /^[-\w]{11}$/.test(id));
+    if (!ids.length) throw new Error('YouTube found no videos for this song.');
+    return youtubeSearches[song._id] = { ids, found: true };
+  } catch (err) {
+    throw err instanceof TypeError || err instanceof SyntaxError ? new Error("Couldn't reach YouTube search. Try again later.") : err;
+  } finally {
+    button?.classList.remove('searching');
+  }
+}
+
+// "Keep this video" (the player, on found videos): the song gets the playing video as a comment line, the
+// way links are written in songs, so it plays that from now on without a search
+async function keepFoundVideo() {
   const dock = document.getElementById('playerDock');
-  const ids = youtubeIds(window.youtube_links || []);
-  if (!ids.length) return;
-  const sameSong = dock.dataset.songId === window.song._id;
-  dock.dataset.songId = window.song._id;
+  const videoId = window.player?.getVideoData?.()?.video_id;
+  if (!videoId) return;
+  try {
+    const doc = await db.get(dock.dataset.songId);
+    if (!canEdit(doc)) throw new Error("You're not allowed to change this song.");
+    if (!Array.isArray(doc.content)) throw new Error("This song can't take a link here. Add it in the editor.");
+    doc.content.push([{ type: 'comment' }, ['https://www.youtube.com/watch?v=' + videoId]]);
+    await saveWithHistory(savedByMe(doc));
+    logData('video-keep', `${doc._id} ${videoId}`);
+    delete youtubeSearches[doc._id];
+    dock.classList.remove('found');
+    notyf.success('Kept: this song now plays that video.');
+  } catch (err) {
+    notyf.error(err.message || String(err));
+  }
+}
+
+async function loadSongPlayer(event) {
+  const dock = document.getElementById('playerDock');
+  const song = window.song, hash = location.hash; // as when ▶ was pressed, even if a search takes a moment
+  let videos;
+  try {
+    videos = await songVideoIds(song, event?.currentTarget);
+  } catch (err) {
+    logData('video-search', `${song._id}: ${err.message}`); // analytics: searches that found nothing too
+    notyf.error(err.message);
+    return;
+  }
+  logData(videos.found ? 'video-search' : 'video-play', song._id); // analytics: which songs people listen to
+  const ids = videos.ids;
+  const sameSong = dock.dataset.songId === song._id && dock.dataset.ids === ids.join(' ');
+  dock.dataset.songId = song._id;
   dock.dataset.ids = ids.join(' ');
-  dock.dataset.songHash = location.hash;
-  dock.querySelector('.player-title').textContent = window.song.title;
+  dock.dataset.songHash = hash;
+  dock.classList.toggle('found', videos.found); // "Results from YouTube", and Keep for those who can edit
+  dock.classList.toggle('can-keep', videos.found && canEdit(song));
+  dock.querySelector('.player-title').textContent = song.title;
   const wasHidden = dock.hidden;
   dock.hidden = false;
   if (wasHidden) {

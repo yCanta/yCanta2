@@ -763,6 +763,11 @@
         <button type="button" class="btn emoji" onclick="window.player.nextVideo()" aria-label="Next video">⏭</button>
         <button type="button" id="loop" class="btn emoji" onclick="toggleLoop()" aria-label="Repeat">🔁</button>
       </div>
+      <!-- videos found by a YouTube search (#151): YouTube's rules want this notice; Keep is for those who can edit -->
+      <div class="player-found">
+        <small>Results from YouTube &middot; <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener">Terms</a> &middot; <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Privacy</a></small>
+        <button type="button" class="btn btn-small player-keep" onclick="keepFoundVideo()" title="Save this video's link in the song">Keep this video</button>
+      </div>
       <div class="player-foot">
         <button type="button" class="btn" onclick="setPlayerLook('pill')" title="Fold down to the bottom">&#9662; Fold</button>
         <button type="button" class="btn" onclick="closePlayer()" title="Stop and close">X</button>

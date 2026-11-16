@@ -721,8 +721,50 @@ legend {
   color: var(--light-text-color);
 }
 #playerDock .player-pill-buttons,
-#playerDock .player-tab {
+#playerDock .player-tab,
+#playerDock .player-found,
+#playerDock .player-keep {
   display: none;
+}
+/* found by a YouTube search (#151): the notice YouTube's rules want, only in the window (not docked) */
+#playerDock.found[data-look="dialog"] .player-found {
+  display: block;
+  margin-top: .25rem;
+  color: var(--light-text-color);
+}
+#playerDock.found .player-found a {
+  color: inherit;
+}
+#playerDock.can-keep .player-keep {
+  display: inline-block;
+  margin: .25rem 0 0;
+}
+/* ▶ under a song's title (#151): a song with no video links gets a search badge on its corner, round like
+   the account button's dot; it spins (the task dialog's spinner) while YouTube is searched */
+.yt-play {
+  position: relative;
+}
+.yt-play.yt-search::after {
+  content: '🔍';
+  position: absolute;
+  top: -.4rem;
+  right: -.45rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  background-color: var(--btn-color);
+  box-shadow: 0 0 0 2px var(--background-color);
+  font-size: .65rem;
+  line-height: 1.1rem;
+  text-align: center;
+}
+.yt-play.searching::after {
+  content: '';
+  width: .75rem;
+  height: .75rem;
+  border: 2px solid var(--text-color);
+  border-right-color: transparent;
+  animation: task-spin .8s linear infinite;
 }
 /* 1. The floating window, today's shape: dragged anywhere (sortable.js dragDialog); flung more than half
    off a side, it tucks into a tab there (lib.js playerDockSettled) */
