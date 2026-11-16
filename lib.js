@@ -2410,7 +2410,31 @@ function bindKeyAndChords() {
     container.classList.toggle('active', open);
     keyButton.setAttribute('aria-expanded', open);
     setStop(open ? tabStop() : null);
+    // the list opens over the song: keep it inside the song's right edge (on a phone the row can sit
+    // beside the author, too far right for the whole list)
+    const list = container.querySelector('.transpose-keys');
+    if (open && list) {
+      // (worked out from sizes: the list animates, so where it is right now may be where it was)
+      const edge = songColumn.getBoundingClientRect().left + songColumn.clientWidth - 8;
+      const over = Math.max(0, container.getBoundingClientRect().left + list.offsetWidth - edge);
+      list.style.left = -over + 'px';
+      // The button row's tab (#keyToggleFilter) starts at the list's left before any shift. Where an edge
+      // of the list lines up with the tab, a rounded corner would leave a notch: round each top corner
+      // only as far as the list reaches past the tab.
+      const tabWidth = document.getElementById('keyToggleFilter').offsetWidth;
+      const round = px => Math.round(Math.min(Math.max(px, 0), remToPx(1))) + 'px';
+      list.style.borderTopLeftRadius = round(over);
+      list.style.borderTopRightRadius = round(list.offsetWidth - over - tabWidth);
+    }
   };
+  // a tap anywhere else closes the open list, since it covers part of the song
+  if (!window.keyListClosesOutside) {
+    window.keyListClosesOutside = true;
+    document.addEventListener('pointerdown', e => {
+      const open = document.querySelector('#keyToggleContainer.active');
+      if (open && !open.contains(e.target)) document.getElementById('keyToggle')?.click();
+    }, true);
+  }
   const setChords = show => {
     songColumn.classList.toggle('nochords', !show);
     chordSwitch.checked = show;

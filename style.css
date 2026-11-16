@@ -825,6 +825,15 @@ li[data-song-id="section"] a {
 stitle, cat, author, scrip_ref, key, copyright, cclis {
   cursor: pointer;
 }
+/* The ▶, Key and Chords row under a song's title. It keeps the same gap around it as the author line (it
+   lost that when the <key> it held was hidden, #143). The key list opens over the song instead of in it,
+   so nothing below it moves. */
+#keyToggleContainer {
+  display: inline-block;
+  position: relative;
+  z-index: 3;
+  margin: 0 1rem 1rem -.5rem; /* the row's tab padding (#keyToggleFilter) hangs out to the left: the buttons line up with the text */
+}
 #keyToggleContainer.active {
   filter: drop-shadow(2px 2px 4px lightgray);
 }
@@ -836,12 +845,14 @@ stitle, cat, author, scrip_ref, key, copyright, cclis {
 #keyToggleContainer.active .transpose-keys {
   max-height: 6.5rem;
   padding: 1rem;
-  margin-bottom: 1rem;
 }
 #keyToggleContainer .transpose-keys {
+  position: absolute;
+  top: calc(100% + 1rem); /* right under the button row's tab (#keyToggleFilter below) */
+  left: 0; /* lib.js moves it left if it would run off the song's right edge */
+  width: max-content;
   max-height: 0;
   padding: 0 1rem;
-  margin-bottom: 0;
   border-radius: 1rem;
   overflow: hidden;
   max-width: 25rem;
@@ -854,8 +865,9 @@ stitle, cat, author, scrip_ref, key, copyright, cclis {
   border-top-right-radius: 1rem;
   border-top-left-radius: 1rem;
 }
-.active > #keyToggleFilter {
+.active > #keyToggleFilter { /* reaches down to join the open key list, without moving anything */
   padding-bottom: 1rem;
+  margin-bottom: -1rem;
 }
 /* The Key button and the Chords switch under a song's title (#143). The button shows the key, so the
    <key> itself only shows while editing the song. */

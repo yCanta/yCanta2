@@ -1969,7 +1969,7 @@ function loadSong(song_id, song_rev = false) {
         const keyElement = songEl.querySelector('key');
         const youtubeButton = document.createElement('button');
         youtubeButton.className = 'btn';
-        youtubeButton.style.cssText = 'padding: 5px 8px; margin-top: 0; margin-bottom: 0; background-color: var(--highlight-color);';
+        youtubeButton.style.cssText = 'padding: 5px 8px; margin: 0 .5rem 0 0; background-color: var(--highlight-color);';
         youtubeButton.textContent = '▶';
         youtubeButton.onclick = loadSongPlayer;
         keyElement.before(youtubeButton);
