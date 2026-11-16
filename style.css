@@ -712,9 +712,13 @@ legend {
   height: 100%;
   border: 0;
 }
-#playerDock .player-title {
+#playerDock .player-titles {
   cursor: pointer;
   overflow-wrap: break-word;
+}
+#playerDock .player-video-title { /* the YouTube video's own title: only in the pill (the window shows the video) */
+  display: none;
+  color: var(--light-text-color);
 }
 #playerDock .player-pill-buttons,
 #playerDock .player-tab {
@@ -795,14 +799,24 @@ legend {
   border-radius: 24px 0 0 24px;
   overflow: hidden;
 }
-#playerDock[data-look="pill"] .player-title {
+#playerDock[data-look="pill"] .player-titles {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
   text-align: left;
+  line-height: 1.2;
+}
+#playerDock[data-look="pill"] .player-title,
+#playerDock[data-look="pill"] .player-video-title {
   font-size: .85rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+#playerDock[data-look="pill"] .player-video-title:not(:empty) {
+  display: block;
+  font-size: .7rem;
 }
 #playerDock[data-look="pill"] .player-pill-buttons {
   display: flex;
@@ -852,7 +866,7 @@ body.player-pill .column::after {
   border-radius: 0 1rem 1rem 0;
 }
 #playerDock[data-look="tab"] .player-head,
-#playerDock[data-look="tab"] .player-title,
+#playerDock[data-look="tab"] .player-titles,
 #playerDock[data-look="tab"] .player-controls {
   display: none;
 }

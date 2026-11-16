@@ -3808,6 +3808,9 @@ function onPlayerStateChange(event){
     const list = window.player.getPlaylist() || [];
     count.textContent = list.length > 1 ? (window.player.getPlaylistIndex() + 1) + '/' + list.length : '';
   }
+  // the pill shows the YouTube video's own title under the song's
+  const videoTitle = document.querySelector('#playerDock .player-video-title');
+  if (videoTitle) videoTitle.textContent = window.player.getVideoData?.()?.title || '';
   // every play button of the player (the window's and the tab's) shows play or pause
   const playing = window.player.getPlayerState() === 1;
   document.querySelectorAll('#playerDock .player-play').forEach(button => { button.textContent = playing ? '⏸' : '▶'; });

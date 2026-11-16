@@ -751,7 +751,10 @@
          CSS changes between them, so YouTube's iframe in #player is never moved and never reloads. -->
     <div id="playerDock" data-look="dialog" hidden>
       <h5 class="player-head handle">Playing</h5>
-      <b class="player-title" onclick="openPlayingSong()" title="Open this song"></b>
+      <div class="player-titles" onclick="openPlayingSong()" title="Open this song">
+        <b class="player-title"></b>
+        <small class="player-video-title"></small>
+      </div>
       <div class="player-video"><div id="player"></div></div>
       <div class="player-controls">
         <span class="player-count"></span>
