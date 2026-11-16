@@ -667,7 +667,7 @@ legend {
   text-align: center;
   margin: 0;
   padding: 1rem;
-  box-shadow: var(--box-shadow-var);
+  box-shadow: var(--btn-shadow-var);
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
@@ -690,7 +690,7 @@ legend {
      light and dark mode (the page's own background made it blend in) */
   background-color: var(--btn-color);
   border: 1px solid var(--btn-edge);
-  box-shadow: var(--box-shadow-var);
+  box-shadow: var(--btn-shadow-var);
   color: var(--text-color);
   text-align: center;
   user-select: none;

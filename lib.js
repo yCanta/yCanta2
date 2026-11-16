@@ -3560,8 +3560,12 @@ function placePill() {
   let left = window.innerWidth;
   document.querySelectorAll('.float-menu > :last-child').forEach(button => {
     const r = button.getBoundingClientRect();
-    if (r.width && r.left >= 0 && r.right <= window.innerWidth + 1 && r.bottom > window.innerHeight - 100 && r.top < window.innerHeight)
-      left = Math.min(left, r.left);
+    if (!r.width || r.left < 0 || r.right > window.innerWidth + 1 || r.bottom < window.innerHeight - 100 || r.top >= window.innerHeight) return;
+    // only the one on top: other pages' buttons can sit at the same spot, hidden under this page (the
+    // pill itself may be over it, from the page before)
+    const onTop = document.elementsFromPoint(r.left + r.width / 2, r.top + r.height / 2).find(el => !dock.contains(el));
+    if (!button.contains(onTop)) return;
+    left = Math.min(left, r.left);
   });
   dock.style.setProperty('--pill-right', (left < window.innerWidth ? window.innerWidth - left + 8 : 16) + 'px');
 }
