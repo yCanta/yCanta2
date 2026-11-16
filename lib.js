@@ -3553,7 +3553,7 @@ function setPlayerLook(look, side) {
 }
 
 // The pill stops short of the floating button showing at the bottom right. Its width changes from page to
-// page (a round "+", or a labeled button like "Close"), so it's measured each time.
+// page (a round "+", or a labeled button like "Add SB" or "Close"), so it's measured each time.
 function placePill() {
   const dock = document.getElementById('playerDock');
   if (!dock || dock.hidden || dock.dataset.look !== 'pill') return;
@@ -3567,7 +3567,9 @@ function placePill() {
     if (!button.contains(onTop)) return;
     left = Math.min(left, r.left);
   });
-  dock.style.setProperty('--pill-right', (left < window.innerWidth ? window.innerWidth - left + 8 : 16) + 'px');
+  // always the round button's room at least (80px, as in style.css), so the pill keeps one size on pages
+  // with no button; more when this page's button is wider
+  dock.style.setProperty('--pill-right', Math.max(80, window.innerWidth - left + 8) + 'px');
 }
 window.addEventListener('resize', placePill);
 window.addEventListener('hashchange', () => { placePill(); setTimeout(placePill, 500); }); // after the columns slide
