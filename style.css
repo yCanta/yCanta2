@@ -963,6 +963,7 @@ body.player-pill .column::after {
   width: 2.25rem;
   height: 2.25rem;
   font-size: 1.1rem;
+  text-align: center; /* the icon in the middle of the tab, not against its left side */
 }
 #dialog .title {
   display: block;
