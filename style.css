@@ -768,6 +768,7 @@ legend {
    the bottom so a song's last lines scroll clear of it. */
 #playerDock[data-look="pill"] {
   transform: none !important;
+  transition: right .2s; /* eases to a new page's floating button */
   top: auto;
   bottom: 24px;
   left: 1rem; /* in line with the page's content */

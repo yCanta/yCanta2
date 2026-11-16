@@ -3578,7 +3578,9 @@ function placePill() {
   dock.style.setProperty('--pill-right', (left < window.innerWidth ? Math.max(edge, window.innerWidth - left + 8) : edge) + 'px');
 }
 window.addEventListener('resize', placePill);
-window.addEventListener('hashchange', () => { placePill(); setTimeout(placePill, 500); }); // after the columns slide
+// on a page change, only once the columns have slid into place: measured during the slide, the new page's
+// button isn't there yet and the pill would stretch, then shrink back
+window.addEventListener('hashchange', () => { setTimeout(placePill, 450); setTimeout(placePill, 900); });
 
 // the floating player came to rest after a drag: flung more than half off a side, it tucks into a tab there
 function playerDockSettled(x) {
