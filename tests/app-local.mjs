@@ -327,7 +327,8 @@ try {
   await send('Runtime.enable');
   await send('Network.enable');
   // never reach a live church server from a test
-  await send('Network.setBlockedURLs', { urls: ['*ycanta.canaanf.org*', '*login.ycanta.com*', '*demo.ycanta.com*'] });
+  // (nor YouTube: the player test checks the player's own looks and gestures, the same with no network)
+  await send('Network.setBlockedURLs', { urls: ['*ycanta.canaanf.org*', '*login.ycanta.com*', '*demo.ycanta.com*', '*youtube.com*', '*youtube-nocookie.com*', '*ytimg.com*'] });
 
   // Sign in as alice on the local test church
   await send('Page.navigate', { url: APP + '/#login' });
@@ -699,6 +700,60 @@ try {
         await until(`location.hash === '#${prevBook}'`, 'the previous songbook', 3000).catch(() => {});
         ok((await hash()) === `#${prevBook}`, 'phone: a quick flick right on a songbook goes to the previous one', await hash());
       }
+
+      // 8. The video player (#140) on a phone: the window, Minimize to the pill beside +, a swipe to the side
+      // tab, the tab dragged up and down and pulled back out, and closing it. YouTube is blocked here, so this
+      // checks the player's looks and gestures, not the video.
+      const videoId = `s-${Date.now()}-video`;
+      const videoPut = await req(as('alice'), 'PUT', `${DB}/${videoId}`, {
+        _id: videoId, title: `${RUN} Video`, authors: [''], scripture_ref: [''], introduction: '', key: '', categories: [''],
+        cclis: false, copyright: '', yt: '', chords: '', search: `t:${RUN} Video\0`,
+        content: [[{ type: 'verse' }, ['la la la']], [{ type: 'comment' }, ['https://www.youtube.com/watch?v=XtbQR1_h1mE']]],
+        added: Date.now(), addedBy: 'u-alice', edited: Date.now(), editedBy: 'u-alice' });
+      if (videoPut.status === 201) made.push(videoId);
+      await until(`db.get('${videoId}').then(() => true, () => false)`, 'the video song to reach this browser', 20000);
+      await ev(`location.hash = '#sb-allSongs&${videoId}'`);
+      await until(`window.youtube_links?.length > 0 && !!document.querySelector('#song .yt-play')`, 'the video song on a phone');
+      await sleep(800);
+      await click('#song .yt-play');
+      await until(`document.getElementById('playerDock').hidden === false`, 'the player window', 5000).catch(() => {});
+      const dock = () => ev(`(() => { const d = document.getElementById('playerDock'); const r = d.getBoundingClientRect();
+        return { look: d.dataset.look, side: d.dataset.side, hidden: d.hidden, top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right) }; })()`);
+      ok((await dock()).look === 'dialog', 'player: ▶ opens the player window', JSON.stringify(await dock()));
+      await click('#playerDock .player-min');
+      await sleep(600);
+      const pill = await dock();
+      // the + showing: other pages' buttons sit at the same spot under this one (lib.js placePill does the same)
+      const fab = await ev(`(() => { const dock = document.getElementById('playerDock');
+        const b = [...document.querySelectorAll('.float-menu > :last-child')].filter(el => { const r = el.getBoundingClientRect();
+          if (!r.width || r.left < 0 || r.right > innerWidth + 1 || r.top < innerHeight - 200 || r.bottom > innerHeight) return false;
+          const onTop = document.elementsFromPoint(r.left + r.width / 2, r.top + r.height / 2).find(e => !dock.contains(e));
+          return el.contains(onTop); }).map(el => el.getBoundingClientRect())[0];
+        return b && { top: Math.round(b.top), bottom: Math.round(b.bottom), left: Math.round(b.left) }; })()`);
+      ok(pill.look === 'pill', 'player: Minimize makes it the pill', JSON.stringify(pill));
+      ok(fab && Math.abs(pill.top - fab.top) <= 2 && Math.abs(pill.bottom - fab.bottom) <= 2 && pill.right <= fab.left,
+        'player: the pill lines up with the + button, beside it', JSON.stringify({ pill, fab }));
+      // the room for the pill under a song is in the part that scrolls: no column is taller than the screen
+      // (scrolling past a list's end used to move the whole column, + and all)
+      const tallColumns = await ev(`[...document.querySelectorAll('.column')].filter(c => c.scrollHeight > c.clientHeight + 1).map(c => c.id + ' ' + c.scrollHeight + '/' + c.clientHeight)`);
+      ok(tallColumns.length === 0, 'player: with the pill showing, no column scrolls past its end', tallColumns.join(' | '));
+      // a sideways swipe on the pill tucks it into the tab on that side
+      await touchDrag(pill.left + 60, pill.top + 20, pill.left + 260, pill.top + 24, 8);
+      const tab = await dock();
+      ok(tab.look === 'tab' && tab.side === 'right', 'player: a swipe right on the pill tucks it into a tab on the right', JSON.stringify(tab));
+      // the tab drags up and down its side
+      await sleep(300);
+      const tabNow = await dock();
+      const tabX = Math.round((tabNow.left + tabNow.right) / 2);
+      await touchDrag(tabX, tabNow.top + 10, tabX, tabNow.top - 190, 10);
+      const moved = await dock();
+      ok(moved.look === 'tab' && Math.abs((tabNow.top - moved.top) - 200) <= 12, 'player: the tab drags up its side, and stays a tab', JSON.stringify({ before: tabNow, after: moved }));
+      // pulled out toward the middle, it opens as the window again
+      await touchDrag(tabX, moved.top + 10, tabX - 180, moved.top + 30, 10);
+      ok((await dock()).look === 'dialog', 'player: the tab pulled out toward the middle opens the window', JSON.stringify(await dock()));
+      await click('#playerDock .player-foot button:last-child'); // ✕
+      await sleep(300);
+      ok((await dock()).hidden === true, 'player: ✕ closes it', JSON.stringify(await dock()));
       await phoneMode(false);
     }
   }

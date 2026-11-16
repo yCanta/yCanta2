@@ -176,17 +176,17 @@ button.circle {
   font-weight: bold;
   background-color: var(--btn-color);
   border-radius: 2rem;
-  padding: 5px 15px 5px 15px;
+  padding: .3125rem .9375rem; /* 5px 15px at the usual 16px text, growing with the text size setting */
   display: inline-block;
   margin: 1rem .5rem 1rem .5rem;
   color: var(--text-color);
 }
 .btn-tiny {
-  padding: 2px 7px 2px 7px;
+  padding: .125rem .4375rem;
   margin: 0 .5rem !important;
 }
 .btn-small {
-  padding: 2px 7px 2px 7px;
+  padding: .125rem .4375rem;
   margin: .5rem .25rem .6rem 0 !important;
 }
 /* The browser's pull-to-refresh and its sideways "back" swipe stay off (#6: we decided not to bring
@@ -787,7 +787,7 @@ legend {
   gap: .5rem;
 }
 #playerDock .player-foot .btn {
-  padding: .3rem .6rem;
+  padding: .3125rem .6rem;
   margin: .25rem 0 0;
 }
 #playerDock .player-min span { /* only the word gets smaller; the button keeps the X button's size */
@@ -821,7 +821,7 @@ legend {
   margin: 0 .25rem;
 }
 #playerDock .player-controls .btn {
-  padding: .3rem;
+  padding: .3125rem;
 }
 /* 2. The pill: docked at the bottom, as wide as the page's content and short of any floating button, its height (3rem, 1.5rem in from the
    bottom), with a small live video, the title, next, and a way back to the window. The columns get room at
@@ -867,6 +867,14 @@ legend {
 /* it rises into place, and the tab slides in from its edge, so the change reads as a move, not a jump */
 #playerDock[data-look="pill"] {
   animation: player-pill-in .18s ease-out;
+  container-type: inline-size; /* for the narrow pill below */
+}
+/* A narrow pill (big text on a small phone): a square video, so the song's title still has room. At the
+   usual text size the pill is wider than this and keeps its 16:9 video. */
+@container (max-width: 13rem) {
+  #playerDock .player-video {
+    width: 3rem;
+  }
 }
 #playerDock[data-look="tab"][data-side="right"] {
   animation: player-tab-in-right .18s ease-out;
@@ -991,14 +999,14 @@ body.player-pill .subcolumn:not(.sidebar)::after {
 #dialog .btn.close {
   position: absolute;
   bottom: 0;
-  padding: 5px .5rem 5px .5rem;
+  padding: .3125rem .5rem;
   cursor: pointer;
 }
 #dialog small {
   font-size: .65rem;
 }
 #dialog .btn {
-  padding: 5px;
+  padding: .3125rem;
 }
 
 /*Standard Styling for columns */
@@ -2170,7 +2178,7 @@ input[type="number"] {
     display: block !important;
   }
   ul li a{
-    padding: 5px 10px 5px 10px;
+    padding: .3125rem .625rem;
     margin: 5px 0 5px 0;
     border-top: 1px solid #EEE;
     border-bottom: 1px solid #EEE;
@@ -2668,7 +2676,7 @@ only screen and (max-height: 31.25rem) {
   ul li a{
     border-left: 1px solid #EEE;
     border-radius: 20px;
-    padding: 2px 8px 2px 8px;
+    padding: .125rem .5rem;
     margin: 2px 0 2px 0;
   }
   #column-filler {
