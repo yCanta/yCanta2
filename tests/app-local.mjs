@@ -733,6 +733,45 @@ try {
     return { alice: level('alice'), eddie: level('eddie'), leo: level('leo'), text: document.getElementById('all_users').textContent }; })()`);
   ok(adminView.alice === 'admin' && adminView.eddie === 'editor' && adminView.leo === 'viewer' && !/older|tag/i.test(adminView.text),
     'Admin panel: levels come from the lists only, with no note about older tags', JSON.stringify({ ...adminView, text: adminView.text.slice(0, 200) }));
+
+  // 9. Each person gets their own copy of a church on a device (#139). Make an old-style shared copy (as
+  // the app kept one before) holding alice's songs, a change the server never got, alice's device record
+  // and eddie's. Signing in again with "Keep me logged in" makes "church_a(remote)~alice", started from
+  // that copy but without the unsent change or eddie's record.
+  const serverParts = await remote(partsId);
+  await ev(`(async () => {
+    const shared = new PouchDB('church_a(remote)');
+    await db.replicate.to(shared);
+    const song = await shared.get(${JSON.stringify(partsId)});
+    await shared.put({ ...song, title: 'Never sent to the server' });
+    await shared.put({ _id: '_local/u-alice', fromShared: true });
+    await shared.put({ _id: '_local/u-eddie', fromShared: true, pwd: 'not yours' });
+    await shared.close();
+    return 'ok'; })()`);
+  await ev(`dbLogout(), 'ok'`);
+  await until(`!window.loggedin && !!document.getElementById('db_select')`, 'signed out', 10000);
+  await ev(`(() => { const s = document.getElementById('db_select'); s.value = 'church_a(remote)'; s.dispatchEvent(new Event('change'));
+    document.getElementById('keep_logged_in').checked = true; return 'ok'; })()`);
+  await type('#username', 'alice');
+  await type('#pwd', 'local-test-alice'); // local test account (database/lib.mjs), localhost only
+  await ev(`checkLogin() && dbLogin('login'), 'ok'`);
+  await until(`window.loggedin === true`, 'signing in again, kept', 30000);
+  await until(`db.get(${JSON.stringify(partsId)}).then(d => d._rev === ${JSON.stringify(serverParts._rev)}, () => false)`, "the server's version of the song", 20000).catch(() => {});
+  const ownCopy = await ev(`(async () => {
+    const get = id => db.get(id).then(d => d, () => null);
+    const song = await get(${JSON.stringify(partsId)});
+    return { name: db.name, kept: db.adapter !== 'memory', songTitle: song?.title, songRev: song?._rev,
+      copied: window.copiedFromShared, eddies: !!(await get('_local/u-eddie')), songs: (await db.info()).doc_count }; })()`);
+  ok(ownCopy.name === 'church_a(remote)~alice' && ownCopy.kept, 'own copy: signing in kept makes a copy for this person', JSON.stringify(ownCopy));
+  ok(ownCopy.songTitle === serverParts.title && ownCopy.songRev === serverParts._rev, "own copy: a change the server never got stays behind; the server's version is used", JSON.stringify(ownCopy));
+  ok(ownCopy.copied > 0, 'own copy: it starts from the shared copy instead of downloading everything', JSON.stringify(ownCopy));
+  ok(!ownCopy.eddies, "own copy: another person's device record (with their offline password) isn't in it", JSON.stringify(ownCopy));
+  const titleText = await ev(`document.querySelector('#title a')?.textContent.replace(/\s+/g, ' ').trim()`);
+  ok(titleText === 'Church A REMOTE', 'own copy: the title still names the church, not the copy', titleText);
+  // put the device back as it was: signed out, no kept sign-in, no copies on disk
+  await ev(`(async () => { await dbLogout(); localStorage.removeItem('loggedin');
+    for (const name of ['church_a(remote)~alice', 'church_a(remote)']) await new PouchDB(name).destroy();
+    return 'ok'; })()`);
 } catch (err) {
   ok(false, 'the test ran to the end', err.message);
 } finally {

@@ -112,7 +112,35 @@ async function loginRemoteDb(remote_url, username, pwd) {
   sessionPwd = pwd; // kept in memory only, for the account helper (see callAccountsHelper)
   notyf.info('Connected to server', 'green');
 }
-function clearAllData() { 
+// Each person gets their own copy of a church from the server on a device (#139): "canaan(remote)~vera".
+// On a shared device, a change the server refused for one person (it stays in their copy) can't be sent
+// again later under someone else's sign-in. A church made on this device ("(local)") stays one copy.
+function deviceCopyName(dbName, username) {
+  return dbName.endsWith('(remote)') ? `${dbName}~${username}` : dbName;
+}
+
+// Before #139 everyone on a device shared one copy, named like the church ("canaan(remote)"). The first
+// time someone signs in after that, their own copy starts from it instead of downloading everything again,
+// but only with what the server already has: a change it never got (maybe refused for whoever made it)
+// stays behind, and that item comes fresh from the server. Device records ("_local/u-...", for signing in
+// offline) don't copy: this sign-in has just written this person's own. Returns how many items it copied.
+async function copyFromSharedCopy(dbName, username) {
+  if (!dbName.endsWith('(remote)') || db.adapter === 'memory' || !remoteDb) return 0;
+  if (!indexedDB.databases) return 0; // can't tell whether there is one: download as usual
+  const names = (await indexedDB.databases()).map(info => info.name);
+  if (!names.includes('_pouch_' + dbName)) return 0;
+  const shared = new PouchDB(dbName);
+  const { rows } = await shared.allDocs();
+  if (!rows.length) return 0;
+  const missing = await remoteDb.revsDiff(Object.fromEntries(rows.map(row => [row.id, [row.value.rev]])));
+  const ids = rows.map(row => row.id).filter(id => !missing[id]);
+  if (ids.length) await shared.replicate.to(db, { doc_ids: ids, batch_size: 250 });
+  window.copiedFromShared = ids.length; // for the app test
+  console.log(`Copied ${ids.length} of ${rows.length} items from this device's shared copy; ${rows.length - ids.length} come from the server instead.`);
+  return ids.length;
+}
+
+function clearAllData() {
   try {
     window.indexedDB.databases().then((r) => {
         for (var i = 0; i < r.length; i++) window.indexedDB.deleteDatabase(r[i].name);
@@ -455,8 +483,8 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
         try {
           await loginRemoteDb(remote_url, username, pwd);
           addDBtoLocalStorage(dbName, 'remote', remote_url);
-          
-          db = new PouchDB(dbName, {
+
+          db = new PouchDB(deviceCopyName(dbName, username), {
             adapter: usePersistentStorage ? undefined : 'memory'
           });
           await takeNextStep(username, dbName);
@@ -474,7 +502,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
         break;
 
       case "login_remote":
-        db = new PouchDB(dbName, {
+        db = new PouchDB(deviceCopyName(dbName, username), {
           adapter: usePersistentStorage ? undefined : 'memory'
         });
 
@@ -531,6 +559,18 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     } catch (err) {
       if (err.status !== 404) throw err;
     }
+    // No own copy yet (#139) but the device's old shared one has this person's record: use that this
+    // time. Their own copy is made at the next sign-in with the server.
+    if (!localUser && db.name !== dbName && db.adapter !== 'memory' && indexedDB.databases &&
+        (await indexedDB.databases()).some(info => info.name === '_pouch_' + dbName)) { // (opening one would make it)
+      try {
+        const shared = new PouchDB(dbName);
+        localUser = await shared.get('_local/u-'+username);
+        db = shared;
+      } catch (err) {
+        if (err.status !== 404) throw err;
+      }
+    }
     if (!localUser?.pwd) {
       throw new Error("Can't reach the server, and this device has no saved copy to use offline. " +
         'To use yCanta offline, log in once while connected, with "Keep me logged in" checked.');
@@ -548,7 +588,8 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     // Initialize window objects
     window.songbook = {};
     window.song = {};
-    
+    window.dbChoice = dbName; // the church as chosen ("canaan(remote)"); db.name is this person's copy of it (#139)
+
     const categories = {
       _id: 'categories',
       categories: ["----- Topics", "Adoration", "Aspiration/Desire", "Assurance", "Atonement", "Awe", "Bereavement", "Brokenness", "Calvary", "Christ as Bridegroom", "Christ as King", "Christ as Lamb", "Christ as Redeemer", "Christ as Savior", "Christ as Shepherd", "Christ as Son", "Christ's Blood", "Christ's Return", "Church as Christ's Body", "Church as Christ's Bride", "Church as God's House", "Cleansing", "Comfort", "Commitment", "Compassion", "Condemnation", "Consecration", "Conviction of Sin", "Courage", "Creation", "The Cross", "Dedication/Devotion", "Dependence on God", "Encouragement", "Endurance", "Eternal Life", "Evangelism", "Faith", "Faithfulness", "Fear", "Fear of God", "Fellowship", "Forgiveness", "Freedom", "God as Creator", "God as Father", "God as Friend", "God as Refuge", "God's Creation", "God's Faithfulness", "God's Glory", "God's Goodness", "God's Guidance", "God's Harvest", "God's Holiness", "God's Love", "God's Mercy", "God's Power", "God's Presence", "God's Strength", "God's Sufficiency", "God's Timelessness", "God's Victory", "God's Wisdom", "God's Word", "Godly Family", "Grace", "Gratefulness", "Healing", "Heaven", "Holiness", "Holy Spirit", "Hope", "Humility", "Hunger/Thirst for God", "Incarnation", "Invitation", "Jesus as Messiah", "Joy", "Kingdom of God", "Knowing Jesus", "Lordship of Christ", "Love for God", "Love for Jesus", "Love for Others", "Majesty", "Meditation", "Mercy", "Missions", "Mortality", "Neediness", "New Birth", "Obedience", "Oneness in Christ", "Overcoming Sin", "Patience", "Peace", "Persecution", "Praise", "Prayer", "Proclamation", "Provision", "Purity", "Purpose", "Quietness", "Redemption", "Refreshing", "Repentance", "Rest", "Resurrection", "Revival", "Righteousness", "Salvation", "Sanctification", "Security", "Seeking God", "Service", "Servanthood", "Sorrow", "Spiritual Warfare", "Submission to God", "Suffering for Christ", "Surrender", "Temptation", "Trials", "Trust", "Victorious Living", "Waiting on God", "Worship", "----- Seasons", "Christmas", "Easter", "Good Friday", "Thanksgiving", "----- Occasions", "Baptism", "Birth", "Closing Worship", "Communion", "Death", "Engagement", "Opening Worship", "Table Songs", "Wedding", "----- Song types", "Children's Songs", "Rounds", "Scripture Reading", "Scripture Songs", "----- Work to do", "Needs Work", "Needs Chord Work", "Needs Categorical Work", "Duplicate", "----- Other", "Norway", "Secular", "Delete", "Spanish words", "Celebration", "Add category", "Palm Sunday"]
@@ -635,11 +676,16 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       // A first download into an empty device copy (without "Keep me logged in"): wait for it before
       // opening the page the link points to, or a song linked to is "not found". A device that already
       // has the songs opens right away and catches up while it's in use.
-      const willDownload = !!(remoteDb && navigator.onLine && db.name.endsWith('(remote)'));
+      const willDownload = !!(remoteDb && navigator.onLine && dbName.endsWith('(remote)'));
       let firstDownload = false;
       if (willDownload) {
         try {
           firstDownload = (await db.info()).doc_count === 0;
+          // an empty own copy (#139) starts from the device's old shared copy, when there is one
+          if (firstDownload && await copyFromSharedCopy(dbName, username).catch(err => {
+            console.warn("Could not start from this device's shared copy; downloading instead:", err);
+            return 0;
+          })) firstDownload = false;
         } catch (err) {
           console.warn('Could not count the songs on this device:', err);
         }
@@ -666,7 +712,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
 
       // Setup db changes listener
       dbChanges();
-      window.dbName = db.name.replace(/\(.+?\)/,'');
+      window.dbName = dbName.replace(/\(.+?\)/,'');
 
       // Clear login inputs
       document.querySelectorAll('#login input').forEach(input => {
@@ -687,7 +733,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
         // One row in the Sessions tab per visit
         setSessionInfo({
           user: window.user._id,
-          db: db.name,
+          db: dbName,
           platform: getOS(),
           screen: getScreenSize(),
           touch: isTouchCapable(),
@@ -2087,7 +2133,7 @@ async function loadHistory(id) {
   const found = new Map();
   const add = result => result.rows.forEach(row => row.doc && found.set(row.id, row.doc));
   add(await db.allDocs(historyRange(id)));
-  let complete = !db.name.endsWith('(remote)'); // a local database has everything on this device
+  let complete = !window.dbChoice?.endsWith('(remote)'); // a local database has everything on this device
   if (window.remoteDb && navigator.onLine) {
     try {
       add(await remoteDb.allDocs(historyRange(id)));

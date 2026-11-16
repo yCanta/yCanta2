@@ -1136,7 +1136,10 @@ function removeDbfromLocalStorage(dbName){
 }
 
 async function updateUser() {
-  const name = window.user.name.trim();
+  // the name from the record's id when the record has none (an old or odd record, or a moment during a
+  // second sign-in on the same page, which the app test hit)
+  const name = String(window.user?.name ?? window.user?._id?.slice(2) ?? '').trim();
+  if (!name) return;
   const usernameContainer = document.getElementById('username_d');
   const userContent = document.getElementById('user_content');
 
@@ -1148,10 +1151,10 @@ async function updateUser() {
   usernameContainer.innerHTML = html;
 
   // Build user profile content
-  let profileHtml = `<h3>${name}</h3>`;
+  let profileHtml = `<h3>${escapeHtml(name)}</h3>`;
 
   // Favorite Songbooks
-  const favSongbooks = window.user.fav_sbs.filter(sb => sb.length !== 0);
+  const favSongbooks = (Array.isArray(window.user.fav_sbs) ? window.user.fav_sbs : []).filter(sb => typeof sb === 'string' && sb.length !== 0);
   profileHtml += '<h4>Favorite Songbooks</h4><ul>';
   
   if (favSongbooks.length) {
@@ -1175,7 +1178,7 @@ async function updateUser() {
   profileHtml += '</ul>';
 
   // Favorite Songs
-  const favSongs = window.user.fav_songs.filter(song => song.length !== 0);
+  const favSongs = (Array.isArray(window.user.fav_songs) ? window.user.fav_songs : []).filter(song => typeof song === 'string' && song.length !== 0);
   profileHtml += '<h4>Favorite Songs</h4><ul>';
   
   if (favSongs.length) {
@@ -1388,7 +1391,7 @@ function setLoginState({ route = true } = {}) {
   // Update title display
   const titleLink = document.getElementById('title').querySelector('a');
   if (titleLink) {
-    const dbNameParts = window.db.name.split('(');
+    const dbNameParts = (window.dbChoice || window.db.name).split('('); // the church, not this person's copy (#139)
     const dbName = capEachWord(dbNameParts[0], "_");
     const dbType = dbNameParts[1] ? dbNameParts[1].replace(')', '').toUpperCase() : '';
     
