@@ -203,9 +203,29 @@ function createAccount(church, name, password) {
   return { ok: true, existed: false };
 }
 
-// Only for people in the caller's church who aren't its admins. A church admin can put any name on their
-// own list, so being on the list isn't enough: the account must also have been made for (marked with) this
-// church. Never for server admins or the helper's own account.
+// The churches, from the CHURCHES setting ("canaan,being_church"). The helper's own account must be a member
+// of each, so it can read their lists.
+function churchList() {
+  return String(PropertiesService.getScriptProperties().getProperty('CHURCHES') || '')
+    .split(',').map(function (db) { return db.trim(); }).filter(Boolean);
+}
+
+// Is this person an admin of any church? Reads every church's list as the helper's own account. A church
+// it can't read stops the reset instead of being skipped, so a missed setup step can't open a gap.
+function adminOfAnyChurch(name) {
+  const churches = churchList();
+  if (!churches.length) fail('Password resets need the helper\'s CHURCHES setting. Ask Carl or Evan.');
+  for (let i = 0; i < churches.length; i++) {
+    const sec = couch('get', encodeURIComponent(churches[i]) + '/_security', { maker: true });
+    if (sec.status !== 200) fail('Couldn\'t check ' + churches[i] + '\'s admins (' + sec.status + '). Ask Carl or Evan.');
+    if ((((sec.json || {}).admins || {}).names || []).indexOf(name) !== -1) return true;
+  }
+  return false;
+}
+
+// Only for people in the caller's church who aren't an admin of any church. A church admin can put any name
+// on their own list, so being on the list isn't enough: the account must also have been made for (marked
+// with) this church. Never for server admins or the helper's own account.
 function resetPassword(church, name, password) {
   const sec = church.sec;
   const listed = function (group) { return !!group && (group.names || []).indexOf(name) !== -1; };
@@ -220,6 +240,8 @@ function resetPassword(church, name, password) {
   const madeHere = user.json.created_for === church.db;
   const onList = listed(sec.members) || listed(sec.editors);
   if (!(madeHere && onList)) fail(notYours);
+  // an admin at another church: resetting them here would let this church's admin in there
+  if (adminOfAnyChurch(name)) fail('That person is a church admin. Ask Carl or Evan.');
   return setPassword(name, password);
 }
 
@@ -228,11 +250,17 @@ function status() {
   const session = couch('get', '_session', { maker: true });
   const sec = couch('get', '_users/_security', { maker: true });
   const admins = (sec.json && sec.json.admins && sec.json.admins.names) || [];
+  // which churches the helper can read the lists of (password resets need every one of them)
+  const readsChurches = {};
+  churchList().forEach(function (db) {
+    readsChurches[db] = couch('get', encodeURIComponent(db) + '/_security', { maker: true }).status === 200;
+  });
   return {
     ok: true,
     reachesCouchDB: server.status === 200,
     helperSignedIn: !!(session.json && session.json.userCtx && session.json.userCtx.name),
     helperManagesAccounts: admins.indexOf(PropertiesService.getScriptProperties().getProperty('MAKER_NAME')) !== -1,
+    readsChurches: readsChurches,
   };
 }
 

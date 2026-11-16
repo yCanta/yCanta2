@@ -1,10 +1,21 @@
 // Runs Code.gs unchanged in Node, with stand-ins for the Apps Script services, against the LOCAL test
-// CouchDB. Run database/test-rule.mjs and database/probe-account-helper.mjs first (they make church_a,
-// church_b, the fake users and the accounts-only "maker" admin).
+// CouchDB. Run database/test-rule.mjs and database/probe-account-helper.mjs first (they make church_a, the
+// fake users and the accounts-only "maker" admin); this test makes church_b with bob as its admin.
 import { loadHelper } from './local-shim.mjs';
-import { req, as, pw, BASE } from '../database/lib.mjs';
+import { req, as, pw, BASE, makeUser, freshDb } from '../database/lib.mjs';
 
-const props = { COUCH_URL: BASE + '/', MAKER_NAME: 'maker', MAKER_PASS: pw('maker') };
+const props = { COUCH_URL: BASE + '/', MAKER_NAME: 'maker', MAKER_PASS: pw('maker'), CHURCHES: 'church_a,church_b' };
+
+// church_b, with bob as its admin. The helper's own account ("maker") is a member of both churches, so it
+// can read their lists (password resets check that the person isn't an admin of any church).
+await freshDb('church_b');
+await makeUser('bob');
+await req(as('admin'), 'PUT', '/church_b/_security', { admins: { names: ['bob'], roles: [] }, members: { names: ['maker'], roles: ['_admin'] } });
+{
+  const sec = (await req(as('admin'), 'GET', '/church_a/_security')).json;
+  if (!sec.members.names.includes('maker')) sec.members.names.push('maker');
+  await req(as('admin'), 'PUT', '/church_a/_security', sec);
+}
 const logRows = [];
 const sentMail = [];
 const cacheStore = new Map();
@@ -71,6 +82,23 @@ check("can't reset someone who is only on the list (a church admin controls the 
 await addToChurchA('bob');
 r = call(admin('alice', { action: 'resetPassword', name: 'bob', password: 'hijack-bob' }));
 check("adding another church's admin to your list doesn't let you reset them", !r.ok && await canLogIn('bob', pw('bob')), r);
+// The cross-church gap: bob (church_b's admin) is even marked for church_a and on its list. Still refused,
+// because he's an admin of another church.
+await putUser({ ...(await userDoc('bob')), created_for: 'church_a' });
+r = call(admin('alice', { action: 'resetPassword', name: 'bob', password: 'hijack-bob' }));
+check("an admin of another church can't be reset, even marked for this one", !r.ok && /church admin/.test(r.error) && await canLogIn('bob', pw('bob')), r);
+// a church the helper can't read stops resets, and so does a missing CHURCHES setting
+props.CHURCHES = 'church_a,church_b,church_nope';
+r = call(admin('alice', { action: 'resetPassword', name: 'newperson', password: 'hijack-np' }));
+check("a church the helper can't read stops the reset", !r.ok && await canLogIn('newperson', 'second-pass-2'), r);
+delete props.CHURCHES;
+r = call(admin('alice', { action: 'resetPassword', name: 'newperson', password: 'hijack-np' }));
+check('no CHURCHES setting stops the reset', !r.ok && await canLogIn('newperson', 'second-pass-2'), r);
+props.CHURCHES = 'church_a,church_b';
+r = call({ action: 'status' });
+check('status says which churches the helper can read', r.readsChurches?.church_a === true && r.readsChurches?.church_b === true, r);
+const { created_for: bobMark, ...bobUnmarked } = await userDoc('bob');
+await putUser(bobUnmarked);
 await addToChurchA('maker');
 r = call(admin('alice', { action: 'resetPassword', name: 'maker', password: 'hijack-maker' }));
 check("can't reset the helper's own account", !r.ok && await canLogIn('maker', pw('maker')), r);
@@ -177,7 +205,7 @@ cacheStore.set('reset:vera', JSON.stringify({ ...entry, expires: Date.now() - 1 
 r = call({ action: 'confirmReset', name: 'vera', code: code3, password: 'late-pass' });
 check('an expired code fails', !r.ok && await canLogIn('vera', 'recovered-pass'), r);
 check('codes are stored only as a hash', ![...cacheStore.values(), ...Object.values(props)].some(v => usedCodes.some(c => String(v).includes(c))));
-check('nothing piles up in Script Properties', Object.keys(props).every(k => ['COUCH_URL', 'MAKER_NAME', 'MAKER_PASS', 'SIGNING_KEY'].includes(k)), Object.keys(props));
+check('nothing piles up in Script Properties', Object.keys(props).every(k => ['COUCH_URL', 'MAKER_NAME', 'MAKER_PASS', 'CHURCHES', 'SIGNING_KEY'].includes(k)), Object.keys(props));
 
 r = call({ ...own('vera'), ownPassword: 'recovered-pass', action: 'getEmail' });
 check('you can see your own email', r.ok && r.email === 'vera@example.test', r);

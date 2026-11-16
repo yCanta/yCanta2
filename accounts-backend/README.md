@@ -14,9 +14,10 @@ Every request is written to the sheet's **Log** tab, without passwords.
    - `createAccount`: make an account with no tags, marked `created_for: <church>`. An existing account is left
      alone. The app then adds the name to the church's list itself.
    - `resetPassword`: a church admin can put any name on their own list, so the list alone isn't enough. The
-     account must also have been made for (marked `created_for`) that church. Never for that church's admins,
-     server admins, the helper's own account, or anyone else. (One gap: the helper can't see other churches'
-     lists, so an account made for this church that is also an admin somewhere else could be reset here.)
+     account must also have been made for (marked `created_for`) that church. Never for an admin of **any**
+     church (the helper reads every church's list as its own account, from the `CHURCHES` setting), server
+     admins, the helper's own account, or anyone else. If it can't read one of the churches, or `CHURCHES`
+     is empty, it refuses the reset rather than skip the check.
 
 ## Your own account and forgotten passwords
 
@@ -44,9 +45,9 @@ all, and only "forgot password" emails once Google's daily quota runs low. After
 for one name, the helper stops checking that name's password for the rest of the hour, so it can't be used to
 guess passwords. Unknown requests aren't logged, and logged text can't become a sheet formula.
 
-The accounts-only account is an admin of the `_users` database and nothing else. It can't read any church,
-change any church's list, see server settings, or make a server admin. It **can** reset any non-server-admin's
-password, so its password belongs only in Script Properties.
+The accounts-only account is an admin of the `_users` database, and a plain member (User) of each church so it
+can read their lists. It can't change any church's list, see server settings, or make a server admin. It
+**can** reset any non-server-admin's password, so its password belongs only in Script Properties.
 
 ## One-time setup
 
@@ -61,7 +62,12 @@ On the CouchDB server, as a server admin:
 In the Apps Script project, signed in as info.ycanta@gmail.com:
 
 4. Project Settings > Script Properties: `COUCH_URL` (the app's CouchDB address, ending in `/`),
-   `MAKER_NAME`, `MAKER_PASS`.
+   `MAKER_NAME`, `MAKER_PASS`, and `CHURCHES` (every church database, comma-separated, e.g.
+   `canaan,being_church`).
+
+**Each church** (now, and for every new church later): add the helper's account as a User of the church (the
+app's Admin panel, "+ Add") and add the church to `CHURCHES`. Until both are done, church admins' password
+resets stop working everywhere. `{"action":"status"}` shows `readsChurches` for checking.
 5. Deploy > New deployment > Web app, execute as **me**, access **Anyone**. Authorize it (it asks to reach other
    websites, send email as you, and edit this sheet), and put the web app URL in `window.accountsURL` in `db.js`.
 
