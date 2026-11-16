@@ -516,7 +516,7 @@ try {
       async () => {
         await shot('finger-drag-midway');
         floating = await ev(`(() => { const el = document.querySelector('.sortable-drag'); if (!el) return null;
-          const s = getComputedStyle(el); return { opacity: s.opacity, background: s.backgroundColor }; })()`);
+          return { opacity: getComputedStyle(el).opacity, background: getComputedStyle(el.querySelector(':scope > a')).backgroundColor }; })()`);
       });
     ok(floating && floating.opacity === '1' && !/rgba\(.*, 0\)|transparent/.test(floating.background),
       'finger: the dragged song is solid, nothing shows through it', JSON.stringify(floating));
