@@ -790,11 +790,14 @@ legend {
   margin: .25rem auto .75rem;
   width: min(98%, 12.5rem);
 }
-#playerDock[data-look="dialog"] .player-video-title:not(:empty) {
+#playerDock[data-look="dialog"] .player-caption:not(:empty) { /* in the window: under the video */
   display: block;
-  margin: -.5rem auto .5rem;
+  margin: .35rem auto 0;
   width: min(98%, 14rem);
   font-size: .75rem;
+}
+#playerDock[data-look="pill"] .player-caption { /* in the pill it's beside the song's title instead */
+  display: none !important;
 }
 #playerDock[data-look="dialog"] .player-video {
   aspect-ratio: 16 / 9;
@@ -873,7 +876,7 @@ legend {
   font-size: 1.1rem;
   border-radius: 50%;
 }
-#playerDock .player-pill-buttons .player-unfold { /* ▴, the opposite of the window's "▾ Dock" */
+#playerDock .player-pill-buttons .player-unfold { /* ▴, the opposite of the window's "▾ Minimize" */
   font-size: 1.6rem;
   line-height: 1;
 }

@@ -3892,8 +3892,8 @@ function showPlayerQueue() {
   const id = playerQueue.ids[playerQueue.index];
   const fromYouTube = window.player?.getVideoData?.();
   const title = playerQueue.titles[id] || (fromYouTube?.video_id === id ? fromYouTube.title : '') || '';
-  const videoTitle = document.querySelector('#playerDock .player-video-title');
-  if (videoTitle) videoTitle.textContent = title;
+  // two places: under the video in the window, beside the song's title in the pill
+  document.querySelectorAll('#playerDock .player-video-title').forEach(el => { el.textContent = title; });
 }
 
 function onPlayerReady(event) {
