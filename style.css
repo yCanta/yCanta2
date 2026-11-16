@@ -1085,8 +1085,18 @@ info:after {
 .sortable-ghost {
   opacity: .35;
 }
-.sortable-ghost > * {
+.sortable-ghost > :not(button) {
   background-color: var(--highlight-color) !important;
+}
+/* the row or chunk that follows a finger: solid, so the rows under it and its own gap don't show through
+   (SortableJS makes it 80% see-through, and the rows have no background of their own) */
+.sortable-drag {
+  opacity: 1 !important;
+  background-color: var(--background-color);
+  box-shadow: 0 .25rem .75rem rgba(0, 0, 0, .35);
+}
+.edit #songbook_content .sortable-drag {
+  background-color: var(--edit-color);
 }
 .sortable-chosen > * {
   box-shadow: var(--btn-shadow-var);
