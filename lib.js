@@ -1449,7 +1449,8 @@ function setLogoutState() {
   if (dialog) {
     dialog.style.display = 'none';
   }
-  
+  if (document.getElementById('playerDock')?.hidden === false) closePlayer();
+
   // Clear all users display
   const allUsers = document.getElementById('all_users');
   if (allUsers) {
@@ -3522,7 +3523,120 @@ function stepSongRev(step) {
 function prevSongRev() { stepSongRev(1); }
 function nextSongRev() { stepSongRev(-1); }
 
+// The video player (#140) lives in its own box (#playerDock in index.html), apart from the Info window, so
+// both can be open, and it keeps playing while you move between songs. It has three looks: a floating
+// window ('dialog'), a pill beside the floating button ('pill'), and a tab tucked on the screen's edge
+// ('tab'). Only CSS changes between them: YouTube's iframe is never moved, so it never reloads.
+const youtubeIds = links => links.map(link => link.match(/(be\/|v\=)([-\w]+)\S/)[0].replace('be/','').replace('v=',''));
+
+function setPlayerLook(look, side) {
+  const dock = document.getElementById('playerDock');
+  if (look === 'tab') {
+    // the tab sits at the height the window was flung from
+    if (dock.dataset.look === 'dialog') {
+      const y = new DOMMatrixReadOnly(getComputedStyle(dock).transform).m42;
+      dock.style.setProperty('--tab-y', Math.min(Math.max(y, 8), window.innerHeight - 120) + 'px');
+    }
+    dock.dataset.side = side || dock.dataset.side || 'right';
+  }
+  dock.dataset.look = look;
+  document.body.classList.toggle('player-pill', !dock.hidden && look === 'pill');
+  if (look === 'pill') placePill();
+  if (look === 'dialog') {
+    // back on screen: where it was, pulled in from any edge it was flung past
+    const m = new DOMMatrixReadOnly(getComputedStyle(dock).transform);
+    const w = dock.offsetWidth, h = dock.offsetHeight;
+    const x = Math.min(Math.max(m.m41, 8), window.innerWidth - w - 8);
+    const y = Math.min(Math.max(m.m42, 8), window.innerHeight - h - 8);
+    dock.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+  }
+}
+
+// The pill stops short of the floating button showing at the bottom right. Its width changes from page to
+// page (a round "+", or a labeled button like "Close"), so it's measured each time.
+function placePill() {
+  const dock = document.getElementById('playerDock');
+  if (!dock || dock.hidden || dock.dataset.look !== 'pill') return;
+  let left = window.innerWidth;
+  document.querySelectorAll('.float-menu > :last-child').forEach(button => {
+    const r = button.getBoundingClientRect();
+    if (r.width && r.left >= 0 && r.right <= window.innerWidth + 1 && r.bottom > window.innerHeight - 100 && r.top < window.innerHeight)
+      left = Math.min(left, r.left);
+  });
+  dock.style.setProperty('--pill-right', (left < window.innerWidth ? window.innerWidth - left + 8 : 16) + 'px');
+}
+window.addEventListener('resize', placePill);
+window.addEventListener('hashchange', () => { placePill(); setTimeout(placePill, 500); }); // after the columns slide
+
+// the floating player came to rest after a drag: flung more than half off a side, it tucks into a tab there
+function playerDockSettled(x) {
+  const dock = document.getElementById('playerDock');
+  if (dock.dataset.look !== 'dialog') return;
+  const w = dock.offsetWidth;
+  if (x < -w / 2) setPlayerLook('tab', 'left');
+  else if (x > window.innerWidth - w / 2) setPlayerLook('tab', 'right');
+}
+
+function closePlayer() {
+  pauseVideo();
+  const dock = document.getElementById('playerDock');
+  dock.hidden = true;
+  document.body.classList.remove('player-pill');
+}
+
+// a sideways swipe on the pill tucks it into a tab on that side, low on the screen
+(() => {
+  const dock = document.getElementById('playerDock');
+  if (!dock) return;
+  let startX = null, startY = 0;
+  dock.addEventListener('touchstart', e => {
+    startX = dock.dataset.look === 'pill' ? e.touches[0].clientX : null;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+  dock.addEventListener('touchend', e => {
+    if (startX === null) return;
+    const dx = e.changedTouches[0].clientX - startX, dy = e.changedTouches[0].clientY - startY;
+    startX = null;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > 2 * Math.abs(dy)) {
+      dock.style.setProperty('--tab-y', (window.innerHeight - 180) + 'px');
+      setPlayerLook('tab', dx > 0 ? 'right' : 'left');
+    }
+  });
+})();
+
+// the title in the player opens the song that's playing
+function openPlayingSong() {
+  const hash = document.getElementById('playerDock').dataset.songHash;
+  if (hash && location.hash !== hash) location.hash = hash;
+}
+
 function loadSongPlayer() {
+  const dock = document.getElementById('playerDock');
+  const ids = youtubeIds(window.youtube_links || []);
+  if (!ids.length) return;
+  const sameSong = dock.dataset.songId === window.song._id;
+  dock.dataset.songId = window.song._id;
+  dock.dataset.ids = ids.join(' ');
+  dock.dataset.songHash = location.hash;
+  dock.querySelector('.player-title').textContent = window.song.title;
+  const wasHidden = dock.hidden;
+  dock.hidden = false;
+  if (wasHidden) {
+    // a fresh start: the floating window, at the top middle like the Info window
+    dock.dataset.look = 'dialog';
+    dock.style.transform = `translate3d(calc(50vw - 50%), 4rem, 0)`;
+  }
+  setPlayerLook('dialog');
+
+  // Already a player: swap this song's videos in. A playing one goes straight on to the new song.
+  if (window.player?.cuePlaylist) {
+    if (!sameSong) {
+      if (window.player.getPlayerState?.() === 1) window.player.loadPlaylist(ids);
+      else window.player.cuePlaylist(ids);
+    }
+    return;
+  }
+
   // Helper function to create YouTube player
   const createYouTubePlayer = () => {
     return new YT.Player('player', {
@@ -3535,31 +3649,6 @@ function loadSongPlayer() {
         'onStateChange': onPlayerStateChange
       }
     });
-  };
-
-  // Helper function to setup player UI
-  const setupPlayerUI = () => {
-    const dialog = document.getElementById('dialog');
-    dialog.querySelector('h5').textContent = 'Playing';
-    dialog.setAttribute('data-use', 'player');
-    dialog.querySelector('.title').textContent = window.song.title;
-
-    const content = `
-      <br><br>
-      <div id="player"></div>
-      <div class="player-controls">
-        <span id="playlistnumber" style="margin: 1rem .5rem 1rem .5rem;"></span>
-        <button class="btn emoji" onclick="window.player.previousVideo()">⏮</button>
-        <button id="play" class="btn emoji" onclick="toggleVideo();">▶</button>
-        <button class="btn emoji" onclick="window.player.nextVideo()">⏭</button>
-        <button id="loop" class="btn emoji" onclick="toggleLoop();">🔁</button>
-      </div>
-    `;
-
-    dialog.querySelector('.content').innerHTML = content;
-    if (dialog.style.display === 'none') {
-      slideDown(dialog);
-    }
   };
 
   // Load YouTube API if not already loaded
@@ -3590,7 +3679,6 @@ function loadSongPlayer() {
 
   // Main function logic
   loadYouTubeAPI().then(() => {
-    setupPlayerUI();
     window.player = createYouTubePlayer();
   }).catch(error => {
     console.error('Error loading YouTube player:', error);
@@ -3655,32 +3743,21 @@ function makeUserNameDraggable() {
 makeUserNameDraggable();
 
 function onPlayerReady(event) {
-  let ids = window.youtube_links.map(link => link.match(/(be\/|v\=)([-\w]+)\S/)[0].replace('be/','').replace('v=',''));
-  window.player.cuePlaylist(ids);
+  // the videos of the song whose ▶ was pressed last (it may have changed while YouTube's code loaded)
+  window.player.cuePlaylist(document.getElementById('playerDock').dataset.ids.split(' '));
   window.player.loop = false;
 }
 
 function onPlayerStateChange(event){
-  const playlistnum = document.getElementById('playlistnumber');
-  if (playlistnum && window.player && window.player.getPlaylist) {
-    playlistnum.textContent = (window.player.getPlaylistIndex() + 1) + '/' + window.player.getPlaylist().length;
+  const count = document.querySelector('#playerDock .player-count');
+  if (count && window.player && window.player.getPlaylist) {
+    const list = window.player.getPlaylist() || [];
+    count.textContent = list.length > 1 ? (window.player.getPlaylistIndex() + 1) + '/' + list.length : '';
   }
-
-  // Find the play button scoped inside the dialog to match your old jQuery logic
-  const playButton = document.querySelector('#dialog #play') || document.getElementById('play');
-  if (!playButton) return;
-
-  switch(window.player.getPlayerState()){
-    case 1:  // playing 
-      playButton.textContent = '⏸';
-      break;
-    case -1: // unstarted
-    case 0:  // ended
-    case 2:  // paused
-    case 5:  // queued
-      playButton.textContent = '▶';
-      break;
-  }
+  // every play button of the player (the window's and the tab's) shows play or pause
+  const playing = window.player.getPlayerState() === 1;
+  document.querySelectorAll('#playerDock .player-play').forEach(button => { button.textContent = playing ? '⏸' : '▶'; });
+  document.getElementById('playerDock').classList.toggle('playing', playing);
 }
 
 function toggleLoop(){
@@ -3742,10 +3819,8 @@ if (typeof document.hidden !== "undefined") {
 }
 
 function handleVisibilityChange() {
-  const dialog = document.getElementById('dialog');
-  
-  // If the dialog element is missing or hidden, do absolutely nothing
-  if (!dialog || dialog.style.display === 'none') {
+  // If the player is closed, do absolutely nothing
+  if (document.getElementById('playerDock')?.hidden !== false) {
     return;
   }
 

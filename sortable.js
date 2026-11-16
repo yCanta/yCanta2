@@ -21,7 +21,9 @@ target.addEventListener("drop", (e) => {
   openDroppedSong(window.draggedSongId);
 });
 
-function dragDialog() {
+// Drags a floating window (the Info window, or the video player). onSettle(x, y), if given, is called
+// when it comes to rest after a drag or a fling (the player tucks into a tab when flung off the side).
+function dragDialog(dialogEl = document.getElementById('dialog'), onSettle = null) {
   function AnimationLoop(){
     var animations = [],
         animating = true,
@@ -133,6 +135,10 @@ function dragDialog() {
     
     start(e) {
       //document.documentElement.classList.add('no-overscroll');
+      // the player drags only as a floating window, not as the docked pill or the tucked tab
+      if (this.el.dataset.look && this.el.dataset.look !== 'dialog') return;
+      // its buttons are buttons, not handles (a tap that wobbles shouldn't fling it away)
+      if (this.el.id === 'playerDock' && e.target.closest('button')) return;
 
       this.positions = [];
       this.preEvent = '';
@@ -187,9 +193,15 @@ function dragDialog() {
 
           this.decelX = ( xOffset / timeOffset ) || 0;
           this.decelY = ( yOffset / timeOffset ) || 0;
-          this.decelerating = true;  
+          this.decelerating = true;
+        } else {
+          this.settled();
         }
       }
+    },
+
+    settled() {
+      if (onSettle) setTimeout(() => onSettle(this.x, this.y), 0);
     },
     
     update(){
@@ -203,9 +215,10 @@ function dragDialog() {
           
           if ( Math.abs(this.decelX) < 0.01 ) { this.decelX = 0; }
           if ( Math.abs(this.decelY) < 0.01 ) { this.decelY = 0; }
-          if ( this.decelX === 0 && this.decelY === 0 ) { 
-            this.decelerating = false; 
+          if ( this.decelX === 0 && this.decelY === 0 ) {
+            this.decelerating = false;
             loop.stop();    //We stop the loop when we're finished with any animation - ok if you only have 1 going on at a time.
+            this.settled();
             return false;
           }
         }
@@ -235,5 +248,5 @@ function dragDialog() {
       }
     }
   };
-  drag.register(document.getElementById('dialog'));
+  drag.register(dialogEl);
 }

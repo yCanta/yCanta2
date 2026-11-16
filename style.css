@@ -657,16 +657,17 @@ legend {
   transition: none;
   position: fixed;
   z-index: 12;
-  background-color: var(--background-color);
+  /* raised like the video player (#playerDock), so it stands out from the page in light and dark mode */
+  background-color: var(--btn-color);
   border-radius : 25rem;
   width: 12.5rem;
   min-height: 12.5rem;
   max-height: 80vh;
-  border: 0;
+  border: 1px solid var(--btn-edge);
   text-align: center;
   margin: 0;
   padding: 1rem;
-  box-shadow: 5px 1px 3px rgba(var(--edit-color-rgb), .8), -2px 1px 4px rgba(var(--edit-color-rgb), .8);
+  box-shadow: var(--box-shadow-var);
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
@@ -677,13 +678,199 @@ legend {
   display:flex;
   justify-content:center;
 }
-#dialog[data-use="player"]{
-  width: 18.75rem;
+/* The video player (#140, index.html #playerDock): one box, three looks (data-look). Only CSS changes
+   between them, so YouTube's iframe never moves in the page and never reloads. */
+#playerDock {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 12;
+  transition: none;
+  /* the buttons' raised surface and edge, and a deep shadow, so it stands out from the page in both
+     light and dark mode (the page's own background made it blend in) */
+  background-color: var(--btn-color);
+  border: 1px solid var(--btn-edge);
+  box-shadow: var(--box-shadow-var);
+  color: var(--text-color);
+  text-align: center;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#playerDock[hidden] {
+  display: none !important;
+}
+#playerDock button:not(.btn) {
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+#playerDock .player-video iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+#playerDock .player-title {
+  cursor: pointer;
+  overflow-wrap: break-word;
+}
+#playerDock .player-pill-buttons,
+#playerDock .player-tab {
+  display: none;
+}
+/* 1. The floating window, today's shape: dragged anywhere (sortable.js dragDialog); flung more than half
+   off a side, it tucks into a tab there (lib.js playerDockSettled) */
+#playerDock[data-look="dialog"] {
   /* never narrower than the control row, or a landscape phone wraps it (issue #141) */
   width: max(15.5rem, min(18.75rem, 60vh));
+  padding: 1rem 1.25rem 1.25rem;
+  border-radius: 25rem;
 }
-#dialog .player-controls {
+#playerDock .player-head {
+  margin: 0;
+  color: darkgray;
+  cursor: grab;
+}
+#playerDock .player-foot {
+  display: flex;
+  justify-content: center;
+  gap: .5rem;
+}
+#playerDock .player-foot .btn {
+  padding: 5px .6rem;
+  margin: .25rem 0 0;
+}
+#playerDock[data-look="dialog"] .player-title {
+  display: block;
+  margin: .25rem auto .75rem;
+  width: min(98%, 12.5rem);
+}
+#playerDock[data-look="dialog"] .player-video {
+  aspect-ratio: 16 / 9;
+  border-radius: .5rem;
+  overflow: hidden;
+}
+#playerDock .player-controls {
   white-space: nowrap;
+  margin-top: .5rem;
+}
+#playerDock .player-count {
+  font-size: .75rem;
+  margin: 0 .25rem;
+}
+#playerDock .player-controls .btn {
+  padding: 5px;
+}
+/* 2. The pill: docked at the bottom beside the floating button, the same height (48px, 24px in from the
+   bottom), with a small live video, the title, next, and a way back to the window. The columns get room at
+   the bottom so a song's last lines scroll clear of it. */
+#playerDock[data-look="pill"] {
+  transform: none !important;
+  top: auto;
+  bottom: 24px;
+  left: 16px;
+  right: var(--pill-right, 80px); /* stops short of this page's floating button (lib.js placePill) */
+  height: 48px;
+  display: flex;
+  align-items: center;
+  gap: .25rem;
+  padding: 0 .25rem 0 0;
+  border-radius: 24px;
+  overflow: hidden;
+}
+#playerDock[data-look="pill"] .player-head,
+#playerDock[data-look="pill"] .player-controls,
+#playerDock[data-look="pill"] .player-foot,
+#playerDock[data-look="tab"] .player-foot {
+  display: none;
+}
+#playerDock[data-look="pill"] .player-video {
+  order: -1;
+  height: 48px;
+  aspect-ratio: 16 / 9;
+  flex: none;
+  border-radius: 24px 0 0 24px;
+  overflow: hidden;
+}
+#playerDock[data-look="pill"] .player-title {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  font-size: .85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#playerDock[data-look="pill"] .player-pill-buttons {
+  display: flex;
+  flex: none;
+}
+#playerDock .player-pill-buttons button {
+  width: 2.25rem;
+  height: 2.25rem;
+  font-size: 1.1rem;
+  border-radius: 50%;
+}
+#playerDock .player-pill-buttons .player-unfold { /* ▴, the opposite of the window's "▾ Fold" */
+  font-size: 1.6rem;
+  line-height: 1;
+}
+@media (min-width: 40rem) { /* not a phone: no floating button to sit beside */
+  #playerDock[data-look="pill"] {
+    right: auto;
+    width: 22rem;
+  }
+}
+body.player-pill .column::after {
+  content: '';
+  display: block;
+  height: 5rem;
+}
+/* 3. The tucked tab: on the side it was flung off, at the height it was. The video keeps playing just off
+   the screen (it has to stay in the page to play). */
+#playerDock[data-look="tab"] {
+  transform: none !important;
+  top: var(--tab-y, 40vh);
+  width: 2.5rem;
+  padding: .5rem 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: var(--song-color);
+  color: white;
+}
+#playerDock[data-look="tab"][data-side="right"] {
+  left: auto;
+  right: 0;
+  border-radius: 1rem 0 0 1rem;
+}
+#playerDock[data-look="tab"][data-side="left"] {
+  left: 0;
+  border-radius: 0 1rem 1rem 0;
+}
+#playerDock[data-look="tab"] .player-head,
+#playerDock[data-look="tab"] .player-title,
+#playerDock[data-look="tab"] .player-controls {
+  display: none;
+}
+#playerDock[data-look="tab"] .player-video {
+  position: fixed;
+  left: 100vw;
+  top: 0;
+  width: 200px;
+  height: 113px;
+}
+#playerDock[data-look="tab"] .player-tab {
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+}
+#playerDock .player-tab button {
+  width: 2.25rem;
+  height: 2.25rem;
+  font-size: 1.1rem;
 }
 #dialog .title {
   display: block;
@@ -850,6 +1037,9 @@ stitle, cat, author, scrip_ref, key, copyright, cclis {
   position: absolute;
   top: calc(100% + 1rem); /* right under the button row's tab (#keyToggleFilter below) */
   left: 0; /* lib.js moves it left if it would run off the song's right edge */
+  /* only opening and closing animate: a move to keep it on screen, or its corners, happen at once
+     (it used to slide in from the side on its first open) */
+  transition: max-height .2s, padding .2s !important;
   width: max-content;
   max-height: 0;
   padding: 0 1rem;

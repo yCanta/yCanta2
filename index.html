@@ -743,9 +743,36 @@
       <b class="title" style="overflow-wrap: break-word;"></b>
       <div class="content"></div>
       <div class="center_contents">
-        <button class="close btn" onclick="document.getElementById('dialog').style.display = 'none'; pauseVideo();">X</button>
+        <button class="close btn" onclick="document.getElementById('dialog').style.display = 'none';">X</button>
       </div>
     </dialog>
+    <!-- The video player (#140): one player with three looks, set by data-look. 'dialog' floats and drags
+         like the Info window; 'pill' docks beside the floating button; 'tab' tucks it off the side. Only
+         CSS changes between them, so YouTube's iframe in #player is never moved and never reloads. -->
+    <div id="playerDock" data-look="dialog" hidden>
+      <h5 class="player-head handle">Playing</h5>
+      <b class="player-title" onclick="openPlayingSong()" title="Open this song"></b>
+      <div class="player-video"><div id="player"></div></div>
+      <div class="player-controls">
+        <span class="player-count"></span>
+        <button type="button" class="btn emoji" onclick="window.player.previousVideo()" aria-label="Previous video">⏮</button>
+        <button type="button" class="btn emoji player-play" onclick="toggleVideo()" aria-label="Play or pause">▶</button>
+        <button type="button" class="btn emoji" onclick="window.player.nextVideo()" aria-label="Next video">⏭</button>
+        <button type="button" id="loop" class="btn emoji" onclick="toggleLoop()" aria-label="Repeat">🔁</button>
+      </div>
+      <div class="player-foot">
+        <button type="button" class="btn" onclick="setPlayerLook('pill')" title="Fold down to the bottom">&#9662; Fold</button>
+        <button type="button" class="btn" onclick="closePlayer()" title="Stop and close">X</button>
+      </div>
+      <div class="player-pill-buttons">
+        <button type="button" onclick="window.player.nextVideo()" aria-label="Next video">⏭</button>
+        <button type="button" class="player-unfold" onclick="setPlayerLook('dialog')" title="Open the player" aria-label="Open the player">&#9652;</button>
+      </div>
+      <div class="player-tab">
+        <button type="button" onclick="setPlayerLook('dialog')" title="Open the player" aria-label="Open the player">&#9835;</button>
+        <button type="button" class="player-play" onclick="toggleVideo()" aria-label="Play or pause">▶</button>
+      </div>
+    </div>
     <footer>
     </footer>
     <iframe id="presentation" title="Presentation Slideshow"></iframe>
@@ -790,6 +817,7 @@
       })();
       setTimeout(function(){sheet.insertRule("* { transition: all 0.25s, color 0s, font-size 0s; }", 0); },300);
       dragDialog();
+      dragDialog(document.getElementById('playerDock'), playerDockSettled);
 
       bindToSongEdit();
       bindSearch('cat', 'c:');
