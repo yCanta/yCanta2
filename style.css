@@ -189,9 +189,29 @@ button.circle {
   padding: 2px 7px 2px 7px;
   margin: .5rem .25rem .6rem 0 !important;
 }
-body, body *,
-.no-overscroll, .no-overscroll *{
+/* Pull-to-refresh (#6): the browser's own pull-down at the top of a list reloads the app again. It used to
+   be off for every element (body *), so the app's own gestures worked. Now it's off only where a pull
+   mustn't reload:
+   - sideways, everywhere (no "back" swipes from a scroll);
+   - inside side panels and dialogs, which scroll on their own;
+   - while a song or songbook is being edited (a reload would throw the edits away);
+   - in a presentation.
+   The app's own pull-down to close (lib.js makeDraggable, from the top of a column) blocks the browser's
+   from its first move. */
+html, body {
+  overscroll-behavior-x: contain;
+}
+.sidebar, .sidebar *,
+#dialog, #dialog *,
+.task-dialog, .task-dialog *,
+.no-overscroll, .no-overscroll * {
   overscroll-behavior: contain;
+}
+html:has(#song.edit, #songList.edit),
+html:has(#song.edit, #songList.edit) body,
+html:has(body.presentation),
+body.presentation {
+  overscroll-behavior-y: contain;
 }
 body {
   background-color: var(--background-color);

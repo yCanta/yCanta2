@@ -119,7 +119,11 @@ function dragDialog() {
     },
     
     move(e) {
-      if ( this.dragging ) { 
+      if ( this.dragging ) {
+        // A finger dragging the dialog moves only the dialog, not the page under it (Safari moved the whole
+        // window, #6) and doesn't start the browser's pull-to-refresh. A touch that began in the dialog's
+        // scrolling text still scrolls that text.
+        if (e.type === 'touchmove' && e.cancelable && !this.fromScroller) e.preventDefault();
         var pos = this.getPosition(e);
         this.x = pos.x - this.offsetX;
         this.y = pos.y - this.offsetY;
@@ -133,6 +137,11 @@ function dragDialog() {
       this.positions = [];
       this.preEvent = '';
       this.dragging = true;
+      // did it start in a part of the dialog that scrolls (its text)? that part keeps scrolling by touch
+      this.fromScroller = false;
+      for (let node = e.target; node && node !== this.el; node = node.parentElement) {
+        if (node.scrollHeight > node.clientHeight && /(auto|scroll)/.test(getComputedStyle(node).overflowY)) { this.fromScroller = true; break; }
+      }
       this.decelerating = false;
 
       this.bounds.x = document.body.clientWidth;
@@ -219,7 +228,7 @@ function dragDialog() {
         this.el.addEventListener('mousedown',this.start.bind(this));
         this.el.addEventListener('touchstart',this.start.bind(this));
         document.addEventListener('mousemove',this.move.bind(this));
-        document.addEventListener('touchmove',this.move.bind(this));
+        document.addEventListener('touchmove',this.move.bind(this), { passive: false }); // so move() can stop the page scrolling
         document.addEventListener('mouseup',this.end.bind(this)); 
         document.addEventListener('touchend',this.end.bind(this)); 
         this.end();
