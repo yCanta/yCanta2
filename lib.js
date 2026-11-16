@@ -3685,6 +3685,51 @@ function closePlayer() {
   });
 })();
 
+// The tab drags up and down its side. Pulled out toward the middle (4rem or more), it opens as the window
+// where it's let go; pulled less, it slides back to its edge. A tap still presses its buttons.
+(() => {
+  const dock = document.getElementById('playerDock');
+  if (!dock) return;
+  let start = null, moved = false;
+  const pulled = e => Math.max(0, (e.clientX - start.x) * (dock.dataset.side === 'left' ? 1 : -1)); // toward the middle
+  dock.addEventListener('pointerdown', e => {
+    if (dock.dataset.look !== 'tab' || !e.isPrimary) return;
+    start = { x: e.clientX, y: e.clientY, top: dock.getBoundingClientRect().top, id: e.pointerId };
+    moved = false;
+  });
+  // on the whole window, so a quick mouse that's already off the tab still drags it
+  window.addEventListener('pointermove', e => {
+    if (!start || e.pointerId !== start.id) return;
+    const dx = e.clientX - start.x, dy = e.clientY - start.y;
+    if (!moved && Math.hypot(dx, dy) < remToPx(.5)) return; // a tap that wobbles is still a tap
+    moved = true;
+    const gap = remToPx(.5);
+    dock.style.setProperty('--tab-y', Math.min(Math.max(start.top + dy, gap), window.innerHeight - dock.offsetHeight - gap) + 'px');
+    dock.style.translate = (dock.dataset.side === 'left' ? 1 : -1) * pulled(e) + 'px 0';
+  });
+  const end = e => {
+    if (!start || e.pointerId !== start.id) return;
+    const out = moved && e.type === 'pointerup' && pulled(e) >= remToPx(4);
+    start = null;
+    dock.style.translate = '';
+    if (moved) setTimeout(() => { moved = false; }, 0); // after the click this drag may make
+    if (!out) return;
+    // the window opens centered on where the finger let go (setPlayerLook keeps it on the screen)
+    setPlayerLook('dialog');
+    dock.style.transform = `translate3d(${e.clientX - dock.offsetWidth / 2}px, ${e.clientY - dock.offsetHeight / 3}px, 0)`;
+    setPlayerLook('dialog');
+  };
+  window.addEventListener('pointerup', end);
+  window.addEventListener('pointercancel', end);
+  // a drag that ends over one of its buttons doesn't press it
+  dock.addEventListener('click', e => {
+    if (!moved) return;
+    moved = false;
+    e.stopPropagation();
+    e.preventDefault();
+  }, true);
+})();
+
 // the title in the player opens the song that's playing
 function openPlayingSong() {
   const hash = document.getElementById('playerDock').dataset.songHash;

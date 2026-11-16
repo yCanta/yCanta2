@@ -935,6 +935,8 @@ body.player-pill .subcolumn:not(.sidebar)::after {
   align-items: center;
   background-color: var(--song-color);
   color: white;
+  touch-action: none; /* a finger drags it up and down its side (lib.js), instead of scrolling the page */
+  cursor: grab;
 }
 #playerDock[data-look="tab"][data-side="right"] {
   left: auto;
