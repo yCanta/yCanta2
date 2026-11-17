@@ -282,25 +282,27 @@
         </div>
       </div>
       <div class="column" id="export">
-        <div class="float-menu"></div><!-- none: Close is in the export's band, like an editor's Cancel -->
+        <div class="float-menu"><!-- wider screens; a phone has the × in the title row instead -->
+          <button class="float-menu-item" onclick="closeExport()"><span class="float-menu-icon">&#10005;</span> Close</button>
+        </div>
         <div class="row">
           <div class="subcolumn">
             <div class="content">
-              <!-- Its main action and the way out: in its title row (where the Preview keeps Download and ×), and
-                   again at the bottom, like an editor's Save and Cancel -->
+              <!-- The way out on a phone: a × at the right of its title row, which stays at the top as you scroll, so
+                   nothing floats over the form. Wider screens keep Close in the menu bar. -->
               <div class="column_header">
                 <div class="title">
                   <h3 class="export_header">Export</h3>
                   <span class="buttonsRight">
-                    <button type="button" class="btn" onclick="generatePdf()">Generate PDF</button>
-                    <button type="button" class="btn" onclick="closeExport()">Close</button>
+                    <button type="button" class="close-icon-mobile" onclick="closeExport()" aria-label="Close" title="Close">&times;</button>
                   </span>
                 </div>
               </div>
               <table>
                 <tr>
                   <td>
-                    <small class="auto-refresh"><input id="auto_refresh" name="auto_refresh" type="checkbox" checked><label for="auto_refresh"> Auto refresh?</label></small>
+                    <button style="background-color: var(--edit-color);" class="btn" onclick="generatePdf()">Generate PDF</button>
+                    <small style="margin-left: 1rem;"><input id="auto_refresh" name="auto_refresh" type="checkbox" checked><label for="auto_refresh"> Auto refresh?</label></small>
                   </td>
                   <td style="width: 100%">
                     <div id='pdf_progress_bar' style='border: 1px solid black; position: relative;'>
@@ -722,7 +724,7 @@
                    for another yCanta (#131). Copy and Paste move the settings only, so they sit with Save. -->
               <div class="export-actions">
                 <div class="export-actions-group">
-                  <b>Export settings</b>
+                  <b>Settings</b>
                   <div id="cfg_buttons"></div>
                   <button class="btn" id="export_new_config" onclick="createExportCfg();">+ Save new Config</button>
                   <button class="btn" id="export_copy" onclick="copyToClipboard(JSON.stringify(serializeForm('export_form')));" title="Copy these settings, to paste into another export">📄 Copy</button>
@@ -731,13 +733,11 @@
                 <div class="export-actions-group">
                   <b>Export</b>
                   <!-- rarely needed, so here rather than at the top (#131) -->
-                  <button class="btn" onclick="download(JSON.stringify(window.exportObject),window.exportObject.title+'.json','application/json')" title="Download the songs as a yCanta JSON file">Export JSON file</button>
-                  <small class="export-actions-note">The songs themselves, as a file another yCanta can open.</small>
+                  <button class="btn" onclick="download(JSON.stringify(window.exportObject),window.exportObject.title+'.json','application/json')" title="Download the songs as a yCanta JSON file">JSON file</button>
+                  <!-- what import.js reads back: a songbook with its songs, or one song -->
+                  <small class="export-actions-note hide_for_songs">The songbook and all its songs, as a file another yCanta can import.</small>
+                  <small class="export-actions-note show_for_songs">This song, as a file another yCanta can import.</small>
                 </div>
-              </div>
-              <div class="edit_buttons">
-                <button type="button" class="btn" onclick="generatePdf()">Generate PDF</button>
-                <button type="button" class="btn" onclick="closeExport()">Close</button>
               </div>
             </div>
           </div>
@@ -1388,6 +1388,14 @@ async function _handleSongbookRoute(piece, oldHashOb) { // bodyClassList removed
         // Comments stay in, for the JSON export; the PDF maker skips them and songs with nothing else (#62)
         .filter(song => song.key != "section" && song.doc)
         .map(song => ({ ...song, doc: songShape(song.doc) })); // the usual shape, so a bad record can't stop the PDF maker
+      // The book's comment threads (the 💬 under each song, c_<book>_<song>), so the JSON export carries them
+      // too; the PDF maker doesn't read them
+      try {
+        const threads = await db.allDocs({ include_docs: true, startkey: `c_${window.songbook._id}_`, endkey: `c_${window.songbook._id}_￰` });
+        window.exportObject.comments = threads.rows.map(({ doc: { _rev, ...thread } }) => thread);
+      } catch (err) {
+        window.exportObject.comments = []; // the PDF doesn't need them
+      }
 
       await prepExport();
       applyFirstExportSetup();

@@ -513,10 +513,11 @@ try {
     await ev(`document.querySelector('dialog[open] form').requestSubmit()`);
     await until(`![...document.querySelectorAll('#cfg_buttons [data-save-name]')].some(b => b.dataset.saveName === ${JSON.stringify(`${RUN} Cfg`)})`, 'the config to go', 10000).catch(() => {});
     ok(!(await ev(`[...document.getElementById('format').options].some(o => o.textContent === ${JSON.stringify(`Your ${RUN} Cfg`)})`)), 'export: the × deletes a config, after asking');
-    const band = await ev(`[...document.querySelectorAll('#export .subcolumn:first-child .column_header .buttonsRight, #export .edit_buttons')].map(b => b.innerText.replace(/\\s+/g, ' ').trim())`);
-    ok(band.length === 2 && band.every(t => t === 'Generate PDF Close') && !(await ev(`document.querySelector('#export .float-menu').children.length`)),
-      'export: Generate PDF and Close in its title row and at the bottom, no floating button', JSON.stringify(band));
-    await ev(`[...document.querySelectorAll('#export .edit_buttons')].pop().querySelector('button:last-child').click()`);
+    // this window is wider than a phone: Close in the menu bar; the × in the title row is a phone's
+    const closes = await ev(`({ menu: document.querySelector('#export .float-menu').textContent.trim(),
+      x: getComputedStyle(document.querySelector('#export .column_header .close-icon-mobile')).display })`);
+    ok(closes.menu === '✕ Close' && closes.x === 'none', 'export: Close in the menu bar on a wide screen (the × is for phones)', JSON.stringify(closes));
+    await ev(`document.querySelector('#export .float-menu button').click()`);
     await until(`location.hash === '#${bookId}'`, 'Close to leave the export');
     ok(true, 'export: Close goes back to the songbook');
 

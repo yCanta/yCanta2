@@ -1350,19 +1350,21 @@ info:after {
 .sidebar .column_header .title {
   display: flex;
 }
-.sidebar .column_header .title {
+.sidebar .column_header .title,
+#export .column_header .title {
   align-items: center;
 }
 .title > * {
   flex: auto;
 }
-.sidebar .column_header .buttonsRight { /* a side panel's buttons, in line with its title */
+.sidebar .column_header .buttonsRight, /* a side panel's buttons, in line with its title */
+#export .column_header .buttonsRight { /* and the export's × */
   display: flex;
   align-items: center;
   gap: .5rem;
   padding-top: 0;
 }
-.buttonsRight > .close-icon-mobile { /* a side panel's × (phones only), the size of its title */
+.buttonsRight > .close-icon-mobile { /* a header's round ×, the size of its title */
   font-size: 1.17em;
   width: 1.75em;
   height: 1.75em;
@@ -1602,10 +1604,20 @@ ul li {
 .close-icon {
   font-size:2rem;
 }
-.close-icon-mobile {
+.close-icon-mobile { /* a header's round × (phones only) */
   border-radius: 5em;
   background-color: var(--highlight-color);
   box-shadow: var(--btn-shadow-var);
+}
+.column_header:not(.sidebar *) .buttonsRight > .close-icon-mobile { /* on a column's colored header: like the account
+                                                                    badge above it (dark, its size), so the two line up */
+  background-color: var(--edit-color);
+  font-weight: bold;
+  font-size: 1.2rem;
+  width: 1.625rem;
+  height: 1.625rem;
+  line-height: 1;
+  padding: 0;
 }
 .songbookList-color {
   background-color: var(--songbookList-color);
@@ -2010,7 +2022,8 @@ input[type="number"] {
 .showStatus .export_status {
   display: initial;
 }
-.song .hide_for_songs {
+.song .hide_for_songs,
+body:not(.song) .show_for_songs { /* and what's only for exporting one song */
   display: none;
 }
 #raw_edit {
@@ -2112,10 +2125,6 @@ input[type="number"] {
 .export-actions-group .btn {
   margin: 0;
 }
-#export .auto-refresh { /* on one line, beside the progress bar */
-  white-space: nowrap;
-  margin-right: .5rem;
-}
 .export-actions-note { /* what a group's button does, under it */
   flex-basis: 100%;
   color: gray;
@@ -2136,6 +2145,9 @@ input[type="number"] {
     width: 3.5rem;
     height: 2.4rem;
     font-size: 1rem;
+  }
+  #export .float-menu { /* its × in the title row and Close at the bottom instead (a short landscape phone keeps it) */
+    display: none;
   }
 }
 #cfg_buttons {
@@ -2430,8 +2442,8 @@ input[type="number"] {
     padding-right: 1rem; /* no room needed for the tab, and none showing as a dark strip above the song */
   }
   /* A column with a side panel (the song and songbook editors, and the export) keeps room on its right
-     (--tab-room), so the closed panel's tab covers none of its boxes; the bands across its top (its header,
-     an editor's Save band) still reach the right edge, and what's in them lines up with the boxes below */
+     (--tab-room), so the closed panel's tab covers none of its boxes (a songbook's trash cans, a verse's drag
+     grip); the bands across its top (its header, an editor's Save band) still reach the right edge */
   .column {
     --tab-room: 3rem; /* the closed panel's tab (--tab-width, 2.75rem) and a little gap */
   }
@@ -2448,10 +2460,11 @@ input[type="number"] {
     margin-right: calc(-1 * var(--tab-room));
   }
   #song.edit .subcolumn:first-child .column_header,
-  #songList.edit .subcolumn:first-child .column_header,
-  #export .subcolumn:first-child .column_header {
+  #songList.edit .subcolumn:first-child .column_header {
     padding-right: var(--tab-room);
   }
+  /* (the export's header keeps its usual 1rem: the tab sits lower down, and its × lines up under the account
+     badge) */
   .songList #songList.edit .sidebar-open,
   .song #song.edit .sidebar-open {
     transform: translate3d(0, 0, 0);

@@ -17,7 +17,7 @@ async function handleFile(f) {
     result = await importSongV2(f);
   }
   else {
-    console.log('not a recognized file');
+    document.getElementById('result').textContent = `"${f.name}" isn't a file yCanta can import: choose a .zip of yCanta 1 songs or a .json file from an export.`;
   }
   return result;
 }
@@ -241,24 +241,52 @@ async function importSongV2(f){
   window.import.progressBar = document.getElementById('progress_bar');
   window.import.progressText = document.getElementById('progress_text');
 
+  // A line under the progress bar: what's happening, or what went wrong
+  const say = text => { progressText.textContent = text; };
+  window.import.comments = 0;
+  window.import.commentsSkipped = 0;
+
   reader = new FileReader();
+  reader.onerror = () => say("Couldn't read this file.");
   reader.readAsText(f);
-  
+
   reader.onloadend = function(){
-    let fileObject = JSON.parse(reader.result);
+    if (reader.error) return;
+    let fileObject;
+    try {
+      fileObject = JSON.parse(reader.result);
+    } catch (err) {
+      return say("This isn't a JSON file yCanta can read. Choose a file from an export's JSON file button.");
+    }
+    const id = typeof fileObject?._id === 'string' ? fileObject._id : '';
     //if song do song import
-    if(fileObject._id.startsWith('s-')){
+    if(id.startsWith('s-')){
       console.log('Loaded song: '+fileObject.title);
       importSong(fileObject);
     }
-    //else if songbook do process 
-    else if(fileObject._id.startsWith('sb-')){
+    //else if songbook do process
+    else if(id.startsWith('sb-') && Array.isArray(fileObject.songs)){
       console.log('Loaded songbook: '+fileObject.title);
       importSongbook(fileObject);
     }
     else {
-      console.log("I don't know this file structure...");
+      say("This JSON file isn't a yCanta song or songbook. Choose a file from an export's JSON file button.");
     }
+  }
+
+  // What happened, once everything is in: brought in, kept as it was here, failed
+  function summary(what) {
+    const i = window.import;
+    const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+    const lines = [`Imported ${what}.`];
+    const added = i.n_songs + i.n_songbooks, kept = i.n_songs2 + i.n_songbooks2;
+    if (added) lines.push(`Added or updated: ${plural(added, 'item')}.`);
+    if (kept) lines.push(`Kept as they were here: ${plural(kept, 'item')} (the copy here is as new or newer, or belongs to someone else).`);
+    if (i.n_other) lines.push(`Couldn't save: ${plural(i.n_other, 'item')}.`);
+    if (i.comments) lines.push(`Comment threads brought in: ${i.comments}.`);
+    if (i.commentsSkipped) lines.push(`Comment threads left out: ${i.commentsSkipped} (only editors can bring in other people's comments).`);
+    progressText.style.whiteSpace = 'normal';
+    say(lines.join(' '));
   }
 
   async function importSong(fileObject){
@@ -269,14 +297,14 @@ async function importSongV2(f){
     //import song
     Promise.resolve(uploadIfNewer(song)).then(function(result){
       console.log('done!', result);
-      document.getElementById('progress_text').innerHTML = 'All docs imported!';
+      summary(`"${song.title}"`);
     });
   }
 
   async function importSongbook(fileObject){
-    let songs = fileObject.songs.map(song => song.doc);
+    let songs = fileObject.songs.map(song => song.doc).filter(Boolean);
     window.import.file_count = songs.length + 1;
-    //first import the songs   
+    //first import the songs
     let promiseList = [];
     songs.forEach(function(song){
       delete song._rev
@@ -285,7 +313,10 @@ async function importSongV2(f){
 
     //then import the songbook
     let songbook = fileObject;
+    const oldId = songbook._id;
+    const threads = Array.isArray(songbook.comments) ? songbook.comments : [];
     delete songbook.songs;
+    delete songbook.comments;
     delete songbook._rev;
     if(songbook._id == 'sb-allSongs' || songbook._id == 'sb-favoriteSongs'){
       songbook._id = 'sb-'+new Date().getTime().toString();
@@ -296,14 +327,43 @@ async function importSongV2(f){
       songbook.edited = new Date().getTime();
     }
     promiseList.push(uploadIfNewer(songbook));
+    // and its comment threads, under the book's id here
+    threads.forEach(thread => {
+      if (typeof thread?._id !== 'string' || !thread._id.startsWith(`c_${oldId}_`) || !Array.isArray(thread.comments)) return;
+      promiseList.push(importComments({ ...thread, _id: `c_${songbook._id}_` + thread._id.slice(`c_${oldId}_`.length) }));
+    });
     Promise.all(promiseList).then(function(results){
       console.log('done!', results.length);
-      initializeSongbooksList();
-      document.getElementById('progress_text').innerHTML = 'All docs imported!';
+      summary(`"${songbook.title}"`);
       initializeSongbooksList();
       dbChanges();
       loadRecentSongs();
     });
+  }
+
+  // A comment thread: added to the one here, if there is one (the comments it doesn't have yet, after its own,
+  // so nothing already here changes). Only editors may write other people's comments (the save rules).
+  async function importComments(thread) {
+    if (!window.church?.editor) { window.import.commentsSkipped++; return; }
+    const key = c => `${c?.user}\0${c?.date}\0${c?.comment}`;
+    try {
+      let existing = null;
+      try { existing = await db.get(thread._id); } catch (err) { if (err.status !== 404) throw err; }
+      if (!existing) {
+        await db.put({ _id: thread._id, comments: thread.comments });
+        window.import.comments++;
+        return;
+      }
+      const have = new Set((existing.comments || []).map(key));
+      const added = thread.comments.filter(c => !have.has(key(c)));
+      if (added.length) {
+        await db.put({ ...existing, comments: [...(existing.comments || []), ...added] });
+        window.import.comments++;
+      }
+    } catch (err) {
+      console.log(err);
+      window.import.n_other++;
+    }
   }
 
   // Who a song or songbook is credited to. Editors and church admins keep the original credit. Everyone
@@ -359,7 +419,7 @@ async function importSongV2(f){
             saveWithHistory(doc).then(result => [null, result], err => [err]).then(function([err, result]) {
               if (!err) {
                 console.log('imported: ', doc.title);
-                document.getElementById('progress_text').innerHTML = 'imported: ', doc.title;
+                document.getElementById('progress_text').textContent = 'imported: ' + doc.title;
                 resolve('n_'+doc_type+'s');
                 window.import['n_'+doc_type+'s']++;
                 updateProgress();
