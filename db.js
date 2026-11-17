@@ -2756,7 +2756,8 @@ function saveSongbook(songbook_id, songbook_html = document.getElementById('song
 
         if (change_url) {
           window.location.hash = `#${window.songbook._id}`;
-          document.querySelectorAll('.edit_buttons').forEach(el => el.remove());
+          // the editors' bands only: the export's band is part of the page (index.html)
+          document.querySelectorAll('#songList .edit_buttons, #song .edit_buttons').forEach(el => el.remove());
           initializeSongbooksList();
         }
 

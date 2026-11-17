@@ -282,22 +282,25 @@
         </div>
       </div>
       <div class="column" id="export">
-        <div class="float-menu">
-          <button class="float-menu-item" onclick="window.location.hash=window.location.hash.replace('?export','');"><span class="float-menu-icon">&#10005;</span> Close</button>
-        </div>
+        <div class="float-menu"></div><!-- none: Close is in the export's band, like an editor's Cancel -->
         <div class="row">
           <div class="subcolumn">
             <div class="content">
+              <!-- Its main action and the way out: in its title row (where the Preview keeps Download and ×), and
+                   again at the bottom, like an editor's Save and Cancel -->
               <div class="column_header">
                 <div class="title">
                   <h3 class="export_header">Export</h3>
+                  <span class="buttonsRight">
+                    <button type="button" class="btn" onclick="generatePdf()">Generate PDF</button>
+                    <button type="button" class="btn" onclick="closeExport()">Close</button>
+                  </span>
                 </div>
               </div>
               <table>
                 <tr>
                   <td>
-                    <button style="background-color: var(--edit-color);" class="btn" onclick="pdfFormatter.postMessage([window.exportObject,read_config_form()]);">Generate PDF</button>
-                    <small style="margin-left: 1rem;"><input id="auto_refresh" name="auto_refresh" type="checkbox" checked><label for="auto_refresh"> Auto refresh?</label></small>
+                    <small class="auto-refresh"><input id="auto_refresh" name="auto_refresh" type="checkbox" checked><label for="auto_refresh"> Auto refresh?</label></small>
                   </td>
                   <td style="width: 100%">
                     <div id='pdf_progress_bar' style='border: 1px solid black; position: relative;'>
@@ -719,18 +722,22 @@
                    for another yCanta (#131). Copy and Paste move the settings only, so they sit with Save. -->
               <div class="export-actions">
                 <div class="export-actions-group">
-                  <b>These settings</b>
+                  <b>Export settings</b>
                   <div id="cfg_buttons"></div>
                   <button class="btn" id="export_new_config" onclick="createExportCfg();">+ Save new Config</button>
-                  <button class="btn" id="export_copy" onclick="copyToClipboard(JSON.stringify(serializeForm('export_form')));" title="Copy these settings, to paste into another export">📄 Copy settings</button>
-                  <button class="btn" id="export_paste" onclick="pasteFromClipboard();" title="Paste settings someone copied">📋 Paste settings</button>
+                  <button class="btn" id="export_copy" onclick="copyToClipboard(JSON.stringify(serializeForm('export_form')));" title="Copy these settings, to paste into another export">📄 Copy</button>
+                  <button class="btn" id="export_paste" onclick="pasteFromClipboard();" title="Paste settings someone copied">📋 Paste</button>
                 </div>
                 <div class="export-actions-group">
-                  <b>Send to another yCanta</b>
+                  <b>Export</b>
                   <!-- rarely needed, so here rather than at the top (#131) -->
                   <button class="btn" onclick="download(JSON.stringify(window.exportObject),window.exportObject.title+'.json','application/json')" title="Download the songs as a yCanta JSON file">Export JSON file</button>
                   <small class="export-actions-note">The songs themselves, as a file another yCanta can open.</small>
                 </div>
+              </div>
+              <div class="edit_buttons">
+                <button type="button" class="btn" onclick="generatePdf()">Generate PDF</button>
+                <button type="button" class="btn" onclick="closeExport()">Close</button>
               </div>
             </div>
           </div>

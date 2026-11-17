@@ -513,8 +513,12 @@ try {
     await ev(`document.querySelector('dialog[open] form').requestSubmit()`);
     await until(`![...document.querySelectorAll('#cfg_buttons [data-save-name]')].some(b => b.dataset.saveName === ${JSON.stringify(`${RUN} Cfg`)})`, 'the config to go', 10000).catch(() => {});
     ok(!(await ev(`[...document.getElementById('format').options].some(o => o.textContent === ${JSON.stringify(`Your ${RUN} Cfg`)})`)), 'export: the × deletes a config, after asking');
-    ok((await ev(`document.querySelector('#export .float-menu').textContent.trim()`)) === '✕ Close', 'export: its float button says Close, not a trash can');
-    await ev(`location.hash = '#${bookId}'`);
+    const band = await ev(`[...document.querySelectorAll('#export .subcolumn:first-child .column_header .buttonsRight, #export .edit_buttons')].map(b => b.innerText.replace(/\\s+/g, ' ').trim())`);
+    ok(band.length === 2 && band.every(t => t === 'Generate PDF Close') && !(await ev(`document.querySelector('#export .float-menu').children.length`)),
+      'export: Generate PDF and Close in its title row and at the bottom, no floating button', JSON.stringify(band));
+    await ev(`[...document.querySelectorAll('#export .edit_buttons')].pop().querySelector('button:last-child').click()`);
+    await until(`location.hash === '#${bookId}'`, 'Close to leave the export');
+    ok(true, 'export: Close goes back to the songbook');
 
     // 6a. With a mouse: in the book editor, with a song open, drop the other song on the song to open it
     await ev(`location.hash = '#${bookId}?edit&${songId}'`);

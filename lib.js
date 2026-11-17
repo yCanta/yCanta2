@@ -3322,10 +3322,16 @@ window.addEventListener('load', function() {
   makeDraggable(document.getElementById('song'), function() {
     window.location.hash = '#' + formatSbID(window.songbook._id);
   }, 'top');
-  makeDraggable(document.getElementById('export'), function() {
-    window.location.hash = window.location.hash.replace('?export','');
-  }, 'top');
+  makeDraggable(document.getElementById('export'), closeExport, 'top');
 }, false);
+
+// The export's band (index.html): make the PDF again, or leave the export for the page it was opened from
+function generatePdf() {
+  pdfFormatter.postMessage([window.exportObject, read_config_form()]);
+}
+function closeExport() {
+  window.location.hash = window.location.hash.replace('?export', '');
+}
 
 
 function bindSearch(element, search_prefix) {
