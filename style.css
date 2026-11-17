@@ -1894,15 +1894,24 @@ input[type='radio'].toggle {
   border-bottom-left-radius: 8px;
   border-bottom-right-radius: 8px;
   padding: .5rem 1rem;
-}
-.collapsible-content {
-  max-height: 0;
+  min-height: 0;
   overflow: hidden;
+  transition: padding .2s;
+}
+/* An export section opens to its own height, however tall (a fixed 650px cut the Text and Index sections
+   off on a phone): its one row grows from 0fr to 1fr */
+.collapsible-content {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows .2s;
   margin-bottom: 1rem;
 }
 .toggle:checked + .lbl-toggle + .collapsible-content {
-  max-height: 650px;
-  transition-delay: 0.065s; /*get weird resizing without this...  */
+  grid-template-rows: 1fr;
+}
+.toggle:not(:checked) + .lbl-toggle + .collapsible-content .content-inner {
+  padding-top: 0;
+  padding-bottom: 0;
 }
 .toggle:checked + .lbl-toggle::before {
   transform: rotate(90deg) translateX(-3px);
@@ -1961,6 +1970,13 @@ input[type="number"] {
 .expandedTable {
   box-shadow: var(--btn-shadow-var);
   width: 100%;
+}
+/* Its font menus and the Excluded box fill their cells: sized to their longest choice ("Helvetica-
+   BoldOblique") or 30 letters, they pushed the Index table past the panel's edge on a phone */
+.expandedTable select,
+.expandedTable input[type="text"] {
+  width: 100%;
+  box-sizing: border-box;
 }
 .expandedTableHeader.collapsed {
   border-radius: 2rem;
@@ -2096,6 +2112,10 @@ input[type="number"] {
 }
 .export-actions-group .btn {
   margin: 0;
+}
+.export-actions-note { /* what a group's button does, under it */
+  flex-basis: 100%;
+  color: gray;
 }
 #export .btn { /* the export's buttons stay on one line ("Export JSON" wrapped in its narrow table cell) */
   white-space: nowrap;

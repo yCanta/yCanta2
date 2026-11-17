@@ -715,19 +715,21 @@
                   </div>
                 </div>
               </form>
-              <!-- Saving these settings, then sharing them: two groups, so the Save buttons sit together (#131) -->
+              <!-- Two groups: the settings (save them, or copy and paste them), then the songs themselves as a file
+                   for another yCanta (#131). Copy and Paste move the settings only, so they sit with Save. -->
               <div class="export-actions">
                 <div class="export-actions-group">
-                  <b>Save these settings</b>
+                  <b>These settings</b>
                   <div id="cfg_buttons"></div>
                   <button class="btn" id="export_new_config" onclick="createExportCfg();">+ Save new Config</button>
+                  <button class="btn" id="export_copy" onclick="copyToClipboard(JSON.stringify(serializeForm('export_form')));" title="Copy these settings, to paste into another export">📄 Copy settings</button>
+                  <button class="btn" id="export_paste" onclick="pasteFromClipboard();" title="Paste settings someone copied">📋 Paste settings</button>
                 </div>
                 <div class="export-actions-group">
-                  <b>Share</b>
-                  <button class="btn" id="export_copy" onclick="copyToClipboard(JSON.stringify(serializeForm('export_form')));" title="Copy these settings">📄 Copy</button>
-                  <button class="btn" id="export_paste" onclick="pasteFromClipboard();" title="Paste settings someone copied">📋 Paste</button>
+                  <b>Send to another yCanta</b>
                   <!-- rarely needed, so here rather than at the top (#131) -->
-                  <button class="btn" onclick="download(JSON.stringify(window.exportObject),window.exportObject.title+'.json','application/json')" title="Download what's being exported as a yCanta JSON file">Export JSON</button>
+                  <button class="btn" onclick="download(JSON.stringify(window.exportObject),window.exportObject.title+'.json','application/json')" title="Download the songs as a yCanta JSON file">Export JSON file</button>
+                  <small class="export-actions-note">The songs themselves, as a file another yCanta can open.</small>
                 </div>
               </div>
             </div>
