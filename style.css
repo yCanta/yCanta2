@@ -3044,10 +3044,13 @@ only screen and (max-height: 31.25rem) {
   background-color: var(--song-color);
   color: black;
 }
-.install-dot #username_legend {
+/* The red dot: on the account badge while its menu is closed, on the Install button once it's open */
+.install-dot #username_legend,
+.install-dot .install-btn {
   position: relative;
 }
-.install-dot #username_legend::after {
+.install-dot .accountBtn.closed #username_legend::after,
+.install-dot .accountBtn:not(.closed) .install-btn::after {
   content: '';
   position: absolute;
   top: -.15rem;
