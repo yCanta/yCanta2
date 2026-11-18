@@ -1423,7 +1423,7 @@ info:after {
   top: 0;
   margin: 0 -1rem;
   padding: 0 1rem;
-  z-index: 1;
+  z-index: 5; /* over what scrolls under it: the ▶/Key row (#keyToggleContainer, 3) drew on top of Save and Reset */
   height: 4rem;
 }
 .song-highlight a {
