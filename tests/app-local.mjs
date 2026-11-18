@@ -427,10 +427,15 @@ try {
     await ev(`location.hash = location.hash + '?edit'`);
     await until(`!!document.querySelector('#song .edit_buttons')`, 'the song editor');
     await type('#song .song-title a', `${RUN} Song Edited`, true);
+    // and make its first part a chorus with the part's type menu (the grip after the menu took the type, v11-v16)
+    await ev(`(() => { const s = document.querySelector('#song .wrap > select[name="types"]'); s.value = 'chorus';
+      s.dispatchEvent(new Event('change', { bubbles: true })); return 'ok'; })()`);
+    ok((await ev(`document.querySelector('#song .wrap > .drag-grip').hasAttribute('type')`)) === false, "the part's type menu leaves the drag grip alone");
     await click('#song .edit_buttons button');
     await until(`!location.hash.includes('?edit') && !!document.querySelector('#song .song-card[data-rev^="2-"]')`, 'the edited song');
     const edited = await remoteWhen(songId, d => d.title === `${RUN} Song Edited`);
     ok(edited.title === `${RUN} Song Edited`, 'an edit is saved', edited.title);
+    ok(edited.content?.[0]?.[0]?.type === 'chorus', "a part's new type is saved", JSON.stringify(edited.content?.[0]?.[0]));
 
     // 3. Cancel an edit: nothing is saved
     await ev(`location.hash = location.hash + '?edit'`);

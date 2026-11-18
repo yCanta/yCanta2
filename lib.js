@@ -1017,11 +1017,12 @@ function bindToSongEdit() {
     }
   });
 
-  // Handle select changes
+  // A part's type menu: the type goes on its part (the chunk in the same .wrap), which saveSong reads. It
+  // used to go on the menu's next sibling, which has been the drag grip since v11, so a changed type was
+  // lost on save and the grip showed the label ("Chorus:").
   song.addEventListener('change', e => {
-    if (e.target.tagName === 'SELECT') {
-      const type = e.target.options[e.target.selectedIndex]?.text;
-      if (type) e.target.nextElementSibling?.setAttribute('type', type);
+    if (e.target.matches('.wrap > select[name="types"]')) {
+      e.target.closest('.wrap').querySelector('chunk')?.setAttribute('type', e.target.value);
     }
   });
 }
