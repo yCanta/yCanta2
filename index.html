@@ -1481,7 +1481,6 @@ function _runPostRouteCleanup(bodyClassList) {
   }
 
   // 2. DOM Reset/Cleanup
-  document.querySelectorAll('.deleted').forEach(el => el.classList.remove('deleted'));
   document.querySelectorAll('.column').forEach(el => el.removeAttribute('style'));
 
   // 3. Update all internal links

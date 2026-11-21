@@ -1877,8 +1877,7 @@ function loadSong(song_id, song_rev = false) {
         window.song._revs_info = song._revs_info ? song._revs_info.filter(rev => rev.status === 'available') : [];
       }
 
-      // Build song element class list
-      // (not 'deleted': the router strips that class from everything when it finishes a route)
+      // Build song element class list (a deleted song says so in its .deleted-note line)
       const songElClassList = [];
       if (deleted) songElClassList.push('deleted-song');
       if (song_rev) {
