@@ -2620,6 +2620,9 @@ async function editSong() {
     
     select.value = chunk.getAttribute('type').toLowerCase();
     wrapper.appendChild(select);
+    // how this part will look in a presentation (#156)
+    wrapper.insertAdjacentHTML('beforeend', `<button type="button" class="btn btn-tiny chunk-preview" onclick="previewChunk(this)"
+      title="See how this part will show in a presentation">Preview</button>`);
     // something to hold to drag the chunk, easy to find with a finger (the whole box works too)
     const grip = document.createElement('span');
     grip.className = 'drag-grip';
@@ -2734,6 +2737,191 @@ async function saveSongbookFromEditor() {
   }
 }
 
+// A part being edited, as the song keeps it: <line>s, a chord line folded into the line under it as <c>s.
+// Save and the part's preview (#156) both read it this way.
+function editedChunkLines(chunk) {
+  // Use innerHTML (not textContent) so &lt; and &amp; stay escaped like the old .html() did.
+  // Browsers may turn typed newlines into <br> or <div>, so turn those back into \n first.
+  const lines = chunk.innerHTML
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(div|p)>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .split('\n');
+  let prevIsChord = false;
+  let content = '';
+
+  lines.forEach((line, index) => {
+    if (prevIsChord) {
+      content += `<line>${combine(lines[index - 1], line)}</line>`;
+      prevIsChord = false;
+    } else if (isChord(line)) {
+      prevIsChord = true;
+    } else if (line.length > 0) { //we have a line
+      content += `<line>${line}</line>`;
+    }
+  });
+  return content;
+}
+
+// ---- A part's presentation preview, while a song is edited (#156). A part's Preview button opens a floating
+// window (index.html #chunkPreview) that drags like the Info window. It shows the part being edited as a
+// presentation shows it: presentation.html's own styles in a frame the shape of the screen, the text fitted
+// the way presentation.js fits it. It follows the part you click or type in, and changes as you type. A menu
+// picks the screen's shape and a switch the chords. The shape, the chords and where it was left are kept
+// for next time (on this device). It closes when the editor does.
+const PREVIEW_RATIOS = [['16:9', 16 / 9], ['16:10', 16 / 10], ['4:3', 4 / 3]];
+const PREVIEW_WIDTH = 1280; // the frame's own width: the text sizes match a big screen's, then it's shrunk to fit
+let presentationStyles; // presentation.html's <style>, read once
+let previewedChunk = null; // the part the preview shows
+let previewTimer;
+
+function previewSetting(name, fallback) {
+  try { return localStorage.getItem('chunkPreview.' + name) ?? fallback; } catch { return fallback; }
+}
+function keepPreviewSetting(name, value) {
+  try { localStorage.setItem('chunkPreview.' + name, value); } catch {}
+}
+
+// What presentation.js shows for one part (its build_chunk): the title, authors, scripture and key on a
+// song's first part, a verse's number, and the copyright on its last. Comments aren't shown, so they
+// don't count as first or last, and they're not numbered.
+function previewSlideHtml(card, chunk) {
+  const parts = [...card.querySelectorAll('song > .wrap > chunk')].filter(c => c.getAttribute('type') !== 'comment');
+  const at = parts.indexOf(chunk);
+  const type = chunk.getAttribute('type') || 'verse';
+  const text = sel => escapeHtml(card.querySelector(sel)?.textContent.trim() || '');
+  let html = '';
+  if (at === 0) {
+    html += `<stitle>${text('.song-title')}</stitle><author>${text('authors')}</author>`
+          + `<scripture_ref>${text('scripture_ref')}</scripture_ref><key>${text('key')}</key>`;
+  }
+  html += `<chunk type="${escapeHtml(type)}">`;
+  if (type === 'verse') html += `<span>${parts.slice(0, at).filter(c => c.getAttribute('type') === 'verse').length + 1}:</span>`;
+  html += editedChunkLines(chunk) + '</chunk>';
+  if (at === parts.length - 1) html += `<copyright>${text('copyright')}</copyright>`;
+  return html;
+}
+
+// presentation.js scaleText: the biggest text size (in steps) that fits the screen
+function fitPreviewSlide(win) {
+  const slide = win.document.getElementById('cur_slide');
+  const content = slide.querySelector('.content');
+  const tooBig = () => slide.scrollWidth > win.innerWidth || slide.scrollHeight > win.innerHeight;
+  let small = 50, big = 1500, percent = (big + small) / 2;
+  while (big - small > 10) {
+    content.style.fontSize = percent + '%';
+    if (tooBig()) big = percent;
+    else small = percent;
+    percent = (big + small) / 2;
+  }
+  content.style.fontSize = (percent - 10) + '%';
+  if (tooBig()) content.style.fontSize = small + '%';
+}
+
+// The frame (a big screen's size) shrunk to the window's width
+function scalePreviewFrame() {
+  const screen = document.querySelector('#chunkPreview .slide-preview');
+  if (screen.clientWidth) screen.querySelector('iframe').style.transform = `scale(${screen.clientWidth / PREVIEW_WIDTH})`;
+}
+
+// A part's Preview button: open the window (filled once with presentation.html's look) on that part
+async function previewChunk(button) {
+  const win = document.getElementById('chunkPreview');
+  const frame = win.querySelector('iframe');
+  previewedChunk = button.closest('.wrap').querySelector('chunk');
+  if (!frame.dataset.ready) {
+    if (presentationStyles === undefined) {
+      try {
+        const page = await (await fetch('presentation.html')).text();
+        presentationStyles = new DOMParser().parseFromString(page, 'text/html').querySelector('style')?.textContent || '';
+      } catch {
+        notyf.error("Couldn't load the presentation's look. Try again when you're online.", 'red');
+        return;
+      }
+    }
+    win.querySelector('[name="ratio"]').innerHTML = PREVIEW_RATIOS.map(([label]) => `<option>${label}</option>`).join('');
+    win.hidden = false; // the frame is measured, so it's shown before it's filled
+    const loaded = new Promise(resolve => frame.addEventListener('load', resolve, { once: true }));
+    frame.srcdoc = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${presentationStyles}</style>
+      <style>#statusbar, #slides::before, #slides::after { display: none; }</style></head>
+      <body class="presentation"><div id="slides"><div id="cur_slide" class="slide"><div class="content"></div></div></div></body></html>`;
+    await loaded;
+    frame.dataset.ready = '1';
+    new ResizeObserver(scalePreviewFrame).observe(win.querySelector('.slide-preview'));
+  }
+  const opening = win.hidden || !win.dataset.placed;
+  win.querySelector('[name="ratio"]').value = previewSetting('ratio', '16:9');
+  win.querySelector('[name="chords"]').checked = previewSetting('chords', 'false') === 'true';
+  win.hidden = false;
+  drawChunkPreview();
+  if (opening) { // where it was left, else the bottom right corner (out of the way on a phone); on screen either way
+    win.dataset.placed = '1';
+    let place = null;
+    try { place = JSON.parse(previewSetting('place', 'null')); } catch {}
+    const maxX = innerWidth - win.offsetWidth - 8, maxY = innerHeight - win.offsetHeight - 8;
+    const [x, y] = Array.isArray(place) ? place : [maxX - 8, maxY - 8];
+    win.style.transform = `translate3d(${Math.max(8, Math.min(maxX, x))}px, ${Math.max(8, Math.min(maxY, y))}px, 0)`;
+  }
+}
+
+// Draw the part again: after typing, another part picked, the shape or the chords changed
+function drawChunkPreview() {
+  const win = document.getElementById('chunkPreview');
+  if (win.hidden) return;
+  const chunk = previewedChunk;
+  if (!chunk?.isConnected || !window.songEditing) { // the editor closed (saved, cancelled, another page)
+    closeChunkPreview();
+    return;
+  }
+  const frame = win.querySelector('iframe');
+  const doc = frame.contentDocument;
+  if (!doc?.getElementById('cur_slide')) return; // still loading
+  const shape = PREVIEW_RATIOS.find(([label]) => label === win.querySelector('[name="ratio"]').value)?.[1] || 16 / 9;
+  win.querySelector('.slide-preview').style.aspectRatio = shape;
+  frame.style.width = PREVIEW_WIDTH + 'px';
+  frame.style.height = Math.round(PREVIEW_WIDTH / shape) + 'px';
+  scalePreviewFrame();
+
+  const card = chunk.closest('.song-card');
+  const all = [...card.querySelectorAll('song > .wrap > chunk')];
+  const typeName = chunk.closest('.wrap').querySelector('select')?.selectedOptions[0]?.text || '';
+  win.querySelector('.preview-part').textContent = `${typeName} (${all.indexOf(chunk) + 1} of ${all.length})`;
+  all.forEach(c => c.closest('.wrap').classList.toggle('previewed', c === chunk));
+  doc.body.className = 'presentation' + (win.querySelector('[name="chords"]').checked ? '' : ' nochords');
+  const content = doc.querySelector('#cur_slide .content');
+  if (chunk.getAttribute('type') === 'comment') {
+    content.innerHTML = `<p style="font-family: sans-serif; color: gray">A comment doesn't show in a presentation.</p>`;
+    content.style.fontSize = '400%';
+  } else {
+    content.innerHTML = previewSlideHtml(card, chunk);
+    fitPreviewSlide(frame.contentWindow);
+  }
+}
+
+function closeChunkPreview() {
+  document.getElementById('chunkPreview').hidden = true;
+  document.querySelectorAll('#song .wrap.previewed').forEach(wrap => wrap.classList.remove('previewed'));
+  previewedChunk = null;
+}
+
+// It follows the part you click or type in, and keeps up with your typing (a moment after you stop)
+document.addEventListener('focusin', e => {
+  const chunk = e.target.closest?.('#song song > .wrap > chunk');
+  if (chunk && chunk !== previewedChunk && !document.getElementById('chunkPreview').hidden) {
+    previewedChunk = chunk;
+    drawChunkPreview();
+  }
+});
+document.addEventListener('input', e => {
+  if (!e.target.closest?.('#song')) return;
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(drawChunkPreview, 150);
+});
+document.addEventListener('change', e => { // a part's type (bindToSongEdit has put it on the part by now)
+  if (e.target.matches?.('#song .wrap > select[name="types"]')) drawChunkPreview();
+});
+window.addEventListener('hashchange', () => setTimeout(drawChunkPreview, 0)); // closes it once the editor has
+
 async function prepSaveSong() {
   if (!document.querySelector('#song .song-card .song-title')?.textContent.trim()) {
     alert('Please add a title before you save');
@@ -2752,31 +2940,7 @@ async function prepSaveSong() {
   editor.style.display = 'none';
 
   // Process chunks
-  const chunks = songElement.querySelectorAll('chunk');
-  chunks.forEach(chunk => {
-    // Use innerHTML (not textContent) so &lt; and &amp; stay escaped like the old .html() did.
-    // Browsers may turn typed newlines into <br> or <div>, so turn those back into \n first.
-    const lines = chunk.innerHTML
-      .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<\/(div|p)>/gi, '\n')
-      .replace(/<[^>]+>/g, '')
-      .split('\n');
-    let prevIsChord = false;
-    let content = '';
-
-    lines.forEach((line, index) => {
-      if (prevIsChord) {
-        content += `<line>${combine(lines[index - 1], line)}</line>`;
-        prevIsChord = false;
-      } else if (isChord(line)) {
-        prevIsChord = true;
-      } else if (line.length > 0) { //we have a line
-        content += `<line>${line}</line>`;
-      }
-    });
-
-    chunk.innerHTML = content;
-  });
+  songElement.querySelectorAll('chunk').forEach(chunk => { chunk.innerHTML = editedChunkLines(chunk); });
 
   // Handle CCLI checkbox
   if (ccliCheckbox?.checked && ccliElement) {

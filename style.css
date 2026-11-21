@@ -680,7 +680,8 @@ legend {
 }
 /* The video player (#140, index.html #playerDock): one box, three looks (data-look). Only CSS changes
    between them, so YouTube's iframe never moves in the page and never reloads. */
-#playerDock {
+#playerDock,
+#chunkPreview {
   position: fixed;
   top: 0;
   left: 0;
@@ -696,8 +697,63 @@ legend {
   user-select: none;
   -webkit-user-select: none;
 }
-#playerDock[hidden] {
+#playerDock[hidden],
+#chunkPreview[hidden] {
   display: none !important;
+}
+/* A part's presentation preview, while a song is edited (#156): a floating window like the player's,
+   with the part drawn in a screen-shaped frame */
+#chunkPreview {
+  width: min(20rem, 75vw); /* on a phone, room beside it to see the song */
+  padding: .75rem 1rem 1rem;
+  border-radius: 1.5rem;
+}
+#chunkPreview * {
+  transition: none; /* not the page's .25s on everything: the frame would grow from full size each time */
+}
+#chunkPreview .preview-head {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  cursor: grab;
+}
+#chunkPreview .preview-head h5 {
+  margin: 0;
+  color: darkgray;
+}
+#chunkPreview .preview-part {
+  flex: 1;
+  text-align: left;
+  font-size: .9em;
+  font-weight: bold;
+}
+#chunkPreview .preview-head button {
+  background: none;
+  border: 0;
+  color: inherit;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+#chunkPreview .preview-controls {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  margin: .5rem 0;
+}
+#chunkPreview .slide-preview {
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px gray;
+  background: white; /* the presentation's own background */
+}
+#chunkPreview .slide-preview iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 0;
+  transform-origin: 0 0;
+  pointer-events: none; /* a drag that crosses it keeps going (the frame would take the mouse) */
 }
 /* nothing inside eases between looks (the app's "* { transition }" did): the video was resized step by
    step for a quarter second, and YouTube redrew its player at each step, which was slow on a phone */
@@ -1260,7 +1316,8 @@ stitle, cat, author, scrip_ref, key, copyright, cclis {
 .song .edit .wrap {
   cursor: move;
 }
-.song .edit .wrap:hover {
+.song .edit .wrap:hover,
+.song .edit .wrap.previewed { /* the part the floating preview shows (#156) */
   box-shadow: 0 0 0 1px var(--song-color);
   border-radius: 2px;
 }

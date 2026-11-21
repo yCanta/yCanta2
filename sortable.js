@@ -139,8 +139,8 @@ function dragDialog(dialogEl = document.getElementById('dialog'), onSettle = nul
       //document.documentElement.classList.add('no-overscroll');
       // the player drags only as a floating window, not as the docked pill or the tucked tab
       if (this.el.dataset.look && this.el.dataset.look !== 'dialog') return;
-      // its buttons are buttons, not handles (a tap that wobbles shouldn't fling it away)
-      if (this.el.id === 'playerDock' && e.target.closest('button')) return;
+      // its buttons and menus are controls, not handles (a tap that wobbles shouldn't fling it away)
+      if (this.el.id !== 'dialog' && e.target.closest('button, select, label')) return;
 
       this.positions = [];
       this.preEvent = '';

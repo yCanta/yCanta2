@@ -810,6 +810,20 @@
         <button type="button" class="player-play" onclick="toggleVideo()" aria-label="Play or pause">▶</button>
       </div>
     </div>
+    <!-- A part's presentation preview, while a song is edited (#156): floats and drags like the Info window,
+         shows the part being typed in, and changes as it's typed (lib.js previewChunk) -->
+    <div id="chunkPreview" hidden>
+      <div class="preview-head">
+        <h5 class="handle">Preview</h5>
+        <span class="preview-part"></span>
+        <button type="button" onclick="closeChunkPreview()" aria-label="Close the preview" title="Close">&times;</button>
+      </div>
+      <div class="preview-controls">
+        <select name="ratio" aria-label="Screen shape" onchange="keepPreviewSetting('ratio', this.value); drawChunkPreview()"></select>
+        <label class="chord-switch"><input type="checkbox" name="chords" onchange="keepPreviewSetting('chords', this.checked); drawChunkPreview()"><span class="switch-track" aria-hidden="true"></span>Chords</label>
+      </div>
+      <div class="slide-preview"><iframe title="How this part will show" tabindex="-1"></iframe></div>
+    </div>
     <footer>
     </footer>
     <iframe id="presentation" title="Presentation Slideshow"></iframe>
@@ -855,6 +869,7 @@
       setTimeout(function(){sheet.insertRule("* { transition: all 0.25s, color 0s, font-size 0s; }", 0); },300);
       dragDialog();
       dragDialog(document.getElementById('playerDock'), playerDockSettled, playerDockFlung);
+      dragDialog(document.getElementById('chunkPreview'), (x, y) => keepPreviewSetting('place', JSON.stringify([x, y])));
 
       bindToSongEdit();
       bindSearch('cat', 'c:');
