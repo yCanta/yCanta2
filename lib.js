@@ -915,7 +915,23 @@ function highlightText(){
       "acrossElements": true,
       "separateWordSearch": false
     });
+    markSongFilter();
   }
+}
+// The songbook's filter marks what it picked on the open song, as the search marks its words (#155): the
+// key, the categories, and the scripture or CCLI line for "Has". Only those fields, so a key "G" doesn't
+// mark every G in the words. The search's unmark() clears these too: it removes the <mark data-markjs>s
+// that mark.js makes.
+function markSongFilter() {
+  const f = songFilters.book;
+  const song = document.querySelector('#song song');
+  if (!f || !song) return;
+  const mark = el => { if (!el.querySelector('mark')) el.innerHTML = `<mark data-markjs="true">${el.innerHTML}</mark>`; };
+  const picked = (sel, set) => song.querySelectorAll(sel).forEach(el => set.has(el.textContent.trim()) && mark(el));
+  picked('key, #keyToggle .key-name', f.key);
+  picked('cat', f.cat);
+  if (f.has.has('scripture')) song.querySelectorAll('scrip_ref').forEach(el => el.textContent.trim() && mark(el));
+  if (f.has.has('ccli')) song.querySelectorAll('cclis').forEach(el => el.textContent.trim() && mark(el));
 }
 // The keyboard in the searchable lists (#66): ↓ from the search box goes to the first result, ↑ and ↓ move
 // through the results (Home and End to the ends), and ↑ from the first result or Esc goes back to the
@@ -1740,6 +1756,7 @@ function applySongFilter(name) {
     }
   }
   renderSongFilter(name);
+  if (name === 'book') highlightText(); // the open song's marks follow the filter (#155)
 }
 
 function clearSongFilter(name) {
