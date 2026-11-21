@@ -67,6 +67,9 @@ async function importSongV1(f){
     window.import.n_songbooks = 0;
     window.import.n_songbooks2 = 0;
     window.import.n_other = 0;
+    window.import.failed = []; // names of songs and songbooks that couldn't be saved
+    window.import.skipped = 0; // files that aren't songs or songbooks (folders don't count)
+    window.import.commentFiles = 0; // a songbook's comments: not brought in (see below)
 
     song_map = {};
     promise_list = [];
@@ -99,6 +102,7 @@ async function importSongV1(f){
               .catch(function(err){ //don't let one bad song stop the whole import
                 console.error('Could not import ' + zipEntry.name, err);
                 window.import.n_other++;
+                window.import.failed.push(zipEntry.name.replace('songs/', ''));
                 updateProgress();
                 resolve('done');
               });
@@ -106,6 +110,7 @@ async function importSongV1(f){
             else {
               console.log(zipEntry.name + ' is not a song!');
               window.import.n_other++;
+              if (!zipEntry.dir) window.import.skipped++;
               updateProgress();
               window.import.progressText.innerHTML = zipEntry.name;
               resolve('done');
@@ -145,6 +150,7 @@ async function importSongV1(f){
                 .catch(function(err){ //don't let one bad songbook stop the whole import
                   console.error('Could not import ' + zipEntry.name, err);
                   window.import.n_other++;
+                  window.import.failed.push(zipEntry.name.replace('songbooks/', ''));
                   updateProgress();
                   resolve('done');
                 });
@@ -177,6 +183,8 @@ async function importSongV1(f){
               }*/
               else {
                 window.import.n_other++;
+                if (zipEntry.name.endsWith('.comment')) window.import.commentFiles++;
+                else if (!zipEntry.dir) window.import.skipped++;
                 updateProgress();
                 window.import.progressText.innerHTML = zipEntry.name;
                 console.log(zipEntry.name + ' is not a songbook!');
@@ -188,7 +196,15 @@ async function importSongV1(f){
       });
       //let's us change things when we're done.
       Promise.all(songbook_promise_list).then(function(result){
-        document.getElementById('progress_text').innerHTML = 'All docs imported!';
+        // What happened, as the JSON import says it: what came in, what couldn't be saved, what was left out
+        const i = window.import;
+        const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+        const lines = [`Imported ${plural(i.n_songs, 'song')} and ${plural(i.n_songbooks, 'songbook')}.`];
+        if (i.failed.length) lines.push(`Couldn't save ${plural(i.failed.length, 'file')}: ${i.failed.join(', ')}.`);
+        if (i.commentFiles) lines.push(`Comments aren't brought in from a yCanta 1 file (${plural(i.commentFiles, 'songbook')} had them).`);
+        if (i.skipped) lines.push(`Left out ${plural(i.skipped, 'file')} that ${i.skipped === 1 ? "isn't a song or songbook" : "aren't songs or songbooks"}.`);
+        i.progressText.style.whiteSpace = 'normal';
+        i.progressText.textContent = lines.join(' ');
         for(sb_id of songbook_with_comments){
           db.get(sb_id).then(function(result) {
             result.showComments = true;
