@@ -40,6 +40,18 @@ function safeSongLine(line) {
   }).join('');
   return walk(box.content);
 }
+// A song's scripture refs are typed as one line split at its commas, so "Ps 95:1,2,6,7" came apart into
+// "Ps 95:1", "2", "6", "7". A piece with no letters in it (a verse, a range, a chapter:verse) goes back
+// onto the ref before it; one with a book's name ("1 John 4:8", "Rom 8:11") starts a new ref.
+function joinScriptureRefs(refs) {
+  const joined = [];
+  refs.forEach(ref => {
+    const piece = String(ref ?? '').trim();
+    if (joined.length && piece && !/\p{L}/u.test(piece) && joined.at(-1)) joined[joined.length - 1] += ', ' + piece;
+    else joined.push(piece);
+  });
+  return joined;
+}
 // A copy of a song in the shape the app expects, whatever an old import, a bug or another app saved: text
 // where text belongs, lists where lists belong, and its words as parts of lines. Used before showing,
 // presenting or exporting a song, so one bad record can't stop them. The song itself never changes.
@@ -52,7 +64,7 @@ function songShape(doc) {
   return {
     ...doc,
     title: textOf(doc.title), key: textOf(doc.key), introduction: textOf(doc.introduction), copyright: textOf(doc.copyright),
-    authors: listOf(doc.authors), scripture_ref: listOf(doc.scripture_ref),
+    authors: listOf(doc.authors), scripture_ref: joinScriptureRefs(listOf(doc.scripture_ref)),
     categories: doc.categories == null ? [] : listOf(doc.categories),
     content: content.map(chunk => [
       { ...(chunk?.[0] && typeof chunk[0] === 'object' ? chunk[0] : {}), type: textOf(chunk?.[0]?.type || 'verse') },
