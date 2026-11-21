@@ -809,9 +809,13 @@ function updateAllLinks(whatChanged = 'all') {
     document.querySelectorAll(selector).forEach(el => el.setAttribute('href', href)); // attribute, like jQuery .attr: buttons need it for CSS too
   }
 
-  // Helper function to toggle highlighting
+  // Helper function to toggle highlighting. A list's rows that its search or filter hides are taken out of
+  // the page (List.js), so they're reached through the lists too; else one hidden while another song was
+  // picked comes back still highlighted (#154).
+  const listRows = [window.songbooks_list, window.songbook_list, window.songbook_edit_togglesongs_list]
+    .flatMap(list => list?.items || []).map(item => item.elm).filter(el => el && !el.isConnected);
   function toggleHighlight(selector, className, condition) {
-    document.querySelectorAll(selector).forEach(el => 
+    [...document.querySelectorAll(selector), ...listRows.filter(el => el.matches(selector))].forEach(el =>
       el.classList.toggle(className, condition(el))
     );
   }
