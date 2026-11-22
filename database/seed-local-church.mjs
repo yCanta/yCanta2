@@ -35,3 +35,4 @@ for (const [who, doc] of saves) {
   if (r.status !== 201) console.log('seed failed', doc._id, r);
 }
 console.log('seeded', DB, (await req(as('admin'), 'GET', `/${DB}`)).json.doc_count, 'docs');
+await import('./setup-live.mjs'); // shared presentations (#51)

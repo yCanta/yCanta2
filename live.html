@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+  <!-- Follow along (#51): a TV, a leader's tablet, or a phone shows a shared presentation by its code.
+       No sign-in. Each device picks its own look (chords, black, white) and can move on its own, then go
+       back to live. -->
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="lightblue">
+    <link rel="icon" type="image/x-icon" href="favicon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <title>yCanta2: Follow along</title>
+    <style>
+      /* The app's button look (style.css .btn and its --btn-* colors). style.css itself isn't loaded here:
+         it hides buttons until the app has started. */
+      :root {
+        --btn-shadow-var: 0 2px 2px 2px rgba(0, 0, 0, 0.1);
+        --btn-color: white;
+        --btn-edge: transparent;
+        --text-color: black;
+        --background-color: white;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --btn-shadow-var: 0 2px 2px 2px rgba(0, 0, 0, 0.3);
+          --btn-color: #2c2c2c;
+          --btn-edge: rgba(255, 255, 255, .16);
+          --text-color: #eee;
+          --background-color: #1b1b1b;
+        }
+      }
+      html, body {
+        margin: 0;
+        height: 100%;
+        font-family: sans-serif;
+        color: var(--text-color);
+        background-color: var(--background-color);
+      }
+      #join {
+        max-width: 22rem;
+        margin: 15vh auto 0;
+        padding: 0 1rem;
+        text-align: center;
+      }
+      #code {
+        font: inherit;
+        font-size: 2rem;
+        font-weight: bold;
+        letter-spacing: .2em;
+        text-transform: uppercase;
+        text-align: center;
+        width: 7ch;
+        padding: .25rem;
+        border: 1px solid gray;
+        border-radius: .5rem;
+        color: inherit;
+        background: transparent;
+      }
+      .btn {
+        box-shadow: var(--btn-shadow-var), inset 0 0 0 1px var(--btn-edge);
+        border: none;
+        font: inherit;
+        font-weight: bold;
+        background-color: var(--btn-color);
+        color: var(--text-color);
+        border-radius: 2rem;
+        padding: .3125rem .9375rem;
+        margin: 1rem .5rem;
+        cursor: pointer;
+      }
+      .btn:active {
+        transform: scale3d(0.9, 0.9, 1);
+      }
+      #problem {
+        min-height: 1.5em;
+        color: firebrick;
+      }
+      #show {
+        display: none;
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        border: 0;
+      }
+      body.following #join { display: none; }
+      body.following #show { display: block; }
+    </style>
+  </head>
+  <body>
+    <main id="join">
+      <h1>Follow along</h1>
+      <p>Type the code from the leader's screen.</p>
+      <form id="joinForm">
+        <input id="code" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="6" aria-label="Code">
+        <br>
+        <button class="btn" type="submit">Join</button>
+      </form>
+      <p id="problem" role="status"></p>
+    </main>
+    <iframe id="show" title="The shared presentation"></iframe>
+
+    <script src="live.js"></script>
+    <script>
+      // The server: from the link the leader shared, else the one used last on this device, else this site's
+      // own /couch/ (where the church sites keep it)
+      const params = new URLSearchParams(location.search);
+      let server = params.get('server');
+      try { if (!server) server = localStorage.getItem('liveServer'); } catch (err) { /* private window */ }
+      if (!server) server = new URL('couch/', location.origin + '/').href;
+      Live.setServer(server + (server.endsWith('/') ? '' : '/') + 'x'); // setServer takes a database address
+
+      const problem = document.getElementById('problem');
+      const codeBox = document.getElementById('code');
+      let following = null;
+
+      document.getElementById('joinForm').addEventListener('submit', event => {
+        event.preventDefault();
+        const code = Live.cleanCode(codeBox.value);
+        if (code.length < 4) { problem.textContent = 'The code has 4 letters or numbers.'; return; }
+        location.hash = code; // joins (hashchange), and a reload stays on it
+      });
+      window.addEventListener('hashchange', () => join(location.hash.slice(1)));
+      if (location.hash.length > 1) join(location.hash.slice(1));
+      else codeBox.focus();
+
+      async function join(rawCode) {
+        const code = Live.cleanCode(rawCode);
+        if (!code) return;
+        if (following) following.stop();
+        following = null;
+        codeBox.value = code;
+        problem.textContent = 'Joining…';
+        let frame = null;
+        try {
+          following = await Live.follow(code, {
+            onSet: async set => { frame = frame || await showPresentation(set); frame.followSet(set); },
+            onNow: async now => { while (!frame) await new Promise(r => setTimeout(r, 50)); frame.followNow(now); },
+            onEnd: () => leave('The leader stopped sharing.'),
+            onProblem: err => console.error('Follow along:', err),
+          });
+          try { localStorage.setItem('liveServer', Live.server); } catch (err) { /* private window */ }
+          problem.textContent = '';
+        } catch (err) {
+          leave(err.message);
+        }
+      }
+      function leave(message) {
+        if (following) following.stop();
+        following = null;
+        document.body.classList.remove('following');
+        document.getElementById('show').removeAttribute('srcdoc');
+        problem.textContent = message;
+        history.replaceState(null, '', location.pathname + location.search);
+      }
+
+      // The presentation page, made the way the app makes it, in follow mode. Gives back its window once its
+      // songs are set up.
+      let building = null;
+      function showPresentation(set) {
+        building = building || (async () => {
+          const [html, bible, code] = await Promise.all(['presentation.html', 'bible.js', 'presentation.js'].map(file => fetch(file).then(r => r.text())));
+          const frameEl = document.getElementById('show');
+          const win = frameEl.contentWindow;
+          win.document.open();
+          win.document.write(html.replace('presentation_embed', () => bible + '\n' + code));
+          // the page cleans the songs as it starts (they came from the server); it starts on "Presenting"
+          const data = win.document.getElementById('data');
+          data.setAttribute('data', JSON.stringify({ title: set.title, songs: set.songs, bible: set.bible || null }));
+          data.setAttribute('data-follow', '1');
+          win.document.close();
+          document.body.classList.add('following');
+          win.focus();
+          await win.presentationReady;
+          return win;
+        })();
+        return building;
+      }
+    </script>
+  </body>
+</html>

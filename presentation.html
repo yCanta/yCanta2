@@ -328,6 +328,76 @@
         margin: 0 0 1rem 0;
         text-align: right;
       }
+      /* Other screens (#51): a button with a short note beside it */
+      #help .screen-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: .5rem .75rem;
+        margin-bottom: 1rem;
+      }
+      #help .screen-row .btn {
+        margin: 0;
+      }
+      #help .help-note {
+        flex: 1 1 14rem;
+        font-size: .85rem;
+      }
+      #help .share-code {
+        font-size: 2rem;
+        font-weight: bold;
+        letter-spacing: .2em;
+        color: var(--font-color);
+      }
+      #help .share-problem {
+        flex-basis: 100%;
+        margin: 0;
+        color: firebrick;
+      }
+      /* Following a shared presentation (#51): Live, or where the leader is, and this screen's settings */
+      #liveBar {
+        position: fixed;
+        top: .75rem;
+        right: .75rem;
+        z-index: 4;
+        display: flex;
+        gap: .5rem;
+      }
+      #liveBar button {
+        box-shadow: 0 2px 2px 2px rgba(0, 0, 0, 0.1);
+        border: none;
+        font: inherit;
+        font-size: .85rem;
+        font-weight: bold;
+        background-color: white;
+        color: gray;
+        border-radius: 2rem;
+        padding: .3125rem .9375rem;
+        cursor: pointer;
+        opacity: .6;
+      }
+      #liveBar button:hover, #liveBar button:focus-visible, #liveBar #livePill.wandering {
+        opacity: 1;
+      }
+      #livePill:not(.wandering)::before {
+        content: '';
+        display: inline-block;
+        width: .5em;
+        height: .5em;
+        margin-right: .4em;
+        border-radius: 50%;
+        background: firebrick;
+        vertical-align: middle;
+      }
+      #livePill.wandering {
+        color: black;
+      }
+      #livePill.nudge {
+        animation: live-nudge .4s ease-in-out 3;
+      }
+      @keyframes live-nudge {
+        50% { transform: scale(1.12); }
+      }
       /* What's been presented (#158): over the slides, like the help */
       #report .report-list {
         width: 100%;

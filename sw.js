@@ -30,6 +30,8 @@ var prefetchedURLs = [
   'index.html',
   'presentation.html',
   'presentation.js',
+  'live.js',
+  'live.html',
   'bible.js',
   'sortable.js',
   'Sortable.min.js',

@@ -74,8 +74,8 @@ presentation_key_map = {
   'f'         : [ function() {if(! isSearching()) whiteScreen(); },
                   "Toggle screen foreground to/from white" ],
 
-  'Enter'     : [ function() {if(isSearching()) searchResult(1);},
-                  "When in search mode show the first search result"              ],
+  'Enter'     : [ function() {if(isSearching()) searchResult(1); else if(isFollower()) goLive();},
+                  "When in search mode show the first search result; following along, go back to live" ],
   '1'         : [ function() {numberHit(1);},
                   "Show the first search result/verse depending on mode"          ],
   '2'         : [ function() {numberHit(2);},
@@ -139,11 +139,16 @@ presentation_key_map = {
 }
 
 
+// Ready once the songs are set up; live.html waits for this before handing over what it hears (#51)
+let markPresentationReady;
+window.presentationReady = new Promise(resolve => { markPresentationReady = resolve; });
+
 document.addEventListener('DOMContentLoaded', function() {
     // The whole page as it starts, with its songs (#53): what "Save for later" downloads and what a mirrored
     // window is made from, so neither needs the site
     window.presentationSource = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
     if (document.getElementById('data').getAttribute('data') === 'mirror') return startMirror();
+    if (isFollower()) setupFollower(); // following a shared presentation in live.html (#51)
 
     document.querySelectorAll('stitle').forEach(el => el.addEventListener('click', toggleSongVisible));
 
@@ -175,16 +180,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     //PREPROCESS THE SONGBOOK OBJECT
     setTimeout(function(){
-      window.songbook.songs = presentableItems(window.songbook.songs);
+      // a follower's songs came from the server, so they're cleaned first (#51)
+      window.songbook.songs = presentableItems(isFollower() ? liveSongs(window.songbook.songs) : window.songbook.songs);
 
-      //Put default song
-      window.songbook.song_index = window.songbook.songs.length - 1;
-      current_song = window.songbook.songs[window.songbook.song_index];
-      current_song.chunk_index = current_song.doc.content.length - 1;
+      //Put default song (none yet: a follower waiting for the set)
+      if (window.songbook.songs.length) {
+        window.songbook.song_index = window.songbook.songs.length - 1;
+        current_song = window.songbook.songs[window.songbook.song_index];
+        current_song.chunk_index = current_song.doc.content.length - 1;
+      }
       
       document.querySelector('#cur_slide .content').innerHTML = '<div style="width: calc(100% - 2rem);position: absolute; top: 40%;"><div style="width: 100%;text-align: center"><h1>Presenting</h1><h2><i id="pres_title">Lorem Ipsum</i></h2></div></div></div>';
       document.getElementById('pres_title').textContent = window.songbook.title; // text, not page code
       window.document.title = "yCanta2: Presenting " + window.songbook.title;
+      markPresentationReady();
     },300);
 });
 
@@ -200,6 +209,7 @@ function presentableSongs(songs) {
 // The screen stays on the same song and verse. A song taken out of the book leaves the screen at the same
 // place in the book, on the first verse of the song that's there now.
 function updateSongbook(json) {
+  setTimeout(publishLive); // once the book is updated, followers get it too (#51)
   const data = JSON.parse(json);
   const songs = presentableItems(data.songs);
   if (!window.songbook || !songs.length) return;
@@ -602,6 +612,201 @@ function startMirror() {
   window.addEventListener('resize', scaleText); // moved to the projector or made full screen: fit the slide again
 }
 
+// ---- Sharing with other devices (#51). The app's live.js talks to the server; this page says what to send
+// (the driver) or shows what it hears (a follower, in live.html).
+
+// A part's name for people following along: "Verse 2", "Chorus"
+function partName(song, index) {
+  if (song.passage) return 'part ' + (index + 1);
+  const type = song.doc.content[index][0].type;
+  if (type !== 'verse') return type.replace(/(^|[ -])[a-z]/g, letter => letter.toUpperCase());
+  return 'Verse ' + song.doc.content.slice(0, index + 1).filter(chunk => chunk[0].type === 'verse').length;
+}
+
+// -- The driver: the presentation in the app
+let sharing = false, sharedSignature = '', shareProblem = '';
+function liveHost() {
+  try { return window.parent !== window && window.parent.Live && window.parent.remoteDb ? window.parent : null; }
+  catch (err) { return null; }
+}
+function canShare() { return !isMirror() && !isFollower() && !!liveHost(); }
+// What followers get: the songs as shown here. A passage goes as its verses, so each screen fits them its own way.
+function liveSet() {
+  return {
+    title: window.songbook.title,
+    bible: window.songbook.bible || null,
+    songs: window.songbook.songs.map(song => song.passage ? { id: song.id, passage: song.passage, reading: true } : {
+      id: song.id,
+      doc: { title: song.doc.title, authors: song.doc.authors, scripture_ref: song.doc.scripture_ref, key: song.doc.key,
+        copyright: song.doc.copyright, content: song.doc.content },
+    }),
+  };
+}
+function setSignature() {
+  return window.songbook.title + '|' + window.songbook.songs.map(song => song.id + ':' + (song.value ? song.value.rev : '')).join(',');
+}
+async function startShare() {
+  const host = liveHost();
+  if (!host) return;
+  shareProblem = '';
+  host.Live.onProblem = err => { shareProblem = "Other devices may be behind: " + err.message; renderShare(); };
+  try {
+    host.Live.setServer(host.remoteDb.name);
+    await host.Live.start(liveSet());
+    sharing = true;
+    sharedSignature = setSignature();
+    publishLive();
+  } catch (err) {
+    shareProblem = "Couldn't start sharing: " + err.message;
+  }
+  renderShare();
+}
+function stopShare() {
+  if (!sharing) return;
+  sharing = false;
+  const host = liveHost();
+  if (host) host.Live.stop();
+  renderShare();
+}
+window.addEventListener('pagehide', stopShare);
+// Called after every slide change: followers get the slide, and the songs again if they changed (#147)
+function publishLive() {
+  const host = sharing && liveHost();
+  if (!host) return;
+  const signature = setSignature();
+  if (signature !== sharedSignature) {
+    sharedSignature = signature;
+    host.Live.updateSet(liveSet());
+  }
+  if (!current_song || document.getElementById('pres_title')) return; // still on the "Presenting" screen
+  host.Live.publish({
+    index: window.songbook.song_index, id: current_song.id, part: current_song.chunk_index,
+    title: plainText(current_song.doc.title), partName: partName(current_song, current_song.chunk_index),
+  });
+}
+// The follow-along page, with the server in it (the page may be on another site than the server, like GitHub Pages)
+function shareLink(code) {
+  const link = new URL('live.html', window.parent.location.href);
+  link.search = '?server=' + encodeURIComponent(liveHost().Live.server);
+  link.hash = code;
+  return link.href;
+}
+function renderShare() {
+  const box = document.getElementById('share');
+  if (!box) return;
+  const host = liveHost();
+  if (sharing && host && host.Live.code) {
+    const link = shareLink(host.Live.code);
+    box.innerHTML = '<div class="share-code" title="The code to type on the other device">' + escapeText(host.Live.code) + '</div>'
+      + '<span class="help-note">On the other device open <a target="_blank" rel="noopener" href="' + escapeText(link) + '">' + escapeText(link.replace(/[?#].*/, '')) + '</a> and type this code. Each device picks its own look.</span>'
+      + '<button type="button" class="btn" onclick="stopShare()">Stop sharing</button>';
+  } else {
+    box.innerHTML = '<button type="button" class="btn" onclick="startShare()">Share with other devices</button>'
+      + '<span class="help-note">A TV, leaders\' tablets, or phones follow along with a code.</span>';
+  }
+  if (shareProblem) box.insertAdjacentHTML('beforeend', '<p class="share-problem">' + escapeText(shareProblem) + '</p>');
+}
+
+// -- A follower: this page in live.html, which hands it the set and each slide change
+let liveNow = null, following = true, liveMoving = false;
+function isFollower() {
+  const data = document.getElementById('data');
+  return !!data && data.getAttribute('data-follow') === '1';
+}
+// The songs come from the server, where anyone signed in could have written them, so nothing in them is
+// page code: text stays text, and a line keeps only its chords
+function liveText(html) { return escapeText(plainText(String(html ?? ''))); }
+function liveLine(html) {
+  const holder = document.createElement('template');
+  holder.innerHTML = String(html ?? '');
+  return Array.from(holder.content.childNodes, node => node.nodeName === 'C' ? '<c>' + escapeText(node.textContent) + '</c>' : escapeText(node.textContent)).join('');
+}
+function liveSongs(songs) {
+  return (Array.isArray(songs) ? songs : []).map(song => {
+    if (song.passage) return { id: String(song.id), passage: song.passage, reading: true };
+    const doc = song.doc || {};
+    const list = value => (Array.isArray(value) ? value : []).map(liveText);
+    return {
+      id: String(song.id),
+      doc: {
+        title: liveText(doc.title), authors: list(doc.authors), scripture_ref: list(doc.scripture_ref), key: liveText(doc.key),
+        copyright: liveText(doc.copyright),
+        content: (Array.isArray(doc.content) ? doc.content : []).map(chunk => [
+          { type: String((chunk[0] || {}).type || 'verse').replace(/[^a-z -]/gi, '') },
+          (Array.isArray(chunk[1]) ? chunk[1] : []).map(liveLine),
+        ]),
+      },
+    };
+  });
+}
+function followSet(set) {
+  window.songbook.title = liveText(set.title);
+  window.document.title = 'yCanta2: ' + plainText(set.title);
+  const titleSlide = document.getElementById('pres_title');
+  if (titleSlide) titleSlide.textContent = plainText(set.title);
+  const here = current_song && current_song.id;
+  window.songbook.songs = presentableItems(liveSongs(set.songs));
+  if (following && liveNow) return goLive();
+  // wandering: stay on the same song if it's still there
+  const index = Math.max(0, window.songbook.songs.findIndex(song => song.id === here));
+  window.songbook.song_index = index;
+  current_song = window.songbook.songs[index];
+  if (current_song) current_song.chunk_index = Math.min(current_song.chunk_index || 0, current_song.doc.content.length - 1);
+  renderLiveBar();
+}
+function followNow(now) {
+  const songChanged = liveNow && now && liveNow.id !== now.id;
+  liveNow = now;
+  if (following) goLive();
+  else renderLiveBar(songChanged);
+}
+// Back to whatever the driver has on screen
+function goLive() {
+  following = true;
+  const songs = window.songbook && window.songbook.songs;
+  if (liveNow && songs && songs.length) {
+    const index = songs[liveNow.index] && songs[liveNow.index].id === liveNow.id ? liveNow.index : songs.findIndex(song => song.id === liveNow.id);
+    if (index !== -1) {
+      window.songbook.song_index = index;
+      current_song = songs[index];
+      current_song.chunk_index = Math.max(0, Math.min(Number(liveNow.part) || 0, current_song.doc.content.length - 1));
+      liveMoving = true;
+      try { showChunk('live'); } finally { liveMoving = false; }
+    }
+  }
+  renderLiveBar();
+}
+// A follower that moves on its own stops following until it goes back to live
+function noteFollowerMove() {
+  if (isFollower() && !liveMoving && following) {
+    following = false;
+    renderLiveBar();
+  }
+}
+function setupFollower() {
+  document.body.classList.add('follower');
+  document.body.insertAdjacentHTML('beforeend', '<div id="liveBar"><button type="button" id="livePill" onclick="goLive()"></button>'
+    + '<button type="button" id="liveSettings" onclick="toggleHelp()" title="This screen\'s look, and the keys">?</button></div>');
+  renderLiveBar();
+}
+function renderLiveBar(nudge = false) {
+  const pill = document.getElementById('livePill');
+  if (!pill) return;
+  pill.classList.toggle('wandering', !following);
+  if (following) {
+    pill.textContent = liveNow ? 'Live' : 'Waiting for the first song';
+    pill.title = 'Following along. Move on your own any time, then tap here to come back.';
+  } else {
+    pill.textContent = (liveNow ? 'Now: ' + liveNow.title + ', ' + liveNow.partName : 'Not started') + '  ·  Back to live';
+    pill.title = 'Go to what the leader has on screen';
+  }
+  if (nudge) { // the leader moved to another song while this screen was elsewhere
+    pill.classList.remove('nudge');
+    void pill.offsetWidth;
+    pill.classList.add('nudge');
+  }
+}
+
 // Save for later: this presentation as one file, to open offline in any browser or to email
 function savePresentation() {
   const title = (window.songbook ? plainText(window.songbook.title) : '') || 'yCanta';
@@ -614,74 +819,66 @@ function savePresentation() {
   setTimeout(() => URL.revokeObjectURL(link.href), 10000);
 }
 
+// The setup panel (h or ?): how this screen looks, other screens, and the keys (#51). A mirror's panel has
+// only its own look, since its slides come from the main window; a follower's has its own look too.
 function toggleHelp() {
   if(!document.getElementById('help')) { // help element not created yet -- lets do it
-    // A mirror's help has only its own look: the slides come from the main window (#51)
     const mirror = isMirror();
-    let content = '<div id="help"><div>'
-    if (!mirror) content += '<p class="help-top"><button type="button" class="btn" onclick="savePresentation()" title="Download this presentation as one file, to open offline or email">Save for later</button>'
+    const follower = isFollower();
+    // checked to match the screen as it is now (keys can change it before the panel is ever opened)
+    const on = name => document.body.classList.contains(name) ? ' checked' : '';
+    let content = '<div id="help"><div>';
+    if (!mirror && !follower) content += '<p class="help-top"><button type="button" class="btn" onclick="savePresentation()" title="Download this presentation as one file, to open offline or email">Save for later</button>'
       + '<button type="button" class="btn" onclick="toggleReport()">Presented so far</button></p>'; // (#53, #158)
 
-    content += '<div id="files"><span>Background:</span><input onclick="clearFile(this)" onchange="loadFiles(this);" data="bg-image" type="file" accept="image/*">'+
-    '<span>Fixed:</span><input onclick="clearFile(this)" onchange="loadFiles(this);" data="fixed-image" type="file" accept="image/*">'+
-    '<span>Foreground:</span><input onclick="clearFile(this)" onchange="loadFiles(this);" data="fg-image" type="file" accept="image/*"></div>'
+    content += '<h4>' + (mirror ? 'This window' : 'This screen') + '</h4>';
+    content += '<div class="helpLine">'
+      + '<label onchange="whiteScreen(true)" class="switch"><input type="checkbox" id="fgText"' + on('white') + '><div data-text="TEXT" class="slider font"></div></label>'
+      + '<label onchange="blackScreen(true)" class="switch"><input type="checkbox" id="bgColor"' + on('black') + '><div data-text="BG" class="slider background"></div></label>'
+      + '<label onchange="toggleChords(true)"><input id="chngChords" type="checkbox"' + (document.body.classList.contains('nochords') ? '' : ' checked') + '> Chords</label>'
+      + '</div>';
+    content += '<div id="files"><span>Background picture:</span><input onclick="clearFile(this)" onchange="loadFiles(this);" data="bg-image" type="file" accept="image/*">'
+      + '<span>Still picture:</span><input onclick="clearFile(this)" onchange="loadFiles(this);" data="fixed-image" type="file" accept="image/*">'
+      + '<span>Front picture:</span><input onclick="clearFile(this)" onchange="loadFiles(this);" data="fg-image" type="file" accept="image/*"></div>';
 
-    content += mirror ? '<h4>This window:</h4>' : '<h4>Main Window:</h4>';
-    content += '<div class="helpLine">';
-    if (!mirror) content += ' <select><!--option value="Song">Songs</option--><option value="Verse">Verse</option></select>'
-    // checked to match the window as it is now (a mirror can be opened with its help never shown)
-    const on = name => document.body.classList.contains(name) ? ' checked' : '';
-    content += '<label onchange="whiteScreen(true)" class="switch"><input type="checkbox" id="fgText"' + on('white') + '><div data-text="TEXT" class="slider font"></div></label>';
-    content += '<label onchange="blackScreen(true)" class="switch"><input type="checkbox" id="bgColor"' + on('black') + '><div data-text="BG" class="slider background"></div></label>';
-    content += '<span><label onchange="toggleChords(true)" style="margin-right: 1rem;"><input id="chngChords" type="checkbox"' + (document.body.classList.contains('nochords') ? '' : ' checked') + '> Chords</label>';
-    if (!mirror) content += '<label onchange=""><input type="checkbox"> Image backgrounds</label>';
-    content += '</span></div>';
-    if (!mirror) {
-    content += '<h4>Child Windows: <input type="button" style="margin-right: 1rem;" onclick="openWindow()" value="Add mirrored window"></input><button onclick="" value=""><img style="height: 1rem; vertical-align: middle" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+Cjxzdmcgd2lkdGg9IjI0cHgiIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAwIDI0IDI0IiB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHhtbG5zOnNrZXRjaD0iaHR0cDovL3d3dy5ib2hlbWlhbmNvZGluZy5jb20vc2tldGNoL25zIj4KICAgIDwhLS0gR2VuZXJhdG9yOiBTa2V0Y2ggMy4yLjIgKDk5ODMpIC0gaHR0cDovL3d3dy5ib2hlbWlhbmNvZGluZy5jb20vc2tldGNoIC0tPgogICAgPHRpdGxlPmljX2Nhc3RfYmxhY2tfMjRkcDwvdGl0bGU+CiAgICA8ZGVzYz5DcmVhdGVkIHdpdGggU2tldGNoLjwvZGVzYz4KICAgIDxkZWZzPjwvZGVmcz4KICAgIDxnIGlkPSJQYWdlLTEiIHN0cm9rZT0ibm9uZSIgc3Ryb2tlLXdpZHRoPSIxIiBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHNrZXRjaDp0eXBlPSJNU1BhZ2UiPgogICAgICAgIDxnIGlkPSJpY19jYXN0X2JsYWNrXzI0ZHAiIHNrZXRjaDp0eXBlPSJNU0FydGJvYXJkR3JvdXAiPgogICAgICAgICAgICA8ZyBpZD0iaWNfcmVtb3ZlX2NpcmNsZV93aGl0ZV8yNGRwIiBza2V0Y2g6dHlwZT0iTVNMYXllckdyb3VwIj4KICAgICAgICAgICAgICAgIDxwYXRoIGQ9Ik0xLDE4IEwxLDIxIEw0LDIxIEM0LDE5LjM0IDIuNjYsMTggMSwxOCBMMSwxOCBaIE0xLDE0IEwxLDE2IEMzLjc2LDE2IDYsMTguMjQgNiwyMSBMOCwyMSBDOCwxNy4xMyA0Ljg3LDE0IDEsMTQgTDEsMTQgWiBNMSwxMCBMMSwxMiBDNS45NywxMiAxMCwxNi4wMyAxMCwyMSBMMTIsMjEgQzEyLDE0LjkyIDcuMDcsMTAgMSwxMCBMMSwxMCBaIE0yMSwzIEwzLDMgQzEuOSwzIDEsMy45IDEsNSBMMSw4IEwzLDggTDMsNSBMMjEsNSBMMjEsMTkgTDE0LDE5IEwxNCwyMSBMMjEsMjEgQzIyLjEsMjEgMjMsMjAuMSAyMywxOSBMMjMsNSBDMjMsMy45IDIyLjEsMyAyMSwzIEwyMSwzIFoiIGlkPSJjYXN0IiBmaWxsPSIjMDAwMDAwIiBza2V0Y2g6dHlwZT0iTVNTaGFwZUdyb3VwIj48L3BhdGg+CiAgICAgICAgICAgICAgICA8cmVjdCBpZD0iYm91bmRzIiBza2V0Y2g6dHlwZT0iTVNTaGFwZUdyb3VwIiB4PSIwIiB5PSIwIiB3aWR0aD0iMjQiIGhlaWdodD0iMjQiPjwvcmVjdD4KICAgICAgICAgICAgPC9nPgogICAgICAgIDwvZz4KICAgICAgICA8ZyBpZD0iYXNzZXRzIiBza2V0Y2g6dHlwZT0iTVNMYXllckdyb3VwIiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtMjA4LjAwMDAwMCwgLTEwNi4wMDAwMDApIj4KICAgICAgICAgICAgPGcgaWQ9IjY0cHgiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDAuMDAwMDAwLCAxMTQuMDAwMDAwKSI+PC9nPgogICAgICAgIDwvZz4KICAgIDwvZz4KPC9zdmc+"></button></h4>'
-    content += '<div class="helpLine">1. <select><!--option value="Song">Songs</option--><option value="Verse">Verse</option></select>'
-    content += '<label class="switch"><input type="checkbox" id="togBtn"><div data-text="TEXT" class="slider font"></div></label>';
-    content += '<label class="switch"><input type="checkbox" id="togBtn"><div data-text="BG" class="slider background"></div></label>';
-    content += '<label><input type="checkbox"> Chords</label>';
-    content += '<label><input type="checkbox"> Image backgrounds</label></div>';
+    if (!mirror && !follower) {
+      content += '<h4>Other screens</h4>';
+      content += '<div class="screen-row"><button type="button" class="btn" onclick="openWindow()">Open a mirror</button>'
+        + '<span class="help-note">A second window on this computer, for a projector or the band. Its own C, t and f keys change only it.</span></div>';
+      if (canShare()) content += '<div class="screen-row" id="share"></div>';
     }
-    // The keys worth knowing, in plain words (the full key map below says more than anyone needs)
+
+    // The keys worth knowing, in plain words
     const keys = mirror ? [
       ['t / f', 'Black background / white text, on or off'],
       ['C (capital)', 'Chords on or off'],
-      ['h or ?', 'This help'],
-      ['Esc', 'Close the help'],
+      ['h or ?', 'This panel'],
+      ['Esc', 'Close this panel'],
     ] : [
-      ['→ ↓ Space', 'Next slide'],
+      ['→ ↓ Space', follower ? 'Next slide (stops following until you go back to live)' : 'Next slide'],
       ['← ↑', 'Back a slide'],
       ['Page Down / Page Up', 'Next / previous song'],
       ['Home / End', 'First / last song'],
       ['1 to 9, 0', 'Go to that verse of the song (0 is 10)'],
       ['c, b, e', 'Go to the chorus, bridge, or ending'],
       ['s or /', 'Search the songs; then 1 to 5 or Enter picks one'],
-      ['s, then John 3:16', 'Show Bible verses: type the reference, then Enter'],
-      ['r', "Show the verses this song's scripture references name"],
+      ...(follower ? [['Enter or the Live button', 'Follow the leader again']] : [
+        ['s, then John 3:16', 'Show Bible verses: type the reference, then Enter'],
+        ['r', "Show the verses this song's scripture references name"],
+      ]),
       ['t / f', 'Black background / white text, on or off'],
       ['C (capital)', 'Chords on or off'],
-      ['l', "The list of what's been presented, to copy"],
-      ['h or ?', 'This help'],
-      ['Esc', 'Close search, help, or the list'],
+      ...(follower ? [] : [['l', "The list of what's been presented, to copy"]]),
+      ['h or ?', 'This panel'],
+      ['Esc', 'Close search, this panel, or the list'],
     ];
-    content += '<h4>Keys:</h4><table class="keys">'
+    content += '<h4>Keys</h4><table class="keys">'
       + keys.map(([key, what]) => '<tr><td class="key">' + escapeText(key) + '</td><td class="description">' + escapeText(what) + '</td></tr>').join('')
       + '</table>';
-    var description = undefined;
-    /*for(var key in presentation_key_map){
-      if(description == myEscape(presentation_key_map[key][1])) { // don't output the description multiple times if it is the same
-        content += '<tr><td class="key">'+myEscape(key)+'</td><td class="description"></td></tr>\n';
-      }
-      else {
-        description = myEscape(presentation_key_map[key][1]);
-        content += '<tr class="newdescription"><td class="key">'+myEscape(key)+'</td><td class="description">' + description + '</td></tr>\n';
-      }
-    }*/
-    content += '</div></div>'
+    content += '</div></div>';
     document.body.insertAdjacentHTML('afterbegin', content);
     document.getElementById('help').style.display = 'none';
+    renderShare();
   }
 
   // now certain that all is inited
@@ -968,6 +1165,8 @@ function showChunk(name) {
 
     secondary_windows = secondary_windows.filter(win => !win.closed);
     secondary_windows.forEach(updateMirror);
+    noteFollowerMove(); // (#51)
+    publishLive();
   }
   else {
     const song = chunk.parentNode;
