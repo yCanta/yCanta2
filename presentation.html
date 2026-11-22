@@ -191,7 +191,7 @@
         margin: 0px;
       }
 
-      #help {
+      #help, #report {
         background-color: rgba(255, 255, 255, 0.1);
         position: fixed;
         top: 0;
@@ -204,7 +204,7 @@
         padding: 1rem;
         overflow-y: auto;
       }
-      #help > div {
+      #help > div, #report > div {
         background-color: var(--bg-color);
         border-radius: 2rem;
         padding: 1rem;
@@ -213,7 +213,7 @@
         margin-right: auto;
         filter: drop-shadow(2px 2px 4px lightgray);
       }
-      #help > div > *,
+      #help > div > *, #report > div > *,
       #searchbox,
       #searchbox input {
         color: gray;
@@ -310,6 +310,49 @@
 
       #help td.description {
         padding-left: 1em;
+      }
+      /* A button the way the app draws one (style.css .btn): a rounded pill with a soft shadow */
+      #help .btn, #report .btn {
+        box-shadow: 0 2px 2px 2px rgba(0, 0, 0, 0.1);
+        border: none;
+        font: inherit;
+        font-weight: bold;
+        background-color: white;
+        color: black;
+        border-radius: 2rem;
+        padding: .3125rem .9375rem;
+        margin: 0 0 0 .75rem;
+        cursor: pointer;
+      }
+      #help .help-top {
+        margin: 0 0 1rem 0;
+        text-align: right;
+      }
+      /* What's been presented (#158): over the slides, like the help */
+      #report .report-list {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed; /* the counted and the brief tables line up */
+        font-size: .9rem;
+      }
+      #report .report-list td:nth-child(1) { width: 1.75rem; }
+      #report .report-list td:nth-child(3) { width: 4.5rem; }
+      #report .report-list td:nth-child(4) { width: 4.5rem; }
+      #report .report-list td:nth-child(5) { width: 3.5rem; }
+      #report .report-list td {
+        padding: .3rem .4rem .3rem 0;
+        border-top: 1px solid lightgray;
+        vertical-align: top;
+      }
+      #report .report-head td {
+        border-top: none;
+        font-size: .8rem;
+      }
+      #report .report-note {
+        font-size: .85rem;
+      }
+      #report .report-buttons {
+        text-align: right;
       }
       /* The help's list of keys */
       #help .keys td {

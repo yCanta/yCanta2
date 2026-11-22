@@ -132,6 +132,8 @@ presentation_key_map = {
                   "Begin a search if a search is not in progress" ],
   'r'         : [ function() {if(! isSearching()) showSongRefs();},
                   "Show the verses of the song's scripture references (#157)" ],
+  'l'         : [ function() {if(! isSearching()) toggleReport();},
+                  "Show the list of what's been presented (#158)" ],
   '/'         : [ function() {if(! isSearching()) beginSearch();},
                   "Begin a search if a search is not in progress" ],
 }
@@ -401,6 +403,152 @@ function showSongRefs() {
   showPassage(refs.join('; '));
 }
 
+// ---- What was presented (#158): each song's and passage's time on screen, and which of its slides were
+// shown. One counts when it was on screen REPORT_SECONDS in all and REPORT_SHARE of its slides were shown,
+// so a wrong song flicked past doesn't count and a song sung only in part does. The presenter can tick or
+// untick any of them in the list (l, or the help's button). When the presentation closes, the main window
+// gets the list: it offers to show it and logs it.
+const REPORT_SECONDS = 45;
+const REPORT_SHARE = 0.3;
+const presented = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), start: null, items: new Map(), onScreen: null, sent: false };
+
+function plainText(html) {
+  const el = document.createElement('div');
+  el.innerHTML = String(html ?? '');
+  return el.textContent;
+}
+
+// The slide on screen changed (showChunk): the last one's time is added up, and this one's starts
+function trackSlide() {
+  const now = Date.now();
+  stopTracking(now);
+  if (!inPresentation() || !current_song || !current_song.doc) return;
+  const key = current_song.passage ? 'bible:' + current_song.passage.label : current_song.id;
+  let item = presented.items.get(key);
+  if (!item) {
+    const ccli = String(current_song.doc.cclis ?? '').trim();
+    item = {
+      id: key,
+      kind: current_song.passage ? 'passage' : 'song',
+      title: plainText(current_song.doc.title),
+      ccli: current_song.passage ? current_song.passage.translation.id : (/^\d+$/.test(ccli) ? ccli : ''),
+      ms: 0, shown: new Set(), first: now, pick: null,
+    };
+    presented.items.set(key, item);
+  }
+  item.total = current_song.doc.content.length; // (a passage is packed again when the screen changes size)
+  item.shown.add(current_song.chunk_index);
+  presented.start = presented.start || now;
+  presented.onScreen = { item, since: now };
+  renderReport();
+}
+function stopTracking(now = Date.now()) {
+  if (!presented.onScreen) return;
+  presented.onScreen.item.ms += now - presented.onScreen.since;
+  presented.onScreen = null;
+}
+
+// The list so far, in the order they were first shown: { id, book, start, end, items: [{ id, kind, title,
+// ccli, seconds, shown, total, auto, counted }] }. auto: it passed the rule; counted: what the presenter left
+// ticked (the rule unless they changed it).
+function presentationReport() {
+  const now = Date.now();
+  const live = presented.onScreen;
+  const items = [...presented.items.values()].sort((a, b) => a.first - b.first).map(item => {
+    const seconds = Math.round((item.ms + (live && live.item === item ? now - live.since : 0)) / 1000);
+    const shown = Math.min(item.shown.size, item.total);
+    const auto = seconds >= REPORT_SECONDS && shown / item.total >= REPORT_SHARE;
+    return { id: item.id, kind: item.kind, title: item.title, ccli: item.ccli, seconds, shown, total: item.total,
+      auto, counted: item.pick ?? auto };
+  });
+  return { id: presented.id, book: window.songbook ? plainText(window.songbook.title) : '', start: presented.start, end: now, items };
+}
+
+function clockTime(seconds) {
+  return Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
+}
+function timeOfDay(ms) {
+  return new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+// The list as text to paste, counted ones only: "Come, Thou Fount (CCLI 1234)", "Psalm 95:1–7 (BSB)"
+function reportText(report) {
+  const head = report.book + ', ' + new Date(report.start).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+    + ', ' + timeOfDay(report.start) + ' to ' + timeOfDay(report.end);
+  return [head].concat(report.items.filter(it => it.counted)
+    .map(it => it.title + (it.ccli ? (it.kind === 'song' ? ' (CCLI ' + it.ccli + ')' : ' (' + it.ccli + ')') : ''))).join('\n');
+}
+
+// The list over the slides (l): counted ones, then the ones shown only briefly, each with a box to tick
+function toggleReport() {
+  if (document.getElementById('report')) return hideReport();
+  hideHelp();
+  const box = document.createElement('div');
+  box.id = 'report';
+  box.innerHTML = '<div></div>';
+  box.addEventListener('change', e => {
+    const item = presented.items.get(e.target.dataset.id);
+    if (item) item.pick = e.target.checked;
+  });
+  box.addEventListener('click', e => {
+    if (e.target.closest('[data-close]') || e.target === box) hideReport();
+    if (e.target.closest('[data-copy]')) copyReport(e.target.closest('[data-copy]'));
+  });
+  document.body.prepend(box);
+  renderReport();
+}
+function hideReport() {
+  const box = document.getElementById('report');
+  if (box) box.remove();
+}
+function renderReport() {
+  const box = document.getElementById('report');
+  if (!box) return;
+  const report = presentationReport();
+  const row = it => '<tr><td><input type="checkbox" data-id="' + escapeText(it.id) + '"' + (it.counted ? ' checked' : '') + '></td>'
+    + '<td>' + (it.kind === 'passage' ? '📖 ' : '') + escapeText(it.title) + '</td><td>' + escapeText(it.ccli) + '</td>'
+    + '<td>' + clockTime(it.seconds) + '</td><td>' + it.shown + ' of ' + it.total + '</td></tr>';
+  const table = items => '<table class="report-list"><tr class="report-head"><td></td><td>Song or scripture</td><td>CCLI #</td><td>On screen</td><td>Slides</td></tr>'
+    + items.map(row).join('') + '</table>';
+  const counted = report.items.filter(it => it.auto), brief = report.items.filter(it => !it.auto);
+  box.firstChild.innerHTML = '<h4>Presented so far</h4>'
+    + '<p class="report-note">' + escapeText(report.book) + (report.start ? ', ' + timeOfDay(report.start) + ' to ' + timeOfDay(report.end) : '')
+    + '. One counts when it was on screen ' + REPORT_SECONDS + ' seconds and ' + Math.round(REPORT_SHARE * 100) + '% of its slides were shown.</p>'
+    + (report.items.length ? '' : '<p>Nothing has been shown yet.</p>')
+    + (counted.length ? table(counted) : '')
+    + (brief.length ? '<p class="report-note">Shown briefly, not counted:</p>' + table(brief) : '')
+    + '<p class="report-buttons"><button type="button" class="btn" data-close>Close</button><button type="button" class="btn" data-copy>Copy list</button></p>';
+}
+async function copyReport(button) {
+  const text = reportText(presentationReport());
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (err) { // the presentation window may not be allowed the clipboard: the old way
+    const area = document.createElement('textarea');
+    area.value = text;
+    document.body.append(area);
+    area.select();
+    document.execCommand('copy');
+    area.remove();
+  }
+  button.textContent = 'Copied';
+  setTimeout(() => { button.textContent = 'Copy list'; }, 1500);
+}
+
+// The presentation is closing: the main window gets the list, once
+function endReport() {
+  if (presented.sent || !presented.items.size) return;
+  presented.sent = true;
+  stopTracking();
+  try {
+    const host = window.opener || (window.parent !== window ? window.parent : null);
+    if (host && typeof host.presentationEnded === 'function') host.presentationEnded(JSON.stringify(presentationReport()));
+  } catch (err) {
+    console.error('Presentation report:', err);
+  }
+}
+window.addEventListener('pagehide', endReport);
+
 function openWindow() {
   secondary_windows.push(window.open('presentation.html','_blank', height="200", width="200"))
 }
@@ -408,6 +556,7 @@ function openWindow() {
 function toggleHelp() {
   if(!document.getElementById('help')) { // help element not created yet -- lets do it
     let content = '<div id="help"><div>'
+    content += '<p class="help-top"><button type="button" class="btn" onclick="toggleReport()">Presented so far</button></p>'; // (#158)
 
     content += '<div id="files"><span>Background:</span><input onclick="clearFile(this)" onchange="loadFiles(this);" data="bg-image" type="file" accept="image/*">'+
     '<span>Fixed:</span><input onclick="clearFile(this)" onchange="loadFiles(this);" data="fixed-image" type="file" accept="image/*">'+
@@ -438,8 +587,9 @@ function toggleHelp() {
       ['r', "Show the verses this song's scripture references name"],
       ['t / f', 'Black background / white text, on or off'],
       ['C (capital)', 'Chords on or off'],
+      ['l', "The list of what's been presented, to copy"],
       ['h or ?', 'This help'],
-      ['Esc', 'Close search or help, or end the presentation'],
+      ['Esc', 'Close search, help, or the list'],
     ];
     content += '<h4>Keys:</h4><table class="keys">'
       + keys.map(([key, what]) => '<tr><td class="key">' + escapeText(key) + '</td><td class="description">' + escapeText(what) + '</td></tr>').join('')
@@ -738,6 +888,7 @@ function showChunk(name) {
     document.getElementById('progress').innerHTML = progress_text;
 
     scaleText();
+    trackSlide(); // what was presented (#158)
 
     secondary_windows.forEach(win => {
       try {
@@ -1035,6 +1186,7 @@ function togglePresentation() {
 
 function escapeAction() {
   hideHelp();
+  hideReport();
   if(isSearching()){
     endSearch();
   }
@@ -1046,7 +1198,11 @@ function escapeAction() {
 function processKey(e){ 
   //console.log("key: '" + e.key +"'", "originalEvent.key: '" + e.originalEvent.key + "'", e);
   key = e.key;
-  if((key == '/' || key == 's') & !isSearching()) { 
+  // Space or Enter on a box or button in the list or the help works it, and doesn't change the slide
+  if ((key == ' ' || key == 'Enter') && e.target.closest && e.target.closest('#report, #help')) {
+    return;
+  }
+  if((key == '/' || key == 's') & !isSearching()) {
     e.preventDefault()
   }
 
