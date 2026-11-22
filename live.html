@@ -121,18 +121,22 @@
         location.hash = code; // joins (hashchange), and a reload stays on it
       });
       window.addEventListener('hashchange', () => join(location.hash.slice(1)));
+      window.addEventListener('pagehide', () => Live.unannounce());
       if (location.hash.length > 1) join(location.hash.slice(1));
       else codeBox.focus();
 
       async function join(rawCode) {
         const code = Live.cleanCode(rawCode);
         if (!code) return;
+        Live.unannounce();
+        Live.stopDriving();
         if (following) following.stop();
         following = null;
         codeBox.value = code;
         problem.textContent = 'Joining…';
         let frame = null;
         try {
+          await Live.whoAmI(); // signed in to yCanta on this device: a leader, who can be handed the screens
           following = await Live.follow(code, {
             onSet: async set => { frame = frame || await showPresentation(set); frame.followSet(set); },
             onNow: async now => { while (!frame) await new Promise(r => setTimeout(r, 50)); frame.followNow(now); },
@@ -140,12 +144,15 @@
             onProblem: err => console.error('Follow along:', err),
           });
           try { localStorage.setItem('liveServer', Live.server); } catch (err) { /* private window */ }
+          Live.announce(code); // says a signed-in leader is here (does nothing for others)
           problem.textContent = '';
         } catch (err) {
           leave(err.message);
         }
       }
       function leave(message) {
+        Live.unannounce();
+        Live.stopDriving();
         if (following) following.stop();
         following = null;
         document.body.classList.remove('following');

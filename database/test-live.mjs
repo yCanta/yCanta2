@@ -31,6 +31,37 @@ check('someone else can\'t change it', taken.status === 403, taken);
 const now = await req(as('alice'), 'PUT', `/${DB}/now:${code}`, { type: 'live-now', owner: 'alice', index: 0, id: 's-1', part: 0 });
 check('the sharer can write now:', now.status === 201, now);
 
+// A signed-in leader following along, and handing the screens to them
+const leadOk = await req(as('vera'), 'PUT', `/${DB}/lead:${code}:vera`, { type: 'live-lead', owner: 'vera' });
+check('a leader can say they are following', leadOk.status === 201, leadOk);
+const leadOther = await req(as('vera'), 'PUT', `/${DB}/lead:${code}:alice`, { type: 'live-lead', owner: 'vera' });
+check('a leader record is only your own', leadOther.status === 403, leadOther);
+let nowRev = now.json.rev;
+const veraTooSoon = await req(as('vera'), 'PUT', `/${DB}/now:${code}`, { type: 'live-now', owner: 'alice', driver: 'vera', part: 1, _rev: nowRev });
+check('a leader can\'t take the screens', veraTooSoon.status === 403, veraTooSoon);
+const handed = await req(as('alice'), 'PUT', `/${DB}/now:${code}`, { type: 'live-now', owner: 'alice', driver: 'vera', part: 1, _rev: nowRev });
+check('the sharer can hand the screens to a leader', handed.status === 201, handed);
+nowRev = handed.json.rev;
+const veraMoves = await req(as('vera'), 'PUT', `/${DB}/now:${code}`, { type: 'live-now', owner: 'alice', driver: 'vera', part: 2, _rev: nowRev });
+check('the leader can move the screens', veraMoves.status === 201, veraMoves);
+nowRev = veraMoves.json.rev;
+const passOn = await req(as('vera'), 'PUT', `/${DB}/now:${code}`, { type: 'live-now', owner: 'alice', driver: 'eddie', part: 2, _rev: nowRev });
+check('the leader can\'t pass the screens on', passOn.status === 403, passOn);
+const newOwner = await req(as('vera'), 'PUT', `/${DB}/now:${code}`, { type: 'live-now', owner: 'vera', driver: 'vera', part: 2, _rev: nowRev });
+check('the leader can\'t become the owner', newOwner.status === 403, newOwner);
+const veraEnds = await req(as('vera'), 'DELETE', `/${DB}/now:${code}?rev=${nowRev}`);
+check('the leader can\'t end it', veraEnds.status === 403, veraEnds);
+const veraSet = await req(as('vera'), 'PUT', `/${DB}/set:${code}`, { ...set('alice'), title: 'Changed', _rev: made.json.rev });
+check('the leader can\'t change the songs', veraSet.status === 403, veraSet);
+const gaveBack = await req(as('vera'), 'PUT', `/${DB}/now:${code}`, { type: 'live-now', owner: 'alice', driver: 'alice', part: 2, _rev: nowRev });
+check('the leader can give the screens back', gaveBack.status === 201, gaveBack);
+nowRev = gaveBack.json.rev;
+const veraAfter = await req(as('vera'), 'PUT', `/${DB}/now:${code}`, { type: 'live-now', owner: 'alice', driver: 'vera', part: 3, _rev: nowRev });
+check('after giving back, the leader can\'t move them', veraAfter.status === 403, veraAfter);
+const leadGone = await req(as('vera'), 'DELETE', `/${DB}/lead:${code}:vera?rev=${leadOk.json.rev}`);
+check('a leader can leave', leadGone.status === 200, leadGone);
+now.json.rev = nowRev;
+
 const wrongType = await req(as('alice'), 'PUT', `/${DB}/now:${code}`, { type: 'live-set', owner: 'alice', _rev: now.json.rev });
 check('the type must match the name', wrongType.status === 403, wrongType);
 

@@ -76,7 +76,7 @@ presentation_key_map = {
   'f'         : [ function() {if(! isSearching()) whiteScreen(); },
                   "Toggle screen foreground to/from white" ],
 
-  'Enter'     : [ function() {if(isSearching()) searchResult(1); else if(isFollower()) goLive();},
+  'Enter'     : [ function() {if(isSearching()) searchResult(1); else if((isFollower() || sharing) && !amDriving()) goLive();},
                   "When in search mode show the first search result; following along, go back to live" ],
   '1'         : [ function() {numberHit(1);},
                   "Show the first search result/verse depending on mode"          ],
@@ -631,13 +631,37 @@ function partName(song, index) {
   return 'Verse ' + song.doc.content.slice(0, index + 1).filter(chunk => chunk[0].type === 'verse').length;
 }
 
-// -- The driver: the presentation in the app
-let sharing = false, sharedSignature = '', shareProblem = '';
+// -- Who drives the screens: the person sharing (the presentation in the app), unless they handed them to a
+// signed-in leader following along. Whoever doesn't drive follows; their own moves are their own until they
+// go back to live. The driver's Linked switch: off, they look ahead without moving the other screens.
+let sharing = false, sharedSignature = '', shareProblem = '', linked = true, leadersHere = [], ownerFollow = null;
+let liveNow = null, following = true, liveMoving = false, wasDriving = false;
 function liveHost() {
   try { return window.parent !== window && window.parent.Live && window.parent.remoteDb ? window.parent : null; }
   catch (err) { return null; }
 }
+// live.js, in the app or in live.html
+function liveApi() {
+  try { return window.parent !== window && window.parent.Live ? window.parent.Live : null; }
+  catch (err) { return null; }
+}
 function canShare() { return !isMirror() && !isFollower() && !!liveHost(); }
+function myName() { const live = liveApi(); return live ? live.me : null; }
+function myTab() { const live = liveApi(); return live ? live.tab : null; }
+// The screens follow one page: this one, or another (a leader's tablet, even one signed in as the same person)
+function amDriving() {
+  if (isFollower()) return !!(liveNow && liveNow.driverTab && liveNow.driverTab === myTab());
+  if (!sharing) return true;
+  return !liveNow || !liveNow.driverTab || liveNow.driverTab === myTab();
+}
+// The leader the person sharing handed the screens to, if any
+function handedTo() { return !isFollower() && sharing && !amDriving() ? liveNow.driver : null; }
+function liveFields() {
+  return {
+    index: window.songbook.song_index, id: current_song.id, part: current_song.chunk_index,
+    title: plainText(current_song.doc.title), partName: partName(current_song, current_song.chunk_index),
+  };
+}
 // What followers get: the songs as shown here. A passage goes as its verses, so each screen fits them its own way.
 function liveSet() {
   return {
@@ -660,10 +684,20 @@ async function startShare() {
   host.Live.onProblem = err => { shareProblem = "Other devices may be behind: " + err.message; renderShare(); };
   try {
     host.Live.setServer(host.remoteDb.name);
-    await host.Live.start(liveSet());
+    const code = await host.Live.start(liveSet());
     sharing = true;
+    liveNow = null;
+    linked = true;
+    wasDriving = true;
+    following = true;
     sharedSignature = setSignature();
     publishLive();
+    setupLiveBar();
+    // hear the leaders following along, and the screens' moves while a leader drives
+    ownerFollow = await host.Live.follow(code, {
+      onNow: followNow,
+      onLeaders: list => { leadersHere = list.filter(leader => leader.tab && leader.tab !== myTab()); renderShare(); },
+    });
   } catch (err) {
     shareProblem = "Couldn't start sharing: " + err.message;
   }
@@ -672,25 +706,67 @@ async function startShare() {
 function stopShare() {
   if (!sharing) return;
   sharing = false;
+  liveNow = null;
+  if (ownerFollow) ownerFollow.stop();
+  ownerFollow = null;
   const host = liveHost();
   if (host) host.Live.stop();
   renderShare();
+  renderLiveBar();
 }
 window.addEventListener('pagehide', stopShare);
-// Called after every slide change: followers get the slide, and the songs again if they changed (#147)
+// Called after every slide change: if this screen drives, the other screens get the slide, and the songs
+// again if they changed (#147)
 function publishLive() {
-  const host = sharing && liveHost();
-  if (!host) return;
-  const signature = setSignature();
-  if (signature !== sharedSignature) {
-    sharedSignature = signature;
-    host.Live.updateSet(liveSet());
+  const live = liveApi();
+  if (!live || !(sharing || isFollower()) || !amDriving()) return;
+  if (sharing) {
+    const signature = setSignature();
+    if (signature !== sharedSignature) {
+      sharedSignature = signature;
+      live.updateSet(liveSet());
+    }
   }
-  if (!current_song || document.getElementById('pres_title')) return; // still on the "Presenting" screen
-  host.Live.publish({
-    index: window.songbook.song_index, id: current_song.id, part: current_song.chunk_index,
-    title: plainText(current_song.doc.title), partName: partName(current_song, current_song.chunk_index),
-  });
+  if (!linked || !current_song || document.getElementById('pres_title')) return; // not linked, or still on "Presenting"
+  live.publish(liveFields());
+}
+function setLinked(on) {
+  linked = on;
+  const box = document.getElementById('chngLinked');
+  if (box) box.checked = on;
+  if (on) publishLive(); // the other screens catch up to this one
+  renderLiveBar();
+}
+// The person sharing hands the screens to a leader following along, and takes them back
+function handOver(name, tab) {
+  const live = liveApi();
+  if (!live || !sharing || !tab || !current_song || document.getElementById('pres_title')) return;
+  live.handOver(name, tab, liveFields());
+  liveNow = { ...(liveNow || {}), ...liveFields(), driver: name, driverTab: tab };
+  wasDriving = false;
+  following = true;
+  renderShare();
+  renderLiveBar();
+}
+function takeBack() {
+  const live = liveApi();
+  if (!live || !sharing || !current_song) return;
+  live.takeBack(liveFields());
+  liveNow = { ...(liveNow || {}), ...liveFields(), driver: myName(), driverTab: myTab() };
+  wasDriving = true;
+  following = true;
+  setLinked(true);
+  renderShare();
+}
+// A leader gives the screens back
+function giveBack() {
+  const live = liveApi();
+  if (!live || !isFollower() || !amDriving()) return;
+  live.giveBack(liveFields());
+  liveNow = { ...liveNow, ...liveFields(), driver: liveNow.owner, driverTab: liveNow.ownerTab };
+  wasDriving = false;
+  following = true;
+  renderLiveBar();
 }
 // The follow-along page, with the server in it (the page may be on another site than the server, like GitHub Pages)
 function shareLink(code) {
@@ -705,9 +781,23 @@ function renderShare() {
   const host = liveHost();
   if (sharing && host && host.Live.code) {
     const link = shareLink(host.Live.code);
+    const handed = handedTo();
     box.innerHTML = '<div class="share-code" title="The code to type on the other device">' + escapeText(host.Live.code) + '</div>'
       + '<span class="help-note">On the other device open <a target="_blank" rel="noopener" href="' + escapeText(link) + '">' + escapeText(link.replace(/[?#].*/, '')) + '</a> and type this code. Each device picks its own look.</span>'
-      + '<button type="button" class="btn" onclick="stopShare()">Stop sharing</button>';
+      + '<button type="button" class="btn" onclick="stopShare()">Stop sharing</button>'
+      + '<label class="share-line" title="Off: look ahead here without moving the other screens"><input type="checkbox" id="chngLinked"'
+      + (linked ? ' checked' : '') + (handed ? ' disabled' : '') + ' onchange="setLinked(this.checked)"> Linked: the other screens follow this one</label>';
+    if (handed) {
+      box.innerHTML += '<p class="share-line">' + escapeText(handed) + (handed === myName() ? ' (another device)' : '') + ' is leading the screens; this one follows. '
+        + '<button type="button" class="btn" onclick="takeBack()">Take back</button></p>';
+    } else if (leadersHere.length) {
+      box.innerHTML += '<p class="share-line">Leaders following: ' + leadersHere.map(leader => '<span class="leader">'
+        + escapeText(leader.name) + (leader.name === myName() ? ' (another device)' : '')
+        + ' <button type="button" class="btn" data-name="' + escapeText(leader.name) + '" data-tab="' + escapeText(leader.tab)
+        + '" onclick="handOver(this.dataset.name, this.dataset.tab)">Let them lead</button></span>').join(' ') + '</p>';
+    } else {
+      box.innerHTML += '<p class="share-line help-note">A leader signed in to yCanta on their own device shows up here once they follow along, and you can let them lead the screens.</p>';
+    }
   } else {
     box.innerHTML = '<button type="button" class="btn" onclick="startShare()">Share with other devices</button>'
       + '<span class="help-note">A TV, leaders\' tablets, or phones follow along with a code.</span>';
@@ -715,8 +805,8 @@ function renderShare() {
   if (shareProblem) box.insertAdjacentHTML('beforeend', '<p class="share-problem">' + escapeText(shareProblem) + '</p>');
 }
 
-// -- A follower: this page in live.html, which hands it the set and each slide change
-let liveNow = null, following = true, liveMoving = false;
+// -- Following: a follower in live.html, which hands it the set and each change; or the person sharing while a
+// leader drives
 function isFollower() {
   const data = document.getElementById('data');
   return !!data && data.getAttribute('data-follow') === '1';
@@ -754,8 +844,8 @@ function followSet(set) {
   if (titleSlide) titleSlide.textContent = plainText(set.title);
   const here = current_song && current_song.id;
   window.songbook.songs = presentableItems(liveSongs(set.songs));
-  if (following && liveNow) return goLive();
-  // wandering: stay on the same song if it's still there
+  if (following && liveNow && !amDriving()) return goLive();
+  // wandering or driving: stay on the same song if it's still there
   const index = Math.max(0, window.songbook.songs.findIndex(song => song.id === here));
   window.songbook.song_index = index;
   current_song = window.songbook.songs[index];
@@ -765,8 +855,27 @@ function followSet(set) {
 function followNow(now) {
   const songChanged = liveNow && now && liveNow.id !== now.id;
   liveNow = now;
+  if (amDriving()) {
+    if (!wasDriving) { // just handed the screens: start from what they show
+      wasDriving = true;
+      const live = liveApi();
+      if (isFollower() && live) live.drive(String(now._id).slice(4), now);
+      linked = true;
+      goLive();
+    }
+    renderLiveBar();
+    renderShare();
+    return;
+  }
+  if (wasDriving) { // the screens were taken back, or given back
+    wasDriving = false;
+    following = true;
+    const live = liveApi();
+    if (isFollower() && live) live.stopDriving();
+  }
   if (following) goLive();
   else renderLiveBar(songChanged);
+  renderShare();
 }
 // Back to whatever the driver has on screen
 function goLive() {
@@ -784,31 +893,54 @@ function goLive() {
   }
   renderLiveBar();
 }
-// A follower that moves on its own stops following until it goes back to live
+// A screen that follows and moves on its own stops following until it goes back to live
 function noteFollowerMove() {
-  if (isFollower() && !liveMoving && following) {
+  if (liveMoving) return;
+  if ((isFollower() || sharing) && !amDriving() && following) {
     following = false;
     renderLiveBar();
   }
 }
 function setupFollower() {
   document.body.classList.add('follower');
-  document.body.insertAdjacentHTML('beforeend', '<div id="liveBar"><button type="button" id="livePill" onclick="goLive()"></button>'
+  setupLiveBar();
+}
+function setupLiveBar() {
+  if (document.getElementById('liveBar')) return renderLiveBar();
+  document.body.insertAdjacentHTML('beforeend', '<div id="liveBar"><button type="button" id="livePill"></button>'
+    + '<button type="button" id="liveExtra" hidden></button>'
     + '<button type="button" id="liveSettings" onclick="toggleHelp()" title="This screen\'s look, and the keys">?</button></div>');
   renderLiveBar();
 }
+// The small bar at the top: Live, or where the screens are; Linked or not for whoever drives; Give back / Take back.
+// The person sharing sees it only when it says something (a projector shouldn't show it), or on a touch screen.
 function renderLiveBar(nudge = false) {
-  const pill = document.getElementById('livePill');
-  if (!pill) return;
-  pill.classList.toggle('wandering', !following);
-  if (following) {
-    pill.textContent = liveNow ? 'Live' : 'Waiting for the first song';
-    pill.title = 'Following along. Move on your own any time, then tap here to come back.';
+  const bar = document.getElementById('liveBar');
+  if (!bar) return;
+  const pill = document.getElementById('livePill'), extra = document.getElementById('liveExtra');
+  const driving = amDriving();
+  const touch = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  bar.hidden = !isFollower() && (!sharing || (driving && linked && !touch));
+  pill.classList.toggle('wandering', driving ? !linked : !following);
+  extra.hidden = true;
+  if (driving) {
+    pill.textContent = linked ? 'Linked: the screens follow you' : 'Not linked  ·  Link';
+    pill.title = linked ? 'Tap to look ahead without moving the other screens' : 'Tap to send what you have to the other screens';
+    pill.onclick = () => setLinked(!linked);
+    if (isFollower()) { extra.hidden = false; extra.textContent = 'Give back'; extra.onclick = giveBack; }
   } else {
-    pill.textContent = (liveNow ? 'Now: ' + liveNow.title + ', ' + liveNow.partName : 'Not started') + '  ·  Back to live';
-    pill.title = 'Go to what the leader has on screen';
+    pill.onclick = () => goLive();
+    const who = !isFollower() && liveNow && liveNow.driver ? liveNow.driver + (liveNow.driver === myName() ? ' (another device)' : '') + ' leads' : '';
+    if (following) {
+      pill.textContent = liveNow ? 'Live' + (who ? ': ' + who : '') : 'Waiting for the first song';
+      pill.title = 'Following along. Move on your own any time, then tap here to come back.';
+    } else {
+      pill.textContent = (liveNow ? 'Now: ' + liveNow.title + ', ' + liveNow.partName : 'Not started') + '  ·  Back to live';
+      pill.title = 'Go to what the screens show';
+    }
+    if (!isFollower() && sharing) { extra.hidden = false; extra.textContent = 'Take back'; extra.onclick = takeBack; }
   }
-  if (nudge) { // the leader moved to another song while this screen was elsewhere
+  if (nudge) { // the screens moved to another song while this one was elsewhere
     pill.classList.remove('nudge');
     void pill.offsetWidth;
     pill.classList.add('nudge');

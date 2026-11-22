@@ -232,6 +232,47 @@ try {
     'w on the follower shows the whole song, the part sung and the next marked; the presenter is unchanged', whole);
   await f.key('w');
 
+  // ---------- handing the screens to a leader ----------
+  // This follower is signed in (the same browser as alice), so it counts as a leader: alice on another device
+  await d.until(`${P}.eval("leadersHere").length === 1`, 'the presenter to see the leader', 5000).catch(() => {});
+  const leaders = await d.ev(`${P}.eval("leadersHere")`);
+  ok(leaders.length === 1 && leaders[0].name === 'alice', 'the presenter sees a signed-in leader following', leaders);
+  await d.ev(`${P}.handOver(${P}.eval("leadersHere")[0].name, ${P}.eval("leadersHere")[0].tab), 'ok'`);
+  await f.until(`${F}.amDriving()`, 'the leader to get the screens', 5000).catch(() => {});
+  const lead = await f.ev(`({ driving: ${F}.amDriving(), pill: ${F}.document.getElementById('livePill').textContent, extra: ${F}.document.getElementById('liveExtra').hidden ? '' : ${F}.document.getElementById('liveExtra').textContent })`);
+  await f.shot('5-leader-driving');
+  ok(lead.driving && /Linked/.test(lead.pill) && lead.extra === 'Give back', 'handed the screens, the leader drives (Linked, Give back)', lead);
+  ok(!(await d.ev(`${P}.amDriving()`)), 'the presenter no longer drives');
+  await f.ev(`${F}.spaceNext(), 'ok'`);
+  fol = await followerSlide();
+  await d.until(`${P}.current_song.chunk_index === ${fol.part} && ${P}.current_song.id === ${JSON.stringify(fol.id)}`, 'the presenter to follow the leader', 5000).catch(() => {});
+  drv = await driverSlide();
+  ok(drv.part === fol.part && drv.id === fol.id, 'the presenter\'s screen follows the leader', [drv, fol]);
+  // Linked off: the leader looks ahead alone; on again: the screens catch up
+  await f.ev(`${F}.setLinked(false), ${F}.nextChunk(), 'ok'`);
+  await sleep(600);
+  const ahead = await followerSlide();
+  drv = await driverSlide();
+  ok(drv.part !== ahead.part || drv.id !== ahead.id, 'not linked: the leader moves alone', [drv.part, ahead.part]);
+  await f.ev(`${F}.setLinked(true), 'ok'`);
+  await d.until(`${P}.current_song.chunk_index === ${ahead.part} && ${P}.current_song.id === ${JSON.stringify(ahead.id)}`, 'the screens to catch up', 5000).catch(() => {});
+  drv = await driverSlide();
+  ok(drv.part === ahead.part && drv.id === ahead.id, 'linked again: the screens catch up', [drv.part, ahead.part]);
+  // the leader gives the screens back; the presenter drives and the leader follows
+  await f.ev(`${F}.giveBack(), 'ok'`);
+  await d.until(`${P}.amDriving()`, 'the presenter to drive again', 5000).catch(() => {});
+  await d.ev(`${P}.prevChunk(), 'ok'`);
+  drv = await driverSlide();
+  await f.until(`${F}.current_song.chunk_index === ${drv.part}`, 'the leader to follow again', 5000).catch(() => {});
+  fol = await followerSlide();
+  ok(!(await f.ev(`${F}.amDriving()`)) && fol.part === drv.part, 'given back: the presenter drives, the leader follows', [drv.part, fol.part]);
+  // the presenter hands over again, then takes the screens back
+  await d.ev(`${P}.handOver(${P}.eval("leadersHere")[0].name, ${P}.eval("leadersHere")[0].tab), 'ok'`);
+  await f.until(`${F}.amDriving()`, 'the leader to get the screens again', 5000).catch(() => {});
+  await d.ev(`${P}.takeBack(), 'ok'`);
+  await f.until(`!${F}.amDriving()`, 'the leader to lose the screens', 5000).catch(() => {});
+  ok(!(await f.ev(`${F}.amDriving()`)) && (await d.ev(`${P}.amDriving()`)), 'take back: the presenter drives again');
+
   // a songbook change reaches the follower (#147)
   const before = await f.ev(`${F}.window.songbook.songs.length`);
   await d.ev(`${P}.updateSongbook(JSON.stringify({ title: 'Live Test Book', songs: ${P}.window.songbook.songs.slice(0, 1) })), 'ok'`);
