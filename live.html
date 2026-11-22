@@ -11,22 +11,30 @@
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
     <title>yCanta2: Follow along</title>
     <style>
-      /* The app's button look (style.css .btn and its --btn-* colors). style.css itself isn't loaded here:
-         it hides buttons until the app has started. */
+      /* The app's theme colors and button look (style.css :root and .btn), light and dark; the follower's
+         panels take these. style.css itself isn't loaded here: it hides buttons until the app has started. */
       :root {
         --btn-shadow-var: 0 2px 2px 2px rgba(0, 0, 0, 0.1);
         --btn-color: white;
         --btn-edge: transparent;
         --text-color: black;
         --background-color: white;
+        --background-color-rgb: 255,255,255;
+        --light-text-color: #555;
+        --box-shadow-var: 0 0 20px 2px rgba(0, 0, 0, 0.2);
+        --song-color: lightblue;
       }
       @media (prefers-color-scheme: dark) {
         :root {
           --btn-shadow-var: 0 2px 2px 2px rgba(0, 0, 0, 0.3);
           --btn-color: #2c2c2c;
           --btn-edge: rgba(255, 255, 255, .16);
-          --text-color: #eee;
-          --background-color: #1b1b1b;
+          --text-color: white;
+          --background-color: #121212;
+          --background-color-rgb: 18,18,18;
+          --light-text-color: #bbb;
+          --box-shadow-var: 0 0 20px 2px rgba(0, 0, 0, 0.5);
+          --song-color: #00B0CC;
         }
       }
       html, body {
@@ -101,6 +109,7 @@
     <iframe id="show" title="The shared presentation"></iframe>
 
     <script src="live.js"></script>
+    <script src="qrcode.min.js"></script> <!-- the join code, when the leader shows it on screen -->
     <script>
       // The server: from the link the leader shared, else the one used last on this device, else this site's
       // own /couch/ (where the church sites keep it)

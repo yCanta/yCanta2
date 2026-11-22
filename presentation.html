@@ -11,7 +11,30 @@
         --bg-image: url("");
         --fixed-image: url("");
         --fg-image: url("");
-        --pick-color: #00B0CC; /* the app's song color (style.css --song-color): the part on screen in Whole song and Grid */
+        --pick-color: var(--song-color); /* the part on screen in Whole song and Grid */
+        /* The app's theme (style.css), light; syncTheme() puts in the app's own as it changes */
+        --background-color: white;
+        --background-color-rgb: 255,255,255;
+        --text-color: black;
+        --light-text-color: #555;
+        --box-shadow-var: 0 0 20px 2px rgba(0, 0, 0, 0.2);
+        --btn-shadow-var: 0 2px 2px 2px rgba(0, 0, 0, 0.1);
+        --btn-color: white;
+        --btn-edge: transparent;
+        --song-color: lightblue;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --background-color: #121212;
+          --background-color-rgb: 18,18,18;
+          --text-color: white;
+          --light-text-color: #bbb;
+          --box-shadow-var: 0 0 20px 2px rgba(0, 0, 0, 0.5);
+          --btn-shadow-var: 0 2px 2px 2px rgba(0, 0, 0, 0.3);
+          --btn-color: #2c2c2c;
+          --btn-edge: rgba(255, 255, 255, .16);
+          --song-color: #00B0CC;
+        }
       }
       body.black {
         --bg-color: black;
@@ -384,8 +407,12 @@
         margin: 0px;
       }
 
+      /* ---- The panels over the slides: Help & Settings, Presentation Stats, the suggest form, the suggestion
+         card and the live bar (#51). They take the app's theme colors (style.css), copied in by syncTheme() and
+         kept in step when the app's theme changes; the values here are the app's light theme, for a page on
+         its own (a downloaded file). The slides keep their own colors (--font-color, --bg-color). */
       #help, #report, #suggestBox {
-        background-color: rgba(255, 255, 255, 0.1);
+        background-color: rgba(var(--background-color-rgb), .35);
         position: fixed;
         top: 0;
         bottom: 0;
@@ -397,16 +424,33 @@
         padding: 1rem;
         overflow-y: auto;
       }
+      #help, #report, #suggestBox, #sugCard, #liveBar, #joinCard {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica Neue", sans-serif;
+        font-weight: normal;
+      }
       #help > div, #report > div, #suggestBox > div {
-        background-color: var(--bg-color);
-        border-radius: 2rem;
-        padding: 1rem;
-        max-width: 600px;
+        position: relative;
+        background-color: var(--background-color);
+        color: var(--text-color);
+        border-radius: 1.25rem;
+        padding: 0 1.25rem 1rem;
+        max-width: 620px;
         margin-left: auto;
         margin-right: auto;
-        filter: drop-shadow(2px 2px 4px lightgray);
+        box-shadow: var(--box-shadow-var);
       }
-      #help > div > *, #report > div > *, #suggestBox > div > *,
+      #report > div, #suggestBox > div {
+        padding-top: 1rem;
+      }
+      /* Help & Settings scrolls inside its own card, so its header stays at the card's top */
+      #help {
+        overflow: hidden;
+      }
+      #help > div {
+        max-height: calc(100vh - 2rem);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+      }
       #searchbox,
       #searchbox input {
         color: gray;
@@ -417,134 +461,278 @@
       #searchbox input:focus {
         outline-color: gray;
       }
-      .helpLine {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: space-between;
-      } 
-      .helpLine > * {
-        margin-bottom: 1rem;
-      }
-      #files {
-        display: grid;
-        grid-template-columns: 1fr 3fr;
-      }
-
-      /*Switch*/
-      .switch {
-        position: relative;
-        display: inline-block;
-        width: 90px;
-        height: 34px;
-        vertical-align: middle;
-      }
-      .switch input {display:none;}
-      .slider {
-        position: absolute;
-        cursor: pointer;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        transition: .4s;
-        border-radius: 34px;
-        border: 1px solid gray;
-      }
-      .slider.font {
-        background-color: lightgray;
-        color: black;
-      }
-      .slider.background {
-        background-color: white;
-        color: gray;
-      }
-      .slider:before {
-        position: absolute;
-        content: "";
-        height: 20px;
-        width: 20px;
-        left: 4px;
-        bottom: 6px;
-        background-color: white;
-        transition: .4s;
-        border-radius: 50%;
-      }
-      .slider.background:before {
-        background-color: gray;
-      }
-      input:checked + .slider.font {
-        color: white;
-      }
-      input:checked + .slider.background {
-        background-color: black;
-      }
-      input:focus + .slider {
-        box-shadow: 0 0 1px #2196F3;
-      }
-      input:checked + .slider:before {
-        -webkit-transform: translateX(26px);
-        -ms-transform: translateX(26px);
-        transform: translateX(60px);
-      }
-      /*------ ADDED CSS ---------*/
-      .slider:after {
-       content: attr(data-text);
-       display: block;
-       position: absolute;
-       transform: translate(-50%,-50%);
-       top: 50%;
-       left: 50%;
-       font-size: 12px;
-       font-family: Verdana, sans-serif;
-       font-weight: bold;
-      }
-      /*End Switch*/
-
-      #help td.description {
-        padding-left: 1em;
-      }
       /* A button the way the app draws one (style.css .btn): a rounded pill with a soft shadow */
       #help .btn, #report .btn, #suggestBox .btn, #sugCard .btn {
-        box-shadow: 0 2px 2px 2px rgba(0, 0, 0, 0.1);
+        box-shadow: var(--btn-shadow-var), inset 0 0 0 1px var(--btn-edge);
         border: none;
         font: inherit;
         font-weight: bold;
-        background-color: white;
-        color: black;
+        background-color: var(--btn-color);
+        color: var(--text-color);
         border-radius: 2rem;
         padding: .3125rem .9375rem;
         margin: 0 0 0 .75rem;
         cursor: pointer;
       }
-      #help .help-top {
-        margin: 0 0 1rem 0;
-        text-align: right;
+      #help .btn:active, #report .btn:active, #suggestBox .btn:active, #sugCard .btn:active {
+        transform: scale3d(0.9, 0.9, 1);
       }
-      /* Other screens (#51): a button with a short note beside it */
+      #help .btn.btn-stop {
+        color: #e0524a;
+      }
+
+      /* Help & Settings: a header that stays put while the panel scrolls, then sections */
+      #help .help-head {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: .5rem;
+        margin: 0 -1.25rem;
+        padding: 1rem 1.25rem .75rem;
+        border-radius: 1.25rem 1.25rem 0 0;
+        background-color: var(--background-color);
+        border-bottom: 1px solid rgba(128, 128, 128, .25);
+      }
+      #help .help-head h3 {
+        flex: 1;
+        margin: 0;
+        font-size: 1.2rem;
+      }
+      #help .help-head .btn {
+        margin: 0;
+        font-size: .85rem;
+      }
+      #help .help-close {
+        border: none;
+        background: none;
+        color: var(--light-text-color);
+        font: inherit;
+        font-size: 1.6rem;
+        line-height: 1;
+        padding: 0 .25rem;
+        cursor: pointer;
+      }
+      #help .help-close:hover {
+        color: var(--text-color);
+      }
+      #help section, #help details {
+        padding: .9rem 0 .2rem;
+        border-bottom: 1px solid rgba(128, 128, 128, .25);
+      }
+      #help details:last-child {
+        border-bottom: none;
+      }
+      #help h4, #help summary {
+        margin: 0 0 .7rem;
+        font-size: 1rem;
+        font-weight: bold;
+      }
+      #help summary {
+        cursor: pointer;
+        list-style-position: inside;
+      }
+      #help .help-note {
+        flex: 1 1 14rem;
+        margin: 0 0 .7rem;
+        font-size: .85rem;
+        color: var(--light-text-color);
+      }
       #help .screen-row {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
         gap: .5rem .75rem;
-        margin-bottom: 1rem;
+        margin-bottom: .8rem;
       }
       #help .screen-row .btn {
         margin: 0;
       }
-      #help .help-note {
-        flex: 1 1 14rem;
-        font-size: .85rem;
+      #help .screen-row .help-note {
+        margin: 0;
+      }
+      /* the app's Chords switch (style.css .chord-switch, .switch-track) */
+      #help .switches {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .6rem 1.4rem;
+        margin-bottom: .9rem;
+      }
+      #help .switches.stacked {
+        flex-direction: column;
+        gap: .55rem;
+      }
+      .chord-switch {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        color: var(--text-color);
+        cursor: pointer;
+        user-select: none;
+      }
+      .chord-switch input {
+        position: absolute;
+        top: 0;
+        left: 0;
+        margin: 0;
+        opacity: 0;
+        width: 1px;
+        height: 1px;
+      }
+      .switch-track {
+        position: relative;
+        flex: none;
+        width: 1.8rem;
+        height: 1rem;
+        border-radius: 1rem;
+        background: rgba(128, 128, 128, .45);
+        transition: background .2s;
+      }
+      .switch-track::after {
+        content: '';
+        position: absolute;
+        top: .125rem;
+        left: .125rem;
+        width: .75rem;
+        height: .75rem;
+        border-radius: 50%;
+        background: var(--background-color);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, .3);
+        transition: transform .2s;
+      }
+      .chord-switch input:checked + .switch-track {
+        background: var(--song-color);
+      }
+      .chord-switch input:checked + .switch-track::after {
+        transform: translateX(.8rem);
+      }
+      .chord-switch input:focus-visible + .switch-track {
+        outline: 2px solid var(--song-color);
+        outline-offset: 2px;
+      }
+      .chord-switch input:disabled + .switch-track {
+        opacity: .5;
+      }
+      /* One part / Whole song / Grid: one button in three parts, the one in use filled */
+      #help .segmented {
+        display: inline-flex;
+        margin-bottom: .6rem;
+        border-radius: 2rem;
+        box-shadow: var(--btn-shadow-var), inset 0 0 0 1px var(--btn-edge);
+        background-color: var(--btn-color);
+        overflow: hidden;
+      }
+      #help .segmented label {
+        position: relative;
+        padding: .35rem 1rem;
+        font-weight: bold;
+        font-size: .9rem;
+        cursor: pointer;
+      }
+      #help .segmented label + label {
+        border-left: 1px solid rgba(128, 128, 128, .25);
+      }
+      #help .segmented input {
+        position: absolute;
+        opacity: 0;
+        width: 1px;
+        height: 1px;
+      }
+      #help .segmented label:has(input:checked) {
+        background-color: var(--song-color);
+      }
+      #help .segmented label:has(input:focus-visible) {
+        outline: 2px solid var(--song-color);
+        outline-offset: -2px;
+      }
+      /* Backgrounds: a row for each picture */
+      #help .picture-row {
+        display: grid;
+        grid-template-columns: 9rem 1fr;
+        align-items: center;
+        gap: .2rem .75rem;
+        margin-bottom: .6rem;
+        font-size: .9rem;
+      }
+      #help .picture-row input {
+        font: inherit;
+        font-size: .8rem;
+        color: var(--light-text-color);
+        max-width: 100%;
+      }
+      #help .picture-row .help-note {
+        grid-column: 2;
+        margin: 0;
+      }
+      /* Keys: each key drawn as a keycap; two columns when there's room */
+      #help .keys {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+        gap: .45rem 1.25rem;
+        padding-bottom: .5rem;
+        font-size: .88rem;
+      }
+      #help .keys > div {
+        display: flex;
+        align-items: baseline;
+        gap: .6rem;
+      }
+      #help .keys .caps {
+        flex: none;
+        min-width: 5.5rem;
+      }
+      #help kbd {
+        display: inline-block;
+        min-width: 1.6em;
+        margin: 0 .2em .15em 0;
+        padding: .05em .4em;
+        border-radius: .35em;
+        background-color: var(--btn-color);
+        box-shadow: 0 1px 0 1px rgba(128, 128, 128, .4), inset 0 0 0 1px var(--btn-edge);
+        font: inherit;
+        font-size: .85em;
+        font-weight: bold;
+        text-align: center;
+      }
+      /* Sharing: the QR code, the code and Stop sharing as one unit, then its switches */
+      #help .share-unit {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: .75rem 1rem;
+        margin-bottom: .9rem;
+      }
+      #help .share-info {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: .35rem;
+        flex: 1 1 12rem;
+      }
+      #help .share-info .help-note {
+        flex: none;
+        margin: 0;
+      }
+      #help .share-info .btn {
+        margin: 0;
       }
       #help .share-code {
         font-size: 2rem;
         font-weight: bold;
         letter-spacing: .2em;
-        color: var(--font-color);
+      }
+      #help .share-qr svg {
+        display: block;
+        width: 7rem;
+        height: 7rem;
+        background: white;
+        border-radius: .5rem;
       }
       #help .share-line {
-        flex-basis: 100%;
-        margin: 0;
+        margin: 0 0 .7rem;
       }
       #help .share-line .leader {
         white-space: nowrap;
@@ -552,15 +740,23 @@
       #help .share-line .btn {
         margin: .25rem .5rem .25rem .25rem;
       }
+      #help .share-problem {
+        flex-basis: 100%;
+        margin: 0 0 .7rem;
+        color: #c0392b;
+      }
+      #help a {
+        color: inherit;
+      }
       /* Suggested songs (#51): the form a follower sends one with, and the card leaders answer on */
       #suggestBox input {
         font: inherit;
         width: 100%;
         margin: 0 0 .75rem;
         padding: .4rem .6rem;
-        border: 1px solid lightgray;
+        border: 1px solid rgba(128, 128, 128, .45);
         border-radius: .5rem;
-        color: var(--font-color);
+        color: var(--text-color);
         background: transparent;
       }
       #suggestBox .btn:first-child {
@@ -574,19 +770,19 @@
         max-width: 20rem;
         padding: .5rem .75rem;
         border-radius: 1rem;
-        background-color: var(--bg-color);
-        color: gray;
-        box-shadow: 0 2px 2px 2px rgba(0, 0, 0, 0.1);
+        background-color: var(--background-color);
+        color: var(--light-text-color);
+        box-shadow: var(--btn-shadow-var), inset 0 0 0 1px var(--btn-edge);
         font-size: .85rem;
       }
       #sugCard .sug {
         padding: .3rem 0;
       }
       #sugCard .sug + .sug {
-        border-top: 1px solid lightgray;
+        border-top: 1px solid rgba(128, 128, 128, .25);
       }
       #sugCard .sug-song {
-        color: var(--font-color);
+        color: var(--text-color);
         font-weight: bold;
       }
       #sugCard .btn {
@@ -596,13 +792,85 @@
       #sugCard[hidden], #suggestBox[hidden] {
         display: none;
       }
+      /* Whole song and Grid: a big Menu button for touch screens (the live bar's ? does it when it shows) */
+      #menuButton {
+        display: none;
+        position: fixed;
+        top: .75rem;
+        right: .75rem;
+        z-index: 4;
+        min-height: 2.75rem;
+        padding: .5rem 1.1rem;
+        border: none;
+        border-radius: 2rem;
+        box-shadow: var(--btn-shadow-var), inset 0 0 0 1px var(--btn-edge);
+        background-color: var(--btn-color);
+        color: var(--text-color);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica Neue", sans-serif;
+        font-size: 1rem;
+        font-weight: bold;
+        cursor: pointer;
+      }
+      body.wholesong #menuButton, body.gridview #menuButton, #menuButton.peek {
+        display: block;
+      }
+      #menuButton {
+        transition: opacity .8s;
+      }
+      body:not(.wholesong):not(.gridview) #menuButton.fade {
+        opacity: 0;
+      }
+      #menuButton.start::after {
+        content: '  ·  press h';
+        font-weight: normal;
+        color: var(--light-text-color);
+        white-space: pre;
+      }
+      body.has-livebar #menuButton {
+        display: none;
+      }
+      #menuButton:active {
+        transform: scale3d(0.9, 0.9, 1);
+      }
+      body.gridview .grid-song:first-child .grid-song-head {
+        margin-right: 7rem; /* the first song's name stays clear of the Menu button */
+      }
       #liveBar[hidden], #liveBar [hidden] {
         display: none;
       }
-      #help .share-problem {
-        flex-basis: 100%;
-        margin: 0;
-        color: firebrick;
+      /* The join card (#51): a QR code and the code in the bottom corner, white so it scans on any background */
+      #joinCard {
+        position: fixed;
+        right: 1.5vmin;
+        bottom: calc(1.5vmin + .5em);
+        z-index: 3;
+        display: flex;
+        align-items: center;
+        gap: 1.5vmin;
+        padding: 1.2vmin 2vmin 1.2vmin 1.2vmin;
+        border-radius: 2vmin;
+        background: white;
+        color: black;
+        box-shadow: 0 2px 2px 2px rgba(0, 0, 0, 0.1);
+        font-size: 2.2vmin;
+      }
+      #joinCard .join-qr svg {
+        display: block;
+        width: 22vmin;
+        height: 22vmin;
+      }
+      #joinCard .join-text {
+        display: flex;
+        flex-direction: column;
+        gap: .3em;
+      }
+      #joinCard .join-code {
+        font-size: 2.3em;
+        font-weight: bold;
+        letter-spacing: .15em;
+      }
+      #joinCard .join-page {
+        color: gray;
       }
       /* Following a shared presentation (#51): Live, or where the leader is, and this screen's settings */
       #liveBar {
@@ -614,13 +882,13 @@
         gap: .5rem;
       }
       #liveBar button {
-        box-shadow: 0 2px 2px 2px rgba(0, 0, 0, 0.1);
+        box-shadow: var(--btn-shadow-var), inset 0 0 0 1px var(--btn-edge);
         border: none;
         font: inherit;
         font-size: .85rem;
         font-weight: bold;
-        background-color: white;
-        color: gray;
+        background-color: var(--btn-color);
+        color: var(--light-text-color);
         border-radius: 2rem;
         padding: .3125rem .9375rem;
         cursor: pointer;
@@ -640,7 +908,7 @@
         vertical-align: middle;
       }
       #livePill.wandering {
-        color: black;
+        color: var(--text-color);
       }
       #livePill.nudge {
         animation: live-nudge .4s ease-in-out 3;
@@ -648,7 +916,7 @@
       @keyframes live-nudge {
         50% { transform: scale(1.12); }
       }
-      /* What's been presented (#158): over the slides, like the help */
+      /* Presentation Stats (#158): over the slides, like the help */
       #report .report-list {
         width: 100%;
         border-collapse: collapse;
@@ -661,7 +929,7 @@
       #report .report-list td:nth-child(5) { width: 3.5rem; }
       #report .report-list td {
         padding: .3rem .4rem .3rem 0;
-        border-top: 1px solid lightgray;
+        border-top: 1px solid rgba(128, 128, 128, .25);
         vertical-align: top;
       }
       #report .report-head td {
@@ -670,25 +938,10 @@
       }
       #report .report-note {
         font-size: .85rem;
+        color: var(--light-text-color);
       }
       #report .report-buttons {
         text-align: right;
-      }
-      /* The help's list of keys */
-      #help .keys td {
-        padding: .15rem 0;
-        vertical-align: top;
-      }
-      #help .keys td.key {
-        padding-right: .75rem;
-        white-space: nowrap;
-        font-weight: bold;
-      }
-
-      #help .newdescription td {
-        border-top: solid 1px black;
-        padding-top: 5px;
-        margin-top: 5px;
       }
 
       #helpButton {

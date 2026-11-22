@@ -95,7 +95,7 @@ async function tab(target) {
   return { ws, send, ev, until };
 }
 let first = null;
-for (let tries = 0; tries < 75 && !first; tries++) {
+for (let tries = 0; tries < 200 && !first; tries++) { // up to 40 seconds: a browser can be slow to start
   try { first = (await (await fetch(`http://127.0.0.1:${CDP_PORT}/json/list`)).json()).find(p => p.type === 'page'); } catch { /* starting */ }
   if (!first) await sleep(200);
 }

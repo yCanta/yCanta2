@@ -145,6 +145,23 @@ try {
   const panel = await d.ev(`(() => { const h = ${P}.document.getElementById('help'); return { html: h.innerHTML, text: h.textContent }; })()`);
   ok(!/Child Windows|data:image\/svg|Image backgrounds|<select/.test(panel.html), 'setup panel: no cast icon or dead controls');
   ok(/This screen/.test(panel.text) && /Open a mirror/.test(panel.text) && /Share with other devices/.test(panel.text), 'setup panel: this screen, a mirror, share', panel.text.slice(0, 200));
+  const head = await d.ev(`[...${P}.document.querySelectorAll('#help .help-head .btn')].map(b => b.textContent).join('|')`);
+  ok(head === 'Download|Presentation Stats', 'the panel\'s buttons: Download, Presentation Stats', head);
+  const order = await d.ev(`[...${P}.document.querySelectorAll('#help section h4')].map(h => h.textContent).join('|')`);
+  ok(order === 'This screen|Screens & Sharing', 'This screen comes before Screens & Sharing', order);
+  // a click outside the panel closes it
+  await d.ev(`${P}.document.getElementById('help').dispatchEvent(new (${P}.MouseEvent)('click', { bubbles: true })), 'ok'`);
+  ok((await d.ev(`getComputedStyle(${P}.document.getElementById('help')).display`)) === 'none', 'a click outside the panel closes it');
+  await d.ev(`${P}.toggleHelp(), 'ok'`);
+  await sleep(300);
+  // the panels take the app's theme, and follow it when it changes
+  await d.ev(`document.documentElement.classList.add('dark'), 'ok'`);
+  await d.until(`${P}.document.documentElement.style.getPropertyValue('--background-color').trim() === '#121212'`, 'the dark theme in the presentation', 3000).catch(() => {});
+  const darkBg = await d.ev(`getComputedStyle(${P}.document.querySelector('#help > div')).backgroundColor`);
+  await d.ev(`document.documentElement.classList.remove('dark'), 'ok'`);
+  await d.until(`${P}.document.documentElement.style.getPropertyValue('--background-color').trim() === 'white'`, 'the light theme back', 3000).catch(() => {});
+  ok(darkBg === 'rgb(18, 18, 18)' && (await d.ev(`getComputedStyle(${P}.document.querySelector('#help > div')).backgroundColor`)) === 'rgb(255, 255, 255)',
+    'the panel follows the app\'s theme, dark and back', darkBg);
 
   // ---------- share ----------
   await d.ev(`${P}.startShare().then(() => 'ok')`);
@@ -154,6 +171,7 @@ try {
   ok(shown === code, 'the panel shows the code', shown);
   const link = await d.ev(`${P}.document.querySelector('#share a').href`);
   ok(link.startsWith(APP + '/live.html?server=') && link.endsWith('#' + code), 'the panel links to live.html with the server', link);
+  ok(await d.ev(`!!${P}.document.querySelector('#share .share-qr svg')`), 'the panel shows a QR code beside the code');
   await d.shot('1-presenter-sharing');
   await d.ev(`${P}.hideHelp(), ${P}.nextChunk(), 'ok'`); // the first song's first part
   const driverSlide = () => d.ev(`({ id: ${P}.current_song.id, part: ${P}.current_song.chunk_index, text: ${P}.document.querySelector('#cur_slide .content').textContent })`);
@@ -174,6 +192,16 @@ try {
     nudge: ${F}.document.getElementById('livePill').classList.contains('nudge'), cls: ${F}.document.body.className })`);
   let fol = await followerSlide();
   ok(fol.text === drv.text && !fol.wandering && /Live/.test(fol.pill), 'the follower shows the same slide, live', fol);
+
+  // the QR code on the screens: the presenter's and the follower's
+  await d.ev(`${P}.setJoin(true), 'ok'`);
+  await f.until(`!!${F}.document.getElementById('joinCard')`, 'the join card on the follower', 5000).catch(() => {});
+  const joins = { presenter: await d.ev(`!!${P}.document.querySelector('#joinCard .join-qr svg')`), follower: await f.ev(`!!${F}.document.querySelector('#joinCard .join-qr svg')`),
+    code: await f.ev(`${F}.document.querySelector('#joinCard .join-code') && ${F}.document.querySelector('#joinCard .join-code').textContent`) };
+  ok(joins.presenter && joins.follower && joins.code === code, 'j shows the QR code on the presenter and the follower', joins);
+  await d.ev(`${P}.setJoin(false), 'ok'`);
+  await f.until(`!${F}.document.getElementById('joinCard')`, 'the join card to go', 5000).catch(() => {});
+  ok(!(await f.ev(`!!${F}.document.getElementById('joinCard')`)), 'turned off, the follower\'s QR card goes too');
 
   // the arrow over the part Space goes to: from the first verse, the chorus
   const marker = (w, frame) => w.ev(`(() => { const p = ${frame}.document.getElementById('progress'); const i = [...p.children].findIndex(c => c.classList.contains('space-next'));
@@ -239,7 +267,8 @@ try {
   await f.key('w');
 
   // ---------- the presenter's own Grid and Whole song: click a part to show it everywhere ----------
-  await d.ev(`${P}.setView('grid'), 'ok'`);
+  await d.ev(`${P}.hideHelp(), ${P}.setView('grid'), 'ok'`);
+  ok((await d.ev(`getComputedStyle(${P}.document.getElementById('menuButton')).display`)) === 'block', 'Grid shows the Menu button');
   const gridState = () => d.ev(`(() => { const cards = [...${P}.document.querySelectorAll('#cur_slide .grid-card')];
     return { rows: ${P}.document.querySelectorAll('#cur_slide .grid-song').length, cards: cards.map(c => c.dataset.song + ':' + c.dataset.part),
       current: (cards.find(c => c.classList.contains('current')) || {}).dataset?.part,

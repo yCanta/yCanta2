@@ -67,6 +67,8 @@ presentation_key_map = {
                   "Toggle Chords on/off"   ],
   'w'         : [ function() {if(! isSearching()) toggleWholeSong();},
                   "Show the whole song, or one part at a time (#51)" ],
+  'j'         : [ function() {if(! isSearching() && sharing) toggleJoin();},
+                  "While sharing: show or hide the QR code on the screens (#51)" ],
   'g'         : [ function() {if(! isSearching()) toggleGrid();},
                   "Show a grid of the song's parts, or one part at a time (#51)" ],
   //'p'         : [ togglePresentation, "Enter/exit fullscreen presentation mode"   ],
@@ -148,11 +150,13 @@ let markPresentationReady;
 window.presentationReady = new Promise(resolve => { markPresentationReady = resolve; });
 
 document.addEventListener('DOMContentLoaded', function() {
-    // The whole page as it starts, with its songs (#53): what "Save for later" downloads and what a mirrored
+    // The whole page as it starts, with its songs (#53): what "Download" saves and what a mirrored
     // window is made from, so neither needs the site
     window.presentationSource = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+    watchTheme(); // the panels take the app's theme colors (#51)
     if (document.getElementById('data').getAttribute('data') === 'mirror') return startMirror();
     if (isFollower()) setupFollower(); // following a shared presentation in live.html (#51)
+    else setupMenuButton();
     document.getElementById('slides').addEventListener('click', pickPart);
 
     document.querySelectorAll('stitle').forEach(el => el.addEventListener('click', toggleSongVisible));
@@ -533,7 +537,7 @@ function renderReport() {
   const table = items => '<table class="report-list"><tr class="report-head"><td></td><td>Song or scripture</td><td>CCLI #</td><td>On screen</td><td>Slides</td></tr>'
     + items.map(row).join('') + '</table>';
   const counted = report.items.filter(it => it.auto), brief = report.items.filter(it => !it.auto);
-  box.firstChild.innerHTML = '<h4>Presented so far</h4>'
+  box.firstChild.innerHTML = '<h4>Presentation Stats</h4>'
     + '<p class="report-note">' + escapeText(report.book) + (report.start ? ', ' + timeOfDay(report.start) + ' to ' + timeOfDay(report.end) : '')
     + '. One counts when it was on screen ' + REPORT_SECONDS + ' seconds and ' + Math.round(REPORT_SHARE * 100) + '% of its slides were shown.</p>'
     + (report.items.length ? '' : '<p>Nothing has been shown yet.</p>')
@@ -571,7 +575,7 @@ function endReport() {
 }
 window.addEventListener('pagehide', endReport);
 
-// ---- Mirrored windows and "Save for later" (#53). Both are made from this page as it started
+// ---- Mirrored windows and "Download" (#53). Both are made from this page as it started
 // (presentationSource), so they work the same in the app and from a saved file, with no site needed.
 
 // A mirrored window: this page in mirror mode, showing whatever slide is on screen here
@@ -596,6 +600,9 @@ function updateMirror(win) {
       + (whole ? wholeSongHtml() : part_slide_html) + '</div></div>';
     winDoc.querySelector('#statusbar').innerHTML = document.getElementById('progress').outerHTML;
     win.scaleText();
+    const card = winDoc.getElementById('joinCard');
+    if (card) card.remove();
+    if (sharing && joinShown) winDoc.body.insertAdjacentHTML('beforeend', joinCardHtml());
     const total = current_song.doc.content.length;
     winDoc.querySelector('#slides').style.setProperty('--percent', (((current_song.chunk_index + 1) / total) * 100));
   } catch(err) {}
@@ -640,6 +647,8 @@ function partName(song, index) {
 let sharing = false, sharedSignature = '', shareProblem = '', linked = true, leadersHere = [], ownerFollow = null;
 // Suggested songs: the person sharing turns them on (off to start); followers see it in the set (liveSuggest)
 let suggestionsOn = false, liveSuggest = false, suggestionsHere = [], sugNotes = {};
+// The join card (QR code and code) on the screens: the sharer shows it; followers get it with the set
+let joinShown = false, liveJoin = false;
 let liveNow = null, following = true, liveMoving = false, wasDriving = false;
 // After this page hands the screens over, takes them back or gives them back, updates written before that may
 // still arrive; they're ignored until one names the new driver (or a few seconds pass, if the write failed)
@@ -680,6 +689,7 @@ function liveSet() {
     title: window.songbook.title,
     bible: window.songbook.bible || null,
     suggest: suggestionsOn,
+    join: joinShown,
     songs: window.songbook.songs.map(song => song.passage ? { id: song.id, passage: song.passage, reading: true } : {
       id: song.id,
       doc: { title: song.doc.title, authors: song.doc.authors, scripture_ref: song.doc.scripture_ref, key: song.doc.key,
@@ -688,7 +698,7 @@ function liveSet() {
   };
 }
 function setSignature() {
-  return window.songbook.title + '|' + suggestionsOn + '|' + window.songbook.songs.map(song => song.id + ':' + (song.value ? song.value.rev : '')).join(',');
+  return window.songbook.title + '|' + suggestionsOn + '|' + joinShown + '|' + window.songbook.songs.map(song => song.id + ':' + (song.value ? song.value.rev : '')).join(',');
 }
 async function startShare() {
   const host = liveHost();
@@ -726,6 +736,8 @@ function stopShare() {
   const host = liveHost();
   if (host) host.Live.stop();
   suggestionsHere = [];
+  joinShown = false;
+  renderJoin();
   renderShare();
   renderLiveBar();
   renderSuggestions();
@@ -790,7 +802,8 @@ function giveBack() {
 // The follow-along page, with the server in it (the page may be on another site than the server, like GitHub Pages)
 function shareLink(code) {
   const link = new URL('live.html', window.parent.location.href);
-  link.search = '?server=' + encodeURIComponent(liveHost().Live.server);
+  const server = liveHost().Live.server;
+  if (server !== new URL('couch/', link.origin + '/').href) link.search = '?server=' + encodeURIComponent(server);
   link.hash = code;
   return link.href;
 }
@@ -801,13 +814,15 @@ function renderShare() {
   if (sharing && host && host.Live.code) {
     const link = shareLink(host.Live.code);
     const handed = handedTo();
-    box.innerHTML = '<div class="share-code" title="The code to type on the other device">' + escapeText(host.Live.code) + '</div>'
-      + '<span class="help-note">On the other device open <a target="_blank" rel="noopener" href="' + escapeText(link) + '">' + escapeText(link.replace(/[?#].*/, '')) + '</a> and type this code. Each device picks its own look.</span>'
-      + '<button type="button" class="btn" onclick="stopShare()">Stop sharing</button>'
-      + '<label class="share-line" title="Off: look ahead here without moving the other screens"><input type="checkbox" id="chngLinked"'
-      + (linked ? ' checked' : '') + (handed ? ' disabled' : '') + ' onchange="setLinked(this.checked)"> Linked: the other screens follow this one</label>'
-      + '<label class="share-line" title="Anyone following can send a song; you and signed-in leaders say yes or not now"><input type="checkbox" id="chngSuggest"'
-      + (suggestionsOn ? ' checked' : '') + ' onchange="setSuggestions(this.checked)"> Let people following suggest songs</label>';
+    box.innerHTML = '<div class="share-unit"><div class="share-qr" title="Scan to follow along">' + qrSvg(link) + '</div>'
+      + '<div class="share-info"><div class="share-code" title="The code to type on the other device">' + escapeText(host.Live.code) + '</div>'
+      + '<span class="help-note">Scan it, or open <a target="_blank" rel="noopener" href="' + escapeText(link) + '">' + escapeText(link.replace(/[?#].*/, '').replace(/^https?:\/\//, '')) + '</a> and type the code. Each device picks its own look.</span>'
+      + '<button type="button" class="btn btn-stop" onclick="stopShare()">Stop sharing</button></div></div>'
+      + '<div class="switches stacked">'
+      + switchHtml('chngJoin', 'Show the QR code on the screens (j)', joinShown, 'setJoin(this.checked)', 'A card with the QR code and the code, on this screen, the mirrors and the screens following')
+      + switchHtml('chngLinked', 'Linked: the other screens follow this one', linked, 'setLinked(this.checked)', 'Off: look ahead here without moving the other screens', !!handed)
+      + switchHtml('chngSuggest', 'Let people following suggest songs', suggestionsOn, 'setSuggestions(this.checked)', 'Anyone following can send a song; you and signed-in leaders say yes or not now')
+      + '</div>';
     if (handed) {
       box.innerHTML += '<p class="share-line">' + escapeText(handed) + (handed === myName() ? ' (another device)' : '') + ' is leading the screens; this one follows. '
         + '<button type="button" class="btn" onclick="takeBack()">Take back</button></p>';
@@ -816,12 +831,10 @@ function renderShare() {
         + escapeText(leader.name) + (leader.name === myName() ? ' (another device)' : '')
         + ' <button type="button" class="btn" data-name="' + escapeText(leader.name) + '" data-tab="' + escapeText(leader.tab)
         + '" onclick="handOver(this.dataset.name, this.dataset.tab)">Let them lead</button></span>').join(' ') + '</p>';
-    } else {
-      box.innerHTML += '<p class="share-line help-note">A leader signed in to yCanta on their own device shows up here once they follow along, and you can let them lead the screens.</p>';
     }
   } else {
-    box.innerHTML = '<button type="button" class="btn" onclick="startShare()">Share with other devices</button>'
-      + '<span class="help-note">A TV, leaders\' tablets, or phones follow along with a code.</span>';
+    box.innerHTML = '<div class="screen-row"><button type="button" class="btn" onclick="startShare()">Share with other devices</button>'
+      + '<span class="help-note">A TV, leaders\' tablets, or phones follow along with a code or a QR code. Leaders signed in on their own device can be handed the screens.</span></div>';
   }
   if (shareProblem) box.insertAdjacentHTML('beforeend', '<p class="share-problem">' + escapeText(shareProblem) + '</p>');
 }
@@ -860,6 +873,8 @@ function liveSongs(songs) {
 }
 function followSet(set) {
   liveSuggest = !!set.suggest;
+  liveJoin = !!set.join;
+  renderJoin();
   window.songbook.title = liveText(set.title);
   window.document.title = 'yCanta2: ' + plainText(set.title);
   const titleSlide = document.getElementById('pres_title');
@@ -948,6 +963,7 @@ function renderLiveBar(nudge = false) {
   const driving = amDriving();
   const touch = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
   bar.hidden = !isFollower() && (!sharing || (driving && linked && !touch));
+  document.body.classList.toggle('has-livebar', !bar.hidden);
   pill.classList.toggle('wandering', driving ? !linked : !following);
   extra.hidden = true;
   document.getElementById('liveSuggest').hidden = !(isFollower() && liveSuggest);
@@ -974,6 +990,48 @@ function renderLiveBar(nudge = false) {
     void pill.offsetWidth;
     pill.classList.add('nudge');
   }
+}
+
+// ---- The join card (#51): a QR code and the code, in a corner of the screens, so people in the room can follow
+// along on their phones. The sharer turns it on (j, or the share panel); mirrors and followers show it too.
+function qrSvg(text) {
+  const make = window.qrcode || (window.parent !== window && window.parent.qrcode);
+  if (typeof make !== 'function') return '';
+  const qr = make(0, 'M');
+  qr.addData(text);
+  qr.make();
+  return qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+}
+function setJoin(on) {
+  if (!sharing) return;
+  joinShown = on;
+  const box = document.getElementById('chngJoin');
+  if (box) box.checked = on;
+  renderJoin();
+  publishLive(); // followers get it with the set
+  secondary_windows.filter(win => !win.closed).forEach(updateMirror);
+}
+function toggleJoin() { setJoin(!joinShown); }
+// What the card says: here, the sharer's link; on a follower, its own page with the code
+function joinCardHtml() {
+  let link = '', code = '';
+  if (sharing) {
+    const host = liveHost();
+    code = host && host.Live.code;
+    if (code) link = shareLink(code);
+  } else if (isFollower() && window.liveCode) {
+    code = window.liveCode;
+    link = window.parent.location.href.replace(/#.*$/, '') + '#' + code;
+  }
+  if (!link) return '';
+  const page = link.replace(/[?#].*$/, '').replace(/^https?:\/\//, '');
+  return '<div id="joinCard"><div class="join-qr">' + qrSvg(link) + '</div><div class="join-text">Follow along on your phone'
+    + '<span class="join-code">' + escapeText(code) + '</span><span class="join-page">' + escapeText(page) + '</span></div></div>';
+}
+function renderJoin() {
+  const old = document.getElementById('joinCard');
+  if (old) old.remove();
+  if ((sharing && joinShown) || (isFollower() && liveJoin)) document.body.insertAdjacentHTML('beforeend', joinCardHtml());
 }
 
 // ---- Suggested songs (#51). Anyone following sends one (when the person sharing turned them on); the person
@@ -1061,6 +1119,7 @@ function openSuggest() {
       + '<p id="sugMsg" role="status"></p></div></div>');
     box = document.getElementById('suggestBox');
     box.addEventListener('keydown', e => { if (e.key === 'Enter') sendSuggestion(); if (e.key === 'Escape') closeSuggest(); });
+    box.addEventListener('click', e => { if (e.target === box) closeSuggest(); }); // a click outside the form closes it
   }
   box.hidden = false;
   document.getElementById('sugMsg').textContent = '';
@@ -1084,7 +1143,7 @@ async function sendSuggestion() {
   }
 }
 
-// Save for later: this presentation as one file, to open offline in any browser or to email
+// Download: this presentation as one file, to open offline in any browser or to email
 function savePresentation() {
   const title = (window.songbook ? plainText(window.songbook.title) : '') || 'yCanta';
   const link = document.createElement('a');
@@ -1096,87 +1155,172 @@ function savePresentation() {
   setTimeout(() => URL.revokeObjectURL(link.href), 10000);
 }
 
-// The setup panel (h or ?): how this screen looks, other screens, and the keys (#51). A mirror's panel has
-// only its own look, since its slides come from the main window; a follower's has its own look too.
+// Help & Settings (h or ?): screens and sharing, this screen's look, backgrounds, and the keys (#51). A mirror's
+// panel has only its own look, since its slides come from the main window; a follower's has its look and keys.
+function switchHtml(id, label, checked, onchange, title = '', disabled = false) {
+  return '<label class="chord-switch"' + (title ? ' title="' + escapeText(title) + '"' : '') + '><input type="checkbox" id="' + id + '"'
+    + (checked ? ' checked' : '') + (disabled ? ' disabled' : '') + ' onchange="' + onchange + '"><span class="switch-track"></span>' + label + '</label>';
+}
+function keysOpen() { try { return localStorage.getItem('yCantaKeysOpen') === '1'; } catch (err) { return false; } }
 function toggleHelp() {
   if(!document.getElementById('help')) { // help element not created yet -- lets do it
     const mirror = isMirror();
     const follower = isFollower();
-    // checked to match the screen as it is now (keys can change it before the panel is ever opened)
-    const on = name => document.body.classList.contains(name) ? ' checked' : '';
+    const main = !mirror && !follower;
+    const on = name => document.body.classList.contains(name); // set to match the screen as it is now
     let content = '<div id="help"><div>';
-    if (!mirror && !follower) content += '<p class="help-top"><button type="button" class="btn" onclick="savePresentation()" title="Download this presentation as one file, to open offline or email">Save for later</button>'
-      + '<button type="button" class="btn" onclick="toggleReport()">Presented so far</button></p>'; // (#53, #158)
+    content += '<div class="help-head"><h3>' + (mirror ? 'This window' : 'Help & Settings') + '</h3>'
+      + (main ? '<button type="button" class="btn" onclick="savePresentation()" title="Download this presentation as one file, to open offline or email">Download</button>'
+        + '<button type="button" class="btn" onclick="toggleReport()">Presentation Stats</button>' : '') // (#53, #158)
+      + '<button type="button" class="help-close" onclick="hideHelp()" aria-label="Close" title="Close (Esc)">×</button></div>';
 
-    content += '<h4>' + (mirror ? 'This window' : 'This screen') + '</h4>';
-    content += '<div class="helpLine">'
-      + '<label onchange="whiteScreen(true)" class="switch"><input type="checkbox" id="fgText"' + on('white') + '><div data-text="TEXT" class="slider font"></div></label>'
-      + '<label onchange="blackScreen(true)" class="switch"><input type="checkbox" id="bgColor"' + on('black') + '><div data-text="BG" class="slider background"></div></label>'
-      + '<label onchange="toggleChords(true)"><input id="chngChords" type="checkbox"' + (document.body.classList.contains('nochords') ? '' : ' checked') + '> Chords</label>'
-      + '<label onchange="toggleMarker()" title="A small arrow on the progress bar over the part Space goes to"><input id="chngMarker" type="checkbox"' + (document.body.classList.contains('nomarker') ? '' : ' checked') + '> Next-part arrow</label>'
-      + '</div>';
-    // What this screen shows. Whole song and Grid suit a leader's own screen: click a part there to show it on
-    // the mirror or the other screens, which can stay on one part at a time.
+    // This screen first: what it shows sets everything else on it
+    content += '<section><h4>' + (mirror ? 'Look' : 'This screen') + '</h4>';
     const view = currentView();
     const choice = (value, label, title) => '<label title="' + title + '"><input type="radio" name="showView" value="' + value + '"'
-      + (view === value ? ' checked' : '') + ' onchange="setView(this.value)"> ' + label + '</label>';
-    content += '<div class="helpLine view-line">Show: ' + choice('part', 'One part', 'One part at a time, as big as fits')
-      + choice('whole', 'Whole song', 'Every part of the song, the one being sung clear. Click a part to show it.')
-      + (mirror ? '' : choice('grid', 'Grid', 'A card for each part. Click one to show it.')) + '</div>';
-    if (!mirror && !follower) content += '<p class="help-note">Whole song and Grid are for your own screen. Open a mirror or share for the room\'s screen; it shows one part at a time unless you change it there.</p>';
-    content += '<div id="files"><span>Background picture:</span><input onclick="clearFile(this)" onchange="loadFiles(this);" data="bg-image" type="file" accept="image/*">'
-      + '<span>Still picture:</span><input onclick="clearFile(this)" onchange="loadFiles(this);" data="fixed-image" type="file" accept="image/*">'
-      + '<span>Front picture:</span><input onclick="clearFile(this)" onchange="loadFiles(this);" data="fg-image" type="file" accept="image/*"></div>';
+      + (view === value ? ' checked' : '') + ' onchange="setView(this.value)">' + label + '</label>';
+    content += '<div class="segmented" role="radiogroup" aria-label="Show">' + choice('part', 'One part', 'One part at a time, as big as fits (w and g go back to it)')
+      + choice('whole', 'Whole song', 'Every part of the song, the one on screen outlined. Click a part to show it. (w)')
+      + (mirror ? '' : choice('grid', 'Grid', 'The whole book, the song on screen open. Click a part to show it. (g)')) + '</div>';
+    if (main) content += '<p class="help-note">Whole song and Grid are for your own screen: the mirror and the other screens keep showing one part at a time.</p>';
+    content += '<div class="switches">'
+      + switchHtml('fgText', 'White text', on('white'), 'whiteScreen(true)', 'f')
+      + switchHtml('bgColor', 'Black background', on('black'), 'blackScreen(true)', 't')
+      + switchHtml('chngChords', 'Chords', !on('nochords'), 'toggleChords(true)', 'C (capital)')
+      + switchHtml('chngMarker', 'Next-part arrow', !on('nomarker'), 'toggleMarker()', 'A small arrow on the part Space goes to')
+      + '</div>';
+    content += '</section>';
 
-    if (!mirror && !follower) {
-      content += '<h4>Other screens</h4>';
-      content += '<div class="screen-row"><button type="button" class="btn" onclick="openWindow()">Open a mirror</button>'
-        + '<span class="help-note">A second window on this computer, for a projector or the band. Its own C, t and f keys change only it.</span></div>';
-      if (canShare()) content += '<div class="screen-row" id="share"></div>';
+    if (main) {
+      content += '<section><h4>Screens & Sharing</h4>'
+        + '<div class="screen-row"><button type="button" class="btn" onclick="openWindow()">Open a mirror</button>'
+        + '<span class="help-note">A second window on this computer, for a projector or the band. It has its own look.</span></div>'
+        + (canShare() ? '<div id="share"></div>' : '')
+        + '</section>';
     }
 
-    // The keys worth knowing, in plain words
+    content += '<details><summary>Backgrounds</summary>'
+      + '<div class="picture-row"><span>Moving background</span><input onclick="clearFile(this)" onchange="loadFiles(this);" data="bg-image" type="file" accept="image/*">'
+      + '<span class="help-note">Behind everything; it drifts a little as the song goes on.</span></div>'
+      + '<div class="picture-row"><span>Still picture</span><input onclick="clearFile(this)" onchange="loadFiles(this);" data="fixed-image" type="file" accept="image/*">'
+      + '<span class="help-note">Behind the words; it stays put.</span></div>'
+      + '<div class="picture-row"><span>Front picture</span><input onclick="clearFile(this)" onchange="loadFiles(this);" data="fg-image" type="file" accept="image/*">'
+      + '<span class="help-note">Over the words, so use one with see-through parts.</span></div>'
+      + '</details>';
+
+    // The keys worth knowing, each drawn as a keycap
     const keys = mirror ? [
-      ['w', 'Whole song, or one part at a time'],
-      ['t / f', 'Black background / white text, on or off'],
-      ['C (capital)', 'Chords on or off'],
-      ['h or ?', 'This panel'],
-      ['Esc', 'Close this panel'],
+      [['w'], 'Whole song, or one part'],
+      [['C'], 'Chords on or off (capital C)'],
+      [['t'], 'Black background'], [['f'], 'White text'],
+      [['h', '?'], 'This panel'], [['Esc'], 'Close this panel'],
     ] : [
-      ['Space', 'The part people sing next: verse, chorus, verse... (the small arrow shows where)'],
-      ['→ ↓', 'Next part, in the order the song is written'],
-      ['← ↑', 'Back a part'],
-      ...(follower ? [['Moving on your own', 'Stops following until you go back to live']] : []),
-      ['Page Down / Page Up', 'Next / previous song'],
-      ['Home / End', 'First / last song'],
-      ['1 to 9, 0', 'Go to that verse of the song (0 is 10)'],
-      ['c, b, e', 'Go to the chorus, bridge, or ending'],
-      ['s or /', 'Search the songs; then 1 to 5 or Enter picks one'],
-      ...(follower ? [['Enter or the Live button', 'Follow the leader again']] : [
-        ['s, then John 3:16', 'Show Bible verses: type the reference, then Enter'],
-        ['r', "Show the verses this song's scripture references name"],
+      [['Space'], 'The part people sing next: verse, chorus, verse…'],
+      [['→', '↓'], 'Next part, as written'],
+      [['←', '↑'], 'Back a part'],
+      [['PgDn', 'PgUp'], 'Next / previous song'],
+      [['Home', 'End'], 'First / last song'],
+      [['1–9', '0'], 'That verse (0 is 10)'],
+      [['c'], 'The chorus; the final chorus once every verse is sung'],
+      [['b', 'e'], 'The bridge / the ending'],
+      [['s', '/'], 'Search; then 1–5 or Enter picks one'],
+      ...(follower ? [[['Enter'], 'Back to live, after moving on your own']] : [
+        [['s'], 'then John 3:16 and Enter: Bible verses'],
+        [['r'], "The verses this song's scripture references name"],
       ]),
-      ['t / f', 'Black background / white text, on or off'],
-      ['C (capital)', 'Chords on or off'],
-      ['w', 'Whole song, or one part at a time'],
-      ['g', 'Grid of the parts, or one part at a time'],
-      ['Click a part', 'In the whole song or the grid: show that part'],
-      ...(follower ? [] : [['l', "The list of what's been presented, to copy"]]),
-      ['h or ?', 'This panel'],
-      ['Esc', 'Close search, this panel, or the list'],
+      [['w'], 'Whole song, or one part'],
+      [['g'], 'Grid, or one part'],
+      [['C'], 'Chords on or off (capital C)'],
+      [['t'], 'Black background'], [['f'], 'White text'],
+      ...(follower ? [] : [[['j'], 'While sharing: the QR code on the screens'], [['l'], 'Presentation Stats']]),
+      [['h', '?'], 'This panel'],
+      [['Esc'], 'Close search, this panel, or the stats'],
     ];
-    content += '<h4>Keys</h4><table class="keys">'
-      + keys.map(([key, what]) => '<tr><td class="key">' + escapeText(key) + '</td><td class="description">' + escapeText(what) + '</td></tr>').join('')
-      + '</table>';
+    content += '<details id="helpKeys"' + (keysOpen() ? ' open' : '') + '><summary>Keys</summary><div class="keys">'
+      + keys.map(([caps, what]) => '<div><span class="caps">' + caps.map(cap => '<kbd>' + escapeText(cap) + '</kbd>').join('')
+        + '</span><span>' + escapeText(what) + '</span></div>').join('')
+      + '</div></details>';
     content += '</div></div>';
     document.body.insertAdjacentHTML('afterbegin', content);
-    document.getElementById('help').style.display = 'none';
+    const help = document.getElementById('help');
+    help.style.display = 'none';
+    help.addEventListener('click', e => { if (e.target === help) hideHelp(); }); // a click outside the panel closes it
+    document.getElementById('helpKeys').addEventListener('toggle', e => { // remembered for next time
+      try { localStorage.setItem('yCantaKeysOpen', e.target.open ? '1' : '0'); } catch (err) { /* private window */ }
+    });
     renderShare();
   }
 
   // now certain that all is inited
   slideToggle(document.getElementById('help'), 200);
 }
+
+// ---- The Menu button (#51): always there in Whole song and Grid. In One part it's a hint that peeks out: at the
+// start (until a couple of seconds after the first move, or 45 seconds), then for a few seconds after the mouse
+// moves or the screen is tapped once, so a phone or tablet can always reach the menu.
+let menuPeekTimer = null, menuHintAtStart = true;
+function setupMenuButton() {
+  document.body.insertAdjacentHTML('beforeend', '<button type="button" id="menuButton" onclick="toggleHelp()" title="Help & Settings (h)">☰ Menu</button>');
+  document.getElementById('menuButton').classList.add('start');
+  peekMenu(45000);
+  let lastPeek = 0;
+  document.addEventListener('mousemove', () => {
+    if (menuHintAtStart || Date.now() - lastPeek < 500) return;
+    lastPeek = Date.now();
+    peekMenu(3000);
+  });
+  // a single tap that didn't move (a swipe changes the slide; a double tap opens the search)
+  let tapAt = null;
+  document.addEventListener('touchstart', e => { tapAt = e.touches.length === 1 ? [e.touches[0].clientX, e.touches[0].clientY] : null; }, { passive: true });
+  document.addEventListener('touchend', e => {
+    const t = e.changedTouches[0];
+    if (tapAt && t && Math.abs(t.clientX - tapAt[0]) < 10 && Math.abs(t.clientY - tapAt[1]) < 10) peekMenu(4000);
+    tapAt = null;
+  }, { passive: true });
+}
+function peekMenu(ms) {
+  const button = document.getElementById('menuButton');
+  if (!button) return;
+  button.classList.add('peek');
+  button.classList.remove('fade');
+  clearTimeout(menuPeekTimer);
+  menuPeekTimer = setTimeout(() => {
+    button.classList.add('fade');
+    menuPeekTimer = setTimeout(() => button.classList.remove('peek', 'fade', 'start'), 800);
+  }, ms);
+}
+// the presentation got going: the start hint fades soon
+function menuHintDone() {
+  if (!menuHintAtStart) return;
+  menuHintAtStart = false;
+  peekMenu(2000);
+}
+
+// ---- The app's theme (#51): the panels take the app's colors, and change when its theme does. A mirror takes
+// them from the window that opened it; a follower from live.html; a downloaded file keeps the light ones.
+const THEME_VARS = ['--background-color', '--background-color-rgb', '--text-color', '--light-text-color', '--box-shadow-var',
+  '--btn-shadow-var', '--btn-color', '--btn-edge', '--song-color'];
+function themeSource() {
+  try { if (window.parent !== window && window.parent.document) return window.parent.document; } catch (err) { /* another site */ }
+  try { if (window.opener && window.opener.document) return window.opener.document; } catch (err) { /* closed */ }
+  return null;
+}
+function syncTheme() {
+  const source = themeSource();
+  if (!source) return;
+  const values = source.defaultView.getComputedStyle(source.documentElement);
+  THEME_VARS.forEach(name => {
+    const value = values.getPropertyValue(name).trim();
+    if (value) document.documentElement.style.setProperty(name, value);
+  });
+}
+function watchTheme() {
+  syncTheme();
+  const source = themeSource();
+  if (source) new source.defaultView.MutationObserver(syncTheme).observe(source.documentElement, { attributes: true, attributeFilter: ['class', 'style'] });
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => setTimeout(syncTheme, 50));
+}
+
 function toggleMarker() {
   document.body.classList.toggle('nomarker');
 }
@@ -1568,6 +1712,7 @@ function showChunk(name) {
     secondary_windows.forEach(updateMirror);
     noteFollowerMove(); // (#51)
     publishLive();
+    if (name !== 'view' && name !== 'live') menuHintDone();
   }
   else {
     const song = chunk.parentNode;
