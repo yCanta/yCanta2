@@ -234,16 +234,32 @@ try {
 
   // ---------- the presenter's own Grid and Whole song: click a part to show it everywhere ----------
   await d.ev(`${P}.setView('grid'), 'ok'`);
-  const grid = await d.ev(`(() => { const cards = [...${P}.document.querySelectorAll('#cur_slide .grid-card')];
-    return { count: cards.length, current: cards.findIndex(c => c.classList.contains('current')), next: cards.findIndex(c => c.classList.contains('space-next')),
-      nextSong: cards.some(c => c.dataset.nextSong) }; })()`);
-  ok(grid.count === 5 && grid.current === drv.part && grid.next === 2 && grid.nextSong, 'Grid: a card for each part and the next song, the one on screen and the next marked', grid);
+  const gridState = () => d.ev(`(() => { const cards = [...${P}.document.querySelectorAll('#cur_slide .grid-card')];
+    return { rows: ${P}.document.querySelectorAll('#cur_slide .grid-song').length, cards: cards.map(c => c.dataset.song + ':' + c.dataset.part),
+      current: (cards.find(c => c.classList.contains('current')) || {}).dataset?.part,
+      next: (c => c ? { song: c.dataset.song, part: c.dataset.part } : {})(cards.find(c => c.classList.contains('space-next'))) }; })()`);
+  let grid = await gridState();
+  ok(grid.rows === 2 && grid.cards.length === 4 && grid.current === String(drv.part) && grid.next.song === '0' && grid.next.part === '2',
+    'Grid: every song in the book, the one on screen open, its part on screen and the next marked', grid);
   await d.shot('8-presenter-grid');
+  // opening another song's row shows its parts without changing the screens
+  await d.ev(`${P}.document.querySelector('[data-open-song="1"]').click(), 'ok'`);
+  grid = await gridState();
+  drv = await driverSlide();
+  ok(grid.cards.length === 5 && grid.cards.includes('1:0') && drv.part === 1, 'clicking a song\'s row opens it to look at, the screens stay', grid);
+  await d.ev(`${P}.document.querySelector('[data-open-song="1"]').click(), 'ok'`);
   await d.ev(`${P}.document.querySelector('#cur_slide .grid-card[data-part="3"]').click(), 'ok'`);
   drv = await driverSlide();
   await f.until(`${F}.current_song.chunk_index === 3`, 'the follower to follow the click', 5000).catch(() => {});
   ok(drv.part === 3 && (await f.ev(`${F}.current_song.chunk_index`)) === 3, 'clicking a card shows that part; the follower follows', drv.part);
   ok((await f.ev(`${F}.document.querySelectorAll('#cur_slide chunk').length`)) === 1, 'the follower still shows one part at a time');
+  // after the third verse comes the chorus again; after that, Space goes on to the next song: it opens on its
+  // own, the triangle on its first part
+  grid = await gridState();
+  ok(grid.next.song === '0' && grid.next.part === '1', 'after the third verse, the triangle is on the chorus again', grid);
+  await d.ev(`${P}.document.querySelector('#cur_slide .grid-card[data-part="1"]').click(), 'ok'`);
+  grid = await gridState();
+  ok(grid.cards.includes('1:0') && grid.next.song === '1' && grid.next.part === '0', 'every part sung: the next song opens with its first part marked', grid);
   await d.ev(`${P}.setView('whole'), 'ok'`);
   await d.ev(`${P}.document.querySelector('#cur_slide chunk[data-part="0"]').click(), 'ok'`);
   drv = await driverSlide();

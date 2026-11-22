@@ -1216,32 +1216,64 @@ function setView(view) {
 function toggleWholeSong() { setView(currentView() === 'whole' ? 'part' : 'whole'); }
 function toggleGrid() { setView(currentView() === 'grid' ? 'part' : 'grid'); }
 
-// ---- Grid (#51): a card for each part of the song, the one on screen outlined and the one Space goes to
-// dashed, then a card for the next song. Click one to show it.
-function gridHtml(song = current_song) {
-  if (!song || !song.doc) return '';
-  const target = spaceTarget(song);
-  let html = '<div class="grid-head"><stitle>' + song.doc.title + '</stitle></div><div class="grid">';
-  song.doc.content.forEach((chunk, i) => {
-    html += '<div class="grid-card' + (i === song.chunk_index ? ' current' : '') + (i === target ? ' space-next' : '') + '" data-part="' + i + '">'
-      + '<span class="grid-label">' + escapeText(partName(song, i)) + '</span>'
-      + chunk[1].map(line => '<line>' + line + '</line>').join('') + '</div>';
-  });
+// ---- Grid (#51): the whole book. The song on screen is open, a card for each part: the one on screen outlined,
+// a small triangle on the one Space goes to. Every other song is a row that opens to show its parts; clicking a
+// part anywhere shows it.
+const grid_open = new Set(); // songs opened in the grid, besides the one on screen
+function gridHtml() {
   const songs = window.songbook.songs;
-  const next = songs[(window.songbook.song_index + 1) % songs.length];
-  if (next && next.doc) {
-    html += '<div class="grid-card grid-next' + (target === null ? ' space-next' : '') + '" data-next-song="1">'
-      + '<span class="grid-label">Next song</span><line>' + next.doc.title + '</line></div>';
-  }
-  return html + '</div>';
+  const here = window.songbook.song_index;
+  const target = spaceTarget(current_song);
+  const nextSong = (here + 1) % songs.length;
+  let html = '';
+  songs.forEach((song, s) => {
+    if (!song || !song.doc) return;
+    const onScreen = s === here && !document.getElementById('pres_title');
+    // the next song opens on its own when Space goes there next, to show what comes
+    const upNext = target === null && s === nextSong && !document.getElementById('pres_title');
+    const open = onScreen || upNext || grid_open.has(s);
+    html += '<div class="grid-song' + (onScreen ? ' on-screen' : '') + '">'
+      + '<div class="grid-song-head' + (upNext && !song.doc.content.length ? ' space-next' : '') + '" data-open-song="' + s + '">'
+      + '<span class="grid-toggle' + (open ? ' open' : '') + '"></span><stitle>' + song.doc.title + '</stitle>'
+      + '<span class="grid-count">' + song.doc.content.length + (song.doc.content.length === 1 ? ' part' : ' parts') + '</span></div>';
+    if (open) {
+      html += '<div class="grid">' + song.doc.content.map((chunk, i) => '<div class="grid-card'
+        + (onScreen && i === song.chunk_index ? ' current' : '') + ((onScreen && i === target) || (upNext && i === 0) ? ' space-next' : '')
+        + '" data-song="' + s + '" data-part="' + i + '"><span class="grid-label">' + escapeText(partName(song, i)) + '</span>'
+        + chunk[1].map(line => '<line>' + line + '</line>').join('') + '</div>').join('') + '</div>';
+    }
+    html += '</div>';
+  });
+  return html;
 }
-// A click on a part in the whole song or the grid shows that part (on the mirrors and other screens too)
+// After the grid is drawn: the part on screen in view
+function scrollGrid() {
+  const card = document.querySelector('#cur_slide .grid-card.current') || document.querySelector('#cur_slide .grid-song.on-screen');
+  const next = document.querySelector('#cur_slide .grid-card.space-next');
+  if (next) next.scrollIntoView({ block: 'nearest' }); // what comes next, then the part on screen (it wins if both don't fit)
+  if (card) card.scrollIntoView({ block: 'nearest' });
+}
+// A click in the whole song or the grid: a part shows that part (on the mirrors and other screens too); a
+// song's row in the grid opens or closes it, without changing the screen
 function pickPart(event) {
-  const card = event.target.closest && event.target.closest('[data-part], [data-next-song]');
-  if (!card || !current_song || !inPresentation()) return;
-  if (card.dataset.nextSong) return nextSong();
-  const part = Number(card.dataset.part);
-  if (!(part >= 0 && part < current_song.doc.content.length)) return;
+  const target = event.target.closest && event.target.closest('[data-part], [data-open-song]');
+  if (!target || !current_song || !inPresentation()) return;
+  const songs = window.songbook.songs;
+  if (target.dataset.openSong !== undefined) {
+    const s = Number(target.dataset.openSong);
+    if (s === window.songbook.song_index && !document.getElementById('pres_title')) return; // the song on screen stays open
+    if (grid_open.has(s)) grid_open.delete(s); else grid_open.add(s);
+    document.querySelector('#cur_slide .content').innerHTML = gridHtml();
+    return;
+  }
+  const s = target.dataset.song !== undefined ? Number(target.dataset.song) : window.songbook.song_index;
+  const part = Number(target.dataset.part);
+  if (!songs[s] || !(part >= 0 && part < songs[s].doc.content.length)) return;
+  if (s !== window.songbook.song_index) {
+    grid_open.delete(s); // it's the song on screen now, open anyway
+    window.songbook.song_index = s;
+    current_song = songs[s];
+  }
   current_song.chunk_index = part;
   showChunk('picked');
 }
@@ -1462,6 +1494,7 @@ function showChunk(name) {
     part_slide_html = build_chunk(current_song.doc.content[current_song.chunk_index]);
     const view = currentView();
     document.querySelector('#cur_slide .content').innerHTML = view === 'whole' ? wholeSongHtml() : view === 'grid' ? gridHtml() : part_slide_html;
+    if (view === 'grid') setTimeout(scrollGrid);
 
     //now add the other chunks.
     let pre_chunk;
