@@ -108,8 +108,17 @@ async function firstPage() {
 }
 
 const evil = 'EV' + Math.random().toString(36).slice(2, 4).toUpperCase().replace(/[^A-Z]/g, 'Q');
+// A songbook of its own: a song written verse, chorus, verse, verse (for Space), then Vera's Song
+const SONG = 's-livetest-' + Date.now().toString(36), BOOK = 'sb-livetest-' + Date.now().toString(36);
+const stamp = Date.now();
+await req('alice', 'PUT', '/church_a/' + SONG, { title: 'Live Test Song', addedBy: 'u-alice', editedBy: 'u-alice', added: stamp, edited: stamp,
+  authors: ['Test Author'], scripture_ref: [''], introduction: '', key: 'G', categories: [], cclis: false, yt: '', chords: '', copyright: '',
+  content: [[{ type: 'verse' }, [['First verse']]], [{ type: 'chorus' }, [['The chorus']]], [{ type: 'verse' }, [['Second verse']]], [{ type: 'verse' }, [['Third verse']]]],
+  search: 't:Live Test Song\u0000a:Test Author\u0000addedBy:alice\u0000' });
+await req('alice', 'PUT', '/church_a/' + BOOK, { title: 'Live Test Book', addedBy: 'u-alice', editedBy: 'u-alice', added: stamp, edited: stamp,
+  showStatus: false, showComments: true, songrefs: [{ id: SONG, status: 'n', key: 'G' }, { id: 's-vera-1', status: 'n', key: 'G' }] });
 try {
-  // ---------- the driver: alice presents Eddie's Songbook ----------
+  // ---------- the driver: alice presents the test book ----------
   const d = await tab(await firstPage());
   await d.send('Page.navigate', { url: APP + '/#login' });
   await d.until(`!!document.getElementById('db_select')`, 'the sign-in page');
@@ -121,13 +130,14 @@ try {
     document.getElementById('username').value = 'alice'; document.getElementById('pwd').value = 'local-test-alice'; })()`);
   await d.ev(`checkLogin() && dbLogin('login'), 'ok'`);
   await d.until(`window.loggedin === true && !location.hash.startsWith('#login')`, 'sign-in', 30000);
-  await d.ev(`location.hash = '#sb-eddie-1'; 'ok'`);
-  await d.until(`window.songbook && window.songbook._id === 'sb-eddie-1'`, 'the songbook', 20000);
-  await d.ev(`location.hash = '#sb-eddie-1?present'; 'ok'`);
+  await d.until(`!!window.db && window.db.get(${JSON.stringify(BOOK)}).then(() => true, () => false)`, 'the test book on the device', 20000);
+  await d.ev(`location.hash = ${JSON.stringify('#' + BOOK)}; 'ok'`);
+  await d.until(`window.songbook && window.songbook._id === ${JSON.stringify(BOOK)}`, 'the songbook', 20000);
+  await d.ev(`location.hash = ${JSON.stringify('#' + BOOK + '?present')}; 'ok'`);
   await d.until(`!!document.getElementById('presentation') && !!document.getElementById('presentation').contentWindow.presentationReady`, 'the presentation', 20000);
   await d.ev(`document.getElementById('presentation').contentWindow.presentationReady.then(() => 'ok')`);
   const P = `document.getElementById('presentation').contentWindow`;
-  ok(true, 'alice presents Eddie\'s Songbook');
+  ok(true, 'alice presents the test book');
 
   // ---------- the setup panel ----------
   await d.ev(`${P}.toggleHelp(), 'ok'`);
@@ -165,24 +175,34 @@ try {
   let fol = await followerSlide();
   ok(fol.text === drv.text && !fol.wandering && /Live/.test(fol.pill), 'the follower shows the same slide, live', fol);
 
-  // the driver moves: the follower follows
-  await d.ev(`${P}.nextChunk(), 'ok'`);
+  // the arrow over the part Space goes to: from the first verse, the chorus
+  const marker = (w, frame) => w.ev(`(() => { const p = ${frame}.document.getElementById('progress'); const i = [...p.children].findIndex(c => c.classList.contains('space-next'));
+    return { index: i, nextSong: p.classList.contains('space-next-song'), shown: i === -1 ? false : getComputedStyle(p.children[i], '::after').display !== 'none' }; })()`);
+  let mk = await marker(d, P);
+  ok(mk.index === 1 && mk.shown, 'the arrow marks the chorus after the first verse', mk);
+
+  // Space: verse, chorus, verse, then back to the chorus (the arrows go as written); the follower follows
+  await d.ev(`${P}.spaceNext(), 'ok'`);
   drv = await driverSlide();
   const t0 = Date.now();
-  await f.until(`${F}.current_song.id === ${JSON.stringify(drv.id)}`, 'the follower to follow', 5000);
-  ok(true, `the follower follows the next slide (${Date.now() - t0} ms)`);
-  await d.ev(`${P}.prevChunk(), 'ok'`); // back to the first song
+  await f.until(`${F}.current_song.chunk_index === ${drv.part}`, 'the follower to follow', 5000);
+  ok(drv.part === 1, `Space goes to the chorus; the follower follows (${Date.now() - t0} ms)`, drv);
+  await d.ev(`${P}.spaceNext(), 'ok'`);
   drv = await driverSlide();
-  await f.until(`${F}.current_song.id === ${JSON.stringify(drv.id)}`, 'the follower to follow back', 5000);
+  mk = await marker(d, P);
+  ok(drv.part === 2 && mk.index === 1, 'Space goes to the second verse, and the arrow back to the chorus', [drv.part, mk]);
+  await f.until(`${F}.current_song.chunk_index === 2`, 'the follower to follow', 5000);
+  const fmk = await marker(f, F);
+  ok(fmk.index === 1, 'the follower shows the same arrow', fmk);
 
   // the follower wanders on its own, and the leader changes song
   await f.ev(`${F}.focus(), 'ok'`);
   await f.key('ArrowRight');
   fol = await followerSlide();
-  ok(fol.wandering && fol.id !== drv.id && /Back to live/.test(fol.pill), 'a follower that moves stops following', fol);
-  await d.ev(`${P}.nextChunk(), 'ok'`);
+  ok(fol.wandering && fol.part === 3 && drv.part === 2 && /Back to live/.test(fol.pill), 'a follower that moves stops following', fol);
+  await d.ev(`${P}.nextSong(), 'ok'`);
   drv = await driverSlide();
-  await f.until(`/${drv.id === 's-vera-1' ? 'Vera' : 'Eddie'}/.test(${F}.document.getElementById('livePill').textContent)`, 'the pill to name the new song', 5000);
+  await f.until(`/Vera/.test(${F}.document.getElementById('livePill').textContent)`, 'the pill to name the new song', 5000);
   fol = await followerSlide();
   await f.shot('2-follower-wandering');
   ok(fol.wandering && fol.nudge, 'wandering: the pill names the leader\'s new song and nudges', fol);
@@ -199,7 +219,7 @@ try {
 
   // a songbook change reaches the follower (#147)
   const before = await f.ev(`${F}.window.songbook.songs.length`);
-  await d.ev(`${P}.updateSongbook(JSON.stringify({ title: 'Eddie\\'s Songbook', songs: ${P}.window.songbook.songs.slice(0, 1) })), 'ok'`);
+  await d.ev(`${P}.updateSongbook(JSON.stringify({ title: 'Live Test Book', songs: ${P}.window.songbook.songs.slice(0, 1) })), 'ok'`);
   await d.ev(`${P}.nextChunk(), 'ok'`);
   await f.until(`${F}.window.songbook.songs.length === 1`, 'the follower to get the shorter book', 5000).catch(() => {});
   ok((await f.ev(`${F}.window.songbook.songs.length`)) === 1 && before === 2, 'the follower gets the changed songbook', before);
@@ -230,6 +250,10 @@ try {
   failed++;
   console.log('  FAIL', err.message);
 } finally {
+  for (const id of [SONG, BOOK]) {
+    const doc = await req('alice', 'GET', '/church_a/' + id);
+    if (doc.status === 200) await req('alice', 'DELETE', `/church_a/${id}?rev=${doc.json._rev}`);
+  }
   for (const id of ['set:' + evil, 'now:' + evil]) {
     const doc = await req('alice', 'GET', `/ycanta_live/${id}`);
     if (doc.status === 200) await req('alice', 'DELETE', `/ycanta_live/${id}?rev=${doc.json._rev}`);

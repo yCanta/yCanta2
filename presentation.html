@@ -134,6 +134,31 @@
       #progress .ending {
         background-color: red;
       }
+      /* Where Space goes next (#51): a small arrow over that part of the progress bar, or at its end for the
+         next song. Each screen can turn it off (body.nomarker). */
+      #progress {
+        position: relative;
+      }
+      #progress .space-next {
+        position: relative;
+      }
+      #progress .space-next::after, #progress.space-next-song::after {
+        content: '';
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        margin: 0 0 .15em -.35em;
+        border: .35em solid transparent;
+        border-bottom: 0;
+        border-top-color: gray;
+      }
+      #progress.space-next-song::after {
+        left: auto;
+        right: .2em;
+      }
+      body.nomarker #progress .space-next::after, body.nomarker #progress.space-next-song::after {
+        display: none;
+      }
 
       #searchbox {
         display: none;

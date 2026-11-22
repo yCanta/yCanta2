@@ -103,8 +103,8 @@ presentation_key_map = {
                   "Go to the next verse/chorus if a search is not in progress"    ],
   '.'         : [ function() {if(! isSearching()) nextChunk();},
                   "Go to the next verse/chorus if a search is not in progress"    ],
-  ' '         : [ function() {if(! isSearching()) nextChunk();},
-                  "Go to the next verse/chorus if a search is not in progress"    ],
+  ' '         : [ function() {if(! isSearching()) spaceNext();},
+                  "Go to the part people sing next (verse, chorus, verse...) if a search is not in progress" ],
 
   'PageDown'  : [ nextSong,           "Go to the next song"                       ],
 
@@ -605,7 +605,7 @@ const mirror_key_map = {
   'Escape': hideHelp,
 };
 function startMirror() {
-  document.body.classList.add('presentation');
+  document.body.classList.add('presentation', 'nomarker'); // a mirror is often the room's screen: no arrow unless asked for
   window.document.title = 'yCanta2: Mirror';
   document.addEventListener('keydown', e => {
     if (e.target.closest && e.target.closest('#help') && (e.key == ' ' || e.key == 'Enter')) return;
@@ -838,6 +838,7 @@ function toggleHelp() {
       + '<label onchange="whiteScreen(true)" class="switch"><input type="checkbox" id="fgText"' + on('white') + '><div data-text="TEXT" class="slider font"></div></label>'
       + '<label onchange="blackScreen(true)" class="switch"><input type="checkbox" id="bgColor"' + on('black') + '><div data-text="BG" class="slider background"></div></label>'
       + '<label onchange="toggleChords(true)"><input id="chngChords" type="checkbox"' + (document.body.classList.contains('nochords') ? '' : ' checked') + '> Chords</label>'
+      + '<label onchange="toggleMarker()" title="A small arrow on the progress bar over the part Space goes to"><input id="chngMarker" type="checkbox"' + (document.body.classList.contains('nomarker') ? '' : ' checked') + '> Next-part arrow</label>'
       + '</div>';
     content += '<div id="files"><span>Background picture:</span><input onclick="clearFile(this)" onchange="loadFiles(this);" data="bg-image" type="file" accept="image/*">'
       + '<span>Still picture:</span><input onclick="clearFile(this)" onchange="loadFiles(this);" data="fixed-image" type="file" accept="image/*">'
@@ -857,8 +858,10 @@ function toggleHelp() {
       ['h or ?', 'This panel'],
       ['Esc', 'Close this panel'],
     ] : [
-      ['→ ↓ Space', follower ? 'Next slide (stops following until you go back to live)' : 'Next slide'],
-      ['← ↑', 'Back a slide'],
+      ['Space', 'The part people sing next: verse, chorus, verse... (the small arrow shows where)'],
+      ['→ ↓', 'Next part, in the order the song is written'],
+      ['← ↑', 'Back a part'],
+      ...(follower ? [['Moving on your own', 'Stops following until you go back to live']] : []),
       ['Page Down / Page Up', 'Next / previous song'],
       ['Home / End', 'First / last song'],
       ['1 to 9, 0', 'Go to that verse of the song (0 is 10)'],
@@ -885,6 +888,9 @@ function toggleHelp() {
 
   // now certain that all is inited
   slideToggle(document.getElementById('help'), 200);
+}
+function toggleMarker() {
+  document.body.classList.toggle('nomarker');
 }
 function hideHelp() {
   const help = document.getElementById('help'); // only exists once help has been opened
@@ -1058,6 +1064,7 @@ function toggleSongVisible(evt) {
 function showChunk(name) {
   if(inPresentation()){
     resetText();
+    noteSung();
 
     /*
     depending on chunk name, display and format the chunk
@@ -1149,6 +1156,7 @@ function showChunk(name) {
     var total = current_song.doc.content.length;
     document.getElementById('slides').style.setProperty('--percent', (((current_song.chunk_index + 1) / total) * 100));
     let progress_text = ''
+    const space_target = spaceTarget(); // the part Space goes to gets a small marker (#51)
     for(let chunk_index = 0; chunk_index < total; chunk_index++) {
       progress_text += '<div class="'+current_song.doc.content[chunk_index][0].type.replace(/[^a-z]/g,'');
       if(chunk_index < current_song.chunk_index){
@@ -1158,9 +1166,12 @@ function showChunk(name) {
       } else {
         progress_text += ' after';
       }
+      if (chunk_index === space_target) progress_text += ' space-next';
       progress_text += '"></div>';
     }
-    document.getElementById('progress').innerHTML = progress_text;
+    const progress = document.getElementById('progress');
+    progress.innerHTML = progress_text;
+    progress.classList.toggle('space-next-song', space_target === null); // Space goes on to the next song
 
     scaleText();
     trackSlide(); // what was presented (#158)
@@ -1175,6 +1186,53 @@ function showChunk(name) {
     song.querySelectorAll('chunk').forEach(el => slideToggle(el, 200));
     scrollTo(chunk.parentNode);
   }
+}
+
+// ---- Space goes to the part people sing next (#51): verse, chorus, verse, chorus... The arrow keys still go
+// in the order the song is written. Each song keeps track of the parts sung since it came on screen.
+let last_shown_song = null;
+function noteSung() {
+  if (!current_song || !current_song.doc) return;
+  if (last_shown_song !== current_song) { current_song.sung = new Set(); last_shown_song = current_song; }
+  current_song.sung.add(current_song.chunk_index);
+}
+// The part Space goes to in this song, or null for the next song
+function spaceTarget(song = current_song) {
+  if (!song || !song.doc || !Array.isArray(song.doc.content)) return null;
+  const types = song.doc.content.map(chunk => chunk[0].type);
+  const here = song.chunk_index;
+  const next = here + 1 < types.length ? here + 1 : null;
+  if (song.passage) return next; // Bible verses: in order
+  const sung = song.sung || new Set([here]);
+  const choral = type => type === 'chorus' || type === 'pre-chorus';
+  const chorus = types.indexOf('chorus');
+  const chorusStart = chorus > 0 && types[chorus - 1] === 'pre-chorus' ? chorus - 1 : chorus; // with its pre-chorus
+  // the first part not sung yet after the last verse-like part sung (so a part skipped on purpose stays skipped)
+  const nextUnsung = () => {
+    let from = 0;
+    sung.forEach(i => { if (!choral(types[i]) && i + 1 > from) from = i + 1; });
+    for (let i = from; i < types.length; i++) if (!sung.has(i) && !choral(types[i])) return i;
+    return null;
+  };
+  const type = types[here];
+  if (type === 'verse') {
+    if (next !== null && (choral(types[next]) || types[next] === 'final chorus')) return next;
+    if (chorusStart >= 0 && chorusStart < here) return chorusStart; // the chorus came earlier: sing it again
+    return next;
+  }
+  if (type === 'pre-chorus') return next !== null && types[next] === 'chorus' ? next : (chorus >= 0 ? chorus : next);
+  if (type === 'chorus') return nextUnsung();
+  if (next !== null && !sung.has(next)) return next; // bridge, ending, final chorus, no label...: as written
+  if (type === 'bridge' && chorusStart >= 0) return chorusStart; // nothing after the bridge: the chorus again
+  return nextUnsung();
+}
+function spaceNext() {
+  if (!inPresentation() || !current_song || !current_song.doc) return;
+  if (document.getElementById('pres_title')) return nextChunk(); // the "Presenting" screen: the first song
+  const target = spaceTarget();
+  if (target === null) return nextSong();
+  current_song.chunk_index = target;
+  showChunk('space');
 }
 
 function firstSong(){
