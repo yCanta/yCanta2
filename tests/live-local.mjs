@@ -195,6 +195,12 @@ try {
   const fmk = await marker(f, F);
   ok(fmk.index === 1, 'the follower shows the same arrow', fmk);
 
+  // a held key counts as one press: its repeats don't move (Evan: held it and ended up 3 songs on)
+  const held = await d.ev(`(() => { const before = ${P}.window.songbook.song_index + ':' + ${P}.current_song.chunk_index;
+    for (const key of ['ArrowRight', ' ', 'PageDown']) ${P}.processKey({ key, repeat: true, target: ${P}.document.body, preventDefault() {} });
+    return before === ${P}.window.songbook.song_index + ':' + ${P}.current_song.chunk_index; })()`);
+  ok(held, 'held keys (repeats) don\'t move the slides');
+
   // the follower wanders on its own, and the leader changes song
   await f.ev(`${F}.focus(), 'ok'`);
   await f.key('ArrowRight');

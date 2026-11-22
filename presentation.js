@@ -1577,12 +1577,22 @@ function showChunk(name) {
 }
 
 // ---- Space goes to the part people sing next (#51): verse, chorus, verse, chorus... The arrow keys still go
-// in the order the song is written. Each song keeps track of the parts sung since it came on screen.
+// in the order the song is written. Each song keeps track of the parts sung since it came on screen, in order.
 let last_shown_song = null;
 function noteSung() {
   if (!current_song || !current_song.doc) return;
-  if (last_shown_song !== current_song) { current_song.sung = new Set(); last_shown_song = current_song; }
+  if (last_shown_song !== current_song) { current_song.sung = new Set(); current_song.sungOrder = []; last_shown_song = current_song; }
   current_song.sung.add(current_song.chunk_index);
+  current_song.sungOrder.push(current_song.chunk_index);
+}
+const choralType = type => type === 'chorus' || type === 'pre-chorus';
+// The chorus that goes with a part: the nearest one written above it (a song can have more than one), else the
+// first one; with its pre-chorus if one is written right before it. -1 if the song has none.
+function chorusFor(types, here) {
+  let chorus = -1;
+  for (let i = Math.min(here, types.length - 1); i >= 0 && chorus < 0; i--) if (types[i] === 'chorus') chorus = i;
+  if (chorus < 0) chorus = types.indexOf('chorus');
+  return chorus > 0 && types[chorus - 1] === 'pre-chorus' ? chorus - 1 : chorus;
 }
 // The part Space goes to in this song, or null for the next song
 function spaceTarget(song = current_song) {
@@ -1592,27 +1602,48 @@ function spaceTarget(song = current_song) {
   const next = here + 1 < types.length ? here + 1 : null;
   if (song.passage) return next; // Bible verses: in order
   const sung = song.sung || new Set([here]);
-  const choral = type => type === 'chorus' || type === 'pre-chorus';
-  const chorus = types.indexOf('chorus');
-  const chorusStart = chorus > 0 && types[chorus - 1] === 'pre-chorus' ? chorus - 1 : chorus; // with its pre-chorus
+  const order = song.sungOrder || [here];
   // the first part not sung yet after the last verse-like part sung (so a part skipped on purpose stays skipped)
   const nextUnsung = () => {
     let from = 0;
-    sung.forEach(i => { if (!choral(types[i]) && i + 1 > from) from = i + 1; });
-    for (let i = from; i < types.length; i++) if (!sung.has(i) && !choral(types[i])) return i;
+    sung.forEach(i => { if (!choralType(types[i]) && i + 1 > from) from = i + 1; });
+    for (let i = from; i < types.length; i++) if (!sung.has(i) && !choralType(types[i])) return i;
     return null;
   };
   const type = types[here];
   if (type === 'verse') {
-    if (next !== null && (choral(types[next]) || types[next] === 'final chorus')) return next;
-    if (chorusStart >= 0 && chorusStart < here) return chorusStart; // the chorus came earlier: sing it again
+    if (next !== null && (choralType(types[next]) || types[next] === 'final chorus')) return next; // written right after it
+    const chorus = chorusFor(types, here);
+    if (chorus < 0 || chorus > here) return next; // no chorus yet
+    // As many verses go before each chorus as the song has before its first one (verse, verse, chorus: two),
+    // and the chorus comes anyway when no verse follows
+    const first = types.findIndex(choralType);
+    const perChorus = Math.max(1, types.slice(0, first).filter(t => t === 'verse').length);
+    let verses = 0;
+    for (let i = order.length - 1; i >= 0 && types[order[i]] === 'verse'; i--) verses++;
+    if (verses >= perChorus || next === null || types[next] !== 'verse') return chorus;
     return next;
   }
-  if (type === 'pre-chorus') return next !== null && types[next] === 'chorus' ? next : (chorus >= 0 ? chorus : next);
+  if (type === 'pre-chorus') { // its chorus: the next one written after it
+    const chorus = types.indexOf('chorus', here);
+    return chorus >= 0 ? chorus : next;
+  }
   if (type === 'chorus') return nextUnsung();
   if (next !== null && !sung.has(next)) return next; // bridge, ending, final chorus, no label...: as written
-  if (type === 'bridge' && chorusStart >= 0) return chorusStart; // nothing after the bridge: the chorus again
+  if (type === 'bridge') { const chorus = chorusFor(types, here); if (chorus >= 0) return chorus; } // nothing after the bridge: its chorus
   return nextUnsung();
+}
+// Where c goes: the chorus that goes with this part (with its pre-chorus), or the final chorus once every verse
+// has been sung. -1 if the song has no chorus of any kind.
+function chorusTarget(song = current_song) {
+  if (!song || !song.doc || !Array.isArray(song.doc.content)) return -1;
+  const types = song.doc.content.map(chunk => chunk[0].type);
+  const sung = song.sung || new Set([song.chunk_index]);
+  const finalChorus = types.indexOf('final chorus');
+  const versesDone = types.every((type, i) => type !== 'verse' || sung.has(i));
+  if (finalChorus >= 0 && versesDone) return finalChorus;
+  const chorus = chorusFor(types, song.chunk_index);
+  return chorus >= 0 ? chorus : finalChorus;
 }
 function spaceNext() {
   if (!inPresentation() || !current_song || !current_song.doc) return;
@@ -1721,19 +1752,10 @@ function gotoChorus(){
   if(! inPresentation()){ // presentation mode only
     return;
   }
-  // First we look for a chorus type AFTER the current chunk and take the first one
-  for(let i = current_song.chunk_index + 1; i <= current_song.doc.content.length; i++){
-    if(i == current_song.doc.content.length) {
-      i = 0;
-    }
-    if(['pre-chorus','chorus','final chorus'].indexOf(current_song.doc.content[i][0].type) > -1){
-      current_song.chunk_index = i;
-      return showChunk('chorus');
-    }
-    if(i == current_song.chunk_index) {
-      break; // there is no chorus
-    }
-  }
+  const target = chorusTarget();
+  if (target < 0) return; // there is no chorus
+  current_song.chunk_index = target;
+  showChunk('chorus');
 }
 
 function gotoBridge(){
@@ -1912,8 +1934,12 @@ function escapeAction() {
   }
 }
 
+const MOVE_KEYS = new Set([' ', 'ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'PageDown', 'PageUp', '>', '.', '<', ',', 'Home', 'End', 'c', 'b', 'e',
+  '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'Enter']);
 function processKey(e){
-  if (e.target && e.target.closest && e.target.closest('#suggestBox')) return; // typing a suggestion, not keys 
+  if (e.target && e.target.closest && e.target.closest('#suggestBox')) return; // typing a suggestion, not keys
+  // A held key counts as one press (#51): holding an arrow or Space used to run on through the songs
+  if (e.repeat && !isSearching() && MOVE_KEYS.has(e.key)) { e.preventDefault(); return; } 
   //console.log("key: '" + e.key +"'", "originalEvent.key: '" + e.originalEvent.key + "'", e);
   key = e.key;
   // Space or Enter on a box or button in the list or the help works it, and doesn't change the slide
