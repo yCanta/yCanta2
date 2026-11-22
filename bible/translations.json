@@ -1,0 +1,20 @@
+[
+ {
+  "id": "BSB",
+  "name": "Berean Standard Bible",
+  "credit": "Berean Standard Bible (BSB), public domain",
+  "source": "https://berean.bible/"
+ },
+ {
+  "id": "WEB",
+  "name": "World English Bible",
+  "credit": "World English Bible (WEB), public domain",
+  "source": "https://ebible.org/Scriptures/details.php?id=engwebp"
+ },
+ {
+  "id": "KJV",
+  "name": "King James Version",
+  "credit": "King James Version (KJV)",
+  "source": "https://ebible.org/Scriptures/details.php?id=eng-kjv2006"
+ }
+]
