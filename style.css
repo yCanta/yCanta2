@@ -1159,6 +1159,54 @@ li[data-song-id="section"] a {
   border: none !important;
   pointer-events: none;
 }
+/* A Bible reading in a songbook (#157): a book next to its reference; a click shows the verses under it */
+li[data-song-id="reading"] > a::before {
+  content: '📖 ';
+}
+li[data-song-id="reading"] > a {
+  font-style: italic;
+}
+/* A reading open in the song column: its verses, and the translation they're from (#157) */
+.reading-text {
+  padding: .25rem 0 1rem;
+}
+.reading-text p {
+  margin: .5rem 0;
+  white-space: pre-line;
+}
+.reading-text sup {
+  color: gray;
+}
+.reading-text .reading-credit {
+  color: gray;
+  font-size: .75rem;
+  margin-top: 1rem;
+}
+/* Under the song editor's scripture box: how the references will be written, and any the Bible doesn't
+   know, and why (#157) */
+.ref-note {
+  color: gray;
+  font-size: .8rem;
+  font-style: italic;
+  margin: .25rem 0 1.25rem;
+}
+/* A section's name or a reading's verses being typed in the songbook editor, and what they'll be (#157) */
+.row-input {
+  flex: 1;
+  min-width: 10rem;
+  font: inherit;
+  padding: .2rem .4rem;
+}
+.row-hint {
+  flex-basis: 100%;
+  color: gray;
+  font-size: .8rem;
+  font-style: italic;
+  margin: .2rem 0 .4rem;
+}
+.ref-note .problem, .row-hint.problem {
+  color: orangered;
+}
 .edit_pencil {
   margin-right: 1.5rem;
   font-size: .7rem;

@@ -159,12 +159,86 @@ function clearAllData() {
     location.reload();
   }
 }
-// What a presentation shows: the book's songs in order, their text as text (displaySong).
-// Sections and deleted songs are left out.
+// What a presentation shows: the book's songs in order, their text as text (displaySong), and its readings
+// as their verses (#157). Sections, deleted songs and readings that can't load (offline) are left out.
 async function presentationData(songbook) {
   const result = await db.allDocs({ include_docs: true, keys: songbook.songrefs.map(row => row.id) });
-  const songs = result.rows.filter(row => row.key != 'section' && row.doc).map(row => ({ ...row, doc: displaySong(row.doc) }));
-  return { songs, title: songbook.title };
+  const translation = await churchBible();
+  const items = await Promise.all(result.rows.map(async (row, i) => {
+    const ref = songbook.songrefs[i];
+    if (ref.id === 'reading') return readingItem(ref.ref, translation);
+    return row.key != 'section' && row.doc ? { ...row, doc: displaySong(row.doc) } : null;
+  }));
+  const songs = items.filter(Boolean);
+  // Bible verses (#157): where the book files are (the presentation window has no address of its own to go
+  // by) and the church's translation. The books the songs cite are fetched ahead, so they work offline.
+  const refs = result.rows.flatMap(row => (row.doc && Array.isArray(row.doc.scripture_ref) ? row.doc.scripture_ref : []));
+  Bible.prefetch(refs, translation).catch(() => {});
+  const bible = { base: new URL('bible/', location.href).href, translation };
+  return { songs, title: songbook.title, bible };
+}
+
+// A reading in a songbook (#157), as its verses: { id, reading: true, passage }, or null if they can't load
+async function readingItem(ref, translation) {
+  try {
+    const passage = await Bible.passage(String(ref ?? ''), translation);
+    return passage.verses.length ? { id: 'reading:' + passage.label, reading: true, passage } : null;
+  } catch (err) {
+    console.error(`Couldn't load the reading "${ref}":`, err);
+    return null;
+  }
+}
+
+// A reading as a song, for the PDF (#157): the reference as its title, a verse to a line (its number first,
+// poetry on more lines), the translation's credit as its copyright. null if its verses can't load.
+async function readingSongDoc(ref, translation) {
+  const item = await readingItem(ref, translation);
+  if (!item) return null;
+  const vs = item.passage.verses;
+  const chapters = new Set(vs.map(v => v.book + v.chapter)).size > 1; // then each chapter's first verse says which
+  const lines = vs.flatMap((v, i) => {
+    const num = chapters && (i === 0 || v.chapter !== vs[i - 1].chapter) ? `${v.chapter}:${v.verse}` : v.verse;
+    return v.text.split('\n').map(line => line.trim()).filter(Boolean).map((line, j) => (j ? '    ' : num + ' ') + line);
+  });
+  return songShape({ _id: 'reading', title: item.passage.label, authors: [], scripture_ref: [],
+    copyright: item.passage.translation.credit, content: [[{ type: 'no label' }, lines]] });
+}
+
+// The church's Bible translation for presentations (#157): its "settings" doc, which church admins set in the
+// Admin panel. The Berean Standard Bible until one is picked.
+async function churchBible() {
+  try {
+    return (await db.get('settings')).bible || 'BSB';
+  } catch (err) {
+    return 'BSB';
+  }
+}
+
+// The Admin panel's Bible menu: the translations there are, the church's picked
+async function loadChurchBible() {
+  const select = document.getElementById('church_bible');
+  try {
+    await Bible.ready();
+  } catch (err) {
+    select.innerHTML = '<option>Connect once to load the Bible list</option>';
+    select.disabled = true;
+    return;
+  }
+  const picked = await churchBible();
+  select.disabled = false;
+  select.innerHTML = Bible.translations().map(t =>
+    `<option value="${escapeHtml(t.id)}"${t.id === picked ? ' selected' : ''}>${escapeHtml(t.name)} (${escapeHtml(t.id)})</option>`).join('');
+}
+
+// A church admin picks it: kept in the church's "settings" doc, so every device uses it
+async function setChurchBible(select) {
+  try {
+    await db.upsert('settings', doc => ({ ...doc, bible: select.value }));
+    notyf.success('Presentations use the ' + select.selectedOptions[0].text + '.', 'var(--song-color)');
+  } catch (err) {
+    reportDbError(err, 'change the Bible for presentations');
+    loadChurchBible();
+  }
 }
 
 // A presentation that's open gets changes to its book or the book's songs right away (#147)
@@ -241,8 +315,9 @@ function dbChanges() {
       loadRecentSongs();
       
       // If currently viewing this song
-      const isCurrentSong = window.song?._id === change.doc._id && 
-                          document.body.classList.contains('song');
+      const isCurrentSong = window.song?._id === change.doc._id &&
+                          document.body.classList.contains('song') &&
+                          !location.hash.includes('&r-'); // not while a reading is open there instead (#157)
       
       if (isCurrentSong) {
         delete window.song;
@@ -2206,7 +2281,8 @@ function versionSummary(id, v, titles) {
     return `<p><b>${escapeHtml(v.title || '')}</b>${v.key ? ` <small>Key: ${escapeHtml(v.key)}</small>` : ''}<br>
       <small>${escapeHtml((v.authors || []).filter(Boolean).join(', '))}</small></p>${chunks.join('')}`;
   }
-  const songs = (v.songrefs || []).map(ref => ref.id === 'section' ? `— ${ref.title || 'Section'} —` : (titles.get(ref.id) || ref.id));
+  const songs = (v.songrefs || []).map(ref => ref.id === 'section' ? `— ${ref.title || 'Section'} —`
+    : ref.id === 'reading' ? `📖 ${ref.ref || 'Reading'}` : (titles.get(ref.id) || ref.id));
   return `<p><b>${escapeHtml(v.title || '')}</b></p><ol>${songs.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ol>`;
 }
 
@@ -2223,7 +2299,7 @@ function versionLabel(entry) {
 async function titlesFor(entries) {
   const ids = new Set();
   for (const { version: v } of entries) {
-    (v.songrefs || []).forEach(ref => ref.id !== 'section' && ids.add(ref.id));
+    (v.songrefs || []).forEach(ref => !isBookExtra(ref.id) && ids.add(ref.id));
   }
   const titles = new Map();
   if (!ids.size) return titles;
@@ -2718,6 +2794,9 @@ function saveSongbook(songbook_id, songbook_html = document.getElementById('song
             id: songId,
             title: link ? link.textContent : ""
           });
+        } else if (songId === "reading") { // a Bible reading (#157): its reference
+          const ref = item.querySelector('a')?.textContent.trim();
+          if (ref && ref !== 'New Reading') songbook.songrefs.push({ id: songId, ref });
         } else {
           songbook.songrefs.push({
             id: songId,
@@ -2906,8 +2985,8 @@ async function loadSongbook(songbook_id, forceReload=false) {
     });
 
     const songbookData = result.songrefs.map(item => {
-      if (item.id === "section") return item;
-      
+      if (item.id === "section" || item.id === "reading") return item;
+
       const songDoc = songResult.rows.find(row => row.id === item.id);
       if (songDoc) {
         return {...songDoc, status: item.status}; // a copy, so a song in the book twice keeps both statuses
@@ -2944,7 +3023,7 @@ function loadSongbookComments() {
     endkey: `c_${window.songbook._id}\ufff0`
   }).then(({rows}) => {
     // Add comment UI to all songs
-    document.querySelectorAll('#songbook_content .list li:not([data-song-id="section"])').forEach(li => {
+    document.querySelectorAll('#songbook_content .list li:not([data-song-id="section"], [data-song-id="reading"])').forEach(li => {
       if (!li.querySelector('.commentsContainer')) {
         li.insertAdjacentHTML('beforeend', `
           <div class="commentsContainer">

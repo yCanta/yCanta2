@@ -850,7 +850,11 @@ function updateAllLinks(whatChanged = 'all') {
 
   // Update highlights
   toggleHighlight('.song-highlight', 'song-highlight', () => false);
-  toggleHighlight(`[data-song-id='${song_id}']`, 'song-highlight', () => true);
+  toggleHighlight(`[data-song-id='${song_id}']`, 'song-highlight', () => !location.hash.includes('&r-'));
+  if (location.hash.includes('&r-')) { // a reading open instead (#157)
+    const open = decodeURIComponent(location.hash);
+    toggleHighlight(`[data-song-id='reading']`, 'song-highlight', el => decodeURIComponent(el.querySelector('a')?.getAttribute('href') || '') === open);
+  }
   toggleHighlight('.songbook-highlight', 'songbook-highlight', () => false);
   toggleHighlight(`[data-songbook-id='${songbook_id}']`, 'songbook-highlight', () => true);
 }
@@ -956,7 +960,7 @@ document.addEventListener('keydown', e => {
   if (!box || e.target.isContentEditable) return;
   const search = box.querySelector('.search');
   const stops = [...box.querySelectorAll('.list > li')]
-    .filter(li => li.offsetParent !== null && !(box.id === 'songbook_content' && li.dataset.songId === 'section'))
+    .filter(li => li.offsetParent !== null && !(box.id === 'songbook_content' && li.dataset.songId === 'section')) // a reading opens its verses
     .map(li => li.querySelector('a, input'))
     .filter(Boolean);
   const onSearch = e.target === search;
@@ -988,17 +992,18 @@ function bindSearchToList(list, id) {
     if (!countElement) return;
 
     if (list === window.songbook_list) {
-      const songPlacement = list.visibleItems.findIndex(
+      const songs = list.visibleItems.filter(item => !isBookExtra(item.values()['song-id'])); // not its sections and readings
+      const songPlacement = songs.findIndex(
         el => el._values['song-id'] === window.song?._id // no song open after a cancelled edit
       ) + 1;
-      const visibleCount = list.visibleItems.length;
+      const visibleCount = songs.length;
       countElement.dataset.numberVisible = `${songPlacement ? `${songPlacement}/` : ''}${visibleCount}`;
     } else {
       countElement.dataset.numberVisible = songCount(list);
     }
   };
-  // "New Section" in "Add a song?" isn't a song
-  const songCount = list => list.visibleItems.filter(item => item.values()['song-id'] !== 'section').length;
+  // "New Section" and "New Reading" in "Add a song?" aren't songs
+  const songCount = list => list.visibleItems.filter(item => !isBookExtra(item.values()['song-id'])).length;
 
   const handleSearchComplete = () => {
     updateCountDisplay(list, id);
@@ -1524,6 +1529,10 @@ function mapSongbookRowToValue(row) {
     'name': escapeHtml(row.doc.title ?? '(no title)') // List.js shows it as page code: make it text
   };
 }
+// A songbook row that isn't a song: a section heading, or a Bible reading (#157)
+function isBookExtra(id) {
+  return id === 'section' || id === 'reading';
+}
 function mapSongRowToValue(row) {
   let id, rev, search, status, title, deleted;
   deleted = false;
@@ -1538,6 +1547,11 @@ function mapSongRowToValue(row) {
     id = row.id;
     search = row.title;
     title = row.title;
+  }
+  else if(row.id=="reading"){ // a Bible reading (#157): its reference, or "New Reading" in "Add a song?"
+    id = row.id;
+    title = row.ref ?? row.title ?? '';
+    search = row.search ?? title;
   }
   else if(deleted){
     deleted = true;
@@ -1564,9 +1578,9 @@ function mapSongRowToValue(row) {
     'song-search':              stripAccents(search),
     'song-status':              status,
     'song-deleted':             deleted,
-    'link': '#'+window.songbook._id+'&'+id,
+    'link': id === 'reading' ? readingLink(title) : '#'+window.songbook._id+'&'+id, // a reading opens its verses (#157)
     'name': escapeHtml(title), // List.js shows it as page code: make it text (a section's title too)
-    'facts': (deleted || row.id == "section") ? null : songFacts(row.doc), // for the song filter (#84)
+    'facts': (deleted || isBookExtra(row.id)) ? null : songFacts(row.doc), // for the song filter (#84)
   };
 }
 
@@ -1678,9 +1692,9 @@ function buildSongbookList(songs, target_class='songbook_content',
       // Keep "New Section" in the add-song list during a search (issue #82). List.js runs handlers last-added
       // first, so adding this before bindSearchToList leaves the section out of the count.
       window.songbook_edit_togglesongs_list.on('searchComplete', list => {
-        const section = list.get('song-id', 'section')[0];
-        if (section && !section.found) {
-          section.found = true;
+        const extras = ['section', 'reading'].map(id => list.get('song-id', id)[0]).filter(item => item && !item.found);
+        if (extras.length) {
+          extras.forEach(item => { item.found = true; });
           list.update();
         }
       });
@@ -1749,15 +1763,15 @@ function applySongFilter(name) {
     if (songFilterCount(f)) {
       list.filter(item => {
         const v = item.values();
-        if (v['song-id'] === 'section') return name === 'adder'; // "New Section" stays; a book's sections hide
+        if (isBookExtra(v['song-id'])) return name === 'adder'; // "New Section" and "New Reading" stay; a book's sections and readings hide
         return songFilterPasses(f, v.facts);
       });
     } else {
       list.filter();
     }
     if (songFilterSorts(name)) {
-      const key = item => item.values()['song-id'] === 'section' ? -Infinity : item.values().facts;
-      const byTitle = (a, b) => (a.values()['song-id'] === 'section' ? -1 : b.values()['song-id'] === 'section' ? 1 : (a.values().name || '').localeCompare(b.values().name || ''));
+      const key = item => isBookExtra(item.values()['song-id']) ? -Infinity : item.values().facts;
+      const byTitle = (a, b) => (isBookExtra(a.values()['song-id']) ? -1 : isBookExtra(b.values()['song-id']) ? 1 : (a.values().name || '').localeCompare(b.values().name || ''));
       list.sort('name', {
         sortFunction: f.sort === 'title' ? byTitle : (a, b) => {
           const ka = key(a), kb = key(b);
@@ -1845,7 +1859,7 @@ function songCategoryGroups(songs) {
 function songFilterContext(name) {
   const f = songFilterState(name);
   const list = songFilterList(name);
-  const songs = (list?.items || []).filter(item => item.values()['song-id'] !== 'section' && (!list.searched || item.found)).map(item => item.values().facts).filter(Boolean);
+  const songs = (list?.items || []).filter(item => !isBookExtra(item.values()['song-id']) && (!list.searched || item.found)).map(item => item.values().facts).filter(Boolean);
   const countWith = (group, test) => songs.filter(facts => songFilterPasses(f, facts, group) && test(facts)).length;
   const chip = (group, value, label, n) => `<button type="button" class="filter-chip${f[group].has(value) ? ' sel' : ''}${n === 0 && !f[group].has(value) ? ' none' : ''}" data-group="${group}" data-value="${escapeHtml(value)}" aria-pressed="${f[group].has(value)}">${escapeHtml(label)} <span class="n">${n}</span></button>`;
   const catChip = cat => chip('cat', cat, cat === NO_CATEGORY ? 'No category' : cat, countWith('cat', facts => cat === NO_CATEGORY ? !facts.cats.length : facts.cats.includes(cat)));
@@ -1879,7 +1893,7 @@ function fillSongFilterPanel(name, panel) {
   const section = (title, html) => html ? `<div class="filter-section"><h4>${title}</h4><div class="filter-options">${html}</div></div>` : '';
   const keys = [...new Set(songs.map(facts => facts.key).filter(Boolean))].sort((a, b) => a.localeCompare(b));
   const videos = [...new Set(songs.map(facts => videoLabel(facts.yt)))].sort((a, b) => (a === 'None' ? -1 : +a) - (b === 'None' ? -1 : +b));
-  const shown = list ? list.visibleItems.filter(item => item.values()['song-id'] !== 'section').length : 0;
+  const shown = list ? list.visibleItems.filter(item => !isBookExtra(item.values()['song-id'])).length : 0;
   const finding = document.activeElement?.classList.contains('filter-find') && panel.contains(document.activeElement);
   // Category: what's picked and "No category" first, then the find box, then the groups
   const picked = [...f.cat].filter(cat => cat !== NO_CATEGORY);
@@ -2059,8 +2073,8 @@ document.addEventListener('click', e => {
 function dataxInBookUpdate(song, remove = false) {
    const songId = song.getAttribute('data-song-id');
 
-   // Skip section headers
-   if (songId === 'section') {
+   // Skip section headers and readings
+   if (isBookExtra(songId)) {
      return;
    }
 
@@ -2085,6 +2099,7 @@ function editHash(e) {
     cycleStatus(this);
   }
   e.preventDefault();
+  if (isBookExtra(this.getAttribute('data-song-id'))) return; // nothing to open (a reading's pencil changes it)
   if(window.innerWidth <= 1150 && !document.body.classList.contains('song') && e.target.closest('#songbook_edit_togglesongs')) {
     return;  //we're not popping open edit song from the add song window.
   }
@@ -2132,7 +2147,7 @@ function flash(row) {
 // open it. The browser's own drop does this with a mouse (sortable.js); with a finger, where it let go.
 function dragViewStart(evt) {
   const id = evt.item.getAttribute('data-song-id');
-  window.draggedSongId = id && id !== 'section' ? id : null;
+  window.draggedSongId = id && !isBookExtra(id) ? id : null;
   if (!window.draggedSongId) return;
   document.getElementById(document.body.classList.contains('song') ? 'song' : 'column-filler').classList.add('dropHere');
 }
@@ -2167,7 +2182,8 @@ function openMovedSong(row) {
 }
 // The trash button, and the pencil for a section, on a row in the book being edited
 function addBookRowButtons(row) {
-  if (row.getAttribute('data-song-id') === 'section') add_edit_pencil(row);
+  if (row.getAttribute('data-song-id') === 'section') add_edit_pencil(row, () => editSection(row));
+  if (row.getAttribute('data-song-id') === 'reading') add_edit_pencil(row, () => editReading(row));
   const deleteButton = document.createElement('button');
   deleteButton.innerHTML = '&#128465;';
   deleteButton.addEventListener('click', () => {
@@ -2186,7 +2202,123 @@ function newBookRow(adderRow) {
   dataxInBookUpdate(row);
   addBookRowButtons(row);
   row.setAttribute('data-song-status', 'n');
+  // a new reading asks for its verses once it's in the book, and comes back out if none are given
+  if (row.getAttribute('data-song-id') === 'reading') setTimeout(() => editReading(row, true));
   return row;
+}
+
+// A reading opens in the song column, as a song does (#157): its verses in the church's translation, under
+// its reference. Its link is #<book>&r-<reference>.
+async function showReading(ref) {
+  const content = document.querySelector('#song .content');
+  document.querySelector('#song .float-menu').innerHTML = ''; // nothing to edit, delete or export on its own
+  content.innerHTML = `
+    <section class="song-card reading-card">
+      <div class="column_header">
+        <div class="title">
+          <h3 class="song-title"><a class="title_link">📖 ${escapeHtml(ref)}</a></h3>
+          <span class="buttonsRight"><span class="fsButton" onclick="toggleFullscreen(this)"></span></span>
+        </div>
+      </div>
+      <song><div class="reading-text">Loading…</div></song>
+    </section>`;
+  const box = content.querySelector('.reading-text');
+  try {
+    const passage = await Bible.passage(ref, await churchBible());
+    const vs = passage.verses;
+    const chapters = new Set(vs.map(v => v.book + v.chapter)).size > 1; // then each chapter's first verse says which
+    box.innerHTML = vs.map((v, i) => {
+      const num = chapters && (i === 0 || v.chapter !== vs[i - 1].chapter) ? `${v.chapter}:${v.verse}` : v.verse;
+      return `<p><sup>${num}</sup> ${escapeHtml(v.text)}</p>`;
+    }).join('')
+      + `<p class="reading-credit">${escapeHtml(passage.translation.credit)}</p>`;
+  } catch (err) {
+    box.textContent = navigator.onLine ? (err.message || String(err)) : "These verses aren't saved on this device yet. Connect to the internet to load them.";
+  }
+}
+function readingLink(ref) {
+  return '#' + window.songbook._id + '&r-' + encodeURIComponent(ref);
+}
+
+// A row's name typed in a box in the row, in the songbook editor: a section's title (the pencil), or a
+// reading's verses (#157). Under the box, check(text) says what it will be, or what's wrong:
+// { value, hint } can be kept, { problem } can't, { hint } alone is nothing yet. Enter (or clicking away)
+// keeps a good one with keep(value); Esc, or clicking away from a bad or empty one, leaves the row as it was,
+// or takes a new one back out.
+function editRowInline(row, { isNew = false, placeholder = '', check, keep }) {
+  const link = row.querySelector('a');
+  const open = row.querySelector('.row-input');
+  if (open) return open.focus();
+  const input = document.createElement('input');
+  input.className = 'row-input';
+  input.placeholder = placeholder;
+  input.value = isNew ? '' : link.textContent;
+  const hint = document.createElement('div');
+  hint.className = 'row-hint';
+  link.style.display = 'none'; // (the list's styles show a hidden link)
+  link.after(input);
+  row.append(hint);
+  let result = {};
+  const update = () => {
+    result = check(input.value.trim());
+    hint.classList.toggle('problem', !!result.problem);
+    hint.textContent = result.problem || result.hint || '';
+    hint.style.display = hint.textContent ? '' : 'none';
+  };
+  let done = false;
+  const finish = keepIt => {
+    if (done) return;
+    done = true;
+    input.remove();
+    hint.remove();
+    link.style.display = '';
+    if (keepIt) keep(result.value);
+    else if (isNew) scaleRemove(row);
+  };
+  input.addEventListener('input', update);
+  input.addEventListener('keydown', e => {
+    e.stopPropagation(); // the list's own keys stay out of the typing
+    if (e.key === 'Enter') { e.preventDefault(); if (result.value) finish(true); }
+    if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+  });
+  input.addEventListener('click', e => e.stopPropagation()); // not the row's click
+  input.addEventListener('blur', () => finish(!!result.value));
+  update();
+  input.focus();
+  input.select();
+}
+function editSection(row) {
+  const link = row.querySelector('a');
+  editRowInline(row, {
+    placeholder: 'Section name',
+    check: text => text ? { value: text } : { problem: 'A section needs a name.' },
+    keep: name => { link.textContent = name; },
+  });
+}
+// A reading's verses: "ps 95:1-7" is kept as "Psalm 95:1–7"
+async function editReading(row, isNew = false) {
+  const link = row.querySelector('a');
+  try {
+    await Bible.ready();
+  } catch (err) {
+    notyf.error("The Bible list didn't load. Connect to the internet once, then try again.");
+    if (isNew) row.remove();
+    return;
+  }
+  editRowInline(row, {
+    isNew,
+    placeholder: 'Like Psalm 95:1-7 or John 3:16-21',
+    check: text => {
+      if (!text) return { hint: 'Type the verses for this reading.' };
+      const found = Bible.parse(text);
+      return found.error ? { problem: found.error } : { value: found.label, hint: `Reading: ${found.label}` };
+    },
+    keep: label => {
+      link.textContent = label;
+      link.setAttribute('href', readingLink(label));
+      row.setAttribute('data-song-search', label);
+    },
+  });
 }
 // The songbook editor: the book's songs reorder; a song dragged in from "Add a song?" is added (that list
 // keeps its own, in order); a song dragged from the book back to "Add a song?" comes out of the book.
@@ -2194,7 +2326,7 @@ function newBookRow(adderRow) {
 function makeSongbookSortable() {
   const book = document.querySelector('#songbook_content ul.list');
   const adder = document.querySelector('#songbook_edit_togglesongs ul.list');
-  const notEditing = (evt) => !window.songbookEditing || !!evt.target.closest('button'); // buttons still click
+  const notEditing = (evt) => !window.songbookEditing || !!evt.target.closest('button, input'); // buttons still click, a reading's box still types
   const changed = () => window.songbook_list?.reIndex();
   if (book && !Sortable.get(book)) {
     Sortable.create(book, {
@@ -2266,22 +2398,12 @@ function makeChunksSortable(songElement) {
     },
   });
 }
-function add_edit_pencil(song) {
-  // Create edit pencil button
+// The ✏️ on a section's or a reading's row: edit() opens its box
+function add_edit_pencil(song, edit) {
   const editBtn = document.createElement('button');
   editBtn.className = 'edit_pencil';
   editBtn.textContent = '✏️';
-
-  // Add click handler for editing section name
-  editBtn.addEventListener('click', (e) => {
-    const sectionLink = song.querySelector('a');
-    const currentName = sectionLink.textContent;
-
-    const newName = prompt('New Name for Section:', currentName);
-    if (newName && newName.trim() !== '') {
-     sectionLink.textContent = newName.trim();
-    }
-  });
+  editBtn.addEventListener('click', () => edit());
 
   // Insert button after the link
   const link = song.querySelector('a');
@@ -2422,7 +2544,8 @@ async function editSongbook() {
     }
 
     const songs = result.rows.sort((a, b) => String(a.doc?.title ?? '').localeCompare(String(b.doc?.title ?? ''))); // a bad record's title may be a number
-    songs.unshift({ id: 'section', title: 'New Section', search: 'new section' });
+    songs.unshift({ id: 'section', title: 'New Section', search: 'new section' },
+      { id: 'reading', title: 'New Reading', search: 'new reading bible scripture verses' }); // #157
 
     buildSongbookList(songs, 'songbook_edit_togglesongs', 'song-item-template-edit', true);
   }
@@ -2738,6 +2861,42 @@ async function editSong() {
   const elements = songElement.querySelectorAll('.song-title .title_link, authors, scripture_ref, introduction, key, chunk, copyright, cclis');
   convertChunksToEditable(elements);
 }
+// The song editor's scripture references (#157). While they're typed, a note under the box says how they'll
+// be written, and which ones the Bible doesn't know and why. When the box is left, each one it knows is
+// written the usual way ("ps 95:1,2" -> "Psalm 95:1, 2"), so they look alike, sort right in the PDF's index
+// and show with r in a presentation. One it doesn't know stays as typed, and its note stays.
+async function tidySongRefs(field, typing = false) {
+  try {
+    await Bible.ready();
+  } catch (err) {
+    return; // offline before the Bible list ever loaded: they stay as typed
+  }
+  const problems = [];
+  const refs = joinScriptureRefs(field.textContent.split(',')).filter(Boolean).map(ref => {
+    const found = Bible.parse(ref, Infinity); // a song can cite a long passage
+    if (found.error) problems.push(`${ref}: ${found.error}`);
+    return found.error ? ref : found.label.replace(/–/g, '-'); // a plain hyphen, as people type it to search
+  });
+  const text = refs.join(', ');
+  const changes = text !== field.textContent.trim();
+  if (changes && !typing) field.textContent = text;
+  let note = field.nextElementSibling?.classList.contains('ref-note') ? field.nextElementSibling : null;
+  if (!problems.length && !(typing && changes && text)) return note?.remove();
+  if (!note) {
+    note = document.createElement('div');
+    note.className = 'ref-note';
+    field.after(note);
+  }
+  note.innerHTML = (typing && changes && text ? `<span>Will show as: ${escapeHtml(text)}</span> ` : '')
+    + problems.map(p => `<span class="problem">${escapeHtml(p)}</span>`).join(' ');
+}
+document.addEventListener('focusout', e => {
+  if (window.songEditing && e.target.matches?.('#song scripture_ref.toTextarea')) tidySongRefs(e.target);
+});
+document.addEventListener('input', e => {
+  if (window.songEditing && e.target.matches?.('#song scripture_ref.toTextarea')) tidySongRefs(e.target, true);
+});
+
 // The songbook editor's Save button. A failed save keeps the editor open and says why (#1).
 async function saveSongbookFromEditor() {
   try {
@@ -3272,9 +3431,9 @@ function read_config_form(){
   return new_opts;
 }
 // The id of the row before or after the open one in a list (a songbook's songs, or the songbooks), as the
-// list shows it now; section headings are skipped. null at either end.
+// list shows it now; section headings and readings are skipped. null at either end.
 function neighborRow(listSel, idKey, currentId, before) {
-  const ids = [...document.querySelectorAll(`${listSel} > li`)].map(li => li.dataset[idKey]).filter(id => id && id !== 'section');
+  const ids = [...document.querySelectorAll(`${listSel} > li`)].map(li => li.dataset[idKey]).filter(id => id && !isBookExtra(id));
   const at = ids.indexOf(currentId);
   if (at < 0) return null;
   return ids[before ? at - 1 : at + 1] || null;

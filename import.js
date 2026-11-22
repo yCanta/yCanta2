@@ -318,7 +318,8 @@ async function importSongV2(f){
   }
 
   async function importSongbook(fileObject){
-    let songs = fileObject.songs.map(song => song.doc).filter(Boolean);
+    // songs only: a book's readings (#157) are in its own list, not here
+    let songs = fileObject.songs.filter(song => song && !song.reading).map(song => song.doc).filter(Boolean);
     window.import.file_count = songs.length + 1;
     //first import the songs
     let promiseList = [];

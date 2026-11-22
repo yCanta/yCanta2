@@ -130,6 +130,8 @@ presentation_key_map = {
 
   's'         : [ function() {if(! isSearching()) beginSearch();},
                   "Begin a search if a search is not in progress" ],
+  'r'         : [ function() {if(! isSearching()) showSongRefs();},
+                  "Show the verses of the song's scripture references (#157)" ],
   '/'         : [ function() {if(! isSearching()) beginSearch();},
                   "Begin a search if a search is not in progress" ],
 }
@@ -159,9 +161,14 @@ document.addEventListener('DOMContentLoaded', function() {
         window.songbook = JSON.parse(myString);
       }
     }
+    // Bible verses (#157): the book files are beside the app, which sent their address
+    if (typeof Bible !== 'undefined' && window.songbook && window.songbook.bible) {
+      Bible.setBase(window.songbook.bible.base);
+      Bible.ready().catch(err => console.error('Bible:', err));
+    }
     //PREPROCESS THE SONGBOOK OBJECT
     setTimeout(function(){
-      window.songbook.songs = presentableSongs(window.songbook.songs);
+      window.songbook.songs = presentableItems(window.songbook.songs);
 
       //Put default song
       window.songbook.song_index = window.songbook.songs.length - 1;
@@ -187,12 +194,24 @@ function presentableSongs(songs) {
 // place in the book, on the first verse of the song that's there now.
 function updateSongbook(json) {
   const data = JSON.parse(json);
-  const songs = presentableSongs(data.songs);
+  const songs = presentableItems(data.songs);
   if (!window.songbook || !songs.length) return;
   window.songbook.title = data.title;
   window.document.title = "yCanta2: Presenting " + data.title;
 
   const titleSlide = document.getElementById('pres_title');
+  // passages put in during the presentation (#157) stay, after the same song as before
+  window.songbook.songs.forEach((song, i) => {
+    if (!song.passage || song.reading) return;
+    const after = i > 0 ? window.songbook.songs[i - 1].id : null;
+    const found = after === null ? -1 : songs.findIndex(other => other.id === after);
+    songs.splice(after === null ? 0 : found === -1 ? songs.length : found + 1, 0, song);
+  });
+  if (current_song && current_song.passage && !current_song.reading) { // on a typed passage: stay on it
+    window.songbook.songs = songs;
+    window.songbook.song_index = songs.indexOf(current_song);
+    return;
+  }
   const oldIndex = window.songbook.song_index;
   const oldId = current_song && current_song.id;
   const oldChunk = current_song ? current_song.chunk_index : 0;
@@ -216,6 +235,171 @@ function updateSongbook(json) {
 }
 
 function myEscape(text) { return text.replace('<', '&lt;').replace('>', '&gt;'); }
+function escapeText(text) {
+  return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ---- Bible verses on screen (#157). bible.js finds the verses; here they become a passage that's shown like
+// a song: its title (the reference) on the first slide, the translation's credit on the last, and each
+// slide as many whole verses as fit at a readable size. A passage goes in after the song on screen and stays
+// in the order until the presentation closes. Typed in the search box ("John 3:16-18", "Ps 23"), or the
+// song's own scripture references with r.
+const BIBLE_SMALLEST = 1 / 16; // a slide's text is never smaller than this much of the screen's height
+let passageCount = 0;
+
+function bibleTranslation() {
+  return (window.songbook && window.songbook.bible && window.songbook.bible.translation) || 'BSB';
+}
+
+// The reference in the search box, if it is one: { text, label, translation }. Not after "s:": that searches
+// the songs' scripture references, as it always has, and its numbers pick a song.
+function bibleRefIn(text) {
+  if (typeof Bible === 'undefined' || /^\s*s\s*:/i.test(text)) return null;
+  const found = Bible.parse(text);
+  if (found.error) return null;
+  return { text, label: found.label, translation: bibleTranslation() };
+}
+
+// Is a reference being typed, so a number goes on it instead of picking a search result? A book's name and
+// then a space ("John ", "1 Jn 4:"). Not a book's name alone: plenty of words searched for are one too ("he",
+// "is", "song", "mark"), and their number picks a result. Not "s:" (see bibleRefIn).
+function typingReference() {
+  const text = document.querySelector('#searchbox input').value;
+  if (typeof Bible === 'undefined' || !Bible.startsWithBook(text)) return false;
+  return /\s$|\d/.test(text.replace(/^\s*\d\s*/, '')); // (not the 1 of "1 John")
+}
+
+// Show a passage: put it in after the song on screen (or in place of a passage on screen) and go to it
+async function showPassage(refText) {
+  let passage;
+  try {
+    passage = await Bible.passage(refText, bibleTranslation());
+  } catch (err) {
+    showBibleProblem(err.message || String(err));
+    return;
+  }
+  if (!passage.verses.length) {
+    showBibleProblem("Those verses aren't in this translation.");
+    return;
+  }
+  if (!inPresentation()) { // picked on the "Presenting" slide: the presentation starts here (and is measured as one)
+    hideHelp();
+    document.body.classList.add('presentation');
+  }
+  const item = passageItem('bible-' + (++passageCount), passage);
+  const songs = window.songbook.songs;
+  const onTitleSlide = !!document.getElementById('pres_title') || !current_song;
+  let at = onTitleSlide ? 0 : window.songbook.song_index + 1;
+  const typedOnScreen = !onTitleSlide && current_song && current_song.passage && !current_song.reading;
+  if (typedOnScreen) at = window.songbook.song_index; // a typed passage replaces a typed passage (not a book's reading)
+  if (typedOnScreen) songs.splice(at, 1);
+  songs.splice(at, 0, item);
+  window.songbook.song_index = at;
+  current_song = item;
+  current_song.chunk_index = 0;
+  showChunk('passage');
+}
+
+// A passage shown like a song: the reference as its title, the translation's credit as its copyright, its
+// slides packed for this screen. Its title is what the search box finds.
+function passageItem(id, passage, reading = false) {
+  const item = {
+    id,
+    passage,
+    reading, // one of the book's readings, not typed during the presentation
+    doc: { title: escapeText(passage.label), authors: [''], scripture_ref: [''], key: '', search: 't:' + passage.label,
+      copyright: escapeText(passage.translation.credit), content: [] },
+  };
+  packPassage(item);
+  return item;
+}
+
+// The book's readings come from the main page as verses (it has the Bible files): they become passages here
+function presentableItems(songs) {
+  return presentableSongs(songs.map(song => (song.reading ? passageItem(song.id, song.passage, true) : song)));
+}
+
+function showBibleProblem(message) {
+  beginSearch();
+  const results = document.getElementById('searchresults');
+  results.innerHTML = '<div class="match">' + escapeText(message) + '</div>';
+}
+
+// One verse on a slide: its number small, its text (poetry keeps its lines)
+function verseLine(v, showChapter) {
+  return '<line><vn>' + (showChapter ? v.chapter + ':' : '') + v.verse + '</vn> ' + escapeText(v.text) + '</line>';
+}
+
+// The passage's slides: as many whole verses on each as fit at a readable size on this screen
+function packPassage(item) {
+  const verses = item.passage.verses;
+  const multiChapter = new Set(verses.map(v => v.book + v.chapter)).size > 1;
+  const lines = verses.map((v, i) => verseLine(v, multiChapter && (i === 0 || v.chapter !== verses[i - 1].chapter)));
+  const smallest = window.innerHeight * BIBLE_SMALLEST;
+  const content = [];
+  let i = 0;
+  while (i < lines.length) {
+    let n = 1;
+    while (i + n < lines.length && fittedSize(item, lines.slice(i, i + n + 1), i === 0, i + n + 1 === lines.length) >= smallest) n++;
+    content.push([{ type: 'bible' }, lines.slice(i, i + n)]);
+    i += n;
+  }
+  item.doc.content = content;
+  item.packedFor = window.innerWidth + 'x' + window.innerHeight;
+}
+
+// How big a slide's verse text would be (px), fitted to the screen the way scaleText fits a slide
+function fittedSize(item, lines, first, last) {
+  let slide = document.getElementById('measure_slide');
+  if (!slide) {
+    slide = document.createElement('div');
+    slide.id = 'measure_slide';
+    slide.className = 'slide';
+    slide.style.visibility = 'hidden';
+    slide.style.zIndex = '-1';
+    slide.innerHTML = '<div class="content"></div>';
+    document.getElementById('slides').appendChild(slide);
+  }
+  const content = slide.querySelector('.content');
+  content.innerHTML = (first ? '<stitle>' + item.doc.title + '</stitle>' : '')
+    + '<chunk type="bible">' + lines.join('') + '</chunk>'
+    + (last ? '<copyright>' + item.doc.copyright + '</copyright>' : '');
+  const fits = () => slide.scrollWidth <= window.innerWidth && slide.scrollHeight <= window.innerHeight;
+  let small = 50, big = 1500, percent = (big + small) / 2;
+  while (big - small > 10) {
+    content.style.fontSize = percent + '%';
+    if (fits()) small = percent; else big = percent;
+    percent = (big + small) / 2;
+  }
+  content.style.fontSize = (percent - 10) + '%';
+  return parseFloat(getComputedStyle(content.querySelector('line')).fontSize) || 0;
+}
+
+// The screen changed size (full screen, another window): the passages are packed again for it, staying on
+// the verse that was first on screen
+window.addEventListener('resize', () => {
+  clearTimeout(window.repackTimer);
+  window.repackTimer = setTimeout(() => {
+    const size = window.innerWidth + 'x' + window.innerHeight;
+    (window.songbook && window.songbook.songs || []).filter(song => song.passage && song.packedFor !== size).forEach(item => {
+      const firstLine = item === current_song ? item.doc.content[item.chunk_index][1][0] : null;
+      packPassage(item);
+      if (firstLine) {
+        const verseNumber = firstLine.replace(/<vn>(?:\d+:)?(\d+)<\/vn>.*/, '$1');
+        item.chunk_index = Math.max(0, item.doc.content.findIndex(chunk => chunk[1].some(line => line.replace(/<vn>(?:\d+:)?(\d+)<\/vn>.*/, '$1') === verseNumber)));
+        if (inPresentation() && !isSearching()) showChunk('passage');
+      }
+    });
+  }, 300);
+});
+
+// r: the song on screen's own scripture references, as a passage
+function showSongRefs() {
+  if (!inPresentation() || !current_song || current_song.passage) return;
+  const refs = (current_song.doc.scripture_ref || []).map(ref => String(ref).replace(/&amp;/g, '&')).filter(ref => ref.trim());
+  if (!refs.length) return;
+  showPassage(refs.join('; '));
+}
 
 function openWindow() {
   secondary_windows.push(window.open('presentation.html','_blank', height="200", width="200"))
@@ -241,6 +425,25 @@ function toggleHelp() {
     content += '<label class="switch"><input type="checkbox" id="togBtn"><div data-text="BG" class="slider background"></div></label>';
     content += '<label><input type="checkbox"> Chords</label>';
     content += '<label><input type="checkbox"> Image backgrounds</label></div>';
+    // The keys worth knowing, in plain words (the full key map below says more than anyone needs)
+    const keys = [
+      ['→ ↓ Space', 'Next slide'],
+      ['← ↑', 'Back a slide'],
+      ['Page Down / Page Up', 'Next / previous song'],
+      ['Home / End', 'First / last song'],
+      ['1 to 9, 0', 'Go to that verse of the song (0 is 10)'],
+      ['c, b, e', 'Go to the chorus, bridge, or ending'],
+      ['s or /', 'Search the songs; then 1 to 5 or Enter picks one'],
+      ['s, then John 3:16', 'Show Bible verses: type the reference, then Enter'],
+      ['r', "Show the verses this song's scripture references name"],
+      ['t / f', 'Black background / white text, on or off'],
+      ['C (capital)', 'Chords on or off'],
+      ['h or ?', 'This help'],
+      ['Esc', 'Close search or help, or end the presentation'],
+    ];
+    content += '<h4>Keys:</h4><table class="keys">'
+      + keys.map(([key, what]) => '<tr><td class="key">' + escapeText(key) + '</td><td class="description">' + escapeText(what) + '</td></tr>').join('')
+      + '</table>';
     var description = undefined;
     /*for(var key in presentation_key_map){
       if(description == myEscape(presentation_key_map[key][1])) { // don't output the description multiple times if it is the same
@@ -311,14 +514,25 @@ function searchDatabase(){
       return result;
   });
 
+  // A Bible reference ("John 3:16-18", "Ps 23") is the first result: its verses, then the songs that cite it (#157)
+  const ref = bibleRefIn(text);
+  if (ref) {
+    matches = [{ bibleRef: ref.text }].concat(matches.slice(0, MAX_SEARCH_RESULTS - 1));
+  }
   last_search_results = matches;     // save for future reference
 
   // format for display
   var count = 0;
 
   var textmatches = matches.map(function(item) {
-      let m = re.exec(item.doc.search);
       count += 1;
+      if (item.bibleRef) {
+        return '<div onclick="javascript:void(searchResult(' + count + '));">'
+          + '<span class="count">[' + count + ']</span> '
+          + '<span class="song">' + escapeText(ref.label) + '</span>: '
+          + '<span class="matchline">' + escapeText(ref.translation) + '</span></div>';
+      }
+      let m = re.exec(item.doc.search);
       let matchline_start = Math.max(
           item.doc.search.substring(0,m.index).lastIndexOf('\n') || 0
         , item.doc.search.substring(0,m.index).lastIndexOf('\0') || 0);
@@ -332,6 +546,11 @@ function searchDatabase(){
         + item.doc.search.substring(m.index + m[1].length, matchline_end) + '</span></div>');
   });
 
+  // A reference that's started but not right yet ("John 3:99"): say why, above any songs found
+  if (!ref && /\d/.test(text) && typingReference() && typeof Bible !== 'undefined') { // not while the book is being typed
+    const problem = Bible.parse(text).error;
+    if (problem) textmatches.unshift('<div class="count">' + escapeText(problem) + '</div>');
+  }
   document.getElementById('searchresults').innerHTML = textmatches.join('\n');
   const infoSpan = document.querySelector('#searchbox > span.info');
   if(infoSpan) infoSpan.textContent = '  showing ' + textmatches.length + ' of ' + total_matches;
@@ -361,6 +580,11 @@ function endSearch(){
 
 function searchResult(n){
   if(n > last_search_results.length){
+    return;
+  }
+  if (last_search_results[n - 1].bibleRef) {
+    showPassage(last_search_results[n - 1].bibleRef);
+    endSearch();
     return;
   }
   current_song = last_search_results[n - 1];
@@ -724,6 +948,9 @@ function blackScreen(touch=false){
 }
 
 function numberHit(num){
+  if(isSearching() && typingReference()){
+    return; // the number is part of a reference being typed ("John 3:16"), not a pick
+  }
   if(isSearching() & num <= MAX_SEARCH_RESULTS){
     searchResult(num)
   }

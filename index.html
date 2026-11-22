@@ -133,9 +133,14 @@
               </div>
             </fieldset>
             <fieldset id="adminSettings" class="admin closed align-right">
-              <legend onclick="this.parentElement.classList.toggle('closed'); if(!this.parentElement.classList.contains('closed')) {loadAllUsers()}">Admin</legend>
+              <legend onclick="this.parentElement.classList.toggle('closed'); if(!this.parentElement.classList.contains('closed')) {loadAllUsers(); loadChurchBible()}">Admin</legend>
               <div class="content">
                 <div id="all_users"></div>
+              </div>
+              <!-- The Bible translation presentations use for this church (#157) -->
+              <div class="content">
+                <label for="church_bible"><b>Bible for presentations</b></label>
+                <div><select id="church_bible" onchange="setChurchBible(this)"></select></div>
               </div>
               <button class="btn" style="background-color: crimson; color: white;" onclick="if(confirm('Are you sure you want to delete this database?')){ dbLogout(); destroyDb(db.name);}">Delete DB</button>
             </fieldset>
@@ -733,7 +738,7 @@
                 <div class="export-actions-group">
                   <b>Export</b>
                   <!-- rarely needed, so here rather than at the top (#131) -->
-                  <button class="btn" onclick="download(JSON.stringify(window.exportObject),window.exportObject.title+'.json','application/json')" title="Download the songs as a yCanta JSON file">JSON file</button>
+                  <button class="btn" onclick="download(JSON.stringify({...window.exportObject, songs: window.exportObject.songs?.filter(song => !song.reading)}),window.exportObject.title+'.json','application/json')" title="Download the songs as a yCanta JSON file">JSON file</button>
                   <!-- what import.js reads back: a songbook with its songs, or one song -->
                   <small class="export-actions-note hide_for_songs">The songbook and all its songs, as a file another yCanta can import.</small>
                   <small class="export-actions-note show_for_songs">This song, as a file another yCanta can import.</small>
@@ -837,6 +842,7 @@
     <script src="db.js"></script>
     <script src="mark.min.js"></script>
     <script src="lib.js"></script>
+    <script src="bible.js"></script>
     <script src="myTransposer.js"></script>
     <script src="toTextarea.js"></script>
     <script src="list.min.js"></script>
@@ -1021,7 +1027,7 @@
 
   // 4. Set initial active states (Element-specific classes still set here)
   if (!context.newHash.includes('export')) {
-    if (context.newHash.includes('s-')) {
+    if (context.newHash.includes('s-') || context.newHashList.some(p => p[0].startsWith('r-'))) { // a song, or a reading (#157)
       document.getElementById('song').classList.add('active');
     } else if (context.newHash.includes('sb-')) {
       document.getElementById('songList').classList.add('active');
@@ -1045,6 +1051,10 @@
         routeHandledAndStop = await _handleSongRoute(piece, context);
       } else if (route.startsWith('sb-')) {
         routeHandledAndStop = await _handleSongbookRoute(piece, context.oldHashOb);
+      } else if (route.startsWith('r-')) { // a reading in the book (#157)
+        const ref = decodeURIComponent(route.slice(2));
+        window.document.title = `yCanta2: ${window.songbook.title} > ${ref}`;
+        await showReading(ref);
       }
     } catch (err) {
       console.error(`Error handling route ${route}:`, err);
@@ -1095,6 +1105,8 @@ function _getClassesFromHash(hashList) {
             if (mode === 'export') {
                 classSet.add('export');
             }
+        } else if (route.startsWith('r-')) {
+            classSet.add('song'); // a reading shows where a song does (#157)
         } else if (route.startsWith('sb-')) {
             classSet.add('songList');
             if (mode === 'export') {
@@ -1398,8 +1410,13 @@ async function _handleSongbookRoute(piece, oldHashOb) { // bodyClassList removed
       window.exportObject = window.songbook;
       // Each song carries its own status, since sections and deleted or empty songs are dropped here
       // and the list no longer lines up with songrefs
+      // The book's readings (#157) come in where they are, as their verses, for the PDF (the JSON file leaves them
+      // out of its songs; the book's own list keeps them)
+      const translation = await churchBible();
+      const readings = await Promise.all(window.songbook.songrefs.map(ref => ref.id === 'reading' ? readingSongDoc(ref.ref, translation) : null));
       window.exportObject.songs = result.rows
-        .map((song, i) => ({...song, status: window.songbook.songrefs[i].status || 'n'}))
+        .map((song, i) => readings[i] ? { id: 'reading', key: 'reading', reading: true, doc: readings[i] }
+          : {...song, status: window.songbook.songrefs[i].status || 'n'})
         // Comments stay in, for the JSON export; the PDF maker skips them and songs with nothing else (#62)
         .filter(song => song.key != "section" && song.doc)
         .map(song => ({ ...song, doc: songShape(song.doc) })); // the usual shape, so a bad record can't stop the PDF maker
@@ -1434,14 +1451,16 @@ async function _handleSongbookRoute(piece, oldHashOb) { // bodyClassList removed
       window.presentedSongbook = { _id: window.songbook._id, title: window.songbook.title, songrefs: window.songbook.songrefs };
 
       // Load presentation resources
-      const [presHtmlRes, presentationRes] = await Promise.all([
+      const [presHtmlRes, presentationRes, bibleRes] = await Promise.all([
         fetch('presentation.html'),
-        fetch('presentation.js')
+        fetch('presentation.js'),
+        fetch('bible.js') // Bible verses on screen (#157)
       ]);
 
       let presHtml = await presHtmlRes.text();
-      presHtml = presHtml
-        .replace('presentation_embed', await presentationRes.text());
+      // a function, so a "$&" or "$'" in the code isn't read as a replacement pattern
+      const presCode = (await bibleRes.text()) + '\n' + (await presentationRes.text());
+      presHtml = presHtml.replace('presentation_embed', () => presCode);
 
       if (mode.includes('new')) {
         window.location = '#' + window.songbook._id;

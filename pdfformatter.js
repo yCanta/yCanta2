@@ -182,45 +182,27 @@ class Line {
 //
 //==============*/
 function sort_scrip_index(scrip_ref){ 
-  var x = scrip_ref.trim().replace('.','').split(/\s(?=\d)/, 1);
+  var x = scrip_ref.trim().replace('.','').split(/\s(?=\d)/); // [book, chapter:verse, ...] (a limit of 1 lost the chapter)
   let book_number;
   let chapter_number;
   let verse_number;
   
   // get the book number XX
   try {
-    book_number = String(BIBLE_BOOK_ORDER_DICT[x[0]]);
+    book_number = String(BIBLE_BOOK_ORDER_DICT[x[0]] ?? 99); // a book it doesn't know goes last
   }
   catch(error) {
     book_number = '99';
   }
   book_number = book_number.padStart(2,'0');
   
-  // get chapter number YYY
-  try {
-    chapter_number = x[1].split(':')[0];
-  }
-  catch(err) {
-    chapter_number = '000';
-  }
-  if (chapter_number.length < 4){
-    chapter_number = chapter_number.padStart(3,'0');
-  }
-  else {
-    chapter_number = '999';
-  }
+  // get chapter number YYY: its first number only ("1-2" is 1; the rest would make the key a wrong number)
+  chapter_number = (x[1] || '').match(/^\d+/)?.[0] || '000';
+  chapter_number = chapter_number.length < 4 ? chapter_number.padStart(3,'0') : '999';
 
-  // get verse number ZZZ
-  try {
-    verse_number = x[1].split(':')[1].split(/[-,]/)[0];
-    verse_number = verse_number.padStart(3,'0');
-    if (verse_number.length > 3) {
-      verse_number = '000';
-    }
-  }
-  catch(err) {
-    verse_number = '000';
-  }
+  // get verse number ZZZ: the first one after the colon
+  verse_number = (x[1] || '').match(/^\d+:(\d+)/)?.[1] || '000';
+  verse_number = verse_number.length < 4 ? verse_number.padStart(3,'0') : '000';
  
   return book_number + chapter_number + verse_number;
 }
@@ -328,12 +310,19 @@ function parse(export_object, cfg) {
   for(let i = 0; i < export_object.songs.length; i++) {
     // index.html now puts the status on each song; an older cached index.html left it on songrefs
     let status = export_object.songs[i].status ?? export_object.songrefs[i]?.status;
-    if(cfg.SONGS_TO_PRINT.indexOf(status)==-1){
+    let reading = !!export_object.songs[i].reading; // a Bible reading (#157): always printed, no number, not in the indexes
+    if(!reading && cfg.SONGS_TO_PRINT.indexOf(status)==-1){
       continue;
     }
 
     let song = parse_song(export_object.songs[i].doc);
     if (song.chunks.length == 0) {  // only comments, which aren't printed
+      continue;
+    }
+    if (reading) {
+      song.reading = true;
+      song.num = '';
+      songbook.songs.push(song);
       continue;
     }
     song.num = song_num;
@@ -1179,7 +1168,10 @@ function calc_heights(songbook, cfg, doc) {
     song.height = 0;
     let song_title;
 
-    if(cfg.SCRIPTURE_LOCATION == SCRIPTURE_IN_TITLE && song.scripture_ref) {
+    if(song.reading) { // a Bible reading: just its reference
+      song_title = song.title;
+    }
+    else if(cfg.SCRIPTURE_LOCATION == SCRIPTURE_IN_TITLE && song.scripture_ref) {
       let num = song.num;
       let title = song.title + '(' + song.scripture_ref + ')';
       song_title = cfg.SONGTITLE_FORMAT.replace('${title}',title).replace('${num}',song.num);
@@ -1190,7 +1182,7 @@ function calc_heights(songbook, cfg, doc) {
       song_title = cfg.SONGTITLE_FORMAT.replace('${title}',title).replace('${num}',song.num);
     }
 
-    song.num_width = myStringWidth(cfg.SONGTITLE_FORMAT.replace('${title}','').replace('${num}',song.num), cfg.FONT_FACE, cfg.SONGTITLE_SIZE, doc)*1.5;
+    song.num_width = song.reading ? 0 : myStringWidth(cfg.SONGTITLE_FORMAT.replace('${title}','').replace('${num}',song.num), cfg.FONT_FACE, cfg.SONGTITLE_SIZE, doc)*1.5;
 
     // Word wrap title as needed
     song.title_wrapped = word_wrap(song_title, cfg.page_layout.get_page_width(), cfg.FONT_FACE, cfg.SONGTITLE_SIZE, song.num_width, doc);
@@ -1227,7 +1219,8 @@ function calc_heights(songbook, cfg, doc) {
       chunk.last_chunk = false;  // the real last chunk is set true after loop
 
       // when word wrapping lines we need to split so chunk.lines is right length.
-      if(cfg.RESIZE_PERCENT == 0) {  // 0 means we are wrapping
+      // A Bible reading's verses always wrap (#157): a verse is a sentence or more, too long to shrink to fit
+      if(cfg.RESIZE_PERCENT == 0 || song.reading) {  // 0 means we are wrapping
         let split_lines = [];
         for(let line of chunk.lines) {
           let split_line = word_wrap(line, chunk_width, cfg.FONT_FACE, cfg.SONGLINE_SIZE, 0, doc); 

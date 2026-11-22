@@ -311,6 +311,16 @@
       #help td.description {
         padding-left: 1em;
       }
+      /* The help's list of keys */
+      #help .keys td {
+        padding: .15rem 0;
+        vertical-align: top;
+      }
+      #help .keys td.key {
+        padding-right: .75rem;
+        white-space: nowrap;
+        font-weight: bold;
+      }
 
       #help .newdescription td {
         border-top: solid 1px black;
@@ -372,6 +382,25 @@
       }
       chunk {
         padding-top: 1px;  /* else in chord mode chords display over the author */
+      }
+      /* Bible verses (#157): a verse wraps like a paragraph (poetry keeps its lines), with its number small.
+         No room for chords above it, chords on or off. */
+      chunk[type="bible"] line {
+        white-space: pre-line;
+        padding-top: 0;
+        bottom: 0;
+        margin-left: 0;
+        margin-bottom: .3em;
+      }
+      chunk[type="bible"] vn {
+        font-size: 55%;
+        vertical-align: super;
+        line-height: 0;
+        font-weight: normal;
+      }
+      #measure_slide {
+        transform: none;
+        transition: none;
       }
       /*===============================*/
       /* Background image css
