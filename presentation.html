@@ -156,6 +156,39 @@
         left: auto;
         right: .2em;
       }
+      /* Whole song (#51): every part on screen in columns that fit it, the one being sung clear and the rest
+         faded; the part Space goes to has a line beside it */
+      body.wholesong #pre_slide, body.wholesong #post_slide {
+        display: none;
+      }
+      body.wholesong #cur_slide .content {
+        height: calc(100vh - 2.5rem);
+        column-width: 16em;
+        column-gap: 2em;
+        column-fill: auto;
+      }
+      body.wholesong #cur_slide chunk {
+        break-inside: avoid;
+        margin-bottom: .6em;
+        opacity: .4;
+        transition: opacity .25s;
+      }
+      body.wholesong #cur_slide chunk.current {
+        opacity: 1;
+      }
+      body.wholesong #cur_slide chunk.space-next {
+        opacity: .7;
+        box-shadow: inset .12em 0 0 gray;
+        padding-left: .4em;
+      }
+      body.wholesong.nomarker #cur_slide chunk.space-next {
+        opacity: .4;
+        box-shadow: none;
+        padding-left: 0;
+      }
+      body.wholesong #cur_slide copyright {
+        font-size: large;
+      }
       body.nomarker #progress .space-next::after, body.nomarker #progress.space-next-song::after {
         display: none;
       }

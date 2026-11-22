@@ -80,9 +80,9 @@ async function tab(target) {
     while (Date.now() < end) { if (await ev(expr).catch(() => false)) return true; await sleep(50); }
     throw new Error(`Timed out waiting for ${what}`);
   };
-  const VK = { C: 67, ArrowRight: 39, Enter: 13 };
+  const VK = { C: 67, w: 87, ArrowRight: 39, Enter: 13 };
   const key = async k => {
-    const base = { key: k, code: k.length === 1 ? 'Key' + k : k, windowsVirtualKeyCode: VK[k], modifiers: k === 'C' ? 8 : 0 };
+    const base = { key: k, code: k.length === 1 ? 'Key' + k.toUpperCase() : k, windowsVirtualKeyCode: VK[k], modifiers: k === 'C' ? 8 : 0 };
     await send('Input.dispatchKeyEvent', { type: 'keyDown', ...base, text: k.length === 1 ? k : k === 'Enter' ? '\r' : undefined });
     await send('Input.dispatchKeyEvent', { type: 'keyUp', ...base });
     await sleep(100);
@@ -216,6 +216,21 @@ try {
   const driverCls = await d.ev(`${P}.document.body.className`);
   await f.shot('3-follower-live-chords');
   ok(!/nochords/.test(fol.cls) && /nochords/.test(driverCls), 'C on the follower turns on its chords only', [fol.cls, driverCls]);
+
+  // whole song on the follower: back on the four-part song, every part shows, the one being sung marked
+  await d.ev(`${P}.prevSong(), ${P}.spaceNext(), 'ok'`); // first song, first verse; Space goes to the chorus
+  drv = await driverSlide();
+  await f.until(`${F}.current_song.chunk_index === ${drv.part} && ${F}.current_song.id === ${JSON.stringify(drv.id)}`, 'the follower on the first song', 5000);
+  await f.key('w');
+  await sleep(300);
+  const whole = await f.ev(`(() => { const c = [...${F}.document.querySelectorAll('#cur_slide chunk')];
+    return { count: c.length, current: c.findIndex(x => x.classList.contains('current')), next: c.findIndex(x => x.classList.contains('space-next')),
+      fits: ${F}.document.getElementById('cur_slide').scrollWidth <= ${F}.innerWidth + 1 }; })()`);
+  whole.driverChunks = await d.ev(`${P}.document.querySelectorAll('#cur_slide chunk').length`);
+  await f.shot('4-follower-whole-song');
+  ok(whole.count === 4 && whole.current === drv.part && whole.next === 2 && whole.fits && whole.driverChunks === 1,
+    'w on the follower shows the whole song, the part sung and the next marked; the presenter is unchanged', whole);
+  await f.key('w');
 
   // a songbook change reaches the follower (#147)
   const before = await f.ev(`${F}.window.songbook.songs.length`);

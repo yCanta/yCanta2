@@ -65,6 +65,8 @@ presentation_key_map = {
                   "Show/hide help and key bindings for presentation mode"],
   'C'         : [ function() {if(! isSearching()) toggleChords();},
                   "Toggle Chords on/off"   ],
+  'w'         : [ function() {if(! isSearching()) toggleWholeSong();},
+                  "Show the whole song, or one part at a time (#51)" ],
   //'p'         : [ togglePresentation, "Enter/exit fullscreen presentation mode"   ],
   'F11'       : [ function(){}, "Enter/exit fullscreen presentation mode"   ],
   'Escape'    : [ escapeAction      , "Exit search, help, or presentation mode"   ],
@@ -585,7 +587,10 @@ function updateMirror(win) {
   try {
     if (!inPresentation()) return;
     const winDoc = win.document;
-    winDoc.querySelector('#slides').innerHTML = document.getElementById('cur_slide').outerHTML;
+    // the part, or the whole song if that window shows whole songs (its own choice, #51)
+    const whole = winDoc.body.classList.contains('wholesong');
+    winDoc.querySelector('#slides').innerHTML = '<div id="cur_slide" class="slide"><div class="content">'
+      + (whole ? wholeSongHtml() : part_slide_html) + '</div></div>';
     winDoc.querySelector('#statusbar').innerHTML = document.getElementById('progress').outerHTML;
     win.scaleText();
     const total = current_song.doc.content.length;
@@ -598,6 +603,7 @@ function updateMirror(win) {
 function isMirror() { return document.getElementById('data').getAttribute('data') === 'mirror'; }
 const mirror_key_map = {
   'C': toggleChords,
+  'w': toggleWholeSong,
   't': blackScreen,
   'f': whiteScreen,
   'h': toggleHelp,
@@ -839,6 +845,7 @@ function toggleHelp() {
       + '<label onchange="blackScreen(true)" class="switch"><input type="checkbox" id="bgColor"' + on('black') + '><div data-text="BG" class="slider background"></div></label>'
       + '<label onchange="toggleChords(true)"><input id="chngChords" type="checkbox"' + (document.body.classList.contains('nochords') ? '' : ' checked') + '> Chords</label>'
       + '<label onchange="toggleMarker()" title="A small arrow on the progress bar over the part Space goes to"><input id="chngMarker" type="checkbox"' + (document.body.classList.contains('nomarker') ? '' : ' checked') + '> Next-part arrow</label>'
+      + '<label onchange="toggleWholeSong()" title="Every part of the song on screen, the one being sung clear"><input id="chngWhole" type="checkbox"' + on('wholesong') + '> Whole song</label>'
       + '</div>';
     content += '<div id="files"><span>Background picture:</span><input onclick="clearFile(this)" onchange="loadFiles(this);" data="bg-image" type="file" accept="image/*">'
       + '<span>Still picture:</span><input onclick="clearFile(this)" onchange="loadFiles(this);" data="fixed-image" type="file" accept="image/*">'
@@ -853,6 +860,7 @@ function toggleHelp() {
 
     // The keys worth knowing, in plain words
     const keys = mirror ? [
+      ['w', 'Whole song, or one part at a time'],
       ['t / f', 'Black background / white text, on or off'],
       ['C (capital)', 'Chords on or off'],
       ['h or ?', 'This panel'],
@@ -873,6 +881,7 @@ function toggleHelp() {
       ]),
       ['t / f', 'Black background / white text, on or off'],
       ['C (capital)', 'Chords on or off'],
+      ['w', 'Whole song, or one part at a time'],
       ...(follower ? [] : [['l', "The list of what's been presented, to copy"]]),
       ['h or ?', 'This panel'],
       ['Esc', 'Close search, this panel, or the list'],
@@ -891,6 +900,34 @@ function toggleHelp() {
 }
 function toggleMarker() {
   document.body.classList.toggle('nomarker');
+}
+
+// ---- Whole song (#51): any screen can show every part of the song on screen, the one being sung clear and
+// the rest faded, and the part Space goes to marked. Handy for leaders on tablets. Moving still goes part by
+// part. (yCanta 1 had this as "Song mode".)
+let part_slide_html = ''; // the part on screen, as one slide: what a mirror showing parts gets
+function wholeSongHtml(song = current_song) {
+  if (!song || !song.doc) return '';
+  const target = song === current_song ? spaceTarget(song) : null;
+  let verse = 0;
+  let html = '<stitle>' + song.doc.title + '</stitle>'
+    + '<author>' + song.doc.authors.join(', ') + '</author>'
+    + '<key>' + song.doc.key + '</key>';
+  song.doc.content.forEach((chunk, i) => {
+    const mark = i === song.chunk_index ? ' class="current"' : i === target ? ' class="space-next"' : '';
+    html += '<chunk type="' + chunk[0].type + '"' + mark + '>';
+    if (chunk[0].type === 'verse') html += '<span>' + (++verse) + ':</span>';
+    chunk[1].forEach(line => { html += '<line>' + line + '</line>'; });
+    html += '</chunk>';
+  });
+  return html + '<copyright>' + song.doc.copyright + '</copyright>';
+}
+function toggleWholeSong() {
+  document.body.classList.toggle('wholesong');
+  const box = document.getElementById('chngWhole');
+  if (box) box.checked = document.body.classList.contains('wholesong');
+  if (isMirror()) { try { window.opener.updateMirror(window); } catch (err) { /* the main window is gone */ } }
+  else if (current_song && !document.getElementById('pres_title')) { liveMoving = true; try { showChunk('view'); } finally { liveMoving = false; } }
 }
 function hideHelp() {
   const help = document.getElementById('help'); // only exists once help has been opened
@@ -1106,7 +1143,8 @@ function showChunk(name) {
       return content;
     }
 
-    document.querySelector('#cur_slide .content').innerHTML = build_chunk(current_song.doc.content[current_song.chunk_index]);
+    part_slide_html = build_chunk(current_song.doc.content[current_song.chunk_index]);
+    document.querySelector('#cur_slide .content').innerHTML = document.body.classList.contains('wholesong') ? wholeSongHtml() : part_slide_html;
 
     //now add the other chunks.
     let pre_chunk;
