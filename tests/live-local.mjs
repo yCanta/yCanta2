@@ -273,12 +273,42 @@ try {
   await f.until(`!${F}.amDriving()`, 'the leader to lose the screens', 5000).catch(() => {});
   ok(!(await f.ev(`${F}.amDriving()`)) && (await d.ev(`${P}.amDriving()`)), 'take back: the presenter drives again');
 
+  // ---------- suggested songs ----------
+  const sugButton = () => f.ev(`!${F}.document.getElementById('liveSuggest').hidden`);
+  ok(!(await sugButton()), 'suggestions start off: followers have no Suggest button');
+  await d.ev(`${P}.setSuggestions(true), 'ok'`);
+  await f.until(`!${F}.document.getElementById('liveSuggest').hidden`, 'the Suggest button', 5000).catch(() => {});
+  ok(await sugButton(), 'turned on: followers get a Suggest button');
+  await f.ev(`${F}.openSuggest(), ${F}.document.getElementById('sugText').value = "Vera's Song", ${F}.document.getElementById('sugName').value = 'Bridget', 'ok'`);
+  await f.shot('6-follower-suggesting');
+  await f.ev(`${F}.sendSuggestion().then(() => 'ok')`);
+  await d.until(`${P}.eval('suggestionsHere').length === 1`, 'the presenter to get the suggestion', 5000).catch(() => {});
+  const card = await d.ev(`(() => { const c = ${P}.document.getElementById('sugCard'); return c && !c.hidden ? c.textContent : ''; })()`);
+  ok(/Vera's Song/.test(card) && /Bridget/.test(card) && /Yes/.test(card), 'the presenter sees the suggestion, with Yes and Not now', card);
+  await f.until(`(() => { const c = ${F}.document.getElementById('sugCard'); return c && !c.hidden; })()`, 'the leader to see it', 5000).catch(() => {});
+  const sugId = await f.ev(`${F}.eval('suggestionsHere')[0] && ${F}.eval('suggestionsHere')[0].id`);
+  ok(!!sugId, 'a signed-in leader following sees it too', sugId);
+  await f.ev(`${F}.answerSuggestion(${JSON.stringify(sugId)}, 'yes').then(() => 'ok')`);
+  await d.until(`${P}.eval('suggestionsHere')[0] && ${P}.eval('suggestionsHere')[0].status === 'yes'`, 'the yes', 5000).catch(() => {});
+  const card2 = await d.ev(`${P}.document.getElementById('sugCard').textContent`);
+  await d.shot('7-presenter-suggestion-yes');
+  ok(/Yes from alice/.test(card2) && /Add next/.test(card2), 'the leader says yes: the presenter sees who, and Add next', card2);
+  const countBefore = await d.ev(`${P}.window.songbook.songs.length`);
+  const indexBefore = await d.ev(`${P}.window.songbook.song_index`);
+  await d.ev(`${P}.addSuggested(${JSON.stringify(sugId)}).then(() => 'ok')`);
+  const added = await d.ev(`({ count: ${P}.window.songbook.songs.length, next: ${P}.window.songbook.songs[${indexBefore} + 1].id })`);
+  ok(added.count === countBefore + 1 && added.next === 's-vera-1', 'Add next puts the song right after the one on screen', added);
+  await f.until(`${F}.window.songbook.songs.length === ${countBefore + 1}`, 'the follower to get the longer list', 5000).catch(() => {});
+  ok((await f.ev(`${F}.window.songbook.songs.length`)) === countBefore + 1, 'followers get the added song');
+  await d.until(`${P}.eval('suggestionsHere').length === 0`, 'the suggestion to go away', 5000).catch(() => {});
+  ok((await d.ev(`${P}.eval('suggestionsHere').length`)) === 0, 'an added suggestion goes away');
+
   // a songbook change reaches the follower (#147)
   const before = await f.ev(`${F}.window.songbook.songs.length`);
   await d.ev(`${P}.updateSongbook(JSON.stringify({ title: 'Live Test Book', songs: ${P}.window.songbook.songs.slice(0, 1) })), 'ok'`);
   await d.ev(`${P}.nextChunk(), 'ok'`);
   await f.until(`${F}.window.songbook.songs.length === 1`, 'the follower to get the shorter book', 5000).catch(() => {});
-  ok((await f.ev(`${F}.window.songbook.songs.length`)) === 1 && before === 2, 'the follower gets the changed songbook', before);
+  ok((await f.ev(`${F}.window.songbook.songs.length`)) === 1 && before >= 2, 'the follower gets the changed songbook', before);
 
   // stop sharing: the follower is told, and the records are gone
   await d.ev(`${P}.stopShare(), 'ok'`);

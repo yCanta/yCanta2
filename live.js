@@ -4,6 +4,8 @@
 //   now:CODE        the song and part on the screens, written by whoever drives: the person sharing, or a
 //                   signed-in leader they handed it to ("driver")
 //   lead:CODE:name  a signed-in leader following along, so the person sharing can hand them the screens
+//   sug:CODE:id     a song someone suggests (only when the person sharing turned suggestions on); anyone can
+//                   send one, and someone signed in answers it once: yes or not now
 // Followers read the set, then hear each change as soon as the server saves it (CouchDB's _changes feed
 // pushes it; nothing waits on a timer). Anyone may read; database/live-validate.js says who may write.
 // The app and live.html both load this file.
@@ -136,11 +138,44 @@ const Live = (() => {
   function stopDriving() { if (!sharing) { code = null; nowWriter = null; } }
   async function stop() {
     if (!sharing) return;
-    const writers = [setWriter, nowWriter];
+    const writers = [setWriter, nowWriter], ended = code;
     sharing = false;
     code = null;
     nowWriter = null;
     await Promise.all(writers.map(w => w.remove()));
+    // and the suggestions sent to it
+    try {
+      const prefix = 'sug:' + ended + ':';
+      const rows = (await request('GET', '_all_docs?startkey=' + encodeURIComponent(JSON.stringify(prefix)) + '&endkey=' + encodeURIComponent(JSON.stringify(prefix + '￰')))).rows;
+      await Promise.all(rows.map(row => request('DELETE', encodeURIComponent(row.id) + '?rev=' + row.value.rev, undefined, true).catch(() => {})));
+    } catch (err) { /* left for later */ }
+  }
+
+  // ---- Suggestions ----
+  async function suggest(shareCode, text, name) {
+    const id = 'sug:' + shareCode + ':' + Array.from(crypto.getRandomValues(new Uint8Array(6)), b => b.toString(16).padStart(2, '0')).join('');
+    const doc = { type: 'live-sug', text: String(text).trim().slice(0, 120), status: 'new', at: Date.now() };
+    if (String(name || '').trim()) doc.name = String(name).trim().slice(0, 40);
+    await request('PUT', encodeURIComponent(id), doc);
+  }
+  // Yes or not now, once; false if someone answered first
+  async function answer(id, status) {
+    const doc = await request('GET', encodeURIComponent(id));
+    if (doc.status !== 'new') return false;
+    try {
+      await request('PUT', encodeURIComponent(id), { ...doc, status, by: await whoAmI() });
+      return true;
+    } catch (err) {
+      if (err.status === 409 || err.status === 403) return false;
+      throw err;
+    }
+  }
+  // A suggestion that was added to the songs (or isn't needed any more) goes away
+  async function dismiss(id) {
+    try {
+      const doc = await request('GET', encodeURIComponent(id));
+      await request('DELETE', encodeURIComponent(id) + '?rev=' + doc._rev);
+    } catch (err) { /* already gone */ }
   }
 
   // ---- A signed-in leader following along says so, so the person sharing can hand them the screens ----
@@ -170,29 +205,34 @@ const Live = (() => {
   // Calls onSet(set) and onNow(now) as they come, onLeaders([{ name, tab }]) when the signed-in leaders following
   // change, onEnd() when sharing stops, onProblem(err) when the server can't be reached (it keeps trying).
   // Gives back { stop }.
-  async function follow(rawCode, { onSet = () => {}, onNow = () => {}, onLeaders = () => {}, onEnd = () => {}, onProblem = () => {} }) {
+  async function follow(rawCode, { onSet = () => {}, onNow = () => {}, onLeaders = () => {}, onSuggestions = () => {}, onEnd = () => {}, onProblem = () => {} }) {
     const followCode = cleanCode(rawCode);
-    const setId = 'set:' + followCode, nowId = 'now:' + followCode, leadPrefix = 'lead:' + followCode + ':';
+    const setId = 'set:' + followCode, nowId = 'now:' + followCode, leadPrefix = 'lead:' + followCode + ':', sugPrefix = 'sug:' + followCode + ':';
     let stopped = false, since = null, controller = null;
-    const leaders = new Map();
+    const leaders = new Map(), suggestions = new Map();
     const tellLeaders = () => onLeaders([...leaders.values()].sort((a, b) => a.name.localeCompare(b.name)));
+    const tellSuggestions = () => onSuggestions([...suggestions.values()].sort((a, b) => a.at - b.at));
+    const sugFrom = doc => ({ id: doc._id, text: String(doc.text || ''), name: String(doc.name || ''), status: doc.status, by: doc.by || '', at: Number(doc.at) || 0 });
+    const range = prefix => '_all_docs?include_docs=true&startkey=' + encodeURIComponent(JSON.stringify(prefix)) + '&endkey=' + encodeURIComponent(JSON.stringify(prefix + '￰'));
 
     async function readAll() {
       since = (await request('GET', '')).update_seq;
       onSet(await request('GET', setId)); // 404 here means no such share
       try { onNow(await request('GET', nowId)); } catch (err) { if (err.status !== 404) throw err; }
-      const rows = (await request('GET', '_all_docs?include_docs=true&startkey=' + encodeURIComponent(JSON.stringify(leadPrefix))
-        + '&endkey=' + encodeURIComponent(JSON.stringify(leadPrefix + '￰')))).rows;
+      const rows = (await request('GET', range(leadPrefix))).rows;
       leaders.clear();
       rows.forEach(row => leaders.set(row.id, { name: row.id.slice(leadPrefix.length), tab: row.doc && row.doc.tab }));
       tellLeaders();
+      suggestions.clear();
+      (await request('GET', range(sugPrefix))).rows.forEach(row => { if (row.doc) suggestions.set(row.id, sugFrom(row.doc)); });
+      tellSuggestions();
     }
     await readAll().catch(err => {
       if (err.status === 404) err.message = 'No presentation is being shared with that code.';
       throw err;
     });
 
-    const selector = { _id: { $regex: '^(set|now):' + followCode + '$|^lead:' + followCode + ':' } };
+    const selector = { _id: { $regex: '^(set|now):' + followCode + '$|^(lead|sug):' + followCode + ':' } };
     (async function listen() {
       while (!stopped) {
         try {
@@ -205,7 +245,10 @@ const Live = (() => {
           const json = await res.json();
           since = json.last_seq;
           for (const row of json.results || []) {
-            if (row.id.startsWith(leadPrefix)) {
+            if (row.id.startsWith(sugPrefix)) {
+              if (row.deleted) suggestions.delete(row.id); else suggestions.set(row.id, sugFrom(row.doc));
+              tellSuggestions();
+            } else if (row.id.startsWith(leadPrefix)) {
               if (row.deleted) leaders.delete(row.id); else leaders.set(row.id, { name: row.id.slice(leadPrefix.length), tab: row.doc.tab });
               tellLeaders();
             } else if (row.deleted) {
@@ -233,7 +276,7 @@ const Live = (() => {
 
   return {
     setServer, cleanCode, whoAmI, start, updateSet, publish, handOver, takeBack, drive, giveBack, stopDriving, stop,
-    announce, unannounce, follow,
+    announce, unannounce, follow, suggest, answer, dismiss,
     get server() { return server; },
     get code() { return code; },
     get sharing() { return sharing; },

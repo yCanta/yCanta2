@@ -635,6 +635,8 @@ function partName(song, index) {
 // signed-in leader following along. Whoever doesn't drive follows; their own moves are their own until they
 // go back to live. The driver's Linked switch: off, they look ahead without moving the other screens.
 let sharing = false, sharedSignature = '', shareProblem = '', linked = true, leadersHere = [], ownerFollow = null;
+// Suggested songs: the person sharing turns them on (off to start); followers see it in the set (liveSuggest)
+let suggestionsOn = false, liveSuggest = false, suggestionsHere = [], sugNotes = {};
 let liveNow = null, following = true, liveMoving = false, wasDriving = false;
 function liveHost() {
   try { return window.parent !== window && window.parent.Live && window.parent.remoteDb ? window.parent : null; }
@@ -667,6 +669,7 @@ function liveSet() {
   return {
     title: window.songbook.title,
     bible: window.songbook.bible || null,
+    suggest: suggestionsOn,
     songs: window.songbook.songs.map(song => song.passage ? { id: song.id, passage: song.passage, reading: true } : {
       id: song.id,
       doc: { title: song.doc.title, authors: song.doc.authors, scripture_ref: song.doc.scripture_ref, key: song.doc.key,
@@ -675,7 +678,7 @@ function liveSet() {
   };
 }
 function setSignature() {
-  return window.songbook.title + '|' + window.songbook.songs.map(song => song.id + ':' + (song.value ? song.value.rev : '')).join(',');
+  return window.songbook.title + '|' + suggestionsOn + '|' + window.songbook.songs.map(song => song.id + ':' + (song.value ? song.value.rev : '')).join(',');
 }
 async function startShare() {
   const host = liveHost();
@@ -697,6 +700,7 @@ async function startShare() {
     ownerFollow = await host.Live.follow(code, {
       onNow: followNow,
       onLeaders: list => { leadersHere = list.filter(leader => leader.tab && leader.tab !== myTab()); renderShare(); },
+      onSuggestions: followSuggestions,
     });
   } catch (err) {
     shareProblem = "Couldn't start sharing: " + err.message;
@@ -711,23 +715,25 @@ function stopShare() {
   ownerFollow = null;
   const host = liveHost();
   if (host) host.Live.stop();
+  suggestionsHere = [];
   renderShare();
   renderLiveBar();
+  renderSuggestions();
 }
 window.addEventListener('pagehide', stopShare);
 // Called after every slide change: if this screen drives, the other screens get the slide, and the songs
 // again if they changed (#147)
 function publishLive() {
   const live = liveApi();
-  if (!live || !(sharing || isFollower()) || !amDriving()) return;
-  if (sharing) {
+  if (!live || !(sharing || isFollower())) return;
+  if (sharing) { // the songs are the sharer's to send, driving or not
     const signature = setSignature();
     if (signature !== sharedSignature) {
       sharedSignature = signature;
       live.updateSet(liveSet());
     }
   }
-  if (!linked || !current_song || document.getElementById('pres_title')) return; // not linked, or still on "Presenting"
+  if (!amDriving() || !linked || !current_song || document.getElementById('pres_title')) return; // not driving or linked, or on "Presenting"
   live.publish(liveFields());
 }
 function setLinked(on) {
@@ -786,7 +792,9 @@ function renderShare() {
       + '<span class="help-note">On the other device open <a target="_blank" rel="noopener" href="' + escapeText(link) + '">' + escapeText(link.replace(/[?#].*/, '')) + '</a> and type this code. Each device picks its own look.</span>'
       + '<button type="button" class="btn" onclick="stopShare()">Stop sharing</button>'
       + '<label class="share-line" title="Off: look ahead here without moving the other screens"><input type="checkbox" id="chngLinked"'
-      + (linked ? ' checked' : '') + (handed ? ' disabled' : '') + ' onchange="setLinked(this.checked)"> Linked: the other screens follow this one</label>';
+      + (linked ? ' checked' : '') + (handed ? ' disabled' : '') + ' onchange="setLinked(this.checked)"> Linked: the other screens follow this one</label>'
+      + '<label class="share-line" title="Anyone following can send a song; you and signed-in leaders say yes or not now"><input type="checkbox" id="chngSuggest"'
+      + (suggestionsOn ? ' checked' : '') + ' onchange="setSuggestions(this.checked)"> Let people following suggest songs</label>';
     if (handed) {
       box.innerHTML += '<p class="share-line">' + escapeText(handed) + (handed === myName() ? ' (another device)' : '') + ' is leading the screens; this one follows. '
         + '<button type="button" class="btn" onclick="takeBack()">Take back</button></p>';
@@ -838,6 +846,7 @@ function liveSongs(songs) {
   });
 }
 function followSet(set) {
+  liveSuggest = !!set.suggest;
   window.songbook.title = liveText(set.title);
   window.document.title = 'yCanta2: ' + plainText(set.title);
   const titleSlide = document.getElementById('pres_title');
@@ -909,6 +918,7 @@ function setupLiveBar() {
   if (document.getElementById('liveBar')) return renderLiveBar();
   document.body.insertAdjacentHTML('beforeend', '<div id="liveBar"><button type="button" id="livePill"></button>'
     + '<button type="button" id="liveExtra" hidden></button>'
+    + '<button type="button" id="liveSuggest" onclick="openSuggest()" hidden>Suggest a song</button>'
     + '<button type="button" id="liveSettings" onclick="toggleHelp()" title="This screen\'s look, and the keys">?</button></div>');
   renderLiveBar();
 }
@@ -923,6 +933,8 @@ function renderLiveBar(nudge = false) {
   bar.hidden = !isFollower() && (!sharing || (driving && linked && !touch));
   pill.classList.toggle('wandering', driving ? !linked : !following);
   extra.hidden = true;
+  document.getElementById('liveSuggest').hidden = !(isFollower() && liveSuggest);
+  renderSuggestions();
   if (driving) {
     pill.textContent = linked ? 'Linked: the screens follow you' : 'Not linked  ·  Link';
     pill.title = linked ? 'Tap to look ahead without moving the other screens' : 'Tap to send what you have to the other screens';
@@ -944,6 +956,114 @@ function renderLiveBar(nudge = false) {
     pill.classList.remove('nudge');
     void pill.offsetWidth;
     pill.classList.add('nudge');
+  }
+}
+
+// ---- Suggested songs (#51). Anyone following sends one (when the person sharing turned them on); the person
+// sharing and signed-in leaders see a small card and answer it once: yes or not now. On the sharer's page, a yes
+// can be added right after the song on screen, found by name in the church's songs.
+function setSuggestions(on) {
+  suggestionsOn = on;
+  publishLive(); // followers get the change with the set
+  renderSuggestions();
+}
+function followSuggestions(list) {
+  suggestionsHere = Array.isArray(list) ? list : [];
+  renderSuggestions();
+}
+// Who sees the card: the person sharing, and leaders signed in on their own device
+function seesSuggestions() {
+  return sharing ? suggestionsOn : (isFollower() && liveSuggest && !!myName());
+}
+function renderSuggestions() {
+  let card = document.getElementById('sugCard');
+  const open = seesSuggestions() ? suggestionsHere.filter(sug => sug.status !== 'no') : [];
+  if (!open.length) { if (card) card.hidden = true; return; }
+  if (!card) {
+    document.body.insertAdjacentHTML('beforeend', '<div id="sugCard" role="status"></div>');
+    card = document.getElementById('sugCard');
+  }
+  card.hidden = false;
+  const button = (label, call, id) => '<button type="button" class="btn" data-id="' + escapeText(id) + '" onclick="' + call + '">' + label + '</button>';
+  card.innerHTML = open.map(sug => {
+    let html = '<div class="sug"><span class="sug-song">' + escapeText(sug.text) + '</span>' + (sug.name ? ' from ' + escapeText(sug.name) : '') + '<br>';
+    if (sug.status === 'new') {
+      html += button('Yes', "answerSuggestion(this.dataset.id, 'yes')", sug.id) + button('Not now', "answerSuggestion(this.dataset.id, 'no')", sug.id);
+    } else {
+      html += 'Yes from ' + escapeText(sug.by);
+      if (sharing) html += '<br>' + button('Add next', 'addSuggested(this.dataset.id)', sug.id) + button('Done', 'liveApi().dismiss(this.dataset.id)', sug.id);
+    }
+    if (sugNotes[sug.id]) html += '<br>' + escapeText(sugNotes[sug.id]);
+    return html + '</div>';
+  }).join('');
+}
+async function answerSuggestion(id, status) {
+  const live = liveApi();
+  if (!live) return;
+  try {
+    if (!(await live.answer(id, status))) sugNotes[id] = 'Someone answered first.';
+  } catch (err) {
+    sugNotes[id] = "Couldn't answer: " + err.message;
+  }
+  renderSuggestions();
+}
+// The sharer adds a yes right after the song on screen, if the church has a song by that name
+async function addSuggested(id) {
+  const sug = suggestionsHere.find(item => item.id === id);
+  const host = liveHost();
+  if (!sug || !host || !host.db) return;
+  try {
+    const plain = title => title.toLowerCase().replace(/\s+/g, ' ').trim();
+    const want = plain(sug.text);
+    const rows = (await host.db.allDocs({ startkey: 's-', endkey: 's-￰', include_docs: true })).rows
+      .filter(row => row.doc && typeof row.doc.title === 'string' && !row.doc.deleted);
+    const found = rows.find(row => plain(row.doc.title) === want) || rows.find(row => plain(row.doc.title).includes(want));
+    if (!found) { sugNotes[id] = 'Not in your songs. Add it in yCanta, or pick another.'; renderSuggestions(); return; }
+    const item = presentableItems([{ id: found.id, key: found.id, value: { rev: found.doc._rev }, doc: host.displaySong(found.doc) }])[0];
+    if (!item) { sugNotes[id] = 'That song has nothing to show.'; renderSuggestions(); return; }
+    const onTitle = !!document.getElementById('pres_title');
+    window.songbook.songs.splice(onTitle ? 0 : window.songbook.song_index + 1, 0, item);
+    if (onTitle) window.songbook.song_index = window.songbook.songs.length - 1; // the first Next still goes to the first song
+    publishLive(); // followers get the new list
+    if (inPresentation() && !onTitle) { liveMoving = true; try { showChunk('added'); } finally { liveMoving = false; } } // the arrow and the next song
+    await liveApi().dismiss(id);
+  } catch (err) {
+    sugNotes[id] = "Couldn't add it: " + err.message;
+    renderSuggestions();
+  }
+}
+// The form a follower sends a song with
+function openSuggest() {
+  let box = document.getElementById('suggestBox');
+  if (!box) {
+    document.body.insertAdjacentHTML('beforeend', '<div id="suggestBox"><div><h4>Suggest a song</h4>'
+      + '<p>The leaders see it and can add it. You can always suggest one out loud too.</p>'
+      + '<input id="sugText" maxlength="120" placeholder="Song name" autocomplete="off">'
+      + '<input id="sugName" maxlength="40" placeholder="Your name (if you like)" autocomplete="name">'
+      + '<p><button type="button" class="btn" onclick="sendSuggestion()">Send</button><button type="button" class="btn" onclick="closeSuggest()">Cancel</button></p>'
+      + '<p id="sugMsg" role="status"></p></div></div>');
+    box = document.getElementById('suggestBox');
+    box.addEventListener('keydown', e => { if (e.key === 'Enter') sendSuggestion(); if (e.key === 'Escape') closeSuggest(); });
+  }
+  box.hidden = false;
+  document.getElementById('sugMsg').textContent = '';
+  document.getElementById('sugText').focus();
+}
+function closeSuggest() {
+  const box = document.getElementById('suggestBox');
+  if (box) box.hidden = true;
+}
+async function sendSuggestion() {
+  const text = document.getElementById('sugText').value.trim();
+  const msg = document.getElementById('sugMsg');
+  if (!text) { msg.textContent = 'Type a song name first.'; return; }
+  try {
+    await liveApi().suggest(window.liveCode, text, document.getElementById('sugName').value);
+    document.getElementById('sugText').value = '';
+    msg.textContent = 'Sent. Thanks!';
+    setTimeout(closeSuggest, 1500);
+  } catch (err) {
+    msg.textContent = "Couldn't send it: " + err.message;
   }
 }
 
@@ -1693,7 +1813,8 @@ function escapeAction() {
   }
 }
 
-function processKey(e){ 
+function processKey(e){
+  if (e.target && e.target.closest && e.target.closest('#suggestBox')) return; // typing a suggestion, not keys 
   //console.log("key: '" + e.key +"'", "originalEvent.key: '" + e.originalEvent.key + "'", e);
   key = e.key;
   // Space or Enter on a box or button in the list or the help works it, and doesn't change the slide

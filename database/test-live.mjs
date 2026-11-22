@@ -62,6 +62,27 @@ const leadGone = await req(as('vera'), 'DELETE', `/${DB}/lead:${code}:vera?rev=$
 check('a leader can leave', leadGone.status === 200, leadGone);
 now.json.rev = nowRev;
 
+// Suggestions: anyone sends one; someone signed in answers it once
+const anonPut = (id, doc) => fetch(`${BASE}/${DB}/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(doc) })
+  .then(async r => ({ status: r.status, json: await r.json().catch(() => null) }));
+const sugId = `sug:${code}:abc123def456`;
+const sent = await anonPut(sugId, { type: 'live-sug', text: 'Amazing Grace', name: 'Bridget', status: 'new', at: 1 });
+check('anyone can suggest a song', sent.status === 201, sent);
+const longOne = await anonPut(`sug:${code}:abc123def457`, { type: 'live-sug', text: 'x'.repeat(121), status: 'new', at: 1 });
+check('a suggestion is up to 120 letters', longOne.status === 403, longOne);
+const preAnswered = await anonPut(`sug:${code}:abc123def458`, { type: 'live-sug', text: 'Hi', status: 'yes', by: 'alice', at: 1 });
+check('a new suggestion can\'t come already answered', preAnswered.status === 403, preAnswered);
+const anonAnswer = await anonPut(sugId, { type: 'live-sug', text: 'Amazing Grace', name: 'Bridget', status: 'yes', by: 'x', at: 1, _rev: sent.json.rev });
+check('no one signed in: can\'t answer', anonAnswer.status === 401, anonAnswer);
+const changed = await req(as('vera'), 'PUT', `/${DB}/${sugId}`, { type: 'live-sug', text: 'Other song', name: 'Bridget', status: 'yes', by: 'vera', at: 1, _rev: sent.json.rev });
+check('an answer can\'t change the song', changed.status === 403, changed);
+const yes = await req(as('vera'), 'PUT', `/${DB}/${sugId}`, { type: 'live-sug', text: 'Amazing Grace', name: 'Bridget', status: 'yes', by: 'vera', at: 1, _rev: sent.json.rev });
+check('a signed-in leader can say yes', yes.status === 201, yes);
+const second = await req(as('alice'), 'PUT', `/${DB}/${sugId}`, { type: 'live-sug', text: 'Amazing Grace', name: 'Bridget', status: 'no', by: 'alice', at: 1, _rev: yes.json.rev });
+check('only the first answer counts', second.status === 403, second);
+const sugTaken = await req(as('alice'), 'DELETE', `/${DB}/${sugId}?rev=${yes.json.rev}`);
+check('someone signed in can take it away', sugTaken.status === 200, sugTaken);
+
 const wrongType = await req(as('alice'), 'PUT', `/${DB}/now:${code}`, { type: 'live-set', owner: 'alice', _rev: now.json.rev });
 check('the type must match the name', wrongType.status === 403, wrongType);
 

@@ -138,7 +138,8 @@
         try {
           await Live.whoAmI(); // signed in to yCanta on this device: a leader, who can be handed the screens
           following = await Live.follow(code, {
-            onSet: async set => { frame = frame || await showPresentation(set); frame.followSet(set); },
+            onSet: async set => { frame = frame || await showPresentation(set); frame.liveCode = code; frame.followSet(set); },
+            onSuggestions: async list => { while (!frame) await new Promise(r => setTimeout(r, 50)); frame.followSuggestions(list); },
             onNow: async now => { while (!frame) await new Promise(r => setTimeout(r, 50)); frame.followNow(now); },
             onEnd: () => leave('The leader stopped sharing.'),
             onProblem: err => console.error('Follow along:', err),

@@ -249,7 +249,7 @@
         margin: 0px;
       }
 
-      #help, #report {
+      #help, #report, #suggestBox {
         background-color: rgba(255, 255, 255, 0.1);
         position: fixed;
         top: 0;
@@ -262,7 +262,7 @@
         padding: 1rem;
         overflow-y: auto;
       }
-      #help > div, #report > div {
+      #help > div, #report > div, #suggestBox > div {
         background-color: var(--bg-color);
         border-radius: 2rem;
         padding: 1rem;
@@ -271,7 +271,7 @@
         margin-right: auto;
         filter: drop-shadow(2px 2px 4px lightgray);
       }
-      #help > div > *, #report > div > *,
+      #help > div > *, #report > div > *, #suggestBox > div > *,
       #searchbox,
       #searchbox input {
         color: gray;
@@ -370,7 +370,7 @@
         padding-left: 1em;
       }
       /* A button the way the app draws one (style.css .btn): a rounded pill with a soft shadow */
-      #help .btn, #report .btn {
+      #help .btn, #report .btn, #suggestBox .btn, #sugCard .btn {
         box-shadow: 0 2px 2px 2px rgba(0, 0, 0, 0.1);
         border: none;
         font: inherit;
@@ -416,6 +416,50 @@
       }
       #help .share-line .btn {
         margin: .25rem .5rem .25rem .25rem;
+      }
+      /* Suggested songs (#51): the form a follower sends one with, and the card leaders answer on */
+      #suggestBox input {
+        font: inherit;
+        width: 100%;
+        margin: 0 0 .75rem;
+        padding: .4rem .6rem;
+        border: 1px solid lightgray;
+        border-radius: .5rem;
+        color: var(--font-color);
+        background: transparent;
+      }
+      #suggestBox .btn:first-child {
+        margin-left: 0;
+      }
+      #sugCard {
+        position: fixed;
+        top: .75rem;
+        left: .75rem;
+        z-index: 4;
+        max-width: 20rem;
+        padding: .5rem .75rem;
+        border-radius: 1rem;
+        background-color: var(--bg-color);
+        color: gray;
+        box-shadow: 0 2px 2px 2px rgba(0, 0, 0, 0.1);
+        font-size: .85rem;
+      }
+      #sugCard .sug {
+        padding: .3rem 0;
+      }
+      #sugCard .sug + .sug {
+        border-top: 1px solid lightgray;
+      }
+      #sugCard .sug-song {
+        color: var(--font-color);
+        font-weight: bold;
+      }
+      #sugCard .btn {
+        margin: .25rem .4rem 0 0;
+        font-size: .8rem;
+      }
+      #sugCard[hidden], #suggestBox[hidden] {
+        display: none;
       }
       #liveBar[hidden], #liveBar [hidden] {
         display: none;
