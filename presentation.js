@@ -67,6 +67,8 @@ presentation_key_map = {
                   "Toggle Chords on/off"   ],
   'w'         : [ function() {if(! isSearching()) toggleWholeSong();},
                   "Show the whole song, or one part at a time (#51)" ],
+  'g'         : [ function() {if(! isSearching()) toggleGrid();},
+                  "Show a grid of the song's parts, or one part at a time (#51)" ],
   //'p'         : [ togglePresentation, "Enter/exit fullscreen presentation mode"   ],
   'F11'       : [ function(){}, "Enter/exit fullscreen presentation mode"   ],
   'Escape'    : [ escapeAction      , "Exit search, help, or presentation mode"   ],
@@ -151,6 +153,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.presentationSource = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
     if (document.getElementById('data').getAttribute('data') === 'mirror') return startMirror();
     if (isFollower()) setupFollower(); // following a shared presentation in live.html (#51)
+    document.getElementById('slides').addEventListener('click', pickPart);
 
     document.querySelectorAll('stitle').forEach(el => el.addEventListener('click', toggleSongVisible));
 
@@ -638,6 +641,13 @@ let sharing = false, sharedSignature = '', shareProblem = '', linked = true, lea
 // Suggested songs: the person sharing turns them on (off to start); followers see it in the set (liveSuggest)
 let suggestionsOn = false, liveSuggest = false, suggestionsHere = [], sugNotes = {};
 let liveNow = null, following = true, liveMoving = false, wasDriving = false;
+// After this page hands the screens over, takes them back or gives them back, updates written before that may
+// still arrive; they're ignored until one names the new driver (or a few seconds pass, if the write failed)
+let expectDriver = null;
+function expectDriverTab(tab) {
+  const expecting = { tab, until: Date.now() + 5000 };
+  expectDriver = expecting;
+}
 function liveHost() {
   try { return window.parent !== window && window.parent.Live && window.parent.remoteDb ? window.parent : null; }
   catch (err) { return null; }
@@ -748,6 +758,7 @@ function handOver(name, tab) {
   const live = liveApi();
   if (!live || !sharing || !tab || !current_song || document.getElementById('pres_title')) return;
   live.handOver(name, tab, liveFields());
+  expectDriverTab(tab);
   liveNow = { ...(liveNow || {}), ...liveFields(), driver: name, driverTab: tab };
   wasDriving = false;
   following = true;
@@ -758,6 +769,7 @@ function takeBack() {
   const live = liveApi();
   if (!live || !sharing || !current_song) return;
   live.takeBack(liveFields());
+  expectDriverTab(myTab());
   liveNow = { ...(liveNow || {}), ...liveFields(), driver: myName(), driverTab: myTab() };
   wasDriving = true;
   following = true;
@@ -769,6 +781,7 @@ function giveBack() {
   const live = liveApi();
   if (!live || !isFollower() || !amDriving()) return;
   live.giveBack(liveFields());
+  expectDriverTab(liveNow.ownerTab);
   liveNow = { ...liveNow, ...liveFields(), driver: liveNow.owner, driverTab: liveNow.ownerTab };
   wasDriving = false;
   following = true;
@@ -862,6 +875,10 @@ function followSet(set) {
   renderLiveBar();
 }
 function followNow(now) {
+  if (expectDriver) {
+    if (now && now.driverTab !== expectDriver.tab && Date.now() < expectDriver.until) return; // an older update
+    expectDriver = null;
+  }
   const songChanged = liveNow && now && liveNow.id !== now.id;
   liveNow = now;
   if (amDriving()) {
@@ -1097,8 +1114,16 @@ function toggleHelp() {
       + '<label onchange="blackScreen(true)" class="switch"><input type="checkbox" id="bgColor"' + on('black') + '><div data-text="BG" class="slider background"></div></label>'
       + '<label onchange="toggleChords(true)"><input id="chngChords" type="checkbox"' + (document.body.classList.contains('nochords') ? '' : ' checked') + '> Chords</label>'
       + '<label onchange="toggleMarker()" title="A small arrow on the progress bar over the part Space goes to"><input id="chngMarker" type="checkbox"' + (document.body.classList.contains('nomarker') ? '' : ' checked') + '> Next-part arrow</label>'
-      + '<label onchange="toggleWholeSong()" title="Every part of the song on screen, the one being sung clear"><input id="chngWhole" type="checkbox"' + on('wholesong') + '> Whole song</label>'
       + '</div>';
+    // What this screen shows. Whole song and Grid suit a leader's own screen: click a part there to show it on
+    // the mirror or the other screens, which can stay on one part at a time.
+    const view = currentView();
+    const choice = (value, label, title) => '<label title="' + title + '"><input type="radio" name="showView" value="' + value + '"'
+      + (view === value ? ' checked' : '') + ' onchange="setView(this.value)"> ' + label + '</label>';
+    content += '<div class="helpLine view-line">Show: ' + choice('part', 'One part', 'One part at a time, as big as fits')
+      + choice('whole', 'Whole song', 'Every part of the song, the one being sung clear. Click a part to show it.')
+      + (mirror ? '' : choice('grid', 'Grid', 'A card for each part. Click one to show it.')) + '</div>';
+    if (!mirror && !follower) content += '<p class="help-note">Whole song and Grid are for your own screen. Open a mirror or share for the room\'s screen; it shows one part at a time unless you change it there.</p>';
     content += '<div id="files"><span>Background picture:</span><input onclick="clearFile(this)" onchange="loadFiles(this);" data="bg-image" type="file" accept="image/*">'
       + '<span>Still picture:</span><input onclick="clearFile(this)" onchange="loadFiles(this);" data="fixed-image" type="file" accept="image/*">'
       + '<span>Front picture:</span><input onclick="clearFile(this)" onchange="loadFiles(this);" data="fg-image" type="file" accept="image/*"></div>';
@@ -1134,6 +1159,8 @@ function toggleHelp() {
       ['t / f', 'Black background / white text, on or off'],
       ['C (capital)', 'Chords on or off'],
       ['w', 'Whole song, or one part at a time'],
+      ['g', 'Grid of the parts, or one part at a time'],
+      ['Click a part', 'In the whole song or the grid: show that part'],
       ...(follower ? [] : [['l', "The list of what's been presented, to copy"]]),
       ['h or ?', 'This panel'],
       ['Esc', 'Close search, this panel, or the list'],
@@ -1167,19 +1194,56 @@ function wholeSongHtml(song = current_song) {
     + '<key>' + song.doc.key + '</key>';
   song.doc.content.forEach((chunk, i) => {
     const mark = i === song.chunk_index ? ' class="current"' : i === target ? ' class="space-next"' : '';
-    html += '<chunk type="' + chunk[0].type + '"' + mark + '>';
+    html += '<chunk type="' + chunk[0].type + '"' + mark + ' data-part="' + i + '">';
     if (chunk[0].type === 'verse') html += '<span>' + (++verse) + ':</span>';
     chunk[1].forEach(line => { html += '<line>' + line + '</line>'; });
     html += '</chunk>';
   });
   return html + '<copyright>' + song.doc.copyright + '</copyright>';
 }
-function toggleWholeSong() {
-  document.body.classList.toggle('wholesong');
-  const box = document.getElementById('chngWhole');
-  if (box) box.checked = document.body.classList.contains('wholesong');
+function currentView() {
+  return document.body.classList.contains('gridview') ? 'grid' : document.body.classList.contains('wholesong') ? 'whole' : 'part';
+}
+// One part, the whole song, or a grid of the song's parts (a mirror: no grid)
+function setView(view) {
+  if (view === 'grid' && isMirror()) view = 'part';
+  document.body.classList.toggle('wholesong', view === 'whole');
+  document.body.classList.toggle('gridview', view === 'grid');
+  document.querySelectorAll('input[name="showView"]').forEach(box => { box.checked = box.value === view; });
   if (isMirror()) { try { window.opener.updateMirror(window); } catch (err) { /* the main window is gone */ } }
   else if (current_song && !document.getElementById('pres_title')) { liveMoving = true; try { showChunk('view'); } finally { liveMoving = false; } }
+}
+function toggleWholeSong() { setView(currentView() === 'whole' ? 'part' : 'whole'); }
+function toggleGrid() { setView(currentView() === 'grid' ? 'part' : 'grid'); }
+
+// ---- Grid (#51): a card for each part of the song, the one on screen outlined and the one Space goes to
+// dashed, then a card for the next song. Click one to show it.
+function gridHtml(song = current_song) {
+  if (!song || !song.doc) return '';
+  const target = spaceTarget(song);
+  let html = '<div class="grid-head"><stitle>' + song.doc.title + '</stitle></div><div class="grid">';
+  song.doc.content.forEach((chunk, i) => {
+    html += '<div class="grid-card' + (i === song.chunk_index ? ' current' : '') + (i === target ? ' space-next' : '') + '" data-part="' + i + '">'
+      + '<span class="grid-label">' + escapeText(partName(song, i)) + '</span>'
+      + chunk[1].map(line => '<line>' + line + '</line>').join('') + '</div>';
+  });
+  const songs = window.songbook.songs;
+  const next = songs[(window.songbook.song_index + 1) % songs.length];
+  if (next && next.doc) {
+    html += '<div class="grid-card grid-next' + (target === null ? ' space-next' : '') + '" data-next-song="1">'
+      + '<span class="grid-label">Next song</span><line>' + next.doc.title + '</line></div>';
+  }
+  return html + '</div>';
+}
+// A click on a part in the whole song or the grid shows that part (on the mirrors and other screens too)
+function pickPart(event) {
+  const card = event.target.closest && event.target.closest('[data-part], [data-next-song]');
+  if (!card || !current_song || !inPresentation()) return;
+  if (card.dataset.nextSong) return nextSong();
+  const part = Number(card.dataset.part);
+  if (!(part >= 0 && part < current_song.doc.content.length)) return;
+  current_song.chunk_index = part;
+  showChunk('picked');
 }
 function hideHelp() {
   const help = document.getElementById('help'); // only exists once help has been opened
@@ -1396,7 +1460,8 @@ function showChunk(name) {
     }
 
     part_slide_html = build_chunk(current_song.doc.content[current_song.chunk_index]);
-    document.querySelector('#cur_slide .content').innerHTML = document.body.classList.contains('wholesong') ? wholeSongHtml() : part_slide_html;
+    const view = currentView();
+    document.querySelector('#cur_slide .content').innerHTML = view === 'whole' ? wholeSongHtml() : view === 'grid' ? gridHtml() : part_slide_html;
 
     //now add the other chunks.
     let pre_chunk;
@@ -1737,6 +1802,7 @@ function resetText() {
 function scaleText() {
   // reset font to normal size to start
   resetText();
+  if (document.body.classList.contains('gridview')) return; // the grid keeps its size and scrolls (#51)
   if(! inPresentation()){
     // do nothing but reset text to 100%
     return;
@@ -1883,6 +1949,7 @@ function makeDraggable() {
   }, {passive: false});
 
   document.getElementById('slides').addEventListener('touchmove', function(e){
+    if (document.body.classList.contains('gridview')) { startx = 0; return; } // the grid scrolls (#51)
     e.preventDefault();   
 
     if(startx){

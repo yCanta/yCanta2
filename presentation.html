@@ -189,6 +189,74 @@
       body.wholesong #cur_slide copyright {
         font-size: large;
       }
+      /* A part in the whole song or the grid can be clicked to show it */
+      body.wholesong #cur_slide chunk[data-part] {
+        cursor: pointer;
+      }
+      /* Grid (#51): a card for each part, the one on screen outlined, the one Space goes to dashed */
+      body.gridview #pre_slide, body.gridview #post_slide {
+        display: none;
+      }
+      body.gridview #cur_slide {
+        overflow-y: auto;
+        bottom: .5rem;
+      }
+      body.gridview #cur_slide .content {
+        font-size: 1rem;
+      }
+      body.gridview .grid-head stitle {
+        font-size: 1.5rem;
+        margin-bottom: .75rem;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+        gap: .75rem;
+      }
+      .grid-card {
+        border: 2px solid lightgray;
+        border-radius: .75rem;
+        padding: .5rem .75rem;
+        min-height: 6rem;
+        cursor: pointer;
+        overflow: hidden;
+        font-weight: normal;
+      }
+      .grid-card:hover {
+        border-color: gray;
+      }
+      .grid-card.current {
+        border-color: var(--font-color);
+        box-shadow: 0 0 0 1px var(--font-color);
+      }
+      .grid-card.space-next {
+        border-style: dashed;
+        border-color: gray;
+      }
+      body.nomarker .grid-card.space-next:not(.current) {
+        border-style: solid;
+        border-color: lightgray;
+      }
+      .grid-card line {
+        margin-left: 0;
+        padding-top: 0;
+        bottom: 0;
+        white-space: pre-wrap;
+        font-size: .9rem;
+      }
+      .grid-card c {
+        display: none;
+      }
+      .grid-label {
+        display: block;
+        margin-bottom: .25rem;
+        font-size: .75rem;
+        font-style: italic;
+        color: gray;
+      }
+      .view-line label {
+        margin-left: .75rem;
+      }
       body.nomarker #progress .space-next::after, body.nomarker #progress.space-next-song::after {
         display: none;
       }

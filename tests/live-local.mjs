@@ -232,6 +232,25 @@ try {
     'w on the follower shows the whole song, the part sung and the next marked; the presenter is unchanged', whole);
   await f.key('w');
 
+  // ---------- the presenter's own Grid and Whole song: click a part to show it everywhere ----------
+  await d.ev(`${P}.setView('grid'), 'ok'`);
+  const grid = await d.ev(`(() => { const cards = [...${P}.document.querySelectorAll('#cur_slide .grid-card')];
+    return { count: cards.length, current: cards.findIndex(c => c.classList.contains('current')), next: cards.findIndex(c => c.classList.contains('space-next')),
+      nextSong: cards.some(c => c.dataset.nextSong) }; })()`);
+  ok(grid.count === 5 && grid.current === drv.part && grid.next === 2 && grid.nextSong, 'Grid: a card for each part and the next song, the one on screen and the next marked', grid);
+  await d.shot('8-presenter-grid');
+  await d.ev(`${P}.document.querySelector('#cur_slide .grid-card[data-part="3"]').click(), 'ok'`);
+  drv = await driverSlide();
+  await f.until(`${F}.current_song.chunk_index === 3`, 'the follower to follow the click', 5000).catch(() => {});
+  ok(drv.part === 3 && (await f.ev(`${F}.current_song.chunk_index`)) === 3, 'clicking a card shows that part; the follower follows', drv.part);
+  ok((await f.ev(`${F}.document.querySelectorAll('#cur_slide chunk').length`)) === 1, 'the follower still shows one part at a time');
+  await d.ev(`${P}.setView('whole'), 'ok'`);
+  await d.ev(`${P}.document.querySelector('#cur_slide chunk[data-part="0"]').click(), 'ok'`);
+  drv = await driverSlide();
+  await f.until(`${F}.current_song.chunk_index === 0`, 'the follower to follow the click', 5000).catch(() => {});
+  ok(drv.part === 0 && (await f.ev(`${F}.current_song.chunk_index`)) === 0, 'Whole song: clicking a part shows it; the follower follows', drv.part);
+  await d.ev(`${P}.setView('part'), 'ok'`);
+
   // ---------- handing the screens to a leader ----------
   // This follower is signed in (the same browser as alice), so it counts as a leader: alice on another device
   await d.until(`${P}.eval("leadersHere").length === 1`, 'the presenter to see the leader', 5000).catch(() => {});
@@ -247,7 +266,8 @@ try {
   fol = await followerSlide();
   await d.until(`${P}.current_song.chunk_index === ${fol.part} && ${P}.current_song.id === ${JSON.stringify(fol.id)}`, 'the presenter to follow the leader', 5000).catch(() => {});
   drv = await driverSlide();
-  ok(drv.part === fol.part && drv.id === fol.id, 'the presenter\'s screen follows the leader', [drv, fol]);
+  const dbg = { f: await f.ev(`({ now: ${F}.eval('liveNow'), tab: ${F}.myTab(), was: ${F}.eval('wasDriving') })`), d: await d.ev(`({ now: ${P}.eval('liveNow'), tab: ${P}.myTab() })`) };
+  ok(drv.part === fol.part && drv.id === fol.id, 'the presenter\'s screen follows the leader', [drv, fol, dbg]);
   // Linked off: the leader looks ahead alone; on again: the screens catch up
   await f.ev(`${F}.setLinked(false), ${F}.nextChunk(), 'ok'`);
   await sleep(600);
