@@ -140,6 +140,11 @@ presentation_key_map = {
 
 
 document.addEventListener('DOMContentLoaded', function() {
+    // The whole page as it starts, with its songs (#53): what "Save for later" downloads and what a mirrored
+    // window is made from, so neither needs the site
+    window.presentationSource = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+    if (document.getElementById('data').getAttribute('data') === 'mirror') return startMirror();
+
     document.querySelectorAll('stitle').forEach(el => el.addEventListener('click', toggleSongVisible));
 
     document.addEventListener('keydown', processKey);
@@ -549,14 +554,58 @@ function endReport() {
 }
 window.addEventListener('pagehide', endReport);
 
+// ---- Mirrored windows and "Save for later" (#53). Both are made from this page as it started
+// (presentationSource), so they work the same in the app and from a saved file, with no site needed.
+
+// A mirrored window: this page in mirror mode, showing whatever slide is on screen here
 function openWindow() {
-  secondary_windows.push(window.open('presentation.html','_blank', height="200", width="200"))
+  const win = window.open('', '_blank', 'popup,width=640,height=360');
+  if (!win) return;
+  const page = new DOMParser().parseFromString(window.presentationSource, 'text/html');
+  page.getElementById('data').setAttribute('data', 'mirror');
+  win.document.write('<!DOCTYPE html>\n' + page.documentElement.outerHTML);
+  win.document.close();
+  secondary_windows.push(win);
+  setTimeout(() => updateMirror(win), 300);
+}
+// The slide on screen here, in a mirrored window
+function updateMirror(win) {
+  try {
+    if (!inPresentation()) return;
+    const winDoc = win.document;
+    winDoc.querySelector('#slides').innerHTML = document.getElementById('cur_slide').outerHTML;
+    winDoc.querySelector('#statusbar').innerHTML = document.getElementById('progress').outerHTML;
+    win.scaleText();
+    const total = current_song.doc.content.length;
+    winDoc.querySelector('#slides').style.setProperty('--percent', (((current_song.chunk_index + 1) / total) * 100));
+  } catch(err) {}
+}
+// This page as a mirror: it shows what the window that opened it sends, and its keys work that window
+function startMirror() {
+  document.body.classList.add('presentation');
+  window.document.title = 'yCanta2: Mirror';
+  document.addEventListener('keydown', e => {
+    try { window.opener.processKey(e); } catch (err) {}
+  });
+}
+
+// Save for later: this presentation as one file, to open offline in any browser or to email
+function savePresentation() {
+  const title = (window.songbook ? plainText(window.songbook.title) : '') || 'yCanta';
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(new Blob([window.presentationSource], { type: 'text/html' }));
+  link.download = title.replace(/[\\/:*?"<>|]+/g, ' ').trim() + ' presentation.html';
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(link.href), 10000);
 }
 
 function toggleHelp() {
   if(!document.getElementById('help')) { // help element not created yet -- lets do it
     let content = '<div id="help"><div>'
-    content += '<p class="help-top"><button type="button" class="btn" onclick="toggleReport()">Presented so far</button></p>'; // (#158)
+    content += '<p class="help-top"><button type="button" class="btn" onclick="savePresentation()" title="Download this presentation as one file, to open offline or email">Save for later</button>'
+      + '<button type="button" class="btn" onclick="toggleReport()">Presented so far</button></p>'; // (#53, #158)
 
     content += '<div id="files"><span>Background:</span><input onclick="clearFile(this)" onchange="loadFiles(this);" data="bg-image" type="file" accept="image/*">'+
     '<span>Fixed:</span><input onclick="clearFile(this)" onchange="loadFiles(this);" data="fixed-image" type="file" accept="image/*">'+
@@ -890,15 +939,8 @@ function showChunk(name) {
     scaleText();
     trackSlide(); // what was presented (#158)
 
-    secondary_windows.forEach(win => {
-      try {
-        const winDoc = win.document;
-        winDoc.querySelector('#slides').innerHTML = document.getElementById('cur_slide').outerHTML;
-        winDoc.querySelector('#statusbar').innerHTML = document.getElementById('progress').outerHTML;
-        win.scaleText();
-        winDoc.querySelector('#slides').style.setProperty('--percent', (((current_song.chunk_index + 1) / total) * 100));
-      } catch(err) {}
-    });
+    secondary_windows = secondary_windows.filter(win => !win.closed);
+    secondary_windows.forEach(updateMirror);
   }
   else {
     const song = chunk.parentNode;

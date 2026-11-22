@@ -1463,16 +1463,12 @@ async function _handleSongbookRoute(piece, oldHashOb) { // bodyClassList removed
       const presCode = (await bibleRes.text()) + '\n' + (await presentationRes.text());
       presHtml = presHtml.replace('presentation_embed', () => presCode);
 
-      if (mode.includes('new')) {
-        window.location = '#' + window.songbook._id;
-        window.presentationFrame = window.open('', '_blank', 'popup');
-      } else {
-        const ifrm = document.createElement('iframe');
-        ifrm.id = "presentation";
-        document.body.appendChild(ifrm);
-        ifrm.contentWindow.focus();
-        window.presentationFrame = ifrm.contentWindow || ifrm.contentDocument.document || ifrm.contentDocument;
-      }
+      // Always in the page (#53); an old "?present+new" link presents here too
+      const ifrm = document.createElement('iframe');
+      ifrm.id = "presentation";
+      document.body.appendChild(ifrm);
+      ifrm.contentWindow.focus();
+      window.presentationFrame = ifrm.contentWindow || ifrm.contentDocument.document || ifrm.contentDocument;
 
       window.presentationFrame.document.write(presHtml);
       // Set the data before close(): presentation.js reads it on DOMContentLoaded, which can fire inside close()

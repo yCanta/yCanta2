@@ -1022,21 +1022,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // present button handling: delegated, because #present is re-created each time a songbook renders
-  document.getElementById('songList').addEventListener('mousedown', function(e) {
-    if (e.target.closest('#present')) {
-      switch (e.which) {
-        case 1: // left click
-          window.location = '#' + window.songbook._id + '?present';
-          break;
-        case 2: // middle click
-        case 3: // right click  
-          window.location = '#' + window.songbook._id + '?present+new';
-          break;
-        default:
-          window.location = '#' + window.songbook._id + '?present';
-      }
-    }
+  // The Present button: delegated, because #present is re-created each time a songbook renders. It always
+  // presents in the page (#53): a second screen gets a mirrored window from the presentation's help, and
+  // "Save for later" there makes a file that opens anywhere.
+  document.getElementById('songList').addEventListener('click', function(e) {
+    if (e.target.closest('#present')) window.location = '#' + window.songbook._id + '?present';
   });
 });
 
