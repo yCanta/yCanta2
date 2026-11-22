@@ -2,6 +2,10 @@
 // refresh one at a time and a browser can keep running old scripts next to a new index.html.
 const CACHE_VERSION = 'v19';
 const CACHE = `cache-and-update-${CACHE_VERSION}`;
+// The Bible's book files (#157) are kept in a cache of their own, which a new release leaves alone: a church
+// that has used a book keeps it offline through updates. The text never changes; if bible/build.mjs ever
+// makes different files, change this name so devices fetch them again.
+const BIBLE_CACHE = 'bible-v1';
 
 var prefetchedURLs = [
   './', // the start page, so an offline launch works
@@ -26,6 +30,7 @@ var prefetchedURLs = [
   'index.html',
   'presentation.html',
   'presentation.js',
+  'bible.js',
   'sortable.js',
   'Sortable.min.js',
   'notyf.min.css',
@@ -126,6 +131,15 @@ self.addEventListener('fetch', function(evt) {
     return;
   }
 
+  // A Bible file: from its own cache if it's there, else fetched once and kept (never checked again)
+  if (/\/bible\/[^?]*\.json$/.test(url.pathname)) {
+    return evt.respondWith(caches.open(BIBLE_CACHE).then(cache => cache.match(evt.request, {ignoreSearch: true}).then(kept =>
+      kept || fetch(evt.request).then(response => {
+        if (response.ok) cache.put(evt.request, response.clone());
+        return response;
+      }))));
+  }
+
   evt.respondWith(
     fromCache(evt.request).catch(() => fetch(evt.request))
   );
@@ -179,7 +193,7 @@ self.addEventListener('activate', function(event) {
       return Promise.all(
         cacheNames.map(function(cacheName) {
           // Dynamic Fix: Clears out ANY old cache that doesn't match our current cache name
-          if (cacheName !== CACHE) {
+          if (cacheName !== CACHE && cacheName !== BIBLE_CACHE) { // the Bible's books stay (see BIBLE_CACHE)
             console.log(`Deleting old cache: ${cacheName}`);
             return caches.delete(cacheName);
           }
