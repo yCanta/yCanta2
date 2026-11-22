@@ -87,8 +87,9 @@ window.addEventListener("visibilitychange", (event)=> {
   }
 });
 
+// On unless the person turned it off: their user record's choice, so it's the same on every device
 function analyticsAllowed() {
-  return window.user && localStorage.getItem(window.user._id + 'analytics') !== 'false';
+  return !!window.user && window.user.analytics !== false;
 }
 
 function readAnalyticsQueue() {

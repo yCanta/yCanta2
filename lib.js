@@ -492,6 +492,144 @@ dysmyssable.info = function(message, color='var(--songbookList-color)', url=fals
   }
 }
 
+// A card in the bottom right corner that stays until it's closed: a click on it does what it offers
+// (style.css .corner-card: the pointer)
+const cornerCard = new Notyf({
+  duration: 0,
+  position: {x: 'right', y: 'bottom'},
+  types: [{ type: 'info', background: 'var(--songbookList-color)', icon: false }],
+  dismissible: true
+});
+
+// The person's own settings that follow them to every device: kept on their user record, which only they can
+// change (database/validate.js)
+// Revisions of the user record saved here, so the changes feed doesn't say "User Updated" for them (db.js).
+// .saving: saves under way, since the feed can hear of one before upsert returns.
+const ownUserRevs = Object.assign(new Set(), { saving: 0 });
+async function saveUserSettings(fields, tries = 0) {
+  Object.assign(window.user, fields);
+  ownUserRevs.saving++;
+  try {
+    // Not on this device yet (a first sign-in still downloading): wait for it, so a bare record isn't made
+    // to fight the real one
+    const here = await db.get(window.user._id).then(() => true, err => (err.status === 404 ? false : Promise.reject(err)));
+    if (!here) {
+      if (tries < 12) setTimeout(() => saveUserSettings(fields, tries + 1), 5000);
+      return;
+    }
+    const saved = await db.upsert(window.user._id, doc => ({ ...doc, ...fields }));
+    ownUserRevs.add(saved.rev);
+  } catch (err) {
+    reportDbError(err, 'save your settings');
+  } finally {
+    setTimeout(() => { ownUserRevs.saving--; }, 1000);
+  }
+}
+
+// Settings' analytics switch. Turned off, the last thing sent says so; turned on, the first.
+function setAnalytics(on) {
+  if (!on) logData('analytics', false);
+  saveUserSettings({ analytics: on });
+  if (on) logData('analytics', true);
+}
+
+// Once for each person (on their user record, so not again on their other devices): what analytics sends, and
+// where to turn it off. A click opens that switch; closing it is enough to have seen it.
+function showAnalyticsNotice() {
+  if (window.user.analytics === false || window.user.analyticsNoticed) return;
+  let seen = false;
+  const noticed = () => {
+    if (seen) return;
+    seen = true;
+    saveUserSettings({ analyticsNoticed: Date.now() });
+  };
+  const card = cornerCard.open({
+    type: 'info',
+    className: 'corner-card',
+    message: 'yCanta sends information to help us improve how it works. You can <u>toggle this in settings</u>.',
+  });
+  card.on('dismiss', noticed);
+  card.on('click', () => {
+    noticed();
+    cornerCard.dismiss(card);
+    openSetting('analytics');
+  });
+}
+
+// Settings (on the home page, as the account menu's Settings button opens it), scrolled to one setting
+function openSetting(id) {
+  if (location.hash !== '#' && location.hash !== '') location.hash = '#';
+  setTimeout(() => {
+    goToSettings();
+    setTimeout(() => document.getElementById(id)?.closest('.content')?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 350);
+  }, 100);
+}
+
+// What a presentation showed (#158). When it closes it sends its list here (presentation.js, endReport): it
+// goes to the analytics sheet, and a card in the corner offers to show it until it's closed.
+const presentationsEnded = new Set();
+window.presentationEnded = function(json) {
+  let report;
+  try { report = JSON.parse(json); } catch (err) { return; }
+  if (!report?.items?.length || presentationsEnded.has(report.id)) return;
+  presentationsEnded.add(report.id);
+  logData('presented', {
+    book: report.book,
+    minutes: Math.round((report.end - report.start) / 6000) / 10,
+    // [title, CCLI # or translation, seconds on screen, slides shown, slides, counted]
+    items: report.items.map(it => [it.title, it.ccli, it.seconds, it.shown, it.total, it.counted ? 1 : 0]),
+  }, report.start);
+  const counted = report.items.filter(it => it.counted);
+  const songs = counted.filter(it => it.kind === 'song').length, passages = counted.length - songs;
+  const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+  const what = [songs && plural(songs, 'song'), passages && plural(passages, 'Bible passage')].filter(Boolean).join(' and ');
+  cornerCard.open({
+    type: 'info',
+    className: 'corner-card', // the whole card opens the list
+    message: `${what ? `Presented ${what}.` : 'Nothing was on screen long enough to count.'} <u>See the list</u>`
+  }).on('click', () => showPresentationReport(report));
+};
+// The list, as the presentation showed it: counted ones ticked, to copy for a CCLI report
+function showPresentationReport(report) {
+  const dialog = new TaskDialog('Presented');
+  dialog.dialog.classList.add('report-dialog');
+  const clock = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  const time = ms => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const day = new Date(report.start).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  const row = (it, i) => `<tr><td><input type="checkbox" data-i="${i}"${it.counted ? ' checked' : ''} aria-label="Count it"></td>
+    <td>${it.kind === 'passage' ? '📖 ' : ''}${escapeHtml(it.title)}</td><td>${escapeHtml(it.ccli)}</td>
+    <td>${clock(it.seconds)}</td><td>${it.shown} of ${it.total}</td></tr>`;
+  const head = '<tr class="report-head"><td></td><td>Song or scripture</td><td>CCLI #</td><td>On screen</td><td>Slides</td></tr>';
+  const rows = filter => report.items.map((it, i) => filter(it) ? row(it, i) : '').join('');
+  const counted = rows(it => it.auto), brief = rows(it => !it.auto);
+  dialog.render({
+    html: `<p>${escapeHtml(report.book)}, ${escapeHtml(day)}, ${escapeHtml(time(report.start))} to ${escapeHtml(time(report.end))}</p>`
+      + (counted ? `<table class="report-list">${head}${counted}</table>` : '')
+      + (brief ? `<p>Shown briefly, not counted:</p><table class="report-list">${head}${brief}</table>` : ''),
+    cancel: 'Close',
+  });
+  dialog.body.addEventListener('change', e => {
+    const it = report.items[e.target.dataset.i];
+    if (it) it.counted = e.target.checked;
+  });
+  const copy = document.createElement('button');
+  copy.type = 'button';
+  copy.className = 'btn primary';
+  copy.textContent = 'Copy list';
+  copy.addEventListener('click', async () => {
+    const lines = report.items.filter(it => it.counted)
+      .map(it => it.title + (it.ccli ? (it.kind === 'song' ? ` (CCLI ${it.ccli})` : ` (${it.ccli})`) : ''));
+    try {
+      await navigator.clipboard.writeText([`${report.book}, ${day}, ${time(report.start)} to ${time(report.end)}`, ...lines].join('\n'));
+      copy.textContent = 'Copied';
+    } catch (err) {
+      copy.textContent = "Couldn't copy";
+    }
+    setTimeout(() => { copy.textContent = 'Copy list'; }, 1500);
+  });
+  dialog.buttons.append(copy);
+}
+
 window.addEventListener("resize", function(){
   window.setTimeout(function(){
     document.activeElement.scrollIntoView({block: 'start'});

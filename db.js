@@ -433,7 +433,9 @@ function dbChanges() {
       if (change.doc._id === window.user._id) {
         window.user = change.doc;
         updateUser();
-        notyf.info(`User Updated "${escapeHtml(change.doc.name)}"`, 'var(--edit-color)');
+        if (!ownUserRevs.saving && !ownUserRevs.has(change.doc._rev)) { // not a setting just saved here (lib.js saveUserSettings)
+          notyf.info(`User Updated "${escapeHtml(change.doc.name)}"`, 'var(--edit-color)');
+        }
         
         // Update favorites display
         const favSongbooks = change.doc.fav_sbs || [];
@@ -705,14 +707,19 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
       const userId = window.user._id;
       const fontSize = localStorage.getItem(userId+'fontSize') || 16;
       const darkMode = localStorage.getItem(userId+'darkMode') || 'auto';
-      const analytics = localStorage.getItem(userId+'analytics');
+      // Analytics on or off is the person's choice, on their user record so it follows them to every device.
+      // A record without it yet takes this device's old setting, if it had one.
+      const deviceAnalytics = localStorage.getItem(userId+'analytics');
+      if (typeof window.user.analytics !== 'boolean' && (deviceAnalytics === 'true' || deviceAnalytics === 'false')) {
+        saveUserSettings({ analytics: deviceAnalytics === 'true' }); // not awaited: sign-in doesn't wait on it
+      }
 
       document.getElementById(darkMode+'Radio').checked = true;
       handleDarkMode();
       document.documentElement.style.fontSize = fontSize + 'px';
       document.getElementById('fontSize').value = fontSize;
       document.getElementById('fontSizeOutput').textContent = fontSize + 'px';
-      document.getElementById('analytics').checked = analytics !== 'false';
+      document.getElementById('analytics').checked = window.user.analytics !== false;
 
       document.body.classList.remove('loading');
 
@@ -800,9 +807,13 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
 
       // Analytics: a failure here must never break login
       try {
-        if(!localStorage.getItem('analyticID')) {
-          localStorage.setItem('analyticID', newAnalyticsId());
-          dysmyssable.info('yCanta has been updated to send information to help improve how it works. You can toggle this in settings.', 'var(--song-color)', '#'); // stays until closed, like production
+        // The notice is for new people only: a device with an id already showed the old one (it showed once
+        // per device), so that person counts as having seen it
+        if (localStorage.getItem('analyticID')) {
+          if (!window.user.analyticsNoticed) saveUserSettings({ analyticsNoticed: Date.now() });
+        } else {
+          localStorage.setItem('analyticID', newAnalyticsId()); // this device's id in the Sessions tab
+          showAnalyticsNotice(); // once for each person, on whichever device they use first
         }
 
         // One row in the Sessions tab per visit

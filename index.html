@@ -120,7 +120,7 @@
               <div class="content">
                 <b>Send Analytics</b><br><br>
                 <label class="switch switch-wide">
-                  <input type="checkbox" id="analytics" name="analytics" checked onclick="logData('analytics', this.checked); localStorage.setItem(window.user._id+'analytics', this.checked); logData('analytics', this.checked);">
+                  <input type="checkbox" id="analytics" name="analytics" checked onclick="setAnalytics(this.checked)">
                   <div class="slider" data-text=" "></div>
                 </label>
               </div>
@@ -994,6 +994,7 @@
   document.querySelectorAll('.fullscreen').forEach(el => el.classList.remove('fullscreen'));
   let pres_iframe = document.getElementById('presentation');
   if (pres_iframe) {
+    try { pres_iframe.contentWindow.endReport?.(); } catch (err) {} // what it showed comes here first (#158)
     setTimeout(function() {
       pres_iframe.remove()
     }, 300);

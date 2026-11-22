@@ -548,6 +548,39 @@ legend {
 .task-dialog::backdrop {
   background: rgba(0, 0, 0, .45);
 }
+/* A card in the bottom right corner (lib.js cornerCard): a click on it does what it offers */
+.corner-card {
+  cursor: pointer;
+}
+/* What a presentation showed (#158): the list is wider, for its five columns */
+.task-dialog.report-dialog {
+  width: min(38rem, calc(100vw - 2rem));
+}
+.report-list {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed; /* the counted and the brief tables line up */
+  font-size: .9rem;
+  margin: 0 0 1rem 0;
+}
+.report-list td:nth-child(1) { width: 1.75rem; }
+.report-list td:nth-child(3) { width: 4.5rem; }
+.report-list td:nth-child(4) { width: 4.5rem; }
+.report-list td:nth-child(5) { width: 3.5rem; }
+.report-list td {
+  padding: .3rem .5rem .3rem 0;
+  border-top: 1px solid var(--edit-color);
+  vertical-align: top;
+}
+.report-list .report-head td {
+  border-top: none;
+  font-size: .8rem;
+  color: var(--light-text-color);
+}
+.task-dialog .report-list input {
+  display: inline;
+  width: auto;
+}
 .task-dialog h2 {
   margin: 0 0 1rem 0;
   font-size: 1.3rem;
