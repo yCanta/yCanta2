@@ -580,13 +580,26 @@ function updateMirror(win) {
     winDoc.querySelector('#slides').style.setProperty('--percent', (((current_song.chunk_index + 1) / total) * 100));
   } catch(err) {}
 }
-// This page as a mirror: it shows what the window that opened it sends, and its keys work that window
+// This page as a mirror (#51): it shows the slide the window that opened it sends. Its own keys change only
+// how this window looks, as in yCanta 1 (chords for the band here, none for the room there). They never move
+// the main window.
+function isMirror() { return document.getElementById('data').getAttribute('data') === 'mirror'; }
+const mirror_key_map = {
+  'C': toggleChords,
+  't': blackScreen,
+  'f': whiteScreen,
+  'h': toggleHelp,
+  '?': toggleHelp,
+  'Escape': hideHelp,
+};
 function startMirror() {
   document.body.classList.add('presentation');
   window.document.title = 'yCanta2: Mirror';
   document.addEventListener('keydown', e => {
-    try { window.opener.processKey(e); } catch (err) {}
+    if (e.target.closest && e.target.closest('#help') && (e.key == ' ' || e.key == 'Enter')) return;
+    if (e.key in mirror_key_map) mirror_key_map[e.key]();
   });
+  window.addEventListener('resize', scaleText); // moved to the projector or made full screen: fit the slide again
 }
 
 // Save for later: this presentation as one file, to open offline in any browser or to email
@@ -603,28 +616,41 @@ function savePresentation() {
 
 function toggleHelp() {
   if(!document.getElementById('help')) { // help element not created yet -- lets do it
+    // A mirror's help has only its own look: the slides come from the main window (#51)
+    const mirror = isMirror();
     let content = '<div id="help"><div>'
-    content += '<p class="help-top"><button type="button" class="btn" onclick="savePresentation()" title="Download this presentation as one file, to open offline or email">Save for later</button>'
+    if (!mirror) content += '<p class="help-top"><button type="button" class="btn" onclick="savePresentation()" title="Download this presentation as one file, to open offline or email">Save for later</button>'
       + '<button type="button" class="btn" onclick="toggleReport()">Presented so far</button></p>'; // (#53, #158)
 
     content += '<div id="files"><span>Background:</span><input onclick="clearFile(this)" onchange="loadFiles(this);" data="bg-image" type="file" accept="image/*">'+
     '<span>Fixed:</span><input onclick="clearFile(this)" onchange="loadFiles(this);" data="fixed-image" type="file" accept="image/*">'+
     '<span>Foreground:</span><input onclick="clearFile(this)" onchange="loadFiles(this);" data="fg-image" type="file" accept="image/*"></div>'
 
-    content += '<h4>Main Window:</h4>';
-    content += '<div class="helpLine"> <select><!--option value="Song">Songs</option--><option value="Verse">Verse</option></select>'
-    content += '<label onchange="whiteScreen(true)" class="switch"><input type="checkbox" id="fgText"><div data-text="TEXT" class="slider font"></div></label>';
-    content += '<label onchange="blackScreen(true)" class="switch"><input type="checkbox" id="bgColor"><div data-text="BG" class="slider background"></div></label>';
-    content += '<span><label onchange="toggleChords(true)" style="margin-right: 1rem;"><input id="chngChords" type="checkbox"> Chords</label>';
-    content += '<label onchange=""><input type="checkbox"> Image backgrounds</label></span></div>';
+    content += mirror ? '<h4>This window:</h4>' : '<h4>Main Window:</h4>';
+    content += '<div class="helpLine">';
+    if (!mirror) content += ' <select><!--option value="Song">Songs</option--><option value="Verse">Verse</option></select>'
+    // checked to match the window as it is now (a mirror can be opened with its help never shown)
+    const on = name => document.body.classList.contains(name) ? ' checked' : '';
+    content += '<label onchange="whiteScreen(true)" class="switch"><input type="checkbox" id="fgText"' + on('white') + '><div data-text="TEXT" class="slider font"></div></label>';
+    content += '<label onchange="blackScreen(true)" class="switch"><input type="checkbox" id="bgColor"' + on('black') + '><div data-text="BG" class="slider background"></div></label>';
+    content += '<span><label onchange="toggleChords(true)" style="margin-right: 1rem;"><input id="chngChords" type="checkbox"' + (document.body.classList.contains('nochords') ? '' : ' checked') + '> Chords</label>';
+    if (!mirror) content += '<label onchange=""><input type="checkbox"> Image backgrounds</label>';
+    content += '</span></div>';
+    if (!mirror) {
     content += '<h4>Child Windows: <input type="button" style="margin-right: 1rem;" onclick="openWindow()" value="Add mirrored window"></input><button onclick="" value=""><img style="height: 1rem; vertical-align: middle" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+Cjxzdmcgd2lkdGg9IjI0cHgiIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAwIDI0IDI0IiB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHhtbG5zOnNrZXRjaD0iaHR0cDovL3d3dy5ib2hlbWlhbmNvZGluZy5jb20vc2tldGNoL25zIj4KICAgIDwhLS0gR2VuZXJhdG9yOiBTa2V0Y2ggMy4yLjIgKDk5ODMpIC0gaHR0cDovL3d3dy5ib2hlbWlhbmNvZGluZy5jb20vc2tldGNoIC0tPgogICAgPHRpdGxlPmljX2Nhc3RfYmxhY2tfMjRkcDwvdGl0bGU+CiAgICA8ZGVzYz5DcmVhdGVkIHdpdGggU2tldGNoLjwvZGVzYz4KICAgIDxkZWZzPjwvZGVmcz4KICAgIDxnIGlkPSJQYWdlLTEiIHN0cm9rZT0ibm9uZSIgc3Ryb2tlLXdpZHRoPSIxIiBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHNrZXRjaDp0eXBlPSJNU1BhZ2UiPgogICAgICAgIDxnIGlkPSJpY19jYXN0X2JsYWNrXzI0ZHAiIHNrZXRjaDp0eXBlPSJNU0FydGJvYXJkR3JvdXAiPgogICAgICAgICAgICA8ZyBpZD0iaWNfcmVtb3ZlX2NpcmNsZV93aGl0ZV8yNGRwIiBza2V0Y2g6dHlwZT0iTVNMYXllckdyb3VwIj4KICAgICAgICAgICAgICAgIDxwYXRoIGQ9Ik0xLDE4IEwxLDIxIEw0LDIxIEM0LDE5LjM0IDIuNjYsMTggMSwxOCBMMSwxOCBaIE0xLDE0IEwxLDE2IEMzLjc2LDE2IDYsMTguMjQgNiwyMSBMOCwyMSBDOCwxNy4xMyA0Ljg3LDE0IDEsMTQgTDEsMTQgWiBNMSwxMCBMMSwxMiBDNS45NywxMiAxMCwxNi4wMyAxMCwyMSBMMTIsMjEgQzEyLDE0LjkyIDcuMDcsMTAgMSwxMCBMMSwxMCBaIE0yMSwzIEwzLDMgQzEuOSwzIDEsMy45IDEsNSBMMSw4IEwzLDggTDMsNSBMMjEsNSBMMjEsMTkgTDE0LDE5IEwxNCwyMSBMMjEsMjEgQzIyLjEsMjEgMjMsMjAuMSAyMywxOSBMMjMsNSBDMjMsMy45IDIyLjEsMyAyMSwzIEwyMSwzIFoiIGlkPSJjYXN0IiBmaWxsPSIjMDAwMDAwIiBza2V0Y2g6dHlwZT0iTVNTaGFwZUdyb3VwIj48L3BhdGg+CiAgICAgICAgICAgICAgICA8cmVjdCBpZD0iYm91bmRzIiBza2V0Y2g6dHlwZT0iTVNTaGFwZUdyb3VwIiB4PSIwIiB5PSIwIiB3aWR0aD0iMjQiIGhlaWdodD0iMjQiPjwvcmVjdD4KICAgICAgICAgICAgPC9nPgogICAgICAgIDwvZz4KICAgICAgICA8ZyBpZD0iYXNzZXRzIiBza2V0Y2g6dHlwZT0iTVNMYXllckdyb3VwIiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtMjA4LjAwMDAwMCwgLTEwNi4wMDAwMDApIj4KICAgICAgICAgICAgPGcgaWQ9IjY0cHgiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDAuMDAwMDAwLCAxMTQuMDAwMDAwKSI+PC9nPgogICAgICAgIDwvZz4KICAgIDwvZz4KPC9zdmc+"></button></h4>'
     content += '<div class="helpLine">1. <select><!--option value="Song">Songs</option--><option value="Verse">Verse</option></select>'
     content += '<label class="switch"><input type="checkbox" id="togBtn"><div data-text="TEXT" class="slider font"></div></label>';
     content += '<label class="switch"><input type="checkbox" id="togBtn"><div data-text="BG" class="slider background"></div></label>';
     content += '<label><input type="checkbox"> Chords</label>';
     content += '<label><input type="checkbox"> Image backgrounds</label></div>';
+    }
     // The keys worth knowing, in plain words (the full key map below says more than anyone needs)
-    const keys = [
+    const keys = mirror ? [
+      ['t / f', 'Black background / white text, on or off'],
+      ['C (capital)', 'Chords on or off'],
+      ['h or ?', 'This help'],
+      ['Esc', 'Close the help'],
+    ] : [
       ['→ ↓ Space', 'Next slide'],
       ['← ↑', 'Back a slide'],
       ['Page Down / Page Up', 'Next / previous song'],
@@ -757,7 +783,8 @@ function searchDatabase(){
 }
 
 function isSearching(){
-  return document.getElementById('searchbox').style.display != 'none';
+  const searchbox = document.getElementById('searchbox'); // a mirror has none: its status bar is the main window's
+  return !!searchbox && searchbox.style.display != 'none';
 }
 
 function beginSearch(touch=false){
