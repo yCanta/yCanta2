@@ -40,3 +40,27 @@ the live server.
 ```bash
 COUCH_ADMIN_PASS=... node database/test-rule.mjs
 ```
+
+## Shared presentations (#51)
+
+A presentation can be shared with other devices by a short code (the presentation's setup panel, then
+"Share with other devices"). Followers open `live.html` and need no account. Everything goes through one
+server-wide database, `ycanta_live`, with two small records per share: `set:CODE` (the title and songs) and
+`now:CODE` (the song and part on screen). `live-validate.js` is its save rule: anyone can read, only
+someone signed in can share, and only the person who started a share can change or end it.
+
+**On the live server** (once, in Fauxton, as a server admin):
+
+1. Make a database named `ycanta_live` (not partitioned).
+2. Permissions: leave both Admins and Members empty. No members means anyone can read it.
+3. Add a design doc `_design/live` with `validate_doc_update` set to the function in `live-validate.js`.
+4. Keep only a few old versions of each record (every slide change is a new one): in a terminal,
+   `curl -X PUT https://<server>/couch/ycanta_live/_revs_limit -d 10 -u <admin>`.
+5. CORS: followers come from the same sites as the app, so the server's existing list should already cover
+   them. Not checked on the live server yet.
+
+Old shares are removed when the presenter stops sharing or closes the presentation. One left behind by a
+closed laptop stays until someone deletes it; it does no harm.
+
+**Locally**, `setup-live.mjs` does all of this (the seed runs it), `test-live.mjs` checks the rule, and
+`tests/live-local.mjs` tries the whole thing in a browser: a presenter shares, a second tab follows.

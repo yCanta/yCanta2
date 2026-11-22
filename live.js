@@ -164,3 +164,4 @@ const Live = (() => {
     onProblem: err => console.error('Sharing:', err),
   };
 })();
+window.Live = Live; // the presentation (in a frame) reaches it as window.parent.Live

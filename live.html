@@ -149,7 +149,7 @@
         if (following) following.stop();
         following = null;
         document.body.classList.remove('following');
-        document.getElementById('show').removeAttribute('srcdoc');
+        building = null; // the next join makes a fresh page
         problem.textContent = message;
         history.replaceState(null, '', location.pathname + location.search);
       }
@@ -160,7 +160,11 @@
       function showPresentation(set) {
         building = building || (async () => {
           const [html, bible, code] = await Promise.all(['presentation.html', 'bible.js', 'presentation.js'].map(file => fetch(file).then(r => r.text())));
-          const frameEl = document.getElementById('show');
+          // a new frame each time: a page written over an old one would keep the old one's script
+          const frameEl = document.createElement('iframe');
+          frameEl.id = 'show';
+          frameEl.title = 'The shared presentation';
+          document.getElementById('show').replaceWith(frameEl);
           const win = frameEl.contentWindow;
           win.document.open();
           win.document.write(html.replace('presentation_embed', () => bible + '\n' + code));

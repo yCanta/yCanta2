@@ -428,9 +428,11 @@ const REPORT_SHARE = 0.3;
 const presented = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), start: null, items: new Map(), onScreen: null, sent: false };
 
 function plainText(html) {
-  const el = document.createElement('div');
+  // a template's contents are inert: no picture loads and no code runs while the text is read (a div would
+  // run an <img onerror>, even off the page)
+  const el = document.createElement('template');
   el.innerHTML = String(html ?? '');
-  return el.textContent;
+  return el.content.textContent;
 }
 
 // The slide on screen changed (showChunk): the last one's time is added up, and this one's starts
