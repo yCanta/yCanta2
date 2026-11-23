@@ -1730,6 +1730,7 @@ function setSongbookInfo(songbook) {
   const searchInput = contentEl.querySelector('.search');
   searchInput.disabled = false; // editSongbook disables the input itself
   searchInput.parentElement.removeAttribute('disabled');
+  contentEl.querySelector('.edit-search-note')?.remove(); // the editor's note on why search was gone
   contentEl.classList.remove('showStatus', 'showComments');
   
   // Set status/comment visibility
@@ -2224,8 +2225,10 @@ function dataxInBookUpdate(song, remove = false) {
 
    if (newCount <= 0) {
      songElement.removeAttribute('data-xInBook');
+     songElement.removeAttribute('title');
    } else {
      songElement.setAttribute('data-xInBook', newCount);
+     songElement.title = newCount === 1 ? 'Already in this songbook' : `In this songbook ${newCount} times`; // what the number means
    }
  }
 
@@ -2627,7 +2630,11 @@ async function editSongbook() {
     searchInput.disabled = true;
     // and any filter, for the same reason (#84)
     clearSongFilter('book');
-    document.querySelectorAll('#songbook_content .song-filter, #songbook_content .filter-chips').forEach(el => el.classList.add('disabled-hidden'));
+    document.querySelectorAll('#songbook_content .song-filter, #songbook_content .filter-chips, #songbook_content .search-tips').forEach(el => el.classList.add('disabled-hidden'));
+    // say why the search went away (UX audit #25)
+    if (!document.querySelector('#songbook_header .edit-search-note')) {
+      searchInput.parentElement.insertAdjacentHTML('afterend', '<p class="edit-search-note">While you edit, the book shows all its songs, so all of them are saved. To find songs to add, search in Add songs.</p>');
+    }
   };
 
   // Add status and comments toggle buttons
@@ -4710,11 +4717,20 @@ class Tooltip {
 
   init() {
     // Add event listeners to all elements with rel="tooltip"
+    // A mouse opens the bubble on hover. A phone has no hover, so a tap opens it, and a tap here or anywhere else closes it.
     document.querySelectorAll('[rel="tooltip"]').forEach(el => {
-      el.addEventListener('mouseenter', this.showTooltip.bind(this));
-      el.addEventListener('mouseleave', this.hideTooltip.bind(this));
-      el.addEventListener('click', this.hideTooltip.bind(this));
+      el.addEventListener('pointerdown', e => { this.lastPointer = e.pointerType; });
+      el.addEventListener('pointerenter', e => { if (e.pointerType == 'mouse') this.showTooltip(e); });
+      el.addEventListener('pointerleave', e => { if (e.pointerType == 'mouse') this.hideTooltip(); });
+      el.addEventListener('click', e => {
+        const opened = this.currentTarget == el;
+        this.hideTooltip();
+        if (this.lastPointer && this.lastPointer != 'mouse' && !opened) this.showTooltip(e);
+      });
     });
+    document.addEventListener('pointerdown', e => {
+      if (this.tooltip && !this.currentTarget?.contains(e.target)) this.hideTooltip();
+    }, true);
   }
 
   showTooltip(e) {
@@ -4730,6 +4746,7 @@ class Tooltip {
     this.tooltip = document.createElement('div');
     this.tooltip.id = 'tooltip';
     this.tooltip.textContent = tip;
+    if (tip.includes('\n')) this.tooltip.classList.add('long'); // a tip in paragraphs (search tips) reads left to right
     document.body.appendChild(this.tooltip);
 
     // Position tooltip
@@ -4763,10 +4780,18 @@ class Tooltip {
 
     // Handle top edge
     if (posTop < 0) {
-      posTop = rect.top + target.offsetHeight;
+      posTop = rect.top + target.offsetHeight + 20; // below, leaving room for the arrow
       this.tooltip.classList.add('top');
     } else {
       this.tooltip.classList.remove('top');
+    }
+
+    // On a narrow phone, keep the whole bubble on screen, with its arrow still under the icon
+    const room = window.innerWidth - this.tooltip.offsetWidth - 8;
+    if (posLeft < 8 || posLeft > room) {
+      posLeft = Math.max(8, Math.min(posLeft, room));
+      this.tooltip.classList.add('clamped');
+      this.tooltip.style.setProperty('--arrow-x', `${rect.left + target.offsetWidth / 2 - posLeft - 10}px`);
     }
 
     // Apply styles

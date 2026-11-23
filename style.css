@@ -1650,6 +1650,22 @@ li.sortable-drag > a {
   top: -.2rem;
   font-size: small;
 }
+/* "New Section" and "New Reading" at the top of Add songs: things to add, not songs */
+#songListEdit li[data-song-id="section"] a, #songListEdit li[data-song-id="reading"] a {
+  font-style: italic;
+  color: var(--light-text-color);
+}
+#songListEdit li[data-song-id="section"] a::before, #songListEdit li[data-song-id="reading"] a::before {
+  content: '+ ';
+  font-style: normal;
+}
+/* While a songbook is edited, why its search is gone */
+.edit-search-note {
+  margin: .25rem 0 0;
+  font-size: .8rem;
+  font-style: italic;
+  color: var(--light-text-color);
+}
 #songListEdit li {
   cursor: pointer;
 }
@@ -3139,6 +3155,16 @@ only screen and (max-height: 31.25rem) {
   align-items: center;
   gap: .5rem;
 }
+/* Beside the song list's search: the same i bubble as Export, saying what search looks at */
+.search-tips {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  align-self: flex-start;
+}
+.search-tips:after {
+  top: 0;
+}
 .search-row .deleteicon {
   flex: 1;
   min-width: 0;
@@ -3455,6 +3481,7 @@ only screen and (max-height: 31.25rem) {
   max-width: 340px;
   opacity: 0;
   transition: opacity 50ms ease-in-out, top 50ms ease-in-out;
+  pointer-events: none; /* when it opens over its icon, the icon still gets the hover and the tap */
 }
 
 #tooltip.top {
@@ -3530,6 +3557,19 @@ only screen and (max-height: 31.25rem) {
 #tooltip.right:after {
   right: 10px;
   left: auto;
+  margin: 0;
+}
+#tooltip.long {
+  text-align: left;
+  font-style: normal;
+  white-space: pre-line;
+  max-width: min(420px, calc(100vw - 16px));
+  box-sizing: border-box;
+  border-radius: 1.2rem;
+}
+#tooltip.clamped:after { /* pulled in from the screen's edge: the arrow still points at the icon */
+  left: var(--arrow-x);
+  right: auto;
   margin: 0;
 }
 .float-menu-icon::after,

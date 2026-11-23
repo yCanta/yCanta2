@@ -80,7 +80,15 @@ const Bible = (() => {
       let [, name, a, b, c, d] = m;
       if (name) {
         book = findBook(name);
-        if (!book) return { error: `"${name.trim()}" isn't a book of the Bible.` };
+        if (!book) {
+          // "Jo" starts several books: name them, instead of saying it isn't one
+          const key = squash(name.trim().toLowerCase());
+          const could = key ? books.filter(b => squash(b.name).startsWith(key)).map(b => b.name) : [];
+          if (could.length > 1) {
+            return { error: `"${name.trim()}" could be ${could.slice(0, 5).join(', ')}${could.length > 5 ? '…' : ''}. Type more of the name.` };
+          }
+          return { error: `"${name.trim()}" isn't a book of the Bible.` };
+        }
         chapter = null;
       }
       if (!book) return { error: 'Start with a book, like John 3:16.' };

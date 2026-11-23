@@ -138,7 +138,7 @@
               </div>
               <div class="content">
                 <b>Import</b>
-                <div>Choose a zip of V1 songs or a json file of V2 and import it below.</div>
+                <div>Bring songs in from a file: a .json file from a yCanta export, or a .zip of songs from the old yCanta (version 1). Choose the file, then press Import.</div>
                 <span style="margin: 1rem;"><input type="file" id="file" name="file" accept=".json,.zip" style="max-width: 200px; background: var(--edit-color);"/><button class="btn" onclick="startHandlingFiles();">Import</button></span>
                 <div id="result" style="max-width: 400px;">
                 </div>
@@ -216,6 +216,8 @@
                 </div>
                 <div class="search-row">
                   <input aria-label="Search" class="search deletable" type="text" data-target="#songbook_content" data-trigger="change" placeholder="Search">
+                  <span class="search-tips" rel="tooltip" role="button" aria-label="Search tips"
+                        title="Search looks at a whole song: its title, words, author, scripture, category and more. Capital letters and accents don't matter.&#10;&#10;No quotes: what you type is found as one phrase, like amazing grace.&#10;&#10;With quotes, it works like Gmail search: every quoted phrase and every other word must match, in any order. &quot;amazing grace&quot; chains finds songs with both. There is no OR.&#10;&#10;To look in one place, start with t: title, a: author, s: scripture, k: key, c: category, cp: copyright or i: introduction. These match the start, so a:charles finds Charles Wesley. a:!a, k:!k and c:!c find songs with no author, key or category.&#10;&#10;Clicking a song's author, key, category or scripture searches for it.&#10;&#10;For simpler filtering by category, key and more, use Filter."></span>
                   <nav class="song-filter" data-list="book" aria-label="Filter songs"></nav>
                 </div>
               </div>

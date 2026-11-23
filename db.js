@@ -2748,9 +2748,11 @@ async function deleteSong(song_id) {
     try {
       const doc = await db.get(song_id);
       window.deletingId = song_id; // our own delete: the change feed should not warn about it
-      await saveWithHistory(deletedDoc(doc));
+      const where = window.location.hash.replace(/\?.*$/, ''); // the song, to come back to on Undo
+      const saved = await saveWithHistory(deletedDoc(doc));
       window.location.hash = "#" + formatSbID(window.songbook._id);
       console.log("Deleted:", window.song.title);
+      offerUndo(doc.title, song_id, saved.rev, where);
     } catch (err) {
       console.error("Error deleting song:", err); 
       alert("An error occurred while deleting the song.");
@@ -2758,15 +2760,39 @@ async function deleteSong(song_id) {
   }
 }
 
+// Right after a delete: a note for a few seconds that a click turns into Undo, putting it back where it was.
+// After that, the Trash in Settings still has it (UX audit #19).
+function offerUndo(title, id, rev, where) {
+  const toast = notyf.open({
+    type: 'info',
+    duration: 8000,
+    background: 'var(--songbookList-color)',
+    message: `Moved "${escapeHtml(title)}" to the Trash. <u>Undo</u>`,
+  });
+  toast.on('click', async () => {
+    notyf.dismiss(toast);
+    try {
+      await restoreDeleted(id, rev);
+      if (id.startsWith('sb-')) initializeSongbooksList();
+      notyf.info(`Restored "${escapeHtml(title)}"`, 'var(--song-color)');
+      if (where) window.location.hash = where;
+    } catch (err) {
+      console.error('Error restoring:', err);
+      notyf.error(`Could not put "${escapeHtml(title)}" back. It's still in the Trash in Settings.`);
+    }
+  });
+}
+
 async function deleteSongbook(songbook_id) {
   if (confirm(`Move this songbook to the Trash?\n\n - ${window.songbook.title}\n\nYou can restore it from the Trash in Settings. The songs in it stay in All Songs.`)) {
     try {
       const doc = await db.get(songbook_id);
       window.deletingId = songbook_id;
-      await saveWithHistory(deletedDoc(doc));
+      const saved = await saveWithHistory(deletedDoc(doc));
       initializeSongbooksList();
       window.location.hash = '#songbooks';
       console.log("Deleted:", window.songbook.title);
+      offerUndo(doc.title, songbook_id, saved.rev, '#' + songbook_id);
     } catch (err) {
       console.error("Error deleting songbook:", err);
       alert("An error occurred while deleting the songbook.");

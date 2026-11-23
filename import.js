@@ -17,7 +17,7 @@ async function handleFile(f) {
     result = await importSongV2(f);
   }
   else {
-    document.getElementById('result').textContent = `"${f.name}" isn't a file yCanta can import: choose a .zip of yCanta 1 songs or a .json file from an export.`;
+    document.getElementById('result').textContent = `"${f.name}" isn't a file yCanta can import. Choose a .json file from a yCanta export, or a .zip of songs from the old yCanta (version 1).`;
   }
   return result;
 }

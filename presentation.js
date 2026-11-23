@@ -1552,7 +1552,8 @@ function searchDatabase(){
         return '<div onclick="javascript:void(searchResult(' + count + '));">'
           + '<span class="count">[' + count + ']</span> '
           + '<span class="song">' + escapeText(ref.label) + '</span>: '
-          + '<span class="matchline">' + escapeText(ref.translation) + '</span></div>';
+          + '<span class="matchline">' + escapeText((Bible.translations().find(t => t.id === ref.translation) || {}).name || ref.translation)
+          + ' (' + escapeText(ref.translation) + ')</span></div>'; // "Berean Standard Bible (BSB)", not just BSB
       }
       let m = re.exec(item.doc.search);
       let matchline_start = Math.max(
