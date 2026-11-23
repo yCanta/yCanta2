@@ -12,8 +12,8 @@ const HELP_SECTIONS = [
       songs come from its server: your church admin adds you and gives you a name and password.</p>`],
     ['Without internet', `<p>Once you've signed in with "Keep me logged in", yCanta works with no internet. Changes you make
       wait on this device and go to the server when you're back online. A yellow strip at the bottom shows when you're offline.</p>`],
-    ['Settings', `<p>Your name at the top right opens Settings: your profile, the category list, light or dark mode, text size,
-      the Trash, and importing songs.</p>`],
+    ['Your menu', `<p>Your name at the top right opens a menu: this Help, My Profile, Settings (light or dark mode, text
+      size, importing songs), Categories, the Trash, and Logout. Each one opens its card on the home page.</p>`],
   ]},
   { id: 'songs', title: 'Songs', items: [
     ['Typing a song', `<p>Open a song and choose Edit (in its menu button). Put chords on their own line, above the words they

@@ -557,6 +557,61 @@ function showAnalyticsNotice() {
 }
 
 // Settings (on the home page, as the account menu's Settings button opens it), scrolled to one setting
+// ---- The menu under your name: a list that jumps to the home page's cards (My Profile, Settings, Categories,
+// Trash, Admin) and opens the one picked, so it's two taps away from anywhere. Help opens over the screen you're
+// on. Esc or a click outside closes it; ↑ ↓ move through it.
+function toggleAccountMenu(open, fromKeyboard = false) {
+  const box = document.querySelector('.accountBtn');
+  const show = open ?? box.classList.contains('closed');
+  box.classList.toggle('closed', !show);
+  document.getElementById('username_legend').setAttribute('aria-expanded', String(show));
+  if (show && fromKeyboard) accountMenuItems()[0]?.focus({ preventScroll: true }); // a mouse or a tap leaves focus be
+}
+const accountMenuItems = () => [...document.querySelectorAll('#account_menu button')].filter(b => b.offsetParent);
+// Go home, open a card there (its header's click runs whatever it loads), and bring it into view
+function openHomeCard(id) {
+  const card = document.getElementById(id);
+  if (!card) return;
+  const atHome = () => location.hash === '#' || location.hash === '';
+  const show = () => {
+    if (!atHome()) return; // they stayed, at "you'll lose your changes"
+    if (card.classList.contains('closed')) card.querySelector(':scope > legend')?.click();
+    setTimeout(() => card.scrollIntoView({ block: 'start', behavior: 'smooth' }), 350);
+  };
+  if (atHome()) show();
+  else { location.hash = '#'; setTimeout(show, 300); }
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const box = document.querySelector('.accountBtn'), menu = document.getElementById('account_menu');
+  if (!box || !menu) return;
+  menu.addEventListener('click', e => {
+    const item = e.target.closest('[data-open]');
+    if (!item) return;
+    toggleAccountMenu(false);
+    const what = item.dataset.open;
+    if (what === 'help') openHelp();
+    else if (what === 'logout') dbLogout();
+    else if (what === 'install') showInstallSteps();
+    else openHomeCard(what);
+  });
+  document.getElementById('username_legend').addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleAccountMenu(undefined, true); }
+  });
+  box.addEventListener('keydown', e => {
+    if (box.classList.contains('closed')) return;
+    const items = accountMenuItems(), at = items.indexOf(document.activeElement);
+    if (e.key === 'Escape') { e.preventDefault(); toggleAccountMenu(false); document.getElementById('username_legend').focus(); }
+    else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const down = e.key === 'ArrowDown';
+      items[at < 0 ? (down ? 0 : items.length - 1) : (at + (down ? 1 : items.length - 1)) % items.length]?.focus();
+    }
+  });
+  document.addEventListener('pointerdown', e => {
+    if (!box.classList.contains('closed') && !box.contains(e.target)) toggleAccountMenu(false);
+  }, true);
+});
+
 function openSetting(id) {
   if (location.hash !== '#' && location.hash !== '') location.hash = '#';
   setTimeout(() => {
@@ -1900,6 +1955,7 @@ function setSongbookInfo(songbook) {
   searchInput.parentElement.removeAttribute('disabled');
   contentEl.querySelector('.edit-search-note')?.remove(); // the editor's note on why search was gone
   contentEl.classList.remove('showStatus', 'showComments');
+  contentEl.classList.toggle('all-songs', songbook._id === 'sb-allSongs'); // an empty All Songs offers Import (UX audit #18)
   
   // Set status/comment visibility
   if (songbook.showStatus) contentEl.classList.add('showStatus');
@@ -3785,6 +3841,20 @@ function neighborRow(listSel, idKey, currentId, before) {
 // down it's a scroll and nothing here moves, so scrolling a list never opens or closes a panel. Nothing is
 // moved until a touch is known to be a swipe, and everything moved is put back if it's cancelled.
 const isPhone = () => window.matchMedia('(max-width: 39.99rem)').matches; // the phone layout in style.css
+// The first song opened on a phone says the swipe is there (UX audit #15): once per device, then never again
+function swipeHintOnce() {
+  if (!isPhone()) return;
+  try {
+    if (localStorage.getItem('yCantaSwipeHint')) return;
+    localStorage.setItem('yCantaSwipeHint', '1');
+  } catch (err) { return; } // a private window: no way to say "once", so don't say it every time
+  setTimeout(() => notyf.open({
+    type: 'info',
+    duration: 6000,
+    background: 'var(--song-color)',
+    message: 'Tip: swipe sideways on a song for the next or previous one. Help, in the menu under your name, has more.',
+  }), 800);
+}
 function makeDraggable(dragEl, dragAction, dragSide='right') {
   const DECIDE = 10;    // px of movement before a touch counts as a scroll or a swipe
   const SIDEWAYS = 1.5; // a swipe goes at least this much more sideways than up or down

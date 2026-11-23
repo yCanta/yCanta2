@@ -1516,6 +1516,51 @@ async function clearRecoveryEmail() {
   loadRecoveryEmail({ fresh: true });
 }
 
+// A forgotten PIN for songs kept on this device (UX audit #4). There's no server to check who's asking: the PIN
+// is kept with the songs here, so anyone using this device could set a new one. It keeps the songs from being
+// opened by mistake, not from someone who has the device, and the dialog says so.
+async function forgotPin() {
+  const dbName = document.getElementById('db_select').value;
+  if (!dbName.endsWith('(local)') || dbName === 'demo(local)') return;
+  const songs = new PouchDB(dbName);
+  let names = [];
+  try {
+    names = (await songs.allDocs({ startkey: 'u-', endkey: 'u-￿' })).rows.map(row => row.id.slice(2));
+  } catch (err) {
+    console.error('Could not read the names for', dbName, err);
+  }
+  const typed = document.getElementById('username').value.trim();
+  const name = typed || (names.length === 1 ? names[0] : '');
+  const label = dbName.replace(/\(local\)$/, '');
+  const dialog = new TaskDialog('Set a new PIN');
+  const done = await dialog.run({
+    text: `"${label}" is kept only on this device, so there's no server to ask. yCanta can set a new PIN here. `
+      + `The PIN keeps these songs from being opened by mistake; it doesn't lock them from someone who has this device.`
+      + (names.length ? `\n\nUsernames for these songs: ${names.join(', ')}.` : ''),
+    fields: [
+      { name: 'username', label: 'Username', value: name, autocomplete: 'username' },
+      { name: 'pin', label: 'New PIN', type: 'password', autocomplete: 'new-password' },
+      { name: 'pin2', label: 'New PIN again', type: 'password', match: 'pin', autocomplete: 'new-password' },
+    ],
+    submit: 'Set PIN',
+    working: 'Saving…',
+    action: async ({ username, pin }) => {
+      if (!pin.trim()) throw new Error('Please type a PIN.');
+      // only a name these songs already know (its device record, or its profile)
+      const known = await songs.get('_local/u-' + username).then(() => true, () => names.includes(username));
+      if (!known) throw new Error(`No one named "${username}" uses these songs.` + (names.length ? ` Try ${names.join(' or ')}.` : ''));
+      await songs.upsert('_local/u-' + username, doc => ({ ...doc, pin: pin.trim() }));
+      return username;
+    },
+  });
+  if (done === null) return;
+  dialog.close();
+  document.getElementById('username').value = done;
+  document.getElementById('pin').value = '';
+  document.getElementById('pin').focus();
+  notyf.info('PIN changed. Sign in with the new one.', 'var(--edit-color)');
+}
+
 async function forgotPassword() {
   const dialog = new TaskDialog('Forgot password');
   let who, message;

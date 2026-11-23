@@ -1861,7 +1861,7 @@ span.deleteicon input {
 }
 
 .pin input {
-  width: 5rem;
+  width: 7.5rem; /* wide enough to read "Re-enter PIN" */
 }
 .pin > span {
   color: darkred;
@@ -1882,7 +1882,13 @@ span.deleteicon input {
   display: none;
 }
 #login > * {
-  margin: 0 1rem 1rem 1rem;
+  margin: 0 1rem .75rem 1rem;
+}
+#login .login-buttons {
+  text-align: right;
+}
+#login .login-buttons button {
+  margin: .25rem 0 0;
 }
 #login button {
   margin: 1rem 0;
@@ -1935,18 +1941,22 @@ span.deleteicon input {
   display: none; /* nothing to type for the demo, and no account to ask for */
 }
 #login .login-access {
-  margin-top: 1.5rem;
+  margin-top: 0;
 }
 #login .login-access a {
   text-decoration: underline;
 }
 #login .login-trouble {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 #login .login-trouble summary {
   cursor: pointer;
   font-size: .9rem;
   color: var(--light-text-color);
+}
+#login #forgot_pin {
+  margin: 0 0 0 1rem;
+  text-decoration: underline;
 }
 #login #forgot_pwd {
   margin: 0;
@@ -2451,11 +2461,69 @@ body:not(.song) .show_for_songs { /* and what's only for exporting one song */
   padding-left: .45rem;
 }
 .accountBtn {
-  position: absolute; 
+  position: absolute;
   top:1.5rem;
-  right:1rem; 
+  right:1rem;
   z-index:7;
   margin-right: 0;
+}
+/* The menu under your name: one item per line, a symbol column, a line before Install and Logout */
+.account-menu {
+  display: flex;
+  flex-direction: column;
+  min-width: 11rem;
+  padding: .2rem 0;
+}
+.account-menu button {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  width: 100%;
+  margin: 0 !important;
+  padding: .45rem .75rem;
+  border: none;
+  border-radius: .5rem;
+  background: none;
+  color: var(--text-color);
+  font: inherit;
+  font-weight: bold;
+  text-align: left;
+  cursor: pointer;
+}
+.account-menu button:hover {
+  background-color: var(--btn-color);
+  box-shadow: var(--btn-shadow-var), inset 0 0 0 1px var(--btn-edge);
+}
+.account-menu button:focus-visible {
+  outline: 2px solid var(--song-color);
+  outline-offset: -2px;
+}
+.account-menu .am-icon {
+  width: 1.2rem;
+  text-align: center;
+  font-weight: normal;
+  color: var(--light-text-color);
+}
+.account-menu hr {
+  width: 100%;
+  margin: .3rem 0;
+  border: 0;
+  border-top: 1px solid rgba(128, 128, 128, .35);
+}
+/* Admin only for admins, Install only when it's offered (their own rules elsewhere would lose to the flex above) */
+html:not(._admin):not(.churchAdmin) .account-menu .admin,
+html:not(.install-offer) .account-menu .install-btn {
+  display: none;
+}
+html._admin .account-menu .admin, html.churchAdmin .account-menu .admin {
+  display: flex; /* the "admins only" rule would set it back to a plain block, out of line */
+}
+.install-offer .account-menu .install-btn {
+  width: 100%;
+  margin: 0 !important;
+  font-size: inherit;
+  background: none;
+  color: var(--text-color);
 }
 
 /*For phone in portrait only*/
@@ -3825,4 +3893,16 @@ html:not(.first-download) ul.list[data-empty]:empty::before {
 }
 html:not(.first-download) div:has(.search:not(:placeholder-shown)) > ul.list[data-nomatch]:empty::before {
   content: attr(data-nomatch);
+}
+/* All Songs with no songs at all (not a search with no match, not mid-download): where to bring songs in */
+.empty-import {
+  display: none;
+  padding: 0 1rem;
+  color: var(--light-text-color);
+}
+.empty-import a {
+  text-decoration: underline;
+}
+html:not(.first-download) #songbook_content.all-songs:has(ul.list:empty):has(.search:placeholder-shown) .empty-import {
+  display: block;
 }
