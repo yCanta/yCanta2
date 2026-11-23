@@ -5,7 +5,8 @@ function startHandlingFiles(){
       handleFile(files[i]);
     }
   } catch(err) {
-    alert(err);
+    console.error('Import:', err);
+    showError(`Couldn't import that file: ${err?.message || err}`);
   }
 }
 async function handleFile(f) {

@@ -40,8 +40,8 @@ Amazing grace, how sweet the sound</pre>
       pick songs. "New Section" adds a heading, and "New Reading" a Bible passage.</p>`],
     ['Order and removing', `<p>While editing, drag songs to put them in order (with a finger, hold a moment first). Drag a song
       back into "Add songs", or use its 🗑, to take it out of the book. Cancel puts everything back as it was.</p>`],
-    ['Status', `<p>Turn on "Song Status" while editing to mark each song ✓ approved, ~ new or ✗ rejected: click just left of
-      a song's name to change it. Export can print only the ones you pick.</p>`],
+    ['Status', `<p>Turn on "Song Status" while editing to mark each song ✓ approved, ~ new or ✗ rejected: click the round
+      button in front of a song's name to change it. Export can print only the ones you pick.</p>`],
   ]},
   { id: 'present', title: 'Presenting', items: [
     ['Starting', `<p>Open a songbook and choose Present (in its menu button). The words fill the screen. Press Space for the

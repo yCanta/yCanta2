@@ -500,7 +500,7 @@ async function destroyDb(dbName){
     location.reload(); // Reload immediately after successful deletion
   }).catch(function(err) {
     console.error('Error deleting database:', err); // Log the error for debugging
-    alert(`Could not delete database: ${err.message}`); // Provide a more specific error message
+    reportDbError(err, `delete ${dbName} from this device`);
   });
 }
 
@@ -558,7 +558,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
         } catch (err) {
           if (err.duringSetup) throw err; // the PIN was right; loading the data failed, and the outer catch says so
           console.error('Local login error:', err);
-          alert('Username or PIN was incorrect');
+          showError('That username or PIN is wrong.');
           dbLogout();
           return false;
         }
@@ -580,9 +580,9 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
           const message = error.name === 'no_access' ? error.message
             : error.duringSetup ? `Signed in, but couldn't finish setting up. Check your internet connection and try again.\n\n(Details: ${error.message})`
             : error.name === 'unauthorized' || error.name === 'forbidden'
-            ? 'Username or password are incorrect'
-            : 'Please check your login information';
-          alert(message);
+            ? 'That username or password is wrong.'
+            : 'Please check your sign-in details.';
+          showError(message, { stay: !!error.duringSetup }); // the one with details stays to be read
           return false;
         }
         break;
@@ -624,11 +624,11 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     dbLogout();
     
     if(error.duringSetup) {
-      alert(`Signed in, but couldn't finish setting up. Check your internet connection and try again.\n\n(Details: ${error.message || error.name})`);
+      showError(`Signed in, but couldn't finish setting up. Check your internet connection and try again.\n\n(Details: ${error.message || error.name})`, { stay: true });
     } else if(error.name === 'unauthorized' || error.name === 'forbidden') {
-      alert('Username or password are incorrect');
+      showError('That username or password is wrong.');
     } else {
-      alert(`Couldn't sign in. Please try again.${error.message ? `\n\n(Details: ${error.message})` : ''}`);
+      showError(`Couldn't sign in. Please try again.${error.message ? `\n\n(Details: ${error.message})` : ''}`, { stay: !!error.message });
     }
     
     return false;
@@ -937,7 +937,7 @@ function setUpSyncHandler() {
     }).on('error', function (err) {
       // Sync gave up. Lost connections don't come here (retry: true waits and tries again).
       if (err.name == 'unauthorized' || err.name == 'forbidden') {
-        alert('Your login has expired. Please log in again.');
+        showError('Your sign-in has run out. Please sign in again.', { stay: true });
         dbLogout();
       } else {
         syncHandler = null; // so reconnectSync can start it again
@@ -2787,7 +2787,7 @@ async function deleteSong(song_id) {
     return;
   }
   if(sbs.length) {
-    alert(`"${window.song.title}" cannot be deleted, because it is in these songbooks (take it out of them first):\n - ${sbs.map(sb => sb.doc.title).join('\n -')}`);
+    showError(`"${window.song.title}" can't be deleted, because it's in these songbooks. Take it out of them first:\n - ${sbs.map(sb => sb.doc.title).join('\n - ')}`, { stay: true });
   }
   else if (confirm(`Move this song to the Trash?\n\n - ${window.song.title}\n\nYou can restore it from the Trash in Settings.`)) {
     try {
@@ -2799,8 +2799,7 @@ async function deleteSong(song_id) {
       console.log("Deleted:", window.song.title);
       offerUndo(doc.title, song_id, saved.rev, where);
     } catch (err) {
-      console.error("Error deleting song:", err); 
-      alert("An error occurred while deleting the song.");
+      reportDbError(err, 'delete the song');
     }
   }
 }
@@ -2839,15 +2838,14 @@ async function deleteSongbook(songbook_id) {
       console.log("Deleted:", window.songbook.title);
       offerUndo(doc.title, songbook_id, saved.rev, '#' + songbook_id);
     } catch (err) {
-      console.error("Error deleting songbook:", err);
-      alert("An error occurred while deleting the songbook.");
+      reportDbError(err, 'delete the songbook');
     }
   }
 }
 
 function saveSongbook(songbook_id, songbook_html = document.getElementById('songbook_content'), change_url = true) {
     if(document.getElementById('songbook_title').textContent.trim() === ''){
-    alert('Please add a title before you save');
+    showError('Give the songbook a title before you save.');
     return;
   }
   else{
@@ -3157,7 +3155,7 @@ function commentHtml(comment) {
 async function addComment(btn) {
   try {
     const comment = btn.previousElementSibling.value.trim();
-    if (!comment) return alert('Please add some text! :)');
+    if (!comment) return showError('Type a comment first.');
 
     const li = btn.closest('li');
     const commentId = `c_${window.songbook._id}_${li.dataset.songId}`;
@@ -3228,7 +3226,7 @@ function addSongToSongbook(song_id, songbook_id=window.songbook._id) {
 async function loadRawDbObject(rawDbId, elementDrop, onclick) {
   // Security check
   if (rawDbId !== 'categories' && rawDbId !== window.user._id) {
-    alert('Unauthorized access!');
+    showError("That isn't yours to edit.");
     return;
   }
 
@@ -3283,8 +3281,7 @@ async function loadRawDbObject(rawDbId, elementDrop, onclick) {
     convertChunksToEditable(chunks);
 
   } catch (err) {
-    console.error('Error loading raw object:', err);
-    alert('Failed to load object');
+    reportDbError(err, 'open it for editing');
   }
 }
 async function saveRawDbObject(element) {
@@ -3297,7 +3294,7 @@ async function saveRawDbObject(element) {
     // Security check
     const dbId = rootElement.dataset.id;
     if (dbId !== 'categories' && dbId !== window.user._id) {
-      alert('Unauthorized access!');
+      showError("That isn't yours to edit.");
       return;
     }
 
@@ -3330,8 +3327,7 @@ async function saveRawDbObject(element) {
     element.innerHTML = '';
 
   } catch (error) {
-    console.error("Error saving raw object:", error);
-    alert('Failed to save object');
+    reportDbError(error, 'save it');
   }
 }
 

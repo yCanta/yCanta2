@@ -134,6 +134,15 @@ function clearStickyError(kind) {
   stickyErrors.delete(kind);
   dysmyssable.dismiss(notice);
 }
+// One style for errors (UX audit #24): the app's own red note, never the browser's alert box. A short one fades
+// after 5 seconds in the corner; stay: true keeps it at the top until it's closed, for one worth reading twice
+// (it has details or a list). The message is plain text: a new line in it starts a new line.
+function showError(message, { stay = false } = {}) {
+  const html = escapeHtml(message).replace(/\n/g, '<br>');
+  if (stay) return stickyError(html);
+  notyf.error(html);
+  return null;
+}
 // A step-by-step dialog for tasks that need input: adding people, passwords, recovery email.
 // It is the browser's own <dialog> and <form>: showModal() dims the page, keeps keyboard focus inside
 // and closes on Esc, and the inputs' required/minlength/type checks show the browser's own messages.
@@ -1293,10 +1302,10 @@ function checkLogin() {
 
   if (dbName.endsWith('(local)') && (pin === '' || username === '')) {
     isValid = false;
-    alert('Username or PIN not entered');
+    showError('Type your username and PIN.');
   } else if (dbName.endsWith('(remote)') && (pwd === '' || username === '')) {
     isValid = false;
-    alert('Username or password not entered');
+    showError('Type your username and password.');
   }
 
   return isValid;
@@ -1316,23 +1325,23 @@ function checkCreateNew() {
 
   // Check for invalid database name
   if (!dbName) {
-    alert('Give your songs a name');
+    showError('Give your songs a name.');
     return false;
   }
   if (dbName.includes('(local)')) {
-    alert('The name cannot have "(local)" in it');
+    showError(`The name can't have "(local)" in it.`);
     return false;
   }
 
   // Validate required fields
   if (!username || !pin) {
-    alert('Username and PIN are required');
+    showError('Type a username and a PIN.');
     return false;
   }
 
   // Check pin confirmation
   if (pin !== pin2) {
-    alert('The PIN and the re-entered PIN do not match');
+    showError(`The two PINs don't match.`);
     return false;
   }
 
@@ -1341,7 +1350,7 @@ function checkCreateNew() {
   const fullDbName = `${dbName}(local)`;
   
   if (databases[fullDbName]) {
-    alert('Database name already exists - please choose another name');
+    showError('You already have songs by that name on this device. Pick another name.');
     return false;
   }
 
@@ -2457,11 +2466,8 @@ function dataxInBookUpdate(song, remove = false) {
  }
 
 function editHash(e) {
-  if (window.songbookEditing && window.songbook.showStatus && e.offsetX < 20) {
-    e.preventDefault();
-    cycleStatus(this);
-  }
   e.preventDefault();
+  if (e.target.closest('.status-btn')) return; // its own click changes the status (addBookRowButtons)
   if (isBookExtra(this.getAttribute('data-song-id'))) return; // nothing to open (a reading's pencil changes it)
   if(window.innerWidth <= 1150 && !document.body.classList.contains('song') && e.target.closest('#songbook_edit_togglesongs')) {
     return;  //we're not popping open edit song from the add song window.
@@ -2543,10 +2549,23 @@ function openMovedSong(row) {
   const hash = href.replace(/^.*#/, '#').replace(window.songbook._id, window.songbook._id + '?edit');
   if (/&s-/.test(hash)) location.hash = hash;
 }
-// The trash button, and the pencil for a section, on a row in the book being edited
+// The trash button, and the pencil for a section, on a row in the book being edited. A song's row also gets
+// its status as a button in front of its name (UX audit #15): shown while "Song Status" is on, a click moves it
+// on, ~ new → ✓ approved → ✗ rejected → ~ new.
 function addBookRowButtons(row) {
   if (row.getAttribute('data-song-id') === 'section') add_edit_pencil(row, () => editSection(row));
   if (row.getAttribute('data-song-id') === 'reading') add_edit_pencil(row, () => editReading(row));
+  if (!isBookExtra(row.getAttribute('data-song-id')) && !row.querySelector(':scope > .status-btn')) {
+    const statusBtn = document.createElement('button');
+    statusBtn.type = 'button';
+    statusBtn.className = 'status-btn';
+    statusBtn.addEventListener('click', e => {
+      e.stopPropagation(); // not the row's click, which opens the song
+      cycleStatus(row);
+    });
+    row.prepend(statusBtn);
+    labelStatusButton(row);
+  }
   const deleteButton = document.createElement('button');
   deleteButton.innerHTML = '&#128465;';
   deleteButton.title = 'Take out of the songbook';
@@ -2794,6 +2813,17 @@ function cycleStatus(el) {
     default:
       el.setAttribute('data-song-status', 'n');
   }
+  labelStatusButton(el);
+}
+// What a row's status button says it is now and what a click makes it (its mark is drawn by style.css)
+const STATUS_NAMES = { n: 'New', a: 'Approved', r: 'Rejected' };
+const STATUS_NEXT = { n: 'a', a: 'r', r: 'n' };
+function labelStatusButton(row) {
+  const btn = row.querySelector(':scope > .status-btn');
+  if (!btn) return;
+  const now = STATUS_NAMES[row.getAttribute('data-song-status')] ? row.getAttribute('data-song-status') : 'n';
+  btn.title = `Status: ${STATUS_NAMES[now]}. Click for ${STATUS_NAMES[STATUS_NEXT[now]]}.`;
+  btn.setAttribute('aria-label', btn.title);
 }
 function cancelSongbook(el) {
   if (window.songbookEditing) {
@@ -3489,7 +3519,7 @@ window.addEventListener('hashchange', () => setTimeout(drawChunkPreview, 0)); //
 
 async function prepSaveSong() {
   if (!document.querySelector('#song .song-card .song-title')?.textContent.trim()) {
-    alert('Please add a title before you save');
+    showError('Give the song a title before you save.');
     return;
   }
   else{
@@ -3552,6 +3582,10 @@ async function prepExport() {
   const progressText = document.getElementById('pdf_progress_text');
   progressBar.style.width = '0%';
   progressText.textContent = '0%';
+  // No PDF yet: the big Download button waits, and the Preview's is empty
+  document.getElementById('exportDownload').innerHTML = '<button type="button" class="btn export-download" disabled>&#11123; Download PDF</button>';
+  document.getElementById('downloadPDF').innerHTML = '';
+  loadExcludeChips();
 
   // Trigger chords display change
   const chordsDisplay = document.getElementById('display_chords');
@@ -3569,11 +3603,10 @@ async function prepExport() {
 
     pdfFormatter.onmessage = async function(e) {
       if (e.data[0] === 'pdf') {
-        const downloadLink = document.getElementById('downloadPDF');
-        downloadLink.innerHTML = `
-          <a class="btn" href="${escapeHtml(e.data[1])}" target="_blank" download="${escapeHtml(window.exportObject.title)}.pdf">
-            Download ⭳
-          </a>`;
+        // Two Download buttons: the big one at the top of the form, and the Preview's (handy in full width)
+        const link = (cls, label) => `<a class="btn ${cls}" href="${escapeHtml(e.data[1])}" target="_blank" download="${escapeHtml(window.exportObject.title)}.pdf">${label}</a>`;
+        document.getElementById('exportDownload').innerHTML = link('export-download', '&#11123; Download PDF');
+        document.getElementById('downloadPDF').innerHTML = link('', 'Download ⭳');
 
         // Hand the PDF to the new viewer once it has started up: from the offline copy the PDF can be ready
         // first, and a viewer given it too early showed nothing. Offline on a device that hasn't saved the
@@ -3672,6 +3705,140 @@ function applyFirstExportSetup() {
   formatSelect.selectedIndex = 0;
   formatSelect.dispatchEvent(new Event('change', { bubbles: true }));
 }
+// ---- The export form's controls (UX audit #17). The form's own fields are what a Format saves; these only
+// stand in for them, so saved Formats, Copy and Paste are the same as before.
+//   .seg[data-for]      a row of buttons for one select or number box: data-values "value=Label|…"; data-other
+//                       adds a button that shows the field itself, for any other value; data-custom names the
+//                       table of numbers a preset's "Custom" shows
+//   select.font-select  the font menus, with plain names
+//   #cat_exclude_chips  the categories, to tap in or out of the index's hidden "Leave out" list
+const EXPORT_FONTS = [
+  ['Times (serif)', [['Times-Roman', 'Times'], ['Times-Bold', 'Times Bold'], ['Times-Italic', 'Times Italic'], ['Times-BoldItalic', 'Times Bold Italic']]],
+  ['Helvetica (plain)', [['Helvetica', 'Helvetica'], ['Helvetica-Bold', 'Helvetica Bold'], ['Helvetica-Oblique', 'Helvetica Italic'], ['Helvetica-BoldOblique', 'Helvetica Bold Italic']]],
+  ['Courier (typewriter)', [['Courier', 'Courier'], ['Courier-Bold', 'Courier Bold'], ['Courier-Oblique', 'Courier Italic'], ['Courier-BoldOblique', 'Courier Bold Italic']]],
+];
+function setupExportForm() {
+  const form = document.getElementById('export_form');
+  if (!form) return;
+  // Symbol and ZapfDingbats aren't fonts for words: kept, unlisted, so an old Format that has one still loads
+  const fontOptions = EXPORT_FONTS.map(([group, fonts]) => `<optgroup label="${group}">`
+      + fonts.map(([value, label]) => `<option value="${value}">${label}</option>`).join('') + '</optgroup>').join('')
+    + '<option value="Symbol" hidden>Symbol</option><option value="ZapfDingbats" hidden>ZapfDingbats</option>';
+  form.querySelectorAll('select.font-select').forEach(select => {
+    select.innerHTML = fontOptions;
+    select.value = select.id === 'index_first_line_font' ? 'Times-Italic' : 'Times-Roman';
+  });
+
+  form.querySelectorAll('.seg[data-for]').forEach(seg => {
+    const field = document.getElementById(seg.dataset.for);
+    const choices = seg.dataset.values.split('|').map(pair => pair.split('='));
+    seg.setAttribute('role', 'group');
+    seg.setAttribute('aria-label', seg.closest('.export-row')?.querySelector('.export-name')?.textContent || '');
+    seg.innerHTML = choices.map(([value, label]) => `<button type="button" data-value="${escapeHtml(value)}">${escapeHtml(label)}</button>`).join('')
+      + (seg.dataset.other ? `<button type="button" data-other>${escapeHtml(seg.dataset.other)} ▾</button>` : '')
+      + (seg.dataset.custom ? '<button type="button" data-custom>Custom ▾</button>' : '');
+    seg.addEventListener('click', e => {
+      const button = e.target.closest('button');
+      if (!button) return;
+      if (button.hasAttribute('data-other')) {
+        seg.classList.add('other-open');
+        syncExportForm();
+        field.focus();
+        return;
+      }
+      if (button.hasAttribute('data-custom')) {
+        // shows the numbers; the menu turns to Custom by itself once one of them is changed
+        seg.classList.toggle('custom-open');
+        syncExportForm();
+        return;
+      }
+      seg.classList.remove('other-open');
+      field.value = button.dataset.value;
+      field.dispatchEvent(new Event('change', { bubbles: true })); // the form's change handler syncs
+    });
+  });
+
+  document.getElementById('cat_exclude_chips').addEventListener('click', e => {
+    const chip = e.target.closest('button[data-cat]');
+    if (!chip) return;
+    const out = excludedCategories();
+    const at = out.indexOf(chip.dataset.cat);
+    if (at < 0) out.push(chip.dataset.cat);
+    else out.splice(at, 1);
+    const input = document.getElementById('index_cat_exclude');
+    input.value = out.join(',');
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+}
+const excludedCategories = () => document.getElementById('index_cat_exclude').value.split(',').map(c => c.trim()).filter(Boolean);
+const excludeChip = cat => `<button type="button" class="export-chip" data-cat="${escapeHtml(cat)}">${escapeHtml(cat)}</button>`;
+// The church's categories as chips (headings and lines in the list left out). syncExportForm adds any in the
+// "Leave out" list that aren't categories now, so they can still be taken out.
+async function loadExcludeChips() {
+  let cats = [];
+  try {
+    cats = (await db.get('categories')).categories || [];
+  } catch (err) {
+    if (err.status !== 404) console.warn("Couldn't read the categories for the export:", err);
+  }
+  cats = [...new Set(cats.map(c => String(c).trim()).filter(c => c && !/^-{3,}/.test(c)))];
+  document.getElementById('cat_exclude_chips').innerHTML = cats.map(excludeChip).join('');
+  syncExportForm();
+}
+// Brings the stand-ins in line with the fields: after a click, a Format, Paste, or any change
+function syncExportForm() {
+  const form = document.getElementById('export_form');
+  const value = id => document.getElementById(id).value;
+  form.querySelectorAll('.seg[data-for]').forEach(seg => {
+    const field = document.getElementById(seg.dataset.for);
+    let matched = false;
+    seg.querySelectorAll('button[data-value]').forEach(button => {
+      const on = button.dataset.value === String(field.value);
+      button.setAttribute('aria-pressed', String(on));
+      if (on) matched = true;
+    });
+    if (seg.dataset.other) {
+      seg.querySelector('[data-other]').setAttribute('aria-pressed', String(!matched));
+      seg.classList.toggle('show-field', !matched || seg.classList.contains('other-open'));
+    }
+    if (seg.dataset.custom) {
+      const custom = field.value === 'custom';
+      seg.querySelector('[data-custom]').setAttribute('aria-pressed', String(custom));
+      document.getElementById(seg.dataset.custom).hidden = !custom && !seg.classList.contains('custom-open');
+    }
+  });
+
+  form.classList.toggle('paper-phone', value('paper_size') === 'PHONE');
+  const booklet = value('page_layout').includes('booklet'); // left and right margins are inside and outside
+  form.querySelectorAll('[data-booklet]').forEach(span => {
+    span.dataset.plain ??= span.textContent;
+    span.textContent = booklet ? span.dataset.booklet : span.dataset.plain;
+  });
+
+  const chips = document.getElementById('cat_exclude_chips');
+  const out = excludedCategories();
+  out.filter(cat => ![...chips.children].some(chip => chip.dataset.cat === cat)).forEach(cat => chips.insertAdjacentHTML('beforeend', excludeChip(cat)));
+  chips.querySelectorAll('[data-cat]').forEach(chip => chip.setAttribute('aria-pressed', String(out.includes(chip.dataset.cat))));
+
+  // What's set under "More options", so it can be checked without opening it
+  const font = document.getElementById('font_face');
+  const preset = id => value(id) === 'custom' ? 'Custom' : value(id)[0].toUpperCase() + value(id).slice(1);
+  const pressed = id => form.querySelector(`.seg[data-for="${id}"] [aria-pressed="true"]`)?.textContent;
+  const parts = [
+    font.options[font.selectedIndex]?.textContent || font.value,
+    `${preset('text')} sizes`,
+    `${preset('margin')} margins`,
+    pressed('page_layout'),
+  ];
+  if (!document.body.classList.contains('song')) {
+    if (value('display_cat_index') !== 'no-index') parts.push('Category index');
+    if (value('display_scrip_index') !== 'no-index') parts.push('Scripture index');
+    if (document.getElementById('export')?.classList.contains('showStatus')
+      && ['print_a', 'print_n', 'print_r'].some(id => document.getElementById(id).checked)) parts.push('Some songs by status');
+  }
+  if (value('ccli').trim()) parts.push(`CCLI ${value('ccli').trim()}`);
+  document.getElementById('export_more_summary').textContent = parts.filter(Boolean).join(' · ');
+}
 function export_form_summary_update() {
   // Helper function to get element value
   const getValue = (id) => {
@@ -3714,13 +3881,7 @@ function export_form_summary_update() {
     }
   }
 
-  // Update page icon
-  const columns = document.getElementById('columns').value;
-  const pageIcon = document.getElementById('page_icon');
-  pageIcon.innerHTML = '<span class="col"></span>'.repeat(columns);
-  pageIcon.className = `${document.getElementById('page_layout').value.replace('-', '_')} ${document.getElementById('paper_orientation').value}`;
-
-  // Update margin summary
+  // Which margin preset the numbers match
   const margins = [
     parseFloat(document.getElementById('paper_margin_top').value),
     parseFloat(document.getElementById('paper_margin_right').value),
@@ -3735,19 +3896,8 @@ function export_form_summary_update() {
   )?.[0] || 'custom';
 
   document.getElementById('margin').value = marginName;
-  const marginIcon = document.getElementById('margin_icon');
-  marginIcon.className = `${marginName} ${document.getElementById('paper_orientation').value}`;
-  document.getElementById('margin_summary').textContent = marginName;
-  document.getElementById('margin_summary_nums').textContent = `${margins[3]}"`;
-  document.getElementById('margin_gutter').textContent = `Gutter: ${margins[5]}"`;
 
-  // Update page size summary
-  document.getElementById('page_size_summary').textContent = document.getElementById('paper_size').value;
-
-  // Update font summary
-  document.getElementById('font_summary').textContent = document.getElementById('font_face').value;
-
-  // Update text summary
+  // Which text size preset the numbers match
   const textValues = window.export.text.default.map(item => ({
     name: item.name,
     value: getValue(item.name)
@@ -3759,43 +3909,8 @@ function export_form_summary_update() {
 
 
   document.getElementById('text').value = textName;
-  document.getElementById('text_summary').textContent = textName;
 
-  // Update song title summary
-  var songTitleFormat = document.getElementById('songtitle_format').value
-    .replace('${num}', '1') + 'Arise';
-  
-  if (document.getElementById('scripture_location').value === 'in-title') {
-    songTitleFormat += ' (Jude 1)';
-  }
-  document.getElementById('song_title_summary').textContent = songTitleFormat;
-
-  // Update CCLI summary
-  document.getElementById('ccli_summary').textContent = `CCLI: ${document.getElementById('ccli').value || 'none'}`;
-
-  // Update print summary
-  const printSummary = [
-    document.getElementById('print_a').checked ? '✓' : '',
-    document.getElementById('print_n').checked ? '~' : '',
-    document.getElementById('print_r').checked ? '✗' : ''
-  ].join('') || 'all';
-
-  document.getElementById('print_summary').textContent = `Print: ${printSummary}`;
-
-  // Update chords summary
-  document.getElementById('chords_summary').textContent = `Chords: ${document.getElementById('display_chords').value}`;
-
-  // Update index summaries
-  const updateIndexSummary = (id, selectId, label) => {
-    const select = document.getElementById(selectId);
-    document.getElementById(id).textContent = label + select.options[select.selectedIndex].text;
-  };
-
-  updateIndexSummary('alphabetical_summary', 'display_index', 'Index: ');
-  updateIndexSummary('category_summary', 'display_cat_index', 'Category: ');
-  updateIndexSummary('scripture_summary', 'display_scrip_index', 'Scripture: ');
-
-  // Update index settings
+  // Which index size preset the numbers match
   const indexValues = window.export.index.default.map(item => ({
     name: item.name,
     value: getValue(item.name)
@@ -3806,7 +3921,8 @@ function export_form_summary_update() {
   )?.[0] || 'custom';
 
   document.getElementById('index').value = indexName;
-  document.getElementById('index_summary').textContent = indexName;
+
+  syncExportForm(); // the button rows, the tables and the "More options" summary
 
   // Auto refresh
   if (document.getElementById('auto_refresh').checked) {

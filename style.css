@@ -552,6 +552,46 @@ legend {
 .corner-card {
   cursor: pointer;
 }
+/* Error notes (lib.js showError, reportDbError, stickyError; UX audit #24): calm, not alarming. The app's own
+   card, an orange-red edge and a small "!" in place of a red block with an ✕. The same for the short ones that
+   fade and the ones that stay. (!important: Notyf puts its color on the note itself.) */
+.notyf__toast.notyf__toast--error {
+  background: var(--btn-color) !important;
+  color: var(--text-color);
+  border-left: 5px solid orangered;
+  border-radius: 1rem; /* rounded like the app's cards and dialogs */
+  box-shadow: 0 3px 12px rgba(0, 0, 0, .2), inset 0 0 0 1px var(--btn-edge);
+}
+.notyf__toast--error .notyf__ripple {
+  background: var(--btn-color) !important;
+}
+.notyf__toast--error .notyf__icon--error {
+  background: orangered;
+  color: white;
+  width: 1.3rem;
+  height: 1.3rem;
+}
+.notyf__toast--error .notyf__icon--error::before {
+  content: none;
+}
+.notyf__toast--error .notyf__icon--error::after {
+  content: '!';
+  background: none;
+  position: static;
+  transform: none;
+  width: auto;
+  height: auto;
+  font: bold .9rem/1.3rem sans-serif;
+  text-align: center;
+  color: white !important; /* Notyf colors the icon to match its dot */
+}
+.notyf__toast--error .notyf__dismiss-btn {
+  background-color: transparent;
+}
+.notyf__toast--error .notyf__dismiss-btn::before,
+.notyf__toast--error .notyf__dismiss-btn::after {
+  background: var(--text-color);
+}
 /* What a presentation showed (#158): the list is wider, for its five columns */
 .task-dialog.report-dialog {
   width: min(38rem, calc(100vw - 2rem));
@@ -1676,6 +1716,40 @@ li.sortable-drag > a {
   position: absolute;
   right: .75em;
   top: .5rem;
+}
+/* A song's status while its book is edited (lib.js addBookRowButtons, UX audit #15): a round button in front of
+   its name, there only while Song Status is on, in place of the plain mark the book shows when not editing */
+#songbook_content li > button.status-btn {
+  display: none;
+}
+#songbook_content.showStatus li > button.status-btn {
+  display: inline-grid;
+  place-items: center;
+  position: absolute;
+  left: .4rem;
+  right: auto;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  font: bold .95rem/1 sans-serif;
+  cursor: pointer;
+  color: var(--text-color);
+  background-color: var(--btn-color);
+  box-shadow: var(--btn-shadow-var), inset 0 0 0 1px var(--btn-edge);
+}
+#songbook_content.showStatus li[data-song-status="n"] > button.status-btn::before,
+#songbook_content.showStatus li:not([data-song-status="a"]):not([data-song-status="r"]) > button.status-btn::before { content: '~'; }
+#songbook_content.showStatus li[data-song-status="a"] > button.status-btn::before { content: '✓'; color: mediumseagreen; } /* readable in dark mode too */
+#songbook_content.showStatus li[data-song-status="r"] > button.status-btn::before { content: '✗'; color: orangered; }
+#songbook_content.showStatus li:has(> .status-btn) > a::before {
+  content: none;
+}
+#songbook_content.showStatus li:has(> .status-btn) {
+  padding-left: 2.2rem; /* room for the button */
 }
 [contenteditable='true'], .contenteditable-disabled {
   border: 1px gray dashed;

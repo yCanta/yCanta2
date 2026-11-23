@@ -593,11 +593,28 @@ window.addEventListener('pagehide', endReport);
 // ---- Mirrored windows and "Download" (#53). Both are made from this page as it started
 // (presentationSource), so they work the same in the app and from a saved file, with no site needed.
 
+// A problem with something in Help & Settings, said in red in its own row, under the button or file box that
+// failed (one style for errors, UX audit #24: never the browser's alert box). It goes after 10 seconds.
+function panelProblem(row, message) {
+  if (!row) return;
+  let note = row.querySelector('.panel-problem');
+  if (!note) {
+    note = document.createElement('span');
+    note.className = 'help-note panel-problem';
+    note.setAttribute('role', 'alert');
+    row.appendChild(note);
+  }
+  note.textContent = message;
+  clearTimeout(note.timer);
+  note.timer = setTimeout(() => note.remove(), 10000);
+}
+
 // A mirrored window: this page in mirror mode, showing whatever slide is on screen here
 function openWindow() {
   const win = window.open('', '_blank', 'popup,width=640,height=360');
   if (!win) {
-    alert('Your browser blocked the mirror window. Allow pop-ups for this site (in the address bar), then try again.');
+    panelProblem(document.querySelector('#help [onclick="openWindow()"]')?.closest('.screen-row'),
+      'Your browser blocked the mirror window. Allow pop-ups for this site (in the address bar), then try again.');
     return;
   }
   const page = new DOMParser().parseFromString(window.presentationSource, 'text/html');
@@ -2422,7 +2439,7 @@ async function pickPicture(which, input) {
     pictureBlobs[which] = blob;
     pictureStore('readwrite', store => store.put(blob, which)).catch(err => console.error('Backgrounds:', err));
   } catch (err) {
-    alert("Couldn't use that picture: " + err.message);
+    panelProblem(input.closest('.picture-row'), "Couldn't use that picture: " + err.message);
   }
   input.value = '';
   if (!screenBg) setBackground('picture'); // a picture just added shows here, unless a drawing is picked
