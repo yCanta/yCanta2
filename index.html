@@ -39,30 +39,42 @@
       <div id="lower" style="overflow: hidden; height: calc(100vh - 90px);">
         <div id="login">
           <h2>Login:</h2>
-          <select id="db_select">
+          <select id="db_select" aria-label="Songs to open">
             <option value="new">Create local</option>
           </select><button tabindex="-1" class="btn btn-small" style="display: none" id="deleteDb" onclick="if(confirm('Are you sure you want to delete: '+document.getElementById('db_select').value+'?')){destroyDb(document.getElementById('db_select').value)}" title="delete this database">🗑</button>
+          <!-- One line on what each choice is -->
+          <p class="login-help d_none login_demo">New to yCanta? Look around with sample songs on this device. No account needed: just press Login.</p>
+          <p class="login-help d_none login_remote">Your church's songs. Your church admin gives you a username and password.</p>
+          <p class="login-help d_none login_local">Songs kept on this device, opened with the PIN made for them. A forgotten PIN can't be reset.</p>
+          <p class="login-help d_none create_local">Start your own songs on this device. Nothing goes to a server; a PIN keeps them private here.</p>
+          <p class="login-help d_none connect_remote">For a church that runs its own yCanta server. Its admin gives you the address.</p>
           <input id="newDbUrl" class="d_none" placeholder="DB Url" type="text"></input>
-          <input id="newDbName" class="d_none create_local" placeholder="DB Name" type="text"></input>
-          <input id="remote_url" class="d_none connect_remote" placeholder="Remote URL" type="url"></input>
+          <input id="newDbName" class="d_none create_local" placeholder="Name for your songs" type="text"></input>
+          <input id="remote_url" class="d_none connect_remote" placeholder="Server address" type="url"></input>
           <input id="username" placeholder="Username" type="text"></input>
           <input id="pwd" class="d_none connect_remote login_remote" placeholder="Password" type="password"></input>
           <div class="login-options d_none connect_remote login_remote">
-            <label for="keep_logged_in"><input name="keep_logged_in" type="checkbox" id="keep_logged_in"> Keep me logged in</label>
+            <label for="keep_logged_in" title="Also lets yCanta open your songs here with no internet"><input name="keep_logged_in" type="checkbox" id="keep_logged_in"> Keep me logged in (and use offline)</label>
             <button type="button" id="forgot_pwd" onclick="forgotPassword()">Forgot password?</button>
           </div>
           <div class="pin d_none create_local login_local">
-            <input id="pin" placeholder="Pin" type="password"></input>
-            <input id="pin2" class="d_none create_local" placeholder="Renter Pin" type="password"></input>
-            <span class="d_none">⚠️ Offline - enter pin</span><br>
+            <input id="pin" placeholder="PIN" type="password"></input>
+            <input id="pin2" class="d_none create_local" placeholder="Re-enter PIN" type="password"></input>
           </div>
-          <div style="margin-top:1.5rem"><b>ⓘ</b> To request access: <u><a style="cursor: pointer" onclick="requestAccess()">email us!</a></u></div>
+          <div class="login-access">No account? Your church admin adds you. Church not on yCanta yet? <a href="#" onclick="requestAccess(); return false;">Email us</a>.</div>
           <div style="text-align: right; margin-top: 2rem">
-            <button tabindex="-1" class="btn" style="float: left; color: red;" onclick="if(confirm('Are you sure you want to delete all data?')){clearAllData();};">🗑 Clear all local data</button>
+            <button class="btn d_none login_demo" onclick="startDemo();">Login</button>
             <button class="btn d_none login_local login_remote" onclick="if(checkLogin()){dbLogin('login');}">Login</button>
-            <button class="btn d_none create_local" onclick="checkCreateNew();">Create Local</button>
-            <button class="btn d_none connect_remote" onclick="dbLogin('connect_remote');">Connect Remote</button>
+            <button class="btn d_none create_local" onclick="checkCreateNew();">Create</button>
+            <button class="btn d_none connect_remote" onclick="dbLogin('connect_remote');">Connect</button>
           </div>
+          <!-- Rarely needed, so out of the way: wiping this device's copies -->
+          <details class="login-trouble">
+            <summary>Trouble signing in?</summary>
+            <p>Check the church or songs picked at the top. Forgot your password? Use "Forgot password?" above.</p>
+            <p>If this device's copy seems broken, clearing it can help: your church's songs download again when you sign in. Songs kept only on this device are lost.</p>
+            <button tabindex="-1" class="btn" style="color: red;" onclick="if(confirm('Delete everything yCanta keeps on this device?\n\nYour church\'s songs download again when you sign in, but songs kept only on this device (and the demo) are gone for good. This can\'t be undone.')){clearAllData();};">🗑 Clear all data on this device</button>
+          </details>
         </div>
         <div id="logged_in">
           <div id="welcome">
@@ -75,7 +87,7 @@
             <fieldset class="updatedSongs closed-mobile">
               <legend onclick="(this.parentElement.classList.contains('closed-mobile') && (window.innerWidth < 640) ? this.parentElement.classList.remove('closed-mobile') : this.parentElement.classList.toggle('closed'));">Recently Updated Songs</legend>
               <div class="content">
-                <ul class="list"></ul>
+                <ul class="list" data-empty="No songs have changed lately."></ul>
               </div>
             </fieldset>
           </div>
@@ -95,7 +107,7 @@
             <fieldset class="closed align-right" id="appSettings">
               <legend onclick="this.parentElement.classList.toggle('closed');">Settings</legend>
               <div class="content">
-                <b>Darkmode</b><br><br>
+                <b>Dark mode</b><br><br>
                 <div id="darkmode">
                   <input type="radio" name="darkmode" id="darkRadio" value="dark" onchange="handleDarkMode(); logData('darkMode', this.value);">
                   <label for="darkRadio">Dark</label>
@@ -166,7 +178,7 @@
                .filter-chips: what the filter shows
              Each song shown is a .song-card (db.js loadSong): its own header, then <song>, the song itself. -->
         <div class="float-menu">
-          <a data-songbook-edit="new" class="float-menu-item"><span class="float-menu-icon">+</span> Add SB </a>
+          <a data-songbook-edit="new" class="float-menu-item"><span class="float-menu-icon">+</span> Add songbook </a>
         </div>
         <div class="row">
           <div class="subcolumn">
@@ -179,7 +191,7 @@
                   <input aria-label="Search" class="search deletable" type="text" data-target="#songbooks_container" data-trigger="change" placeholder="Search">
                 </div>
               </div>
-              <ul class="list"></ul>
+              <ul class="list" data-empty="No songbooks yet. Use + Add songbook to make one." data-nomatch="No songbooks match your search."></ul>
             </div>
             <ul style="display:none">
               <li id="songbook-item-template" 
@@ -208,7 +220,7 @@
                 </div>
               </div>
               <div class="filter-chips" data-list="book" hidden></div>
-              <ul class="list"></ul>
+              <ul class="list" data-empty="No songs here yet." data-nomatch="No songs match your search."></ul>
             </div>
             <ul style="display:none">
               <li id="song-item-template" 
@@ -222,11 +234,11 @@
             </ul>
           </div>
           <div class="subcolumn sidebar" id="songListEdit">
-            <button type="button" class="sidebar-tab" onclick="this.parentElement.classList.add('sidebar-open')" aria-label="Open Add a song?"><span class="tab-chevron" aria-hidden="true">‹</span><span class="tab-label">Add songs</span></button>
+            <button type="button" class="sidebar-tab" onclick="this.parentElement.classList.add('sidebar-open')" aria-label="Open Add songs"><span class="tab-chevron" aria-hidden="true">‹</span><span class="tab-label">Add songs</span></button>
             <div id="songbook_edit_togglesongs">
               <div class="column_header">
                 <div class="title">
-                  <h3>Add a song?</h3>
+                  <h3>Add songs</h3>
                   <span class="buttonsRight"><button type="button" onclick="this.closest('.sidebar-open').classList.remove('sidebar-open');" class="close-icon-mobile" aria-label="Close">&times;</button></span>
                 </div>
                 <div class="search-row">
@@ -235,8 +247,7 @@
                 </div>
                 <div class="filter-chips" data-list="adder" hidden></div>
               </div>
-              <ul class="list">
-              </ul>
+              <ul class="list" data-empty="No songs yet." data-nomatch="No songs match your search."></ul>
               <ul style="display:none">
                 <li id="song-item-template-edit" 
                   data-song-id=""
@@ -272,8 +283,7 @@
                   <input aria-label="Search" class="search deletable" type="text" data-target="#categories" data-trigger="change" placeholder="Search">
                 </div>
               </div>
-              <ul class="list">
-              </ul>
+              <ul class="list" data-empty="No categories yet." data-nomatch="No categories match your search."></ul>
               <ul style="display:none">
                 <li id="category-template">
                   <label>
@@ -688,7 +698,7 @@
                         </td>
                       </tr>
                       <tr>
-                        <td rel="tooltip" title="Spacing before catedories in the category index" colspan=2 class="art"><small>Space Before</small></td>
+                        <td rel="tooltip" title="Spacing before categories in the category index" colspan=2 class="art"><small>Space Before</small></td>
                         <td><input type="number" inputmode="decimal" id="index_cat_b4" name="index_cat_b4" value="12"></td>
                         <td></td>
                       </tr>
@@ -755,7 +765,7 @@
                     <h3>Preview</h3>
                     <span class="buttonsRight">
                       <span id="downloadPDF"></span>
-                      <span class="fsButton" onclick="toggleFullscreen(this)"></span>
+                      <span class="fsButton" role="button" tabindex="0" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }" aria-label="Full width" title="Full width" onclick="toggleFullscreen(this)"></span>
                       <button type="button" onclick="this.closest('.sidebar-open').classList.remove('sidebar-open');" class="close-icon-mobile" aria-label="Close">&times;</button>
                     </span>
                   </div>
@@ -776,7 +786,7 @@
       <b class="title" style="overflow-wrap: break-word;"></b>
       <div class="content"></div>
       <div class="center_contents">
-        <button class="close btn" onclick="document.getElementById('dialog').style.display = 'none';">X</button>
+        <button class="close btn" aria-label="Close" title="Close" onclick="document.getElementById('dialog').style.display = 'none';">×</button>
       </div>
     </dialog>
     <!-- The video player (#140): one player with three looks, set by data-look. 'dialog' floats and drags
@@ -1229,7 +1239,7 @@ async function _handleLoginRoute(piece) { // bodyClassList removed
   }
 
   let loggedIn = JSON.parse(localStorage.getItem('loggedin'));
-  let defaultLogin = localStorage.getItem('defaultdbName');
+  let defaultLogin = localStorage.getItem('defaultdbName') || 'demo(local)'; // a first visit starts on the demo, where it's offered
 
   // A remote login saved without "Keep me logged in" has no password, so it would only fail with an alert
   const canAutoLogin = loggedIn?.dbName && (loggedIn.dbName.endsWith('(local)') || loggedIn.pwd);
@@ -1271,8 +1281,8 @@ async function _handleLoginRoute(piece) { // bodyClassList removed
     for (item of list) {
       db_opts += `<option value="${item[0]}" data-url="${item[1]}"${(defaultLogin == item[0] ? ' selected' : '')}>${item[2]}</option>`
     }
-    db_opts += '<option value="create_local">Create Local</option>';
-    db_opts += '<option value="connect_remote">Connect Remote</option>';
+    db_opts += '<option value="create_local">New songs on this device</option>';
+    db_opts += '<option value="connect_remote">Connect to a server (advanced)</option>';
   } else {
     for (item of list) {
       if (item[1].includes(hostName)) {

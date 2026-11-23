@@ -1833,7 +1833,8 @@ span.deleteicon input {
 #login.create_local .create_local, /*Create Local*/
 #login.login_local .login_local, /*Login Local*/
 #login.connect_remote .connect_remote, /*Connect Remote*/
-#login.login_remote .login_remote { /*Login Remote*/
+#login.login_remote .login_remote, /*Login Remote*/
+#login.login_demo .login_demo { /*The demo*/
   display: initial;
 }
 /* "☐ Keep me logged in" on the left, "Forgot password?" on the right, under the password */
@@ -1856,6 +1857,39 @@ span.deleteicon input {
 .login-options input[type="checkbox"] {
   width: auto;
   margin: 0;
+}
+/* A line on each choice; who to ask for an account; trouble, out of the way. The demo needs nothing typed. */
+#login .login-help, #login .login-access, #login .login-trouble p {
+  font-size: .9rem;
+  color: var(--light-text-color);
+}
+#login.login_demo .login-help.login_demo,
+#login.create_local .login-help.create_local,
+#login.login_local .login-help.login_local,
+#login.connect_remote .login-help.connect_remote,
+#login.login_remote .login-help.login_remote {
+  display: block;
+}
+#login .login-help {
+  margin-top: -.5rem;
+}
+#login.login_demo #username,
+#login.login_demo .login-access {
+  display: none; /* nothing to type for the demo, and no account to ask for */
+}
+#login .login-access {
+  margin-top: 1.5rem;
+}
+#login .login-access a {
+  text-decoration: underline;
+}
+#login .login-trouble {
+  margin-bottom: 1.5rem;
+}
+#login .login-trouble summary {
+  cursor: pointer;
+  font-size: .9rem;
+  color: var(--light-text-color);
 }
 #login #forgot_pwd {
   margin: 0;
@@ -3513,3 +3547,16 @@ only screen and (max-height: 31.25rem) {
   }
 }
 
+
+/* An empty list says so: its data-empty note, or its data-nomatch note while a search is typed. Not during a
+   first download, while the songs are still arriving. */
+html:not(.first-download) ul.list[data-empty]:empty::before {
+  content: attr(data-empty);
+  display: block;
+  padding: 1rem;
+  color: var(--light-text-color);
+  font-style: italic;
+}
+html:not(.first-download) div:has(.search:not(:placeholder-shown)) > ul.list[data-nomatch]:empty::before {
+  content: attr(data-nomatch);
+}

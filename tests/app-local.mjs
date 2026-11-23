@@ -310,10 +310,10 @@ async function phonePanel(name, sel, swipeY = 420) {
   await sleep(400);
 }
 
-// "+ Add SB" above the songbooks list
+// "+ Add songbook" above the songbooks list
 const openNewSongbook = async () => {
   await ev(`location.hash = '#songbooks'`);
-  await until(`document.querySelector('[data-songbook-edit="new"]')?.getAttribute('href') === '#sb-new-songbook?edit'`, 'the Add SB link');
+  await until(`document.querySelector('[data-songbook-edit="new"]')?.getAttribute('href') === '#sb-new-songbook?edit'`, 'the Add songbook link');
   await click('[data-songbook-edit="new"]');
   await until(`!!document.querySelector('#songbook_content .edit_buttons')`, 'the new songbook editor', 5000)
     .catch(async err => { throw new Error(`${err.message}, at ${await hash()}`); });
@@ -451,17 +451,17 @@ try {
     // 4. Make a songbook with that song in it
     await openNewSongbook();
     await type('#songbook_title', `${RUN} Book`);
-    await until(`!!document.querySelector('#songbook_edit_togglesongs li[data-song-id="${songId}"]')`, 'the song in "Add a song?"');
+    await until(`!!document.querySelector('#songbook_edit_togglesongs li[data-song-id="${songId}"]')`, 'the song in "Add songs"');
     await click(`#songbook_edit_togglesongs li[data-song-id="${songId}"]`);
-    // with a mouse: drag the three-part song in from "Add a song?" below it, then up above it
-    await until(`!!document.querySelector('#songbook_edit_togglesongs li[data-song-id="${partsId}"]')`, 'the three-part song in "Add a song?"');
+    // with a mouse: drag the three-part song in from "Add songs" below it, then up above it
+    await until(`!!document.querySelector('#songbook_edit_togglesongs li[data-song-id="${partsId}"]')`, 'the three-part song in "Add songs"');
     const adderRow = `#songbook_edit_togglesongs li[data-song-id="${partsId}"]`;
     const firstRow = await spot(`#songbook_content ul.list > li[data-song-id="${songId}"]`);
     await mouseDrag(await spot(adderRow), { x: firstRow.x, y: firstRow.bottom - 4 });
     const added = await bookOrder();
-    ok(added.length === 2 && added.includes(partsId) && added.includes(songId), 'mouse: a song dragged from "Add a song?" is added to the book', JSON.stringify(added));
+    ok(added.length === 2 && added.includes(partsId) && added.includes(songId), 'mouse: a song dragged from "Add songs" is added to the book', JSON.stringify(added));
     ok(await ev(`!!document.querySelector('${adderRow}') && document.querySelector('${adderRow}').getAttribute('data-xInBook') === '1'`),
-      'mouse: "Add a song?" keeps the song, marked as in the book once');
+      'mouse: "Add songs" keeps the song, marked as in the book once');
     // drag the bottom song to the top
     const bottomId = added[1];
     const top = await spot(`#songbook_content ul.list > li:first-child`);
@@ -481,14 +481,14 @@ try {
     await ev(`location.hash = '#${bookId}?edit'`);
     await until(`!!document.querySelector('#songbook_content .edit_buttons')`, 'the songbook editor');
     await type('#songbook_title', `${RUN} Book Should Not Save`, true);
-    // with a mouse: drag a song from the book back to "Add a song?" to take it out (then Cancel keeps it)
+    // with a mouse: drag a song from the book back to "Add songs" to take it out (then Cancel keeps it)
     const outId = (await bookOrder())[0];
     const adderList = await spot('#songbook_edit_togglesongs ul.list > li:nth-child(3)');
     await mouseDrag(await spot(`#songbook_content ul.list > li:first-child`), adderList);
     const left = await bookOrder();
-    ok(left.length === 1 && !left.includes(outId), 'mouse: a song dragged back to "Add a song?" comes out of the book', JSON.stringify(left));
+    ok(left.length === 1 && !left.includes(outId), 'mouse: a song dragged back to "Add songs" comes out of the book', JSON.stringify(left));
     ok(await ev(`!document.querySelector('#songbook_edit_togglesongs li[data-song-id="${outId}"]').hasAttribute('data-xInBook')`),
-      'mouse: "Add a song?" no longer marks it as in the book');
+      'mouse: "Add songs" no longer marks it as in the book');
     await click('#songbook_content .edit_buttons button:nth-child(2)');
     await until(`location.hash === '#${bookId}'`, 'leaving the songbook editor');
     await sleep(2000);
@@ -604,13 +604,13 @@ try {
       ok(floating && floating.opacity === '1' && !/rgba\(.*, 0\)|transparent/.test(floating.background),
         'finger: the dragged song is solid, nothing shows through it', JSON.stringify(floating));
       ok((await bookOrder())[0] === movingId, 'finger: press, hold and drag moves a song in the book, even right after a scroll over it', JSON.stringify(await bookOrder()));
-      // open "Add a song?" with its tab and drag a song from it into the book
+      // open "Add songs" with its tab and drag a song from it into the book
       await ev(`document.getElementById('songListEdit').classList.add('sidebar-open')`);
       await sleep(500);
       const rowsBefore = (await bookOrder()).length;
       const target = await ev(`(() => { const r = document.querySelector('#songbook_content ul.list > li:first-child').getBoundingClientRect(); return { x: Math.max(r.left + 30, 20), y: r.bottom - 4 }; })()`);
       await touchHoldDrag(await spot(`#songbook_edit_togglesongs li[data-song-id="${songId}"]`), target);
-      ok((await bookOrder()).length === rowsBefore + 1, 'finger: a song dragged from "Add a song?" is added to the book', JSON.stringify(await bookOrder()));
+      ok((await bookOrder()).length === rowsBefore + 1, 'finger: a song dragged from "Add songs" is added to the book', JSON.stringify(await bookOrder()));
       await ev(`document.getElementById('songListEdit').classList.remove('sidebar-open')`);
       await sleep(400);
       // pulling down from the top still leaves the editor, as it always has, asking first about unsaved changes:

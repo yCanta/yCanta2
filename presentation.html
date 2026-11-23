@@ -888,6 +888,28 @@
       #menuButton:active {
         transform: scale3d(0.9, 0.9, 1);
       }
+      /* After one Esc: a second one within a few seconds leaves the presentation */
+      #leaveHint {
+        position: fixed;
+        left: 50%;
+        bottom: 2rem;
+        z-index: 4;
+        padding: .5rem 1.1rem;
+        border-radius: 2rem;
+        box-shadow: var(--btn-shadow-var), inset 0 0 0 1px var(--btn-edge);
+        background-color: var(--btn-color);
+        color: var(--text-color);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica Neue", sans-serif;
+        font-size: 1rem;
+        font-weight: bold;
+        transform: translateX(-50%);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity .3s;
+      }
+      #leaveHint.show {
+        opacity: 1;
+      }
       body.gridview .grid-song:first-child .grid-song-head {
         margin-right: 7rem; /* the first song's name stays clear of the Menu button */
       }

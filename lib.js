@@ -831,6 +831,9 @@ function scaleRemove(el, time=250) {
   setTimeout(function(){ el.remove(); }, time);
 }
 
+// A chord line in the editor: every word on it looks like a chord (C, Am7, F#m, Gsus4, D/F#, |), or it's a
+// long line that is mostly spaces. A short line of words ("Amen", "Oh", "Lord") stays words.
+const CHORD_WORD = /^\(?[A-G](#|b)?(m|maj|min|dim|aug|sus|add|M)?\d*((sus|add|maj|b|#)\d+)*(\/[A-G](#|b)?)?\)?$|^(\||-|\/|N\.?C\.?|x\d+)$/;
 function isChord(line) {
   var fraction = 0.45;
   var count = line.count(' ');
@@ -838,10 +841,10 @@ function isChord(line) {
   if((line.length == 0) || !(line.match(/[a-z]/i))) {
     return false;
   }
-  else if (line.length <= 4) {  //short chord lines
+  else if (line.trim().split(/\s+/).every(word => CHORD_WORD.test(word))) { // C  G  Am
     return true;
   }
-  else if (count/line.length > fraction) { //determines if it's a chord
+  else if (line.length > 4 && count/line.length > fraction) { // spread out over the words below
     return true;
   }
   else { // you're not a chord
@@ -1081,7 +1084,7 @@ function markSongFilter() {
 // The keyboard in the searchable lists (#66): ↓ from the search box goes to the first result, ↑ and ↓ move
 // through the results (Home and End to the ends), and ↑ from the first result or Esc goes back to the
 // search box. Enter does what a click does: a link does that by itself; a category's checkbox is ticked.
-// A songbook's section headings are skipped (nothing to open), but "New Section" in "Add a song?" is not.
+// A songbook's section headings are skipped (nothing to open), but "New Section" in "Add songs" is not.
 const KEYBOARD_LISTS = '#songbooks_container, #songbook_content, #songbook_edit_togglesongs, #categories';
 document.addEventListener('keydown', e => {
   if (!['ArrowDown', 'ArrowUp', 'Home', 'End', 'Escape', 'Enter'].includes(e.key) || e.altKey || e.ctrlKey || e.metaKey) return;
@@ -1131,7 +1134,7 @@ function bindSearchToList(list, id) {
       countElement.dataset.numberVisible = songCount(list);
     }
   };
-  // "New Section" and "New Reading" in "Add a song?" aren't songs
+  // "New Section" and "New Reading" in "Add songs" aren't songs
   const songCount = list => list.visibleItems.filter(item => !isBookExtra(item.values()['song-id'])).length;
 
   const handleSearchComplete = () => {
@@ -1156,7 +1159,7 @@ function bindSearchToList(list, id) {
     }
   }
 
-  // Bind search complete event (and filter, for the Category menu in "Add a song?")
+  // Bind search complete event (and filter, for the Category menu in "Add songs")
   list.on('searchComplete', handleSearchComplete);
   list.on('filterComplete', handleSearchComplete);
 }
@@ -1208,10 +1211,10 @@ function checkLogin() {
 
   if (dbName.endsWith('(local)') && (pin === '' || username === '')) {
     isValid = false;
-    alert('Username or pin not entered');
+    alert('Username or PIN not entered');
   } else if (dbName.endsWith('(remote)') && (pwd === '' || username === '')) {
     isValid = false;
-    alert('Username or pwd not entered');
+    alert('Username or password not entered');
   }
 
   return isValid;
@@ -1230,20 +1233,24 @@ function checkCreateNew() {
   const username = usernameInput.value.trim();
 
   // Check for invalid database name
+  if (!dbName) {
+    alert('Give your songs a name');
+    return false;
+  }
   if (dbName.includes('(local)')) {
-    alert('DB name cannot have "(local)" in the name');
+    alert('The name cannot have "(local)" in it');
     return false;
   }
 
   // Validate required fields
   if (!username || !pin) {
-    alert('Username and pin are required');
+    alert('Username and PIN are required');
     return false;
   }
 
   // Check pin confirmation
   if (pin !== pin2) {
-    alert('Pin and confirmation pin do not match');
+    alert('The PIN and the re-entered PIN do not match');
     return false;
   }
 
@@ -1677,7 +1684,7 @@ function mapSongRowToValue(row) {
     search = row.title;
     title = row.title;
   }
-  else if(row.id=="reading"){ // a Bible reading (#157): its reference, or "New Reading" in "Add a song?"
+  else if(row.id=="reading"){ // a Bible reading (#157): its reference, or "New Reading" in "Add songs"
     id = row.id;
     title = row.ref ?? row.title ?? '';
     search = row.search ?? title;
@@ -1742,8 +1749,8 @@ function setSongbookInfo(songbook) {
   if (!isSpecial) {
     titleEl.closest('.title').insertAdjacentHTML('beforeend', 
       `<span class="buttonsRight" id="sb_buttonsRight">
-        <span class="star" onclick="event.stopPropagation(); toggleFavorite('${songbook._id}','fav_sbs')"></span>
-        <info onclick="event.stopPropagation(); loadInfo(false);"></info>
+        <span class="star" role="button" tabindex="0" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }" aria-label="Favorite songbook" title="Favorite" onclick="event.stopPropagation(); toggleFavorite('${songbook._id}','fav_sbs')"></span>
+        <info role="button" tabindex="0" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }" aria-label="Songbook info" title="Info" onclick="event.stopPropagation(); loadInfo(false);"></info>
       </span>`);
   }
 
@@ -1761,7 +1768,7 @@ function setSongbookInfo(songbook) {
       <button data-songbook-present class="float-menu-item" id="present"><span class="float-menu-icon">&#128253;</span>Present</button>
       <a data-songbook-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span>Export</a>
       ${editable ? '<a data-songbook-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span>Edit</a>' : ''}
-      <span class="float-menu-item float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>`;
+      <span class="float-menu-item float-menu-toggle"><button type="button" class="float-menu-icon" aria-label="Actions" title="Actions: present, export, edit">+</button></span>`;
   }
 
   // Handle info dialog
@@ -1838,7 +1845,7 @@ function buildSongbookList(songs, target_class='songbook_content',
 }
 
 // ---- The song filter (#84): a Filter button beside a song list's search box, its panel, and chips
-// for what's on. Two lists have one: 'book' (the open songbook's songs) and 'adder' ("Add a song?" in the
+// for what's on. Two lists have one: 'book' (the open songbook's songs) and 'adder' ("Add songs" in the
 // songbook editor). Each keeps its own choices for the visit. Filters work together with the search box.
 const SONG_FILTER_HAS = [
   ['chords', 'Chords', facts => facts.chords],
@@ -1854,7 +1861,7 @@ const songFilterList = name => name === 'adder' ? window.songbook_edit_toggleson
 const songFilterCount = f => f.cat.size + f.key.size + f.has.size + f.yt.size;
 const songFilterOn = name => { const f = songFilterState(name); return songFilterCount(f) > 0 || f.sort !== 'title'; };
 const videoLabel = n => n ? String(n) : 'None';
-// Sorting only where there's no order of its own to keep: All Songs, Favorite Songs and "Add a song?"
+// Sorting only where there's no order of its own to keep: All Songs, Favorite Songs and "Add songs"
 const songFilterSorts = name => name === 'adder' || ['sb-allSongs', 'sb-favoriteSongs'].includes(window.songbook?._id);
 
 // What the filter needs to know about a song, from its doc (null for a deleted one)
@@ -2315,13 +2322,15 @@ function addBookRowButtons(row) {
   if (row.getAttribute('data-song-id') === 'reading') add_edit_pencil(row, () => editReading(row));
   const deleteButton = document.createElement('button');
   deleteButton.innerHTML = '&#128465;';
+  deleteButton.title = 'Take out of the songbook';
+  deleteButton.setAttribute('aria-label', 'Take out of the songbook');
   deleteButton.addEventListener('click', () => {
     dataxInBookUpdate(row, true);
     scaleRemove(row);
   });
   row.appendChild(deleteButton);
 }
-// A new row for the book, copied from a row in "Add a song?" (a click or a drag adds one)
+// A new row for the book, copied from a row in "Add songs" (a click or a drag adds one)
 function newBookRow(adderRow) {
   const row = adderRow.cloneNode(true);
   row.removeAttribute('data-xInBook');
@@ -2346,7 +2355,7 @@ async function showReading(ref) {
       <div class="column_header">
         <div class="title">
           <h3 class="song-title"><a class="title_link">📖 ${escapeHtml(ref)}</a></h3>
-          <span class="buttonsRight"><span class="fsButton" onclick="toggleFullscreen(this)"></span></span>
+          <span class="buttonsRight"><span class="fsButton" role="button" tabindex="0" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }" aria-label="Full width" title="Full width" onclick="toggleFullscreen(this)"></span></span>
         </div>
       </div>
       <song><div class="reading-text">Loading…</div></song>
@@ -2449,8 +2458,8 @@ async function editReading(row, isNew = false) {
     },
   });
 }
-// The songbook editor: the book's songs reorder; a song dragged in from "Add a song?" is added (that list
-// keeps its own, in order); a song dragged from the book back to "Add a song?" comes out of the book.
+// The songbook editor: the book's songs reorder; a song dragged in from "Add songs" is added (that list
+// keeps its own, in order); a song dragged from the book back to "Add songs" comes out of the book.
 // Made once per list; they only drag while the book is being edited.
 function makeSongbookSortable() {
   const book = document.querySelector('#songbook_content ul.list');
@@ -2471,11 +2480,11 @@ function makeSongbookSortable() {
         landed(evt.item);
         openMovedSong(evt.item);
       },
-      onAdd(evt) { // dragged in from "Add a song?": a new row where it was dropped, and the original goes back
+      onAdd(evt) { // dragged in from "Add songs": a new row where it was dropped, and the original goes back
         const original = evt.item;
         const spot = document.createTextNode('');
         original.before(spot);
-        if (evt.clone) evt.clone.replaceWith(original); // SortableJS's stand-in, in "Add a song?"
+        if (evt.clone) evt.clone.replaceWith(original); // SortableJS's stand-in, in "Add songs"
         original.classList.remove('sortable-chosen', 'sortable-ghost', 'sortable-drag');
         if (droppedToOpen(evt)) return spot.remove(); // it was only passing over the book
         const row = newBookRow(original); // after the original is back, so its "in the book" count goes up
@@ -2532,6 +2541,8 @@ function add_edit_pencil(song, edit) {
   const editBtn = document.createElement('button');
   editBtn.className = 'edit_pencil';
   editBtn.textContent = '✏️';
+  editBtn.title = 'Edit';
+  editBtn.setAttribute('aria-label', 'Edit');
   editBtn.addEventListener('click', () => edit());
 
   // Insert button after the link
@@ -2698,10 +2709,10 @@ async function editSongbook() {
   addStatusAndCommentsToggle();
   await loadSongsIntoAdder();
   bindSongbookListEvents();
-  makeSongbookSortable(); // drag to reorder, to add from "Add a song?" and to take out
+  makeSongbookSortable(); // drag to reorder, to add from "Add songs" and to take out
 }
 
-// One song in the songbook editor's "Add a song?" list: clicking it adds a copy to the end of the book
+// One song in the songbook editor's "Add songs" list: clicking it adds a copy to the end of the book
 function bindAdderSong(song) {
   bind_songbook_edit(song);
   song.addEventListener('click', () => {
@@ -2713,7 +2724,7 @@ function bindAdderSong(song) {
 }
 
 // A song that shows up while the songbook editor is open (restored or added, maybe on another device):
-// put it in "Add a song?" in the list's order (title, unless the filter sorts it), after New Section
+// put it in "Add songs" in the list's order (title, unless the filter sorts it), after New Section
 function addToSongAdder(values) {
   const adder = window.songbook_edit_togglesongs_list;
   const [item] = adder.add(values);
@@ -2841,8 +2852,8 @@ async function editSong() {
               onclick="window.songEditing=false; delete window.song; window.location.hash=this.getAttribute('href');">
         Cancel
       </a>
-      <button data-song class="btn" 
-              onclick="window.songEditing=false; location.reload()">
+      <button data-song class="btn" title="Throw away your changes and start this song's edit over"
+              onclick="if (confirm('Throw away your changes to this song and start over?')) { window.songEditing=false; location.reload(); }">
         Reset
       </button>
     </div>`;
@@ -3060,6 +3071,8 @@ function editedChunkLines(chunk) {
       content += `<line>${line}</line>`;
     }
   });
+  // a chord line at the very end has no words under it: keep it as a line of its own, never drop it
+  if (prevIsChord && lines[lines.length - 1].trim()) content += `<line>${lines[lines.length - 1]}</line>`;
   return content;
 }
 
@@ -3568,7 +3581,7 @@ function neighborRow(listSel, idKey, currentId, before) {
   return ids[before ? at - 1 : at + 1] || null;
 }
 
-// Touch gestures on a phone. The side panels (Song Categories, "Add a song?", the export Preview) open and
+// Touch gestures on a phone. The side panels (Song Categories, "Add songs", the export Preview) open and
 // close with a sideways swipe or a tap on their tab ('right'); the columns pull down to close, slide out the
 // column behind, or swipe to the next song ('top').
 // A touch is either a scroll or a swipe, decided by its first few pixels of movement. Once it goes up or
@@ -4811,8 +4824,10 @@ function getBasicAuthHeader(username, password) {
 }
 function requestAccess() {
   let selectEl = document.getElementById('db_select');
-  let db_name = selectEl.options[ selectEl.selectedIndex ].text;
-  let emailLink = `mailto:${'info.ycanta'}@${'gmail.com'}?subject=Requesting yCanta access${(db_name ? ' to '+ db_name : '')}&body=My name is: %0D%0A%0D%0AI'd like access to: ${db_name}`;
+  const picked = selectEl.options[selectEl.selectedIndex] || {};
+  // only a church on a server is worth naming (not "New songs on this device", the demo, or a server address)
+  let db_name = /\(remote\)$/.test(picked.value || '') ? picked.text : '';
+  let emailLink = `mailto:${'info.ycanta'}@${'gmail.com'}?subject=${encodeURIComponent('Requesting yCanta access' + (db_name ? ' to ' + db_name : ''))}&body=${encodeURIComponent("My name is: \n\nMy church is: " + (db_name || '') + '\n')}`;
   window.open(emailLink,'_blank');
 }
 

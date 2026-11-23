@@ -73,7 +73,7 @@ presentation_key_map = {
                   "Show a grid of the song's parts, or one part at a time (#51)" ],
   //'p'         : [ togglePresentation, "Enter/exit fullscreen presentation mode"   ],
   'F11'       : [ function(){}, "Enter/exit fullscreen presentation mode"   ],
-  'Escape'    : [ escapeAction      , "Exit search, help, or presentation mode"   ],
+  'Escape'    : [ escapeAction      , "Close search or help; twice to leave the presentation"   ],
       
   't'         : [ function() {if(! isSearching()) blackScreen(); },
                   "Toggle screen background to/from black" ],
@@ -595,7 +595,10 @@ window.addEventListener('pagehide', endReport);
 // A mirrored window: this page in mirror mode, showing whatever slide is on screen here
 function openWindow() {
   const win = window.open('', '_blank', 'popup,width=640,height=360');
-  if (!win) return;
+  if (!win) {
+    alert('Your browser blocked the mirror window. Allow pop-ups for this site (in the address bar), then try again.');
+    return;
+  }
   const page = new DOMParser().parseFromString(window.presentationSource, 'text/html');
   page.getElementById('data').setAttribute('data', 'mirror');
   win.document.write('<!DOCTYPE html>\n' + page.documentElement.outerHTML);
@@ -1205,6 +1208,7 @@ function toggleHelp() {
     content += '<div class="help-head"><h3>' + (mirror ? 'This window' : 'Help & Settings') + '</h3>'
       + (main ? '<button type="button" class="btn" onclick="savePresentation()" title="Download this presentation as one file, to open offline or email">Download</button>'
         + '<button type="button" class="btn" onclick="toggleReport()">Presentation Stats</button>' : '') // (#53, #158)
+      + (canLeave() ? '<button type="button" class="btn" onclick="leavePresentation()" title="Back to the songbook (Esc twice)">Leave</button>' : '')
       + '<button type="button" class="help-close" onclick="hideHelp()" aria-label="Close" title="Close (Esc)">×</button></div>';
 
     // This screen first: what it shows sets everything else on it
@@ -1258,7 +1262,7 @@ function toggleHelp() {
     if (main) {
       content += '<section><h4>Screens & Sharing</h4>'
         + '<div class="screen-row"><button type="button" class="btn" onclick="openWindow()">Open a mirror</button>'
-        + '<span class="help-note">A second window on this computer, for a projector or the band. Set its look here, so the room never sees a panel.</span></div>'
+        + '<span class="help-note">A second window on this computer, for a projector or the band: drag it to that screen and press F11 for full screen. Set its look here, so the room never sees a panel.</span></div>'
         + '<div id="mirrorList"></div>'
         + (canShare() ? '<div id="share"></div>' : '')
         + '</section>';
@@ -1290,7 +1294,7 @@ function toggleHelp() {
       [['t'], 'Black background'], [['f'], 'White text'],
       ...(follower ? [] : [[['j'], 'While sharing: the QR code on the screens'], [['l'], 'Presentation Stats']]),
       [['h', '?'], 'This panel'],
-      [['Esc'], 'Close search, this panel, or the stats'],
+      [['Esc'], 'Close search, this panel, or the stats' + (canLeave() ? '; press it twice to leave' : '')],
     ];
     content += '<details id="helpKeys"' + (keysOpen() ? ' open' : '') + '><summary>Keys</summary><div class="keys">'
       + keys.map(([caps, what]) => '<div><span class="caps">' + caps.map(cap => '<kbd>' + escapeText(cap) + '</kbd>').join('')
@@ -2139,15 +2143,41 @@ function togglePresentation() {
   }
 }
 
+// Esc closes what's open. With nothing open it leaves the presentation, but only on a second Esc within a few
+// seconds, so one stray key never takes the words off the screen in a service.
+let leaveArmedAt = 0;
 function escapeAction() {
+  const help = document.getElementById('help'), suggest = document.getElementById('suggestBox');
+  const open = (help && help.style.display !== 'none') || !!document.getElementById('report') || isSearching()
+    || (suggest && !suggest.hidden);
   hideHelp();
   hideReport();
   if(isSearching()){
     endSearch();
   }
-  else {
-    //exitPresentation();
+  if (open || !canLeave()) return;
+  if (Date.now() - leaveArmedAt < 2500) { leavePresentation(); return; }
+  leaveArmedAt = Date.now();
+  showLeaveHint();
+}
+// Leaving: back to the songbook in the app. Only a presentation opened in the app's page can (not a mirror, a
+// phone following, or a saved file).
+function canLeave() {
+  try { return window.parent !== window && /\?present/.test(window.parent.location.hash); } catch (err) { return false; }
+}
+function leavePresentation() {
+  if (!canLeave()) return;
+  window.parent.location.hash = window.parent.location.hash.replace(/\?present.*$/, '');
+}
+function showLeaveHint() {
+  let hint = document.getElementById('leaveHint');
+  if (!hint) {
+    document.body.insertAdjacentHTML('beforeend', '<div id="leaveHint" role="status">Press Esc again to leave</div>');
+    hint = document.getElementById('leaveHint');
   }
+  hint.classList.add('show');
+  clearTimeout(showLeaveHint.timer);
+  showLeaveHint.timer = setTimeout(() => hint.classList.remove('show'), 2500);
 }
 
 const MOVE_KEYS = new Set([' ', 'ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'PageDown', 'PageUp', '>', '.', '<', ',', 'Home', 'End', 'c', 'b', 'e',

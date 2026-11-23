@@ -45,40 +45,17 @@ window.addEventListener('load', function() {
       loginElement.classList.add('create_local');
     } else if (selectedValue === 'connect_remote') {
       loginElement.classList.add('connect_remote');
+    } else if (selectedValue === 'demo(local)') {
+      loginElement.classList.add('login_demo'); // no name or PIN to type: its Login button starts it
     } else if (selectedValue.endsWith('(local)')) {
       loginElement.classList.add('login_local');
     } else if (selectedValue.endsWith('(remote)')) {
       loginElement.classList.add('login_remote');
     }
 
-    // Demo login handling
-    if (e.target.value === 'demo(local)' && !e.fromLoginRoute) {
-      const databases = JSON.parse(localStorage.getItem('databases'));
-      const username = 'Johannes Gutenberg';
-      const pin = '42';
-      
-      notyf.info('<b>Login Info</b><br>Username: Johannes Gutenberg<br> Pin: 42', 'green');
-
-      if (databases && databases[e.target.value]) {
-        dbLogin('login_local', 'demo(local)', username, pin);
-      } else {
-        dbLogin('create_local', 'demo(local)', username, pin);
-
-        // Import the Public Domain songs only when the demo DB is first created
-        try {
-          const response = await fetch('https://ycanta.canaanf.org/Public Domain.json');
-          const blob = await response.blob();
-          const file = new File([blob], 'Public Domain.json', { type: 'TEXT/JSON' });
-
-          setTimeout(() => {
-            handleFile(file);
-            notyf.info('Imported Public Domain songs', 'green');
-          }, 500);
-        } catch (error) {
-          console.error('Error fetching file:', error);
-        }
-      }
-    }
+    // Picking the demo from the list starts it. The demo is also what's picked to start with on a first visit,
+    // so a change made by the page itself (not the person) never starts it: that waits for its Login button.
+    if (selectedValue === 'demo(local)' && e.isTrusted && !e.fromLoginRoute) startDemo();
   });
 
   // Trigger initial change event
@@ -86,6 +63,38 @@ window.addEventListener('load', function() {
     dbSelect.dispatchEvent(new Event('change'));
   }, 50);
 });
+// The demo: Public Domain songs on this device, signed in as Johannes Gutenberg with nothing to type
+async function startDemo() {
+  const databases = JSON.parse(localStorage.getItem('databases'));
+  const username = 'Johannes Gutenberg';
+  const pin = '42';
+
+  notyf.info('<b>Login Info</b><br>Username: Johannes Gutenberg<br> Pin: 42', 'green');
+
+  const made = !!(databases && databases['demo(local)']);
+  await dbLogin(made ? 'login_local' : 'create_local', 'demo(local)', username, pin);
+  // The Public Domain songs: when the demo is first made, and again if that load never got them (no songs yet)
+  let empty = !made;
+  if (made) {
+    try { empty = !(await db.allDocs({ startkey: 's-', endkey: 's-￿', limit: 1 })).rows.length; } catch (err) { empty = false; }
+  }
+  if (empty) {
+    try {
+      const response = await fetch('https://ycanta.canaanf.org/Public Domain.json');
+      if (!response.ok) throw new Error('the server answered ' + response.status);
+      const blob = await response.blob();
+      const file = new File([blob], 'Public Domain.json', { type: 'TEXT/JSON' });
+
+      setTimeout(() => {
+        handleFile(file);
+        notyf.info('Imported Public Domain songs', 'green');
+      }, 500);
+    } catch (error) {
+      console.error('Error fetching file:', error);
+      notyf.error("Couldn't load the demo songs. Check the internet connection, then log out and sign in to the demo again.");
+    }
+  }
+}
 async function loginRemoteDb(remote_url, username, pwd) {
   remoteDb = new PouchDB(remote_url, {skip_setup: true});
   const ajaxOpts = {
@@ -617,7 +626,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     if(error.duringSetup) {
       alert(`Couldn't finish logging in: ${error.message || error.name}`);
     } else if(error.name === 'unauthorized' || error.name === 'forbidden') {
-      alert('Username or Password are incorrect');
+      alert('Username or password are incorrect');
     } else {
       alert(error.message || 'There was an error during login');
     }
@@ -779,6 +788,8 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
         console.log('doing a onetime sync...');
         const status = downloadStatus({ first: firstDownload, tip: firstDownload && !keepLoggedIn });
         let downloaded = true;
+        // the lists are empty while a first download runs: their "nothing here yet" notes wait (style.css)
+        document.documentElement.classList.toggle('first-download', firstDownload);
         try {
           await db.sync(remoteDb, SYNC_OPTIONS).on('denied', reportDenied).on('change', status.update);
         } catch (error) {
@@ -786,6 +797,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
           downloaded = false;
           reportDbError(error, 'download the latest songs');
         }
+        document.documentElement.classList.remove('first-download');
         status.finish(downloaded);
         console.log('sync complete');
         await setUpSyncHandler();
@@ -1368,7 +1380,7 @@ function filterChurchPeople(text) {
 // church admin before it creates an account or resets a password.
 async function postToHelper(body) {
   if (!window.accountsURL) {
-    throw new Error("This isn't turned on yet. Ask Carl or Evan.");
+    throw new Error("Making accounts this way isn't set up on this site yet. A server admin can add the person.");
   }
   // a plain-text body keeps this a "simple" request, which Apps Script web apps accept from any page
   let reply;
@@ -1979,7 +1991,7 @@ function loadSong(song_id, song_rev = false) {
           ${editable ? '<button data-songbook onclick="deleteSong(window.song._id)" class="float-menu-item deleteSong"><span class="float-menu-icon">&#128465;</span>Delete</button>' : ''}
           <a data-song-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span>Export</a>
           ${editable ? '<a data-song-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span>Edit</a>' : ''}
-          <span class="float-menu-item float-menu-toggle"><button type="button" class="float-menu-icon">+</button></span>
+          <span class="float-menu-item float-menu-toggle"><button type="button" class="float-menu-icon" aria-label="Actions" title="Actions: export, edit, delete">+</button></span>
         `;
         document.querySelector('#song .float-menu').innerHTML = floatMenu;
       }
@@ -1998,9 +2010,9 @@ function loadSong(song_id, song_rev = false) {
               <h3 class="song-title"><a data-song class="title_link">${shown.title}</a></h3>
               <span class="buttonsRight">
                 ${song_rev ? `${canEdit(window.song) ? `<button onclick="restoreSongRev('${escapeHtml(song._rev)}')" class="btn btn-tiny" title="Make this the current version">↶ Restore</button>` : ''}<button type="button" onclick="this.closest('.song-card').remove()" class="close-icon" aria-label="Close">&times;</button>` : `
-                  <span class="star" onclick="event.stopPropagation(); toggleFavorite(this.closest('.song-card').dataset.id,'fav_songs')"></span>
-                  <info onclick="event.stopPropagation(); loadInfo();"></info>
-                  <span class="fsButton" onclick="toggleFullscreen(this)"></span>
+                  <span class="star" role="button" tabindex="0" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }" aria-label="Favorite song" title="Favorite" onclick="event.stopPropagation(); toggleFavorite(this.closest('.song-card').dataset.id,'fav_songs')"></span>
+                  <info role="button" tabindex="0" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }" aria-label="Song info" title="Info" onclick="event.stopPropagation(); loadInfo();"></info>
+                  <span class="fsButton" role="button" tabindex="0" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }" aria-label="Full width" title="Full width" onclick="toggleFullscreen(this)"></span>
                 `}
               </span>
             </div>
@@ -2730,9 +2742,9 @@ async function deleteSong(song_id) {
     return;
   }
   if(sbs.length) {
-    alert(`"${window.song.title}" cannot be deleted it is in the following songbooks:\n - ${sbs.map(sb => sb.doc.title).join('\n -')}`);
+    alert(`"${window.song.title}" cannot be deleted, because it is in these songbooks (take it out of them first):\n - ${sbs.map(sb => sb.doc.title).join('\n -')}`);
   }
-  else if (confirm(`Are you sure you want to delete song:\n\n - ${window.song.title}?`)) {
+  else if (confirm(`Move this song to the Trash?\n\n - ${window.song.title}\n\nYou can restore it from the Trash in Settings.`)) {
     try {
       const doc = await db.get(song_id);
       window.deletingId = song_id; // our own delete: the change feed should not warn about it
@@ -2747,7 +2759,7 @@ async function deleteSong(song_id) {
 }
 
 async function deleteSongbook(songbook_id) {
-  if (confirm(`Are you sure you want to delete songbook:\n\n - ${window.songbook.title}?`)) {
+  if (confirm(`Move this songbook to the Trash?\n\n - ${window.songbook.title}\n\nYou can restore it from the Trash in Settings. The songs in it stay in All Songs.`)) {
     try {
       const doc = await db.get(songbook_id);
       window.deletingId = songbook_id;
