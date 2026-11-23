@@ -359,16 +359,18 @@ try {
   await f.until(`(() => { const c = ${F}.document.getElementById('sugCard'); return c && !c.hidden; })()`, 'the leader to see it', 5000).catch(() => {});
   const sugId = await f.ev(`${F}.eval('suggestionsHere')[0] && ${F}.eval('suggestionsHere')[0].id`);
   ok(!!sugId, 'a signed-in leader following sees it too', sugId);
-  await f.ev(`${F}.answerSuggestion(${JSON.stringify(sugId)}, 'yes').then(() => 'ok')`);
-  await d.until(`${P}.eval('suggestionsHere')[0] && ${P}.eval('suggestionsHere')[0].status === 'yes'`, 'the yes', 5000).catch(() => {});
-  const card2 = await d.ev(`${P}.document.getElementById('sugCard').textContent`);
-  await d.shot('7-presenter-suggestion-yes');
-  ok(/Yes from alice/.test(card2) && /Add next/.test(card2), 'the leader says yes: the presenter sees who, and Add next', card2);
   const countBefore = await d.ev(`${P}.window.songbook.songs.length`);
   const indexBefore = await d.ev(`${P}.window.songbook.song_index`);
-  await d.ev(`${P}.addSuggested(${JSON.stringify(sugId)}).then(() => 'ok')`);
-  const added = await d.ev(`({ count: ${P}.window.songbook.songs.length, next: ${P}.window.songbook.songs[${indexBefore} + 1].id })`);
-  ok(added.count === countBefore + 1 && added.next === 's-vera-1', 'Add next puts the song right after the one on screen', added);
+  const screenBefore = await d.ev(`${P}.current_song.doc._id + ':' + ${P}.current_song.chunk_index`);
+  await f.ev(`${F}.answerSuggestion(${JSON.stringify(sugId)}, 'yes').then(() => 'ok')`);
+  // a leader's yes is added by the presenter's page on its own, with no tap there
+  await d.until(`${P}.window.songbook.songs.length === ${countBefore + 1}`, 'the yes to be added', 8000).catch(() => {});
+  await d.shot('7-presenter-suggestion-added');
+  const added = await d.ev(`({ count: ${P}.window.songbook.songs.length, next: ${P}.window.songbook.songs[${indexBefore} + 1].id,
+    screen: ${P}.current_song.doc._id + ':' + ${P}.current_song.chunk_index })`);
+  ok(added.count === countBefore + 1 && added.next === 's-vera-1', "a leader's yes adds the song right after the one on screen", added);
+  ok(added.screen === screenBefore, 'saying yes does not move the screen', { before: screenBefore, after: added.screen });
+  ok((await d.ev(`${P}.presentationReport().used.includes('suggestion added')`)), 'analytics notes that a suggestion was added');
   await f.until(`${F}.window.songbook.songs.length === ${countBefore + 1}`, 'the follower to get the longer list', 5000).catch(() => {});
   ok((await f.ev(`${F}.window.songbook.songs.length`)) === countBefore + 1, 'followers get the added song');
   await d.until(`${P}.eval('suggestionsHere').length === 0`, 'the suggestion to go away', 5000).catch(() => {});

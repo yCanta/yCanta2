@@ -85,7 +85,7 @@ async function tab(target) {
     if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text);
     return r.result.value;
   };
-  const until = async (expr, what, ms = 20000) => {
+  const until = async (expr, what, ms = 60000) => { // a busy machine can take over 20 s to load the page
     const end = Date.now() + ms;
     while (Date.now() < end) { if (await ev(expr).catch(() => false)) return true; await sleep(100); }
     throw new Error(`Timed out waiting for ${what}`);

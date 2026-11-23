@@ -8,9 +8,6 @@
       :root {
         --font-color: black;
         --bg-color: white;
-        --bg-image: url("");
-        --fixed-image: url("");
-        --fg-image: url("");
         --pick-color: var(--song-color); /* the part on screen in Whole song and Grid */
         /* The app's theme (style.css), light; syncTheme() puts in the app's own as it changes */
         --background-color: white;
@@ -667,6 +664,65 @@
         grid-column: 2;
         margin: 0;
       }
+      #help .picture-pick {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: .3rem .6rem;
+      }
+      #help .picture-state {
+        font-size: .8rem;
+        font-weight: bold;
+        color: var(--text-color);
+      }
+      #help .picture-remove {
+        margin: 0;
+        padding: .15rem .6rem;
+        font-size: .8rem;
+      }
+      #help .picture-row .segmented {
+        margin: 0;
+        justify-self: start;
+        flex-wrap: wrap; /* a long list of choices (the backgrounds) goes onto a second line on a narrow panel */
+        border-radius: 1rem;
+      }
+      #help .picture-row .segmented label {
+        padding: .35rem .75rem;
+      }
+      /* a screen's Background: the name above its choices, so they fit on one line */
+      #help .picture-row.bg-row {
+        grid-template-columns: 1fr;
+      }
+      #help .picture-row.bg-row .help-note {
+        grid-column: 1;
+      }
+      #help details.more {
+        border-bottom: none;
+        padding: .2rem 0 0;
+      }
+      #help details.more summary {
+        font-size: .9rem;
+        color: var(--light-text-color);
+      }
+      /* Each open mirror, set from here */
+      #help .mirror-row {
+        margin: 0 0 .9rem;
+        padding: .6rem .75rem .1rem;
+        border-radius: .75rem;
+        background-color: rgba(128, 128, 128, .08);
+      }
+      #help .mirror-name {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: .5rem;
+        font-weight: bold;
+      }
+      #help .mirror-name .btn {
+        margin: 0;
+        padding: .15rem .7rem;
+        font-size: .8rem;
+      }
       /* Keys: each key drawn as a keycap; two columns when there's room */
       #help .keys {
         display: grid;
@@ -999,6 +1055,16 @@
       chunk {
         padding-top: 1px;  /* else in chord mode chords display over the author */
       }
+      /* a part with no label has nothing above its first chords to hold room for them, so with chords on it
+         keeps the room itself (else its chords display over the author or the part before) */
+      body:not(.nochords) chunk[type="no label"], body:not(.nochords) chunk[type="indented no label"],
+      body:not(.nochords) chunk[type="comment"] {
+        padding-top: 1em;
+      }
+      body:not(.nochords) chunk[type="no label"]:before, body:not(.nochords) chunk[type="indented no label"]:before,
+      body:not(.nochords) chunk[type="comment"]:before {
+        margin-bottom: 0;
+      }
       /* Bible verses (#157): a verse wraps like a paragraph (poetry keeps its lines), with its number small.
          No room for chords above it, chords on or off. */
       chunk[type="bible"] line {
@@ -1019,42 +1085,208 @@
         transition: none;
       }
       /*===============================*/
-      /* Background image css
+      /* Backgrounds (#51): a back picture that drifts and slowly zooms through the songbook, a still picture,
+         a dark layer that fades and a warm glow that rises as the song goes on, the slides, then a front
+         picture over the words. Only transforms and opacity change while it moves, so it stays smooth. */
       /*===============================*/
-      #slides::before, #slides, #slides::after {
-        content: "";
-        display: block;
-        background-position: bottom;
-        background-size: cover;
-        background-repeat: no-repeat;
-        position: fixed;
-        top:0;
-        right:0;
-        left:0;
-        bottom: 0;
-        overflow: hidden;
-      }
-      #slides::before {
-        background-image: var(--bg-image);
-        background-repeat: no-repeat;
-        width: 110vw;
-        height: 110vh;
-        transform: translate3d(calc(.2% - var(--percent)*.04%),0,0);
-        z-index: -2;
-        transition: 2s;
-      }
       #slides {
-        background-image: var(--fixed-image);
-        width: 100vw;
-        height: 100vh;
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
         z-index: 1;
       }
-      #slides::after {
-        background-image: var(--fg-image);
-        width: 100vw;
-        height: 100vh;
-        transform: translate3d(calc(-5% + var(--percent)*.1%),0,0);
-        transition: 2s;
+      #backdrop, #bdFront {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        overflow: hidden;
+        pointer-events: none;
+        display: none;
+      }
+      body.has-backdrop #backdrop, body.has-front #bdFront {
+        display: block;
+      }
+      #backdrop {
+        z-index: 0;
+      }
+      #bdFront {
+        z-index: 1; /* over the words (it comes after #slides), under the status bar */
+      }
+      #backdrop > div, #bdFrontPic {
+        position: absolute;
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+      }
+      #bdBack {
+        top: -8%;
+        right: -8%;
+        bottom: -8%;
+        left: -8%;
+        will-change: transform;
+      }
+      #bdStill {
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+      }
+      #bdFrontPic {
+        top: -10%;
+        right: -10%;
+        bottom: -10%;
+        left: -10%;
+        will-change: transform;
+      }
+      /* A built-in line drawing (#133): a soft color field, and lines that draw themselves in as the song goes
+         on, with a glow and echo lines that dance a little. Its words are always light. */
+      #bdArt {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: none;
+      }
+      body.has-art #bdArt {
+        display: block;
+      }
+      body.has-art {
+        --font-color: white;
+        --veil-rgb: 0, 0, 0;
+      }
+      /* Keeping the words easy to read over any background: a soft shadow on the letters, and a soft dark (or
+         light, for dark words) patch that follows the box the words take up */
+      :root {
+        --veil-rgb: 255, 255, 255; /* dark words: a light veil */
+      }
+      body.white {
+        --veil-rgb: 0, 0, 0;
+      }
+      body.has-backdrop #slides .content, body.has-front #slides .content {
+        text-shadow: 0 0 .3em rgba(var(--veil-rgb), .85), 0 .04em .12em rgba(var(--veil-rgb), .9);
+      }
+      /* Calm words: with a background picture or drawing, the words stop at a set size and sit in the middle,
+         so the picture shows around them (scaleText sets the size and the top margin). Bible verses stay left. */
+      body.calm-words:not(.wholesong):not(.gridview) #slides .content {
+        text-align: center;
+      }
+      body.calm-words:not(.wholesong):not(.gridview) #slides line {
+        margin-right: 2em; /* matches the room on the left for chords, so lines center */
+      }
+      body.calm-words.nochords:not(.wholesong):not(.gridview) #slides line {
+        margin-right: 0;
+      }
+      body.calm-words:not(.wholesong):not(.gridview) #slides chunk[type="bible"] {
+        text-align: left;
+      }
+      /* the small text, out of the way of the words, in a plain sans-serif that stays sharp on a projector:
+         the part's name in the bottom left corner (no colon), the song's author in the bottom right on its
+         first part with the key (musicians read the main screen too), and the copyright at the bottom in the
+         middle on its last. The title is a little smaller than the words. */
+      body.calm-words:not(.wholesong):not(.gridview) #slides stitle {
+        font-size: .8em;
+        padding-bottom: .5em; /* padding, not margin: a margin would merge with the room kept for chords */
+      }
+      body.calm-words:not(.wholesong):not(.gridview) #slides .song-info,
+      body.calm-words:not(.wholesong):not(.gridview) #slides chunk:before,
+      body.calm-words:not(.wholesong):not(.gridview) #slides chunk[type=verse] span[data-verse]:before,
+      body.calm-words:not(.wholesong):not(.gridview) #slides copyright {
+        position: absolute;
+        bottom: 1.2rem;
+        margin: 0;
+        padding: 0;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica Neue", sans-serif;
+        font-size: max(14px, 2.2vmin);
+        font-weight: normal;
+        font-style: normal;
+        opacity: .75;
+      }
+      body.calm-words:not(.wholesong):not(.gridview) #slides chunk:before,
+      body.calm-words:not(.wholesong):not(.gridview) #slides chunk[type=verse] span[data-verse]:before {
+        left: 1rem;
+      }
+      body.calm-words:not(.wholesong):not(.gridview) #slides .song-info {
+        right: 1rem;
+        max-width: 45%;
+        text-align: right;
+      }
+      body.calm-words:not(.wholesong):not(.gridview) #slides .song-info author,
+      body.calm-words:not(.wholesong):not(.gridview) #slides .song-info scripture_ref,
+      body.calm-words:not(.wholesong):not(.gridview) #slides .song-info key {
+        float: none;
+        display: inline;
+        padding: 0;
+        margin-left: .8em;
+        white-space: normal;
+        font-size: inherit;
+        font-style: inherit;
+      }
+      body.calm-words:not(.wholesong):not(.gridview) #slides .song-info :empty {
+        display: none;
+      }
+      body.calm-words:not(.wholesong):not(.gridview) #slides chunk[type=verse] span[data-verse] {
+        font-size: 0;
+      }
+      body.calm-words:not(.wholesong):not(.gridview) #slides chunk[type=verse] span[data-verse]:before {
+        content: 'Verse ' attr(data-verse);
+      }
+      body.calm-words:not(.wholesong):not(.gridview) #slides chunk[type=pre-chorus]:before { content: 'Pre-Chorus'; }
+      body.calm-words:not(.wholesong):not(.gridview) #slides chunk[type=chorus]:before { content: 'Chorus'; }
+      body.calm-words:not(.wholesong):not(.gridview) #slides chunk[type="final chorus"]:before { content: 'Final Chorus'; }
+      body.calm-words:not(.wholesong):not(.gridview) #slides chunk[type=bridge]:before { content: 'Bridge'; }
+      body.calm-words:not(.wholesong):not(.gridview) #slides chunk[type=ending]:before { content: 'Ending'; }
+      body.calm-words:not(.wholesong):not(.gridview) #slides copyright {
+        left: 25%;
+        right: 25%;
+        text-align: center;
+        font-size: max(12px, 1.8vmin);
+      }
+      /* a song with one part has its author and copyright on the same screen: the copyright goes above */
+      body.calm-words:not(.wholesong):not(.gridview) #slides .song-info ~ copyright {
+        bottom: 3.4rem;
+      }
+      /* chords sit above each line and reach up into what comes before it; the part's label kept that room
+         open, so with the label moved to a corner, the part keeps the room itself */
+      body.calm-words:not(.nochords):not(.wholesong):not(.gridview) #slides chunk {
+        padding-top: 1em;
+      }
+      /* chords a soft gold and lighter than the words, so a musician's eye can tell the chord rows from the
+         words at a glance (a darker gold for dark words, a light gold for white words) */
+      :root {
+        --chord-color: #8a5a00;
+      }
+      body.white, body.has-art {
+        --chord-color: #fde68a;
+      }
+      /* T and F with a background: T alone (dark words on a black screen) and F alone (white words on a white
+         screen) are how the screen is blanked, so the background picture or drawing and the words go too */
+      body.black:not(.white) #backdrop, body.white:not(.black) #backdrop,
+      body.black:not(.white) #bdFront, body.white:not(.black) #bdFront {
+        display: none;
+      }
+      body.has-backdrop.black:not(.white) #slides, body.has-backdrop.white:not(.black) #slides,
+      body.has-front.black:not(.white) #slides, body.has-front.white:not(.black) #slides {
+        visibility: hidden;
+      }
+      body.calm-words:not(.wholesong):not(.gridview) #slides c {
+        color: var(--chord-color);
+        font-weight: normal;
+        opacity: .9;
+      }
+      #bdVeil {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 0;
+        height: 0;
+        opacity: 0;
+        background: radial-gradient(closest-side, rgba(var(--veil-rgb), .55), rgba(var(--veil-rgb), .35) 60%, rgba(var(--veil-rgb), 0));
+        will-change: transform, opacity;
       }
     </style>
     <title></title>
@@ -1062,6 +1294,7 @@
   <body class="nochords presentation">
   
   <!-- Dynamically loaded into these divs for transitions, etc.-->
+  <div id="backdrop" aria-hidden="true"><div id="bdBack"></div><div id="bdStill"></div><svg id="bdArt"></svg><div id="bdVeil"></div></div>
   <div id="slides">
     <div id="pre_slide" class="slide">
       <div class="content"></div>
@@ -1076,6 +1309,7 @@
     </div>
   </div>
 
+  <div id="bdFront" aria-hidden="true"><div id="bdFrontPic"></div></div>
   <div id="statusbar">
     <div id="searchbox" style="display: none;">
       <div id="searchresults"></div>

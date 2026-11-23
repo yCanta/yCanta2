@@ -156,7 +156,7 @@ document.addEventListener('DOMContentLoaded', function() {
     watchTheme(); // the panels take the app's theme colors (#51)
     if (document.getElementById('data').getAttribute('data') === 'mirror') return startMirror();
     if (isFollower()) setupFollower(); // following a shared presentation in live.html (#51)
-    else setupMenuButton();
+    else { setupMenuButton(); loadPictures(); }
     document.getElementById('slides').addEventListener('click', pickPart);
 
     document.querySelectorAll('stitle').forEach(el => el.addEventListener('click', toggleSongVisible));
@@ -434,7 +434,21 @@ function showSongRefs() {
 // gets the list: it offers to show it and logs it.
 const REPORT_SECONDS = 45;
 const REPORT_SHARE = 0.3;
-const presented = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), start: null, items: new Map(), onScreen: null, sent: false };
+const presented = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), start: null, items: new Map(), onScreen: null, sent: false,
+  used: new Set() }; // which features were used, for analytics: 'whole song', 'grid', 'mirror', 'shared'...
+function noteUse(what) { presented.used.add(what); }
+// What was used, as a short list for analytics: the features used along the way, plus the pictures in use
+// and their motion as the presentation ends
+function usedList() {
+  const list = [...presented.used];
+  // the backgrounds on this screen and the open mirrors
+  const shown = new Set([screenBg || '', ...openMirrors().map(win => { try { return mirrorBackground(win); } catch (err) { return ''; } })]);
+  const pictures = { back: 'background', still: 'still picture', front: 'front picture' };
+  if (shown.has('picture')) Object.keys(pictures).forEach(which => { if (pictureBlobs[which]) list.push(pictures[which]); });
+  shown.forEach(choice => { if (ART[choice]) list.push('drawing ' + choice); });
+  if ([...shown].some(choice => choice)) list.push('motion ' + ['off', 'gentle', 'lively'][motionLevel]);
+  return list;
+}
 
 function plainText(html) {
   // a template's contents are inert: no picture loads and no code runs while the text is read (a div would
@@ -487,7 +501,7 @@ function presentationReport() {
     return { id: item.id, kind: item.kind, title: item.title, ccli: item.ccli, seconds, shown, total: item.total,
       auto, counted: item.pick ?? auto };
   });
-  return { id: presented.id, book: window.songbook ? plainText(window.songbook.title) : '', start: presented.start, end: now, items };
+  return { id: presented.id, book: window.songbook ? plainText(window.songbook.title) : '', start: presented.start, end: now, items, used: usedList() };
 }
 
 function clockTime(seconds) {
@@ -587,7 +601,8 @@ function openWindow() {
   win.document.write('<!DOCTYPE html>\n' + page.documentElement.outerHTML);
   win.document.close();
   secondary_windows.push(win);
-  setTimeout(() => updateMirror(win), 300);
+  noteUse('mirror');
+  setTimeout(() => { updateMirror(win); renderMirrors(); }, 300);
 }
 // The slide on screen here, in a mirrored window
 function updateMirror(win) {
@@ -603,8 +618,10 @@ function updateMirror(win) {
     const card = winDoc.getElementById('joinCard');
     if (card) card.remove();
     if (sharing && joinShown) winDoc.body.insertAdjacentHTML('beforeend', joinCardHtml());
-    const total = current_song.doc.content.length;
-    winDoc.querySelector('#slides').style.setProperty('--percent', (((current_song.chunk_index + 1) / total) * 100));
+    // where the presentation is, for the mirror's background light and zoom; and its pictures, the first time
+    win.mirrorProgress = songPlace();
+    if (!win.picturesShown) { win.picturesShown = true; win.mirrorMotion = motionLevel; pictureMirror(win); }
+    if (win.startBackdrop) win.startBackdrop();
   } catch(err) {}
 }
 // This page as a mirror (#51): it shows the slide the window that opened it sends. Its own keys change only
@@ -628,6 +645,7 @@ function startMirror() {
     if (e.key in mirror_key_map) mirror_key_map[e.key]();
   });
   window.addEventListener('resize', scaleText); // moved to the projector or made full screen: fit the slide again
+  window.addEventListener('pagehide', () => { try { window.opener.setTimeout(window.opener.renderMirrors, 200); } catch (err) { /* the main window is gone */ } });
 }
 
 // ---- Sharing with other devices (#51). The app's live.js talks to the server; this page says what to send
@@ -690,6 +708,7 @@ function liveSet() {
     bible: window.songbook.bible || null,
     suggest: suggestionsOn,
     join: joinShown,
+    art: sharedArt(), // the built-in drawing on the main screen, if any (#133)
     songs: window.songbook.songs.map(song => song.passage ? { id: song.id, passage: song.passage, reading: true } : {
       id: song.id,
       doc: { title: song.doc.title, authors: song.doc.authors, scripture_ref: song.doc.scripture_ref, key: song.doc.key,
@@ -698,7 +717,7 @@ function liveSet() {
   };
 }
 function setSignature() {
-  return window.songbook.title + '|' + suggestionsOn + '|' + joinShown + '|' + window.songbook.songs.map(song => song.id + ':' + (song.value ? song.value.rev : '')).join(',');
+  return window.songbook.title + '|' + suggestionsOn + '|' + joinShown + '|' + sharedArt() + '|' + window.songbook.songs.map(song => song.id + ':' + (song.value ? song.value.rev : '')).join(',');
 }
 async function startShare() {
   const host = liveHost();
@@ -709,6 +728,7 @@ async function startShare() {
     host.Live.setServer(host.remoteDb.name);
     const code = await host.Live.start(liveSet());
     sharing = true;
+    noteUse('shared');
     liveNow = null;
     linked = true;
     wasDriving = true;
@@ -874,6 +894,8 @@ function liveSongs(songs) {
 function followSet(set) {
   liveSuggest = !!set.suggest;
   liveJoin = !!set.join;
+  leaderArt = typeof set.art === 'string' ? set.art : ''; // the drawing on the main screen of the person sharing (#133)
+  applyArt(followBg === 'same' ? leaderArt : followBg); // or this phone's own choice
   renderJoin();
   window.songbook.title = liveText(set.title);
   window.document.title = 'yCanta2: ' + plainText(set.title);
@@ -1035,16 +1057,24 @@ function renderJoin() {
 }
 
 // ---- Suggested songs (#51). Anyone following sends one (when the person sharing turned them on); the person
-// sharing and signed-in leaders see a small card and answer it once: yes or not now. On the sharer's page, a yes
-// can be added right after the song on screen, found by name in the church's songs.
+// sharing and signed-in leaders see a small card and answer it once: yes or not now. A yes from any of them is
+// added right after the song on screen by the sharer's page, found by name in the church's songs. Saying yes
+// never moves the screen.
 function setSuggestions(on) {
   suggestionsOn = on;
+  if (on) noteUse('suggestions on');
   publishLive(); // followers get the change with the set
   renderSuggestions();
 }
+const sugAdding = new Set(); // yeses this page has started adding, so each is added once
 function followSuggestions(list) {
   suggestionsHere = Array.isArray(list) ? list : [];
   renderSuggestions();
+  // The sharer's page adds each yes as up next, whoever said it
+  if (sharing) suggestionsHere.filter(sug => sug.status === 'yes' && !sugAdding.has(sug.id)).forEach(sug => {
+    sugAdding.add(sug.id);
+    addSuggested(sug.id);
+  });
 }
 // Who sees the card: the person sharing, and leaders signed in on their own device
 function seesSuggestions() {
@@ -1065,8 +1095,9 @@ function renderSuggestions() {
     if (sug.status === 'new') {
       html += button('Yes', "answerSuggestion(this.dataset.id, 'yes')", sug.id) + button('Not now', "answerSuggestion(this.dataset.id, 'no')", sug.id);
     } else {
-      html += 'Yes from ' + escapeText(sug.by);
-      if (sharing) html += '<br>' + button('Add next', 'addSuggested(this.dataset.id)', sug.id) + button('Done', 'liveApi().dismiss(this.dataset.id)', sug.id);
+      // A yes is added on its own; the card stays only if it couldn't be (not in the songs, or an error)
+      html += 'Yes from ' + escapeText(sug.by) + (sharing && !sugNotes[sug.id] ? ', adding it next' : '');
+      if (sharing && sugNotes[sug.id]) html += '<br>' + button('Try again', 'addSuggested(this.dataset.id)', sug.id) + button('Done', 'liveApi().dismiss(this.dataset.id)', sug.id);
     }
     if (sugNotes[sug.id]) html += '<br>' + escapeText(sugNotes[sug.id]);
     return html + '</div>';
@@ -1087,6 +1118,7 @@ async function addSuggested(id) {
   const sug = suggestionsHere.find(item => item.id === id);
   const host = liveHost();
   if (!sug || !host || !host.db) return;
+  delete sugNotes[id]; // trying again
   try {
     const plain = title => title.toLowerCase().replace(/\s+/g, ' ').trim();
     const want = plain(sug.text);
@@ -1099,6 +1131,7 @@ async function addSuggested(id) {
     const onTitle = !!document.getElementById('pres_title');
     window.songbook.songs.splice(onTitle ? 0 : window.songbook.song_index + 1, 0, item);
     if (onTitle) window.songbook.song_index = window.songbook.songs.length - 1; // the first Next still goes to the first song
+    noteUse('suggestion added');
     publishLive(); // followers get the new list
     if (inPresentation() && !onTitle) { liveMoving = true; try { showChunk('added'); } finally { liveMoving = false; } } // the arrow and the next song
     await liveApi().dismiss(id);
@@ -1189,24 +1222,47 @@ function toggleHelp() {
       + switchHtml('chngChords', 'Chords', !on('nochords'), 'toggleChords(true)', 'C (capital)')
       + switchHtml('chngMarker', 'Next-part arrow', !on('nomarker'), 'toggleMarker()', 'A small arrow on the part Space goes to')
       + '</div>';
+    // This screen's background: a drawing, the pictures, or nothing. Each mirror picks its own (Screens &
+    // Sharing), and a phone following can show the leader's drawing or its own.
+    if (main || follower) {
+      const current = follower ? followBg : (screenBg || '');
+      const bgOption = (value, label) => '<label><input type="radio" name="screenBg" value="' + value + '"' + (current === value ? ' checked' : '')
+        + ' onchange="setBackground(this.value)">' + label + '</label>';
+      content += '<div class="picture-row bg-row"><span>Background</span><span class="segmented">'
+        + (follower ? bgOption('same', "Leader's") : '') + bgOption('', 'None') + (main ? bgOption('picture', 'Picture') : '')
+        + Object.keys(ART).map(name => bgOption(name, ART[name].label)).join('') + '</span>'
+        + '<span class="help-note">' + (main
+          ? 'Behind the words on this screen. A drawing draws itself in as the song goes on; Picture uses the pictures below. Each mirror picks its own under Screens & Sharing.'
+          : 'The person sharing picks one for their screen. This phone can show that, or its own.') + '</span></div>';
+    }
+    if (main) {
+      const picture = (which, label, note) => '<div class="picture-row" id="picture-' + which + '"><span>' + label + '</span>'
+        + '<span class="picture-pick"><input type="file" accept="image/*" onchange="pickPicture(\'' + which + '\', this)">'
+        + '<span class="picture-state"></span><button type="button" class="btn picture-remove" onclick="clearPicture(\'' + which + '\')" hidden>Remove</button></span>'
+        + '<span class="help-note">' + note + '</span></div>';
+      const motionChoice = (value, label) => '<label><input type="radio" name="motion" value="' + value + '"' + (motionLevel === value ? ' checked' : '')
+        + ' onchange="setMotion(this.value)">' + label + '</label>';
+      // open to start when a drawing or a picture is in use, so it's easy to see what's on and change it
+      const inUse = !!(screenBg || pictureBlobs.back || pictureBlobs.still || pictureBlobs.front);
+      content += '<details id="helpBackgrounds"' + (inUse ? ' open' : '') + '><summary>Backgrounds</summary>'
+        + picture('back', 'Background picture', 'Behind the words. It drifts slowly, and moves left to right as the song goes on. Remembered on this device.')
+        + '<div class="picture-row"><span>Motion</span><span class="segmented">' + motionChoice(0, 'Off') + motionChoice(1, 'Gentle') + motionChoice(2, 'Lively') + '</span>'
+        + '<span class="help-note">For the pictures and the drawings, on every screen.</span></div>'
+        + '<details class="more"' + (pictureBlobs.still || pictureBlobs.front ? ' open' : '') + '><summary>More</summary>'
+        + picture('still', 'Still picture', 'Behind the words; it stays put.')
+        + picture('front', 'Front picture', 'Over the words, so use one with see-through parts (a frame, light leaks).')
+        + '</details></details>';
+    }
     content += '</section>';
 
     if (main) {
       content += '<section><h4>Screens & Sharing</h4>'
         + '<div class="screen-row"><button type="button" class="btn" onclick="openWindow()">Open a mirror</button>'
-        + '<span class="help-note">A second window on this computer, for a projector or the band. It has its own look.</span></div>'
+        + '<span class="help-note">A second window on this computer, for a projector or the band. Set its look here, so the room never sees a panel.</span></div>'
+        + '<div id="mirrorList"></div>'
         + (canShare() ? '<div id="share"></div>' : '')
         + '</section>';
     }
-
-    content += '<details><summary>Backgrounds</summary>'
-      + '<div class="picture-row"><span>Moving background</span><input onclick="clearFile(this)" onchange="loadFiles(this);" data="bg-image" type="file" accept="image/*">'
-      + '<span class="help-note">Behind everything; it drifts a little as the song goes on.</span></div>'
-      + '<div class="picture-row"><span>Still picture</span><input onclick="clearFile(this)" onchange="loadFiles(this);" data="fixed-image" type="file" accept="image/*">'
-      + '<span class="help-note">Behind the words; it stays put.</span></div>'
-      + '<div class="picture-row"><span>Front picture</span><input onclick="clearFile(this)" onchange="loadFiles(this);" data="fg-image" type="file" accept="image/*">'
-      + '<span class="help-note">Over the words, so use one with see-through parts.</span></div>'
-      + '</details>';
 
     // The keys worth knowing, each drawn as a keycap
     const keys = mirror ? [
@@ -1249,7 +1305,9 @@ function toggleHelp() {
       try { localStorage.setItem('yCantaKeysOpen', e.target.open ? '1' : '0'); } catch (err) { /* private window */ }
     });
     renderShare();
+    renderPictures();
   }
+  renderMirrors(); // the mirrors as they are now
 
   // now certain that all is inited
   slideToggle(document.getElementById('help'), 200);
@@ -1351,6 +1409,7 @@ function currentView() {
 // One part, the whole song, or a grid of the song's parts (a mirror: no grid)
 function setView(view) {
   if (view === 'grid' && isMirror()) view = 'part';
+  if (view !== 'part' && !isMirror()) noteUse(view === 'whole' ? 'whole song' : 'grid');
   document.body.classList.toggle('wholesong', view === 'whole');
   document.body.classList.toggle('gridview', view === 'grid');
   document.querySelectorAll('input[name="showView"]').forEach(box => { box.checked = box.value === view; });
@@ -1608,10 +1667,11 @@ function showChunk(name) {
       }
 
       if(song.chunk_index == 0){ //no previous chunk
-        content += '<stitle>'+song.doc.title+'</stitle>'
+        // the song's details sit together so calm words can move them to a corner
+        content += '<stitle>'+song.doc.title+'</stitle><div class="song-info">'
                  + '<author>'+song.doc.authors.join(', ')+'</author>'
                  + '<scripture_ref>'+song.doc.scripture_ref.join(', ')+'</scripture_ref>'
-                 + '<key>'+song.doc.key+'</key>';
+                 + '<key>'+song.doc.key+'</key></div>';
       }
       
       let verse_number = 1;
@@ -1622,7 +1682,7 @@ function showChunk(name) {
       }
       content += '<chunk type="' + chunk[0].type + '">';
       if(chunk[0].type == 'verse'){
-        content += '<span>'+verse_number+':</span>';
+        content += '<span data-verse="'+verse_number+'">'+verse_number+':</span>';
       }
       chunk[1].forEach(function(line){
         content += '<line>' + line + '</line>';
@@ -1686,7 +1746,6 @@ function showChunk(name) {
     document.querySelector('#post_slide .content').innerHTML = build_chunk(post_chunk, post_song);
 
     var total = current_song.doc.content.length;
-    document.getElementById('slides').style.setProperty('--percent', (((current_song.chunk_index + 1) / total) * 100));
     let progress_text = ''
     const space_target = spaceTarget(); // the part Space goes to gets a small marker (#51)
     for(let chunk_index = 0; chunk_index < total; chunk_index++) {
@@ -2008,8 +2067,11 @@ function scaleText() {
     return;
   }
 
+  // Calm words: with a background, the words are smaller, stop at a set size and sit in the middle
+  const calm = document.body.classList.contains('calm-words') && !document.body.classList.contains('wholesong');
   document.querySelectorAll('.slide').forEach(slide => {
     const container = slide.querySelector(".content");
+    container.style.marginTop = '';
     const win_width = window.innerWidth;
     const win_height = window.innerHeight;
 
@@ -2048,6 +2110,15 @@ function scaleText() {
 
     if(container_width() > win_width || container_height() > win_height){ // too big
       container.style.fontSize = small + "%";
+    }
+
+    if (calm) {
+      // a fifth smaller than filling the screen, and a line of words at most a tenth of the screen tall;
+      // then the words go to the middle
+      const cap = window.innerHeight * .1, px = parseFloat(getComputedStyle(container).fontSize) * .82;
+      container.style.fontSize = (parseFloat(container.style.fontSize) * .82 * Math.min(1, cap / px)) + '%';
+      const pad = parseFloat(getComputedStyle(slide).paddingTop) || 0;
+      container.style.marginTop = Math.max(0, (slide.clientHeight - container.offsetHeight) / 2 - pad) + 'px';
     }
 
     //console.log('Ending font', container.css("font-size"));
@@ -2212,28 +2283,461 @@ function makeDraggable() {
   }, false); 
 }
 
-function loadFiles(el) {
-  var files = el.files;
-  function readAndPlace(file) {
-    // Make sure `file.name` matches our extensions criteria
-    if ( /\.(jpe?g|png|gif|svg)$/i.test(file.name) ) {
-      var reader = new FileReader();
-      reader.addEventListener("load", function () {
-        document.documentElement.style.setProperty('--'+el.getAttribute('data'), "url("+this.result+")");
-      }, false);
+// ---- Backgrounds (#51). A picture is shrunk once to about this screen's size and held as a short file link
+// (a giant text copy of it in a style setting made every slide change slow). Pictures are remembered on this
+// device. Mirrors show the main window's pictures unless set to none (from the main window's panel).
+//   back  the background: drifts slowly all the time, and moves left to right through each song
+//   still a picture that stays put
+//   front a picture over the words (use one with see-through parts); it moves a little more, for depth
+// Progress through the song moves the pictures left to right on a soft spring whose rest point slides slowly
+// during each part, so nothing jumps or speeds up at the moment a part changes.
+const PICTURES = ['back', 'still', 'front'];
+const pictureBlobs = {}, pictureUrls = {};
+let motionLevel = 1; // 0 off, 1 gentle, 2 lively
+try { const saved = localStorage.getItem('yCantaMotion'); if (saved !== null) motionLevel = Number(saved) || 0; } catch (err) { /* private window */ }
 
-      reader.readAsDataURL(file);
-    }
-    else {
-      alert('sorry, not a valid image file')
-    }
-
+function pictureStore(mode, work) {
+  return new Promise((resolve, reject) => {
+    if (!window.indexedDB) return resolve(null);
+    const open = indexedDB.open('yCantaPresentation', 1);
+    open.onupgradeneeded = () => open.result.createObjectStore('pictures');
+    open.onerror = () => reject(open.error);
+    open.onsuccess = () => {
+      const tx = open.result.transaction('pictures', mode);
+      const request = work(tx.objectStore('pictures'));
+      tx.oncomplete = () => { open.result.close(); resolve(request && request.result); };
+      tx.onerror = () => { open.result.close(); reject(tx.error); };
+    };
+  });
+}
+// Shrink a picture once to about this screen's size: a full phone photo is far bigger than any screen needs
+async function shrinkPicture(file, which) {
+  const bitmap = await createImageBitmap(file);
+  const most = Math.min(2560, Math.round(Math.max(screen.width, screen.height) * (window.devicePixelRatio || 1) * 1.2));
+  const scale = Math.min(1, most / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close && bitmap.close();
+  // the front picture keeps its see-through parts
+  return new Promise(resolve => canvas.toBlob(resolve, which === 'front' ? 'image/png' : 'image/jpeg', 0.88));
+}
+async function pickPicture(which, input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  try {
+    const blob = file.type === 'image/svg+xml' ? file : await shrinkPicture(file, which); // an SVG is small and sharp as it is
+    pictureBlobs[which] = blob;
+    pictureStore('readwrite', store => store.put(blob, which)).catch(err => console.error('Backgrounds:', err));
+  } catch (err) {
+    alert("Couldn't use that picture: " + err.message);
   }
-  if (files) {
-    [].forEach.call(files, readAndPlace);
+  input.value = '';
+  if (!screenBg) setBackground('picture'); // a picture just added shows here, unless a drawing is picked
+  applyPictures();
+}
+function clearPicture(which) {
+  delete pictureBlobs[which];
+  pictureStore('readwrite', store => store.delete(which)).catch(() => {});
+  applyPictures();
+}
+// The remembered pictures, when the presentation starts
+async function loadPictures() {
+  try {
+    for (const which of PICTURES) {
+      const blob = await pictureStore('readonly', store => store.get(which));
+      if (blob) pictureBlobs[which] = blob;
+    }
+  } catch (err) { /* no storage here (a downloaded file, a private window) */ }
+  if (screenBg === null) screenBg = PICTURES.some(which => pictureBlobs[which]) ? 'picture' : ''; // as it was before
+  document.querySelectorAll('input[name="screenBg"]').forEach(box => { box.checked = box.value === screenBg; });
+  applyPictures();
+}
+function applyPictures() {
+  PICTURES.forEach(which => {
+    const had = pictureUrls[which];
+    pictureUrls[which] = pictureBlobs[which] ? URL.createObjectURL(pictureBlobs[which]) : '';
+    if (had) setTimeout(() => URL.revokeObjectURL(had), 5000); // mirrors switch to the new one first
+  });
+  if (!isFollower()) showBackground(window, screenBg || '');
+  secondary_windows.filter(win => !win.closed).forEach(pictureMirror);
+  renderPictures();
+}
+// A screen's background: the pictures, a drawing, or nothing; on this page or a mirror's
+function showBackground(win, choice) {
+  showPictures(win.document, choice === 'picture' ? pictureUrls : {});
+  if (win.applyArt) win.applyArt(ART[choice] ? choice : '');
+}
+function mirrorBackground(win) { return win.mirrorBg === undefined || win.mirrorBg === 'same' ? (screenBg || '') : win.mirrorBg; }
+// Put pictures on a page: this one, or a mirror
+function showPictures(doc, urls) {
+  const set = (id, url) => { const el = doc.getElementById(id); if (el) el.style.backgroundImage = url ? 'url("' + url + '")' : 'none'; };
+  set('bdBack', urls.back);
+  set('bdStill', urls.still);
+  set('bdFrontPic', urls.front);
+  const win = doc.defaultView;
+  if (win) win.picturesHere = { back: !!urls.back, still: !!urls.still };
+  doc.body.classList.toggle('has-front', !!urls.front);
+  if (win && win.backdropClass) win.backdropClass();
+}
+function pictureMirror(win) {
+  try { showBackground(win, mirrorBackground(win)); } catch (err) { /* closed */ }
+}
+// The background layer shows for a picture or a drawing; the motion starts when it does
+window.picturesHere = {}; let artShown = '';
+function backdropClass() {
+  const body = document.body;
+  body.classList.toggle('has-backdrop', !!(window.picturesHere.back || window.picturesHere.still || artShown));
+  // calm words come with any picture or drawing; the words are sized again when that changes
+  const calm = body.classList.contains('has-backdrop') || body.classList.contains('has-front');
+  if (calm !== body.classList.contains('calm-words')) { body.classList.toggle('calm-words', calm); scaleText(); }
+  startBackdrop();
+}
+
+// ---- Built-in drawings (#133): line art that draws itself in as the song goes on, over a soft color field.
+// The lines glow, and two faint echo lines dance a little around them (with the Motion setting). Drawings
+// stay low and at the edges, and fade to a third where the words are. On by choice only (None to start).
+// Each is a 160 x 90 picture: c the line color, hi and lo the color field's top and bottom, p the lines in
+// the order they draw.
+const ART = {
+  mountains: { label: 'Mountains', c: '#FAC775', hi: '#1a1410', lo: '#633806',
+    p: ['M0 82 L30 60 L46 72 L70 52 L96 76 L118 62 L160 80', 'M136 20 m-8 0 a8 8 0 1 0 16 0 a8 8 0 1 0 -16 0', 'M0 87 C40 84 120 90 160 86'] },
+  waves: { label: 'Waves', c: '#85B7EB', hi: '#0b1420', lo: '#0C447C',
+    p: ['M24 16 m-6 0 a6 6 0 1 0 12 0 a6 6 0 1 0 -12 0', 'M0 68 C20 61 40 75 60 68 S100 61 120 68 S150 75 160 68',
+      'M0 76 C20 69 40 83 60 76 S100 69 120 76 S150 83 160 76', 'M0 84 C20 77 40 91 60 84 S100 77 120 84 S150 91 160 84'] },
+  tree: { label: 'Tree', c: '#97C459', hi: '#0f160b', lo: '#27500A',
+    p: ['M0 86 C50 80 110 80 160 86', 'M138 84 L138 56', 'M138 68 L127 58 M138 63 L149 53',
+      'M124 54 C116 40 128 28 138 31 C150 25 164 38 154 52 C160 60 146 64 138 58 C131 64 117 62 124 54'] },
+  cross: { label: 'Cross', c: '#F0997B', hi: '#1a100c', lo: '#712B13',
+    p: ['M0 89 C50 77 110 77 160 89', 'M80 64 L80 84 M73 69 L87 69', 'M80 60 L80 56 M88 63 L92 59 M72 63 L68 59 M90 69 L96 69 M70 69 L64 69'] },
+};
+const ART_ECHOES = [1.07, 1.15]; // each echo's size around the bottom middle, before it dances
+// Each screen's background: '' none, 'picture' (the pictures under Backgrounds), or a drawing. This screen's is
+// remembered on the device; each mirror has its own ('same' as this screen, to start); a phone following shows
+// the drawing on the main screen of the person sharing, or one of its own.
+const bgChoice = value => value === 'picture' || ART[value] ? value : '';
+let screenBg = null; // null until known: an older device that only had pictures gets 'picture' once they load
+try {
+  const saved = localStorage.getItem('yCantaBackground');
+  if (saved !== null) screenBg = bgChoice(saved);
+  else if (ART[localStorage.getItem('yCantaArt')]) screenBg = localStorage.getItem('yCantaArt'); // the drawing picked before
+} catch (err) { /* private window */ }
+let followBg = 'same', leaderArt = ''; // a phone following: its own choice, and the leader's drawing
+try { const saved = localStorage.getItem('yCantaFollowBackground'); if (saved === '' || ART[saved]) followBg = saved; } catch (err) { /* private window */ }
+const sharedArt = () => ART[screenBg] ? screenBg : ''; // what phones following are told
+// art: the drawing on this page. x is how much is drawn (0 to 1), pulled toward the song's place by the same
+// soft spring as the pictures; a new song fades the lines out, then starts drawing again.
+const art = { key: null, x: 0, v: 0, rest: 0, fade: 0, resetting: false, drawn: -1, L: [], T: 1, box: null, ctm: null };
+function applyArt(name) {
+  name = ART[name] ? name : '';
+  const svg = document.getElementById('bdArt');
+  if (!svg) return;
+  if (name !== artShown) {
+    artShown = name;
+    document.body.classList.toggle('has-art', !!name);
+    if (name) {
+      const d = ART[name];
+      const paths = d.p.map(s => '<path d="' + s + '"/>').join('');
+      svg.setAttribute('viewBox', '0 0 160 90');
+      svg.style.background = 'linear-gradient(to bottom, ' + d.hi + ', ' + d.lo + ')';
+      svg.innerHTML = '<defs><filter id="artBlur" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur id="artBlurSize" stdDeviation="2"/></filter>'
+        + '<filter id="artSoft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur id="artSoftSize" stdDeviation="6"/></filter>'
+        + '<mask id="artMask" maskUnits="userSpaceOnUse" x="-2000" y="-2000" width="4160" height="4090">'
+        + '<rect x="-2000" y="-2000" width="4160" height="4090" fill="white"/><rect id="artHole" fill="#555" filter="url(#artSoft)" width="0" height="0"/></mask></defs>'
+        + '<g mask="url(#artMask)" fill="none" stroke="' + d.c + '" stroke-linecap="round" stroke-linejoin="round">'
+        + '<g class="art-echoes">' + ART_ECHOES.map((s, j) => '<g data-s="' + s + '" opacity="' + (.32 - .14 * j) + '">' + paths + '</g>').join('') + '</g>'
+        + '<g class="art-glow" filter="url(#artBlur)" opacity=".55">' + paths + '</g>'
+        + '<g class="art-main">' + paths + '</g></g>';
+      art.L = [...svg.querySelectorAll('.art-main path')].map(p => p.getTotalLength());
+      art.T = art.L.reduce((a, b) => a + b, 0) || 1;
+      art.drawn = -1;
+      art.key = null; // start drawing this song from the beginning
+      art.sizeKey = null; // new lines: give them their widths
+      artSize();
+    } else {
+      svg.innerHTML = '';
+    }
+  }
+  backdropClass();
+}
+// Line widths in screen pixels, whatever the screen; the drawing sits on the bottom, sized to the width on a
+// tall screen (a phone) and to the height on a wide one, so nothing important is cut off
+function artSize() {
+  const svg = document.getElementById('bdArt');
+  if (!svg || !artShown) return;
+  const fit = window.innerWidth / Math.max(1, window.innerHeight) < 16 / 9 ? 'xMidYMax meet' : 'xMidYMax slice';
+  if (svg.getAttribute('preserveAspectRatio') !== fit) svg.setAttribute('preserveAspectRatio', fit);
+  if (!svg.getBoundingClientRect().width) return; // hidden: no size yet (it is checked again while showing)
+  const ctm = svg.getScreenCTM();
+  if (!ctm || !ctm.a) return;
+  const sizeKey = ctm.a.toFixed(4) + ',' + ctm.e.toFixed(1) + ',' + ctm.f.toFixed(1);
+  art.ctm = ctm;
+  if (art.sizeKey === sizeKey) return; // nothing changed: leave the lines (and their glow) as they are
+  art.sizeKey = sizeKey;
+  const px = Math.max(2.5, window.innerWidth / 480) / ctm.a; // the main line, about 4px on a 1920 screen
+  svg.querySelector('.art-main').setAttribute('stroke-width', px.toFixed(3));
+  svg.querySelector('.art-glow').setAttribute('stroke-width', (px * 3).toFixed(3));
+  svg.querySelector('.art-echoes').setAttribute('stroke-width', (px * .55).toFixed(3));
+  svg.querySelector('#artBlurSize').setAttribute('stdDeviation', (px * 1.6).toFixed(3));
+  svg.querySelector('#artSoftSize').setAttribute('stdDeviation', (px * 4).toFixed(3));
+}
+window.addEventListener('resize', () => { clearTimeout(art.sizeTimer); art.sizeTimer = setTimeout(artSize, 150); });
+// The box the words take up on screen (padded), or the whole screen for Whole song and Grid
+function wordsBox() {
+  if (document.body.classList.contains('wholesong') || document.body.classList.contains('gridview')) {
+    return { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight };
+  }
+  const content = document.querySelector('#cur_slide .content');
+  if (!content || !content.textContent.trim()) return null;
+  // the letters themselves: each line is a full-width block, so measure its text, not its box
+  const range = document.createRange(), walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
+  let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (!node.nodeValue.trim()) continue;
+    range.selectNodeContents(node);
+    const r = range.getBoundingClientRect();
+    if (!r.width || !r.height) continue;
+    left = Math.min(left, r.left); top = Math.min(top, r.top); right = Math.max(right, r.right); bottom = Math.max(bottom, r.bottom);
+  }
+  if (!(right > left)) return null;
+  const pad = Math.min(window.innerWidth, window.innerHeight) * .05;
+  return { x: left - pad, y: top - pad, w: right - left + pad * 2, h: bottom - top + pad * 2 };
+}
+// This screen's Background choice in the panel
+function setBackground(value) {
+  if (isFollower()) {
+    followBg = value === 'same' || ART[value] ? value : '';
+    try { localStorage.setItem('yCantaFollowBackground', followBg === 'same' ? 'same' : followBg); } catch (err) { /* private window */ }
+    document.querySelectorAll('input[name="screenBg"]').forEach(box => { box.checked = box.value === followBg; });
+    applyArt(followBg === 'same' ? leaderArt : followBg);
+    return;
+  }
+  screenBg = bgChoice(value);
+  try { localStorage.setItem('yCantaBackground', screenBg); } catch (err) { /* private window */ }
+  document.querySelectorAll('input[name="screenBg"]').forEach(box => { box.checked = box.value === screenBg; });
+  showBackground(window, screenBg);
+  secondary_windows.filter(win => !win.closed).forEach(pictureMirror); // the mirrors set to Same as main
+  if (sharing) publishLive(); // phones following show its drawing too
+}
+function setArt(name) { setBackground(name); } // the older name, for anything still calling it
+// The panel's Backgrounds section: which pictures are in use
+function renderPictures() {
+  PICTURES.forEach(which => {
+    const row = document.getElementById('picture-' + which);
+    if (!row) return;
+    row.querySelector('.picture-state').textContent = pictureBlobs[which] ? 'In use' : '';
+    row.querySelector('.picture-remove').hidden = !pictureBlobs[which];
+  });
+  // pictures load after the panel can be made: open its sections for the ones in use (never closes them)
+  const section = document.getElementById('helpBackgrounds');
+  if (section && PICTURES.some(which => pictureBlobs[which])) section.open = true;
+  const more = section && section.querySelector('details.more');
+  if (more && (pictureBlobs.still || pictureBlobs.front)) more.open = true;
+}
+function setMotion(level) {
+  motionLevel = Number(level);
+  try { localStorage.setItem('yCantaMotion', String(motionLevel)); } catch (err) { /* private window */ }
+  document.querySelectorAll('input[name="motion"]').forEach(box => { box.checked = Number(box.value) === motionLevel; });
+  secondary_windows.filter(win => !win.closed).forEach(win => { try { win.mirrorMotion = motionLevel; } catch (err) { /* closed */ } });
+}
+
+// The motion: drift on its own time, plus a spring that carries the pictures left to right through the song.
+//   rest  where the spring wants to be; it slides toward this part's spot at about one part per SETTLE
+//   pan   where the pictures are (0 = start of the song, 1 = end), pulled toward rest by a critically damped
+//         spring, so it starts and stops softly and never overshoots
+const SETTLE = 5; // seconds for the spring to catch up
+const PAN_BACK = .04, PAN_FRONT = .06; // how far each picture travels each side of center, as a share of screen width
+const motion = { running: false, last: 0, clock: 0, rest: 0, pan: 0, speed: 0, seed: Array.from({ length: 40 }, () => Math.random() * Math.PI * 2) };
+const wave = (t, k) => Math.sin(t * .071 + motion.seed[k]) * .5 + Math.sin(t * .113 + motion.seed[k + 1]) * .3 + Math.sin(t * .0237 + motion.seed[k + 2]) * .2;
+// How many parts a song has in the order people sing it (Space from the first part to the end)
+function sungLength(song) {
+  const key = song.id + ':' + song.doc.content.length;
+  if (song.sungLengthKey === key) return song.sungLength;
+  const walk = { doc: song.doc, passage: song.passage, chunk_index: 0, sung: new Set([0]), sungOrder: [0] };
+  let count = 1;
+  for (let guard = 0; guard < 80; guard++) {
+    const next = spaceTarget(walk);
+    if (next === null) break;
+    walk.chunk_index = next; walk.sung.add(next); walk.sungOrder.push(next);
+    count++;
+  }
+  song.sungLengthKey = key;
+  song.sungLength = count;
+  return count;
+}
+// Where the presentation is in the song, 0 to 1. It never goes back within a song: going back to the chorus
+// is still going on through the song. It is the larger of the parts shown so far against the parts people
+// sing, and where the part is written (so the final chorus key jumps ahead). A mirror is told by its main
+// window; a phone following works it out from what it shows.
+let progressBest = { key: null, p: 0 };
+function songPlace() {
+  if (window.mirrorProgress) return window.mirrorProgress;
+  if (!current_song || !current_song.doc || !window.songbook || document.getElementById('pres_title')) return { key: 'title', song: 0, step: .25 };
+  const key = window.songbook.song_index + ':' + current_song.id;
+  const parts = current_song.doc.content.length, total = sungLength(current_song);
+  const order = current_song.sungOrder && current_song.sungOrder.length ? current_song.sungOrder : [current_song.chunk_index];
+  const shown = order.filter((part, i) => i === 0 || part !== order[i - 1]).length;
+  let p = Math.min(1, Math.max(total > 1 ? (shown - 1) / (total - 1) : 1, parts > 1 ? current_song.chunk_index / (parts - 1) : 1));
+  if (progressBest.key === key) p = Math.max(p, progressBest.p);
+  progressBest = { key, p };
+  return { key, song: p, step: 1 / Math.max(1, total - 1) };
+}
+// A soft spring toward a place: the rest point moves at a steady pace for a normal part change; a big jump
+// goes faster at first so it is not still drifting back halfway through the next song
+function springStep(s, dt, target, step) {
+  const gap = target - s.rest;
+  const pace = Math.max(step, Math.abs(gap)) / (SETTLE * .9);
+  s.rest += Math.sign(gap) * Math.min(Math.abs(gap), pace * dt);
+  const w = 4.7 / SETTLE;
+  s.v += (w * w * (s.rest - s.x) - 2 * w * s.v) * dt;
+  s.x += s.v * dt;
+}
+const panSpring = { x: 0, v: 0, rest: 0 };
+// The drawing: drawn as far as the song has gone (a little at the first part), its echoes dancing, and the
+// lines faded where the words are
+function artFrame(dt, place, dance, t) {
+  const svg = document.getElementById('bdArt');
+  if (!svg || !artShown || !art.L.length) return;
+  if (!art.ctm) artSize();
+  if (place.key !== art.key) { art.key = place.key; art.resetting = true; }
+  if (art.resetting) { // a new song: the lines fade out, then draw again from the start
+    art.fade -= dt / .6;
+    if (art.fade <= 0) { art.fade = 0; art.x = art.v = art.rest = 0; art.resetting = false; }
+  } else {
+    art.fade = Math.min(1, art.fade + dt / .8);
+    for (let i = 0; i < 4; i++) springStep(art, dt / 4, .12 + .88 * place.song, place.step * .88);
+  }
+  svg.querySelector('[mask]').setAttribute('opacity', art.fade.toFixed(3));
+  const lengths = lag => {
+    let left = Math.max(0, art.x - lag) * art.T;
+    return art.L.map(len => { const n = Math.max(0, Math.min(len, left)); left -= len; return n; });
+  };
+  if (Math.abs(art.x - art.drawn) > .0004) {
+    art.drawn = art.x;
+    // a line not started yet is hidden: a round line end on no length still draws a dot
+    const draw = (path, len) => {
+      path.setAttribute('stroke-dasharray', len.toFixed(2) + ' 9999');
+      path.setAttribute('visibility', len > .01 ? 'visible' : 'hidden');
+    };
+    const now = lengths(0);
+    svg.querySelectorAll('.art-main path, .art-glow path').forEach((path, i) => draw(path, now[i % now.length]));
+    svg.querySelectorAll('.art-echoes > g').forEach((echo, j) => {
+      const behind = lengths(.05 * (j + 1));
+      echo.querySelectorAll('path').forEach((path, i) => draw(path, behind[i]));
+    });
+  }
+  // each echo slowly swells, shrinks and sways on its own uneven rhythm; the main line never moves
+  svg.querySelectorAll('.art-echoes > g').forEach((echo, j) => {
+    const size = 1 + (Number(echo.dataset.s) - 1) * (1 + dance * .35 * wave(t * 5.8, 13 + j * 6));
+    const sway = dance * .8 * wave(t * 4.6, 16 + j * 6);
+    echo.setAttribute('transform', 'translate(' + (80 + sway).toFixed(2) + ' 90) scale(' + size.toFixed(4) + ') translate(-80 -90)');
+  });
+}
+// The words' box: the dark layer sits on it and the drawing fades under it. Measured a few times a second
+// (the words change size with each part) and eased, so nothing jumps when a part changes.
+function veilFrame(dt, now) {
+  if (!art.measured || now - art.measured > 250) { art.measured = now; art.target = wordsBox(); artSize(); }
+  const target = art.target;
+  const veil = document.getElementById('bdVeil');
+  const k = 1 - Math.exp(-dt / .35);
+  if (target) {
+    if (!art.box) art.box = { ...target };
+    ['x', 'y', 'w', 'h'].forEach(side => { art.box[side] += (target[side] - art.box[side]) * k; });
+  }
+  art.veil = (art.veil || 0) + ((target ? 1 : 0) - (art.veil || 0)) * k;
+  const b = art.box;
+  if (veil && b) {
+    const grow = .15; // the veil reaches a little past the words, fading out
+    veil.style.width = (b.w * (1 + grow * 2)).toFixed(0) + 'px';
+    veil.style.height = (b.h * (1 + grow * 2)).toFixed(0) + 'px';
+    veil.style.transform = 'translate(' + (b.x - b.w * grow).toFixed(0) + 'px,' + (b.y - b.h * grow).toFixed(0) + 'px)';
+    veil.style.opacity = art.veil.toFixed(3);
+  }
+  const hole = artShown && document.getElementById('artHole');
+  if (hole && b && art.ctm) {
+    const inv = art.ctm.inverse();
+    const at = (x, y) => new DOMPoint(x, y).matrixTransform(inv);
+    const a = at(b.x, b.y), z = at(b.x + b.w, b.y + b.h);
+    hole.setAttribute('x', a.x.toFixed(2)); hole.setAttribute('y', a.y.toFixed(2));
+    hole.setAttribute('width', Math.max(0, z.x - a.x).toFixed(2)); hole.setAttribute('height', Math.max(0, (z.y - a.y) * art.veil).toFixed(2));
   }
 }
-function clearFile(el) {
-  document.documentElement.style.setProperty('--'+el.getAttribute('data'), "url('')");
-  el.value=null; 
+function startBackdrop() {
+  const on = document.body.classList.contains('has-backdrop') || document.body.classList.contains('has-front');
+  if (motion.running || !on || document.hidden) return;
+  motion.running = true;
+  motion.last = performance.now();
+  requestAnimationFrame(backdropFrame);
+}
+function backdropFrame(now) {
+  const on = document.body.classList.contains('has-backdrop') || document.body.classList.contains('has-front');
+  if (!on || document.hidden) { motion.running = false; return; }
+  const dt = Math.min(.1, (now - motion.last) / 1000);
+  motion.last = now;
+  const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const chosen = typeof window.mirrorMotion === 'number' ? window.mirrorMotion : motionLevel; // a mirror: its main window's
+  const level = calm ? Math.min(chosen, 1) : chosen;
+  const amp = level === 0 ? 0 : level === 1 ? (calm ? .4 : 1) : 2.2;
+  motion.clock += dt * (level === 2 ? 1.8 : calm ? .5 : 1);
+  // Motion Off holds the pictures still in the middle; otherwise the spring carries them through the song
+  const place = songPlace();
+  for (let i = 0; i < 4; i++) springStep(panSpring, dt / 4, place.song, place.step); // small steps keep the spring smooth on a slow frame
+  artFrame(dt, place, level === 0 ? 0 : level === 1 ? (calm ? .5 : 1) : 2, motion.clock);
+  veilFrame(dt, now);
+  const pan = level === 0 ? 0 : .5 - panSpring.x; // + is left of center: the view travels to the right
+  const w = window.innerWidth, t = motion.clock;
+  // Scale each picture up just enough that its edges never show: its margin (8% back, 10% front, set in the
+  // page's style) has to cover the travel plus the drift
+  const fit = (margin, size, travel, drift) => 1 + Math.max(0, travel + drift - margin) / (size / 2);
+  const back = document.getElementById('bdBack'), front = document.getElementById('bdFrontPic');
+  if (back) back.style.transform = 'translate3d(' + ((pan * 2 * PAN_BACK + wave(t, 0) * .035 * amp) * w).toFixed(1) + 'px,' + (wave(t, 3) * w * .022 * amp).toFixed(1) + 'px,0) scale('
+    + (fit(.08, 1.16, PAN_BACK, (.035 + .009) * amp + .005) + wave(t * .5, 6) * .015 * amp).toFixed(4) + ')';
+  if (front) front.style.transform = 'translate3d(' + ((pan * 2 * PAN_FRONT + wave(t * 1.3, 1) * .05 * amp) * w).toFixed(1) + 'px,' + (wave(t * 1.3, 4) * w * .035 * amp).toFixed(1) + 'px,0) scale('
+    + fit(.1, 1.2, PAN_FRONT, .05 * amp + .005).toFixed(4) + ')';
+  requestAnimationFrame(backdropFrame);
+}
+document.addEventListener('visibilitychange', startBackdrop);
+
+// ---- Mirrors from the main window (#51): each open mirror's look, set here so the room never sees a panel
+function openMirrors() { secondary_windows = secondary_windows.filter(win => !win.closed); return secondary_windows; }
+function mirrorSet(index, what, value) {
+  const win = openMirrors()[index];
+  if (!win) return renderMirrors();
+  try {
+    const body = win.document.body;
+    if (what === 'view') win.setView(value);
+    else if (what === 'bg') { win.mirrorBg = value; pictureMirror(win); }
+    else {
+      const cls = { white: 'white', black: 'black', chords: 'nochords', marker: 'nomarker' }[what];
+      body.classList.toggle(cls, what === 'chords' || what === 'marker' ? !value : value);
+      win.scaleText();
+    }
+    const help = win.document.getElementById('help'); // its own panel is made again next time, to match
+    if (help) help.remove();
+  } catch (err) { /* the mirror closed */ }
+  renderMirrors();
+}
+function renderMirrors() {
+  const box = document.getElementById('mirrorList');
+  if (!box) return;
+  box.innerHTML = openMirrors().map((win, i) => {
+    let body;
+    try { body = win.document.body.classList; } catch (err) { return ''; }
+    const view = body.contains('wholesong') ? 'whole' : 'part';
+    const choice = (value, label) => '<label><input type="radio" name="mirrorView' + i + '" value="' + value + '"' + (view === value ? ' checked' : '')
+      + ' onchange="mirrorSet(' + i + ', \'view\', this.value)">' + label + '</label>';
+    const sw = (what, label, on) => switchHtml('mirror' + i + what, label, on, 'mirrorSet(' + i + ', \'' + what + '\', this.checked)');
+    // its own background, or the same as this screen's
+    const bg = win.mirrorBg === undefined ? 'same' : win.mirrorBg;
+    const bgOption = (value, label) => '<label><input type="radio" name="mirrorBg' + i + '" value="' + value + '"' + (bg === value ? ' checked' : '')
+      + ' onchange="mirrorSet(' + i + ', \'bg\', this.value)">' + label + '</label>';
+    return '<div class="mirror-row"><div class="mirror-name">Mirror ' + (i + 1)
+      + '<button type="button" class="btn" onclick="openMirrors()[' + i + '].close(); setTimeout(renderMirrors, 100)">Close it</button></div>'
+      + '<div class="segmented">' + choice('part', 'One part') + choice('whole', 'Whole song') + '</div>'
+      + '<div class="switches">' + sw('white', 'White text', body.contains('white')) + sw('black', 'Black background', body.contains('black'))
+      + sw('chords', 'Chords', !body.contains('nochords')) + sw('marker', 'Next-part arrow', !body.contains('nomarker')) + '</div>'
+      + '<div class="picture-row bg-row"><span>Background</span><span class="segmented">' + bgOption('same', 'Same as main') + bgOption('', 'None')
+      + bgOption('picture', 'Picture') + Object.keys(ART).map(name => bgOption(name, ART[name].label)).join('') + '</span></div></div>';
+  }).join('');
 }

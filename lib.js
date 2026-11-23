@@ -578,6 +578,7 @@ window.presentationEnded = function(json) {
     minutes: Math.round((report.end - report.start) / 6000) / 10,
     // [title, CCLI # or translation, seconds on screen, slides shown, slides, counted]
     items: report.items.map(it => [it.title, it.ccli, it.seconds, it.shown, it.total, it.counted ? 1 : 0]),
+    used: report.used || [], // features used: 'whole song', 'grid', 'mirror', 'shared', 'background', 'motion gentle'...
   }, report.start);
   const counted = report.items.filter(it => it.counted);
   const songs = counted.filter(it => it.kind === 'song').length, passages = counted.length - songs;
