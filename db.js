@@ -1333,14 +1333,14 @@ async function loadAllUsers() {
     // so the level menus line up in every row
     return `<li data-name="${escapeHtml(name)}">
       <span class="person-name">${escapeHtml(name)}${self ? ' (you)' : ''}</span>
-      ${canReset(name, level) ? '<button onclick="resetChurchPassword(this)">↻ Password</button>' : '<span></span>'}
+      ${canReset(name, level) ? '<button onclick="resetChurchPassword(this)">' + icon('key') + ' Password</button>' : '<span></span>'}
       <select aria-label="Level for ${escapeHtml(name)}" onchange="setChurchPersonLevel(this)"${self && !window.church.serverAdmin ? ' disabled title="Ask another church admin to change your own level"' : ''}>${options}</select>
-      ${self ? '<span></span>' : '<button onclick="removeChurchPerson(this)">🗑 Remove</button>'}
+      ${self ? '<span></span>' : '<button onclick="removeChurchPerson(this)">' + icon('trash') + ' Remove</button>'}
     </li>`;
   }).join('') + '</ul>';
   if (!people.length) html += '<p>Nobody is on the list yet.</p>';
   else html += '<p class="people-none" hidden>No one matches that search.</p>';
-  html +='<p class="backup-tools"><button class="btn btn-small" onclick="restoreFromBackup()">↶ Restore from a backup</button></p>';
+  html +='<p class="backup-tools"><button class="btn btn-small" onclick="restoreFromBackup()">' + icon('undo') + ' Restore from a backup</button></p>';
   if (window.church.serverAdmin) {
     const rules = await saveRulesStatus();
     const rulesLine = {
@@ -2033,10 +2033,10 @@ function loadSong(song_id, song_rev = false) {
       if (!song_rev) {
         const editable = canEdit(song) && !deleted; // a deleted song is restored, not edited (#69)
         floatMenu = `
-          ${editable ? '<button data-songbook onclick="deleteSong(window.song._id)" class="float-menu-item deleteSong"><span class="float-menu-icon">&#128465;</span>Delete</button>' : ''}
-          <a data-song-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span>Export</a>
-          ${editable ? '<a data-song-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span>Edit</a>' : ''}
-          <span class="float-menu-item float-menu-toggle"><button type="button" class="float-menu-icon" aria-label="Actions" title="Actions: export, edit, delete">+</button></span>
+          ${editable ? '<button data-songbook onclick="deleteSong(window.song._id)" class="float-menu-item deleteSong"><span class="float-menu-icon">' + icon('trash') + '</span>Delete</button>' : ''}
+          <a data-song-export class="float-menu-item"><span class="float-menu-icon">${icon('export')}</span>Export</a>
+          ${editable ? '<a data-song-edit class="float-menu-item"><span class="float-menu-icon">' + icon('edit') + '</span>Edit</a>' : ''}
+          <span class="float-menu-item float-menu-toggle"><button type="button" class="float-menu-icon" aria-label="Actions" title="Actions: export, edit, delete">${icon('plus')}</button></span>
         `;
         document.querySelector('#song .float-menu').innerHTML = floatMenu;
       }
@@ -2054,7 +2054,7 @@ function loadSong(song_id, song_rev = false) {
             <div class="title">
               <h3 class="song-title"><a data-song class="title_link">${shown.title}</a></h3>
               <span class="buttonsRight">
-                ${song_rev ? `${canEdit(window.song) ? `<button onclick="restoreSongRev('${escapeHtml(song._rev)}')" class="btn btn-tiny" title="Make this the current version">↶ Restore</button>` : ''}<button type="button" onclick="this.closest('.song-card').remove()" class="close-icon" aria-label="Close">&times;</button>` : `
+                ${song_rev ? `${canEdit(window.song) ? `<button onclick="restoreSongRev('${escapeHtml(song._rev)}')" class="btn btn-tiny" title="Make this the current version">${icon('undo')} Restore</button>` : ''}<button type="button" onclick="this.closest('.song-card').remove()" class="close-icon" aria-label="Close">&times;</button>` : `
                   <span class="star" role="button" tabindex="0" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }" aria-label="Favorite song" title="Favorite" onclick="event.stopPropagation(); toggleFavorite(this.closest('.song-card').dataset.id,'fav_songs')"></span>
                   <info role="button" tabindex="0" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }" aria-label="Song info" title="Info" onclick="event.stopPropagation(); loadInfo();"></info>
                   <span class="fsButton" role="button" tabindex="0" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }" aria-label="Full width" title="Full width" onclick="toggleFullscreen(this)"></span>
@@ -2065,7 +2065,7 @@ function loadSong(song_id, song_rev = false) {
           <song>
           ${song_rev ? `<p class="rev-note">Old version${song.editedBy ? ', saved by ' + escapeHtml(window.users?.[song.editedBy] || song.editedBy.replace(/^u-/, '')) : ''}${song.edited ? ', ' + formatDate(song.edited) : ''}.</p>` : ''}
           ${deleted ? `<p class="deleted-note">Deleted${song.deletedBy ? ' by ' + escapeHtml(window.users?.[song.deletedBy] || song.deletedBy.replace(/^u-/, '')) : ''}${song.deletedAt ? ', ' + formatDate(song.deletedAt) : ''}.
-            ${song.deletedAt && canEdit(song) ? `<button class="btn btn-tiny" onclick="restoreOpenSong(this)">↶ Restore</button>` : ''}</p>` : ''}
+            ${song.deletedAt && canEdit(song) ? `<button class="btn btn-tiny" onclick="restoreOpenSong(this)">${icon('undo')} Restore</button>` : ''}</p>` : ''}
           <authors><author>${shown.authors.join('</author>, <author>')}</author></authors>
           <scripture_ref><scrip_ref>${shown.scripture_ref.join('</scrip_ref>, <scrip_ref>')}</scrip_ref></scripture_ref>
           ${!song_rev ? `<span id="keyToggleContainer"><span id="keyToggleFilter">` : ''}<key>${shown.key}</key>${!song_rev ? `<button id="keyToggle" type="button" aria-expanded="false" title="Change the key">Key: <b class="key-name">${shown.key}</b><span class="chevron" aria-hidden="true"></span></button><label class="chord-switch" hidden><input type="checkbox" id="chordSwitch"><span class="switch-track" aria-hidden="true"></span>Chords</label></span></span>` : ''}
@@ -2121,7 +2121,7 @@ function loadSong(song_id, song_rev = false) {
         youtubeButton.className = 'btn yt-play';
         youtubeButton.classList.toggle('yt-search', window.youtube_links.length === 0);
         youtubeButton.title = window.youtube_links.length ? "Play this song's videos" : 'Search YouTube for this song';
-        youtubeButton.textContent = '▶';
+        youtubeButton.innerHTML = icon('play');
         youtubeButton.onclick = loadSongPlayer;
         keyElement.before(youtubeButton);
       }
@@ -2349,9 +2349,9 @@ function versionSummary(id, v, titles) {
     return `<p><b>${escapeHtml(v.title || '')}</b>${v.key ? ` <small>Key: ${escapeHtml(v.key)}</small>` : ''}<br>
       <small>${escapeHtml((v.authors || []).filter(Boolean).join(', '))}</small></p>${chunks.join('')}`;
   }
-  const songs = (v.songrefs || []).map(ref => ref.id === 'section' ? `— ${ref.title || 'Section'} —`
-    : ref.id === 'reading' ? `📖 ${ref.ref || 'Reading'}` : (titles.get(ref.id) || ref.id));
-  return `<p><b>${escapeHtml(v.title || '')}</b></p><ol>${songs.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ol>`;
+  const songs = (v.songrefs || []).map(ref => ref.id === 'section' ? escapeHtml(`— ${ref.title || 'Section'} —`)
+    : ref.id === 'reading' ? `${icon('book')} ${escapeHtml(ref.ref || 'Reading')}` : escapeHtml(titles.get(ref.id) || ref.id));
+  return `<p><b>${escapeHtml(v.title || '')}</b></p><ol>${songs.map(s => `<li>${s}</li>`).join('')}</ol>`;
 }
 
 // When a version was made and by whom
@@ -2405,7 +2405,7 @@ async function showHistory(id, label) {
       <li><details>
         <summary>${versionLabel(entry)}</summary>
         <div class="history-version">${versionSummary(id, entry.version, titles)}</div>
-        ${mayRestore && !entry.deleted ? `<button type="button" class="btn" data-restore="${i}">↶ Make this the current version</button>` : ''}
+        ${mayRestore && !entry.deleted ? `<button type="button" class="btn" data-restore="${i}">${icon('undo')} Make this the current version</button>` : ''}
       </details></li>`).join('')}</ol>`,
   });
   dialog.body.querySelectorAll('[data-restore]').forEach(button => button.addEventListener('click', async () => {
@@ -2741,7 +2741,7 @@ async function loadTrash() {
     <li>
       <span class="trash-title"><b>${escapeHtml(t.title)}</b> <small>(${t.type})</small><br>
       <small>Deleted by ${escapeHtml(window.users?.[t.deletedBy] || t.deletedBy?.replace(/^u-/, ''))}, ${formatDate(t.deletedAt)}</small></span>
-      <button class="btn" data-id="${escapeHtml(t.id)}" data-rev="${escapeHtml(t.rev)}" onclick="restoreFromTrash(this)">↶ Restore</button>
+      <button class="btn" data-id="${escapeHtml(t.id)}" data-rev="${escapeHtml(t.rev)}" onclick="restoreFromTrash(this)">${icon('undo')} Restore</button>
     </li>`).join('') + '</ul>';
 }
 
@@ -3127,7 +3127,7 @@ function loadSongbookComments() {
       }
       if (!li.querySelector('.toggle_comment') && li.querySelector('a')) {
         li.querySelector('a').insertAdjacentHTML('afterend', 
-          '<button class="toggle_comment" onclick="this.nextElementSibling.style.display=getComputedStyle(this.nextElementSibling).display===\'none\'?\'block\':\'none\'">💬</button>');
+          '<button class="toggle_comment" onclick="this.nextElementSibling.style.display=getComputedStyle(this.nextElementSibling).display===\'none\'?\'block\':\'none\'" aria-label="Comments" title="Comments">' + icon('comment') + '</button>');
       }
     });
 

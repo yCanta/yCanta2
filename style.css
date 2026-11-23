@@ -75,6 +75,53 @@
 :root {
   --highlight-color: var(--background-color);
 }
+/* Icons (#95): yCanta's own line drawings, in icons.svg, so they look the same on every device and follow
+   dark mode. In the page one is <svg class="icon"><use href="icons.svg#edit"/></svg> (icon('edit') in lib.js).
+   A ::before or ::after in this file can't use that file, so the few it needs are here too, as masks: the
+   rule below draws --ico in the text color. Made from icons.svg: change a drawing in both places. */
+:root {
+--i-close: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E");
+  --i-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7'/%3E%3C/svg%3E");
+  --i-tilde: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 14c2.5-4 5-4 8-2s5.5 2 8-2'/%3E%3C/svg%3E");
+  --i-search: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='6' fill='black' fill-opacity='.12'/%3E%3Cpath stroke-width='3' d='M16 16l4 4'/%3E%3C/svg%3E");
+  --i-chevron-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  --i-chevron-up: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 15l6-6 6 6'/%3E%3C/svg%3E");
+  --i-book: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 6c-2-1.5-5-2-8-2v14c3 0 6 .5 8 2 2-1.5 5-2 8-2V4c-3 0-6 .5-8 2zM12 6v14'/%3E%3C/svg%3E");
+  --i-star: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath stroke-linejoin='miter' stroke-miterlimit='10' d='M12 2.8l2.75 5.95 6.5.75-4.85 4.4 1.35 6.4L12 17.05 6.25 20.3l1.35-6.4L2.75 9.5l6.5-.75z'/%3E%3C/svg%3E");
+  --i-star-filled: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath fill='black' stroke-linejoin='miter' stroke-miterlimit='10' d='M12 2.8l2.75 5.95 6.5.75-4.85 4.4 1.35 6.4L12 17.05 6.25 20.3l1.35-6.4L2.75 9.5l6.5-.75z'/%3E%3C/svg%3E");
+  --i-info: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 11v5'/%3E%3Ccircle fill='black' stroke='none' cx='12' cy='7.8' r='1.2'/%3E%3C/svg%3E");
+  --i-fullscreen: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 4h6v6M10 20H4v-6M20 4l-6.5 6.5M4 20l6.5-6.5'/%3E%3C/svg%3E");
+  --i-shrink: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 4v6h6M10 20v-6H4M14 10l6.5-6.5M10 14l-6.5 6.5'/%3E%3C/svg%3E");
+  --i-clear: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cmask id='m'%3E%3Crect width='24' height='24' fill='white'/%3E%3Cpath d='M9.5 9.5l5 5M14.5 9.5l-5 5' stroke='black' stroke-width='1.8' stroke-linecap='round'/%3E%3C/mask%3E%3Ccircle cx='12' cy='12' r='8' fill='black' stroke='none' mask='url(%23m)'/%3E%3C/svg%3E");
+}
+.icon {
+  display: inline-block;
+  flex: none;
+  width: 1.15em;
+  height: 1.15em;
+  vertical-align: -.2em;
+  pointer-events: none; /* a tap or click is on its button or grip, as with the old text symbols */
+}
+#songbook_content.showStatus li[data-song-status] a:before,
+#songbook_content.showStatus li > button.status-btn::before,
+.yt-play.yt-search::after,
+li[data-song-id="reading"] > a::before,
+#keyToggle .chevron::after,
+.star:after,
+info:after,
+.fsButton:after,
+input.deletable + span:after,
+.export-chip[aria-pressed="true"]::before,
+.export-more-title::after {
+  content: '';
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -.15em;
+  background-color: currentColor;
+  -webkit-mask: var(--ico) center / contain no-repeat;
+  mask: var(--ico) center / contain no-repeat;
+}
 *:focus {
   outline: 1px;
   outline-color: transparent;
@@ -488,17 +535,20 @@ legend {
 .left {
   text-align: left;
 }
-#songbook_content.showStatus li[data-song-status="n"] a:before {
-  content: '~ ';
+#songbook_content.showStatus li[data-song-status] a:before {
+  margin-right: .3em;
   cursor: pointer;
+}
+#songbook_content.showStatus li[data-song-status="n"] a:before {
+  --ico: var(--i-tilde);
 }
 #songbook_content.showStatus li[data-song-status="r"] a:before {
-  content: '✗ ';
-  cursor: pointer;
+  --ico: var(--i-close);
+  color: orangered;
 }
 #songbook_content.showStatus li[data-song-status="a"] a:before {
-  content: '✓ ';
-  cursor: pointer;
+  --ico: var(--i-check);
+  color: mediumseagreen;
 }
 .closing,
 #username_d {
@@ -886,15 +936,18 @@ legend {
   background-color: var(--highlight-color);
 }
 .yt-play.yt-search::after {
-  content: '🔍';
+  --ico: var(--i-search);
   position: absolute;
-  bottom: -.35rem;
-  right: -.4rem;
-  font-size: .8rem;
+  bottom: -.5rem;
+  right: -.55rem;
+  font-size: 1.3rem;
   line-height: 1;
 }
 .yt-play.searching::after {
   content: '';
+  background: none;
+  -webkit-mask: none;
+  mask: none;
   width: .7rem;
   height: .7rem;
   border: 2px solid var(--text-color);
@@ -1234,7 +1287,8 @@ li[data-song-id="section"] a {
 }
 /* A Bible reading in a songbook (#157): a book next to its reference; a click shows the verses under it */
 li[data-song-id="reading"] > a::before {
-  content: '📖 ';
+  --ico: var(--i-book);
+  margin-right: .3em;
 }
 li[data-song-id="reading"] > a {
   font-style: italic;
@@ -1289,7 +1343,6 @@ li[data-song-id="reading"] > a {
 }
 .edit_pencil {
   margin-right: 1.5rem;
-  font-size: .7rem;
 }
 stitle, cat, author, scrip_ref, key, copyright, cclis {
   cursor: pointer;
@@ -1369,12 +1422,12 @@ stitle, cat, author, scrip_ref, key, copyright, cclis {
   background: rgba(var(--edit-color-rgb), .9);
 }
 #keyToggle .chevron::after {
-  content: '▾';
+  --ico: var(--i-chevron-down);
   margin-left: .35rem;
   font-size: .85em;
 }
 #keyToggleContainer.active #keyToggle .chevron::after {
-  content: '▴';
+  --ico: var(--i-chevron-up);
 }
 .chord-switch {
   position: relative; /* keeps the hidden checkbox here, so focusing it doesn't scroll the page */
@@ -1464,42 +1517,39 @@ stitle, cat, author, scrip_ref, key, copyright, cclis {
   position: relative;
 }
 .star:after {
+  --ico: var(--i-star);
   margin-left: .5rem;
-  text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.15);
-  font-size: 1.7rem;
-  color: var(--edit-color);
-  content: '☆';
+  font-size: 1.5rem;
+  color: var(--light-text-color); /* the old ☆ in --edit-color was hard to see, in dark mode most of all */
   cursor: pointer;
   position: absolute;
-  line-height: 1.17rem;
 }
 info:after {
-  content: 'ⓘ';
-  color: darkblue;
-  font-family: monospace;
+  --ico: var(--i-info);
+  color: var(--light-text-color);
   cursor: pointer;
   position: absolute;
   left: .3rem;
   top: .2rem;
   font-size: 1.4rem;
 }
-.fsButton:after {
+.fsButton:after { /* full width: arrows out; while wide, arrows in (Material's open_in_full / close_fullscreen) */
+  --ico: var(--i-fullscreen);
   top: .2rem;
-  font-size: 1.7rem;
+  font-size: 1.4rem;
   color: var(--text-color);
-  content:  '↔';
-  transform: rotateZ(135deg);
-  transform-origin: center;
   cursor: pointer;
   position: absolute;
-  line-height: 1.17rem; 
+}
+.column.fullscreen .fsButton:after {
+  --ico: var(--i-shrink);
 }
 #songbookList li span:after {
-  text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.15);
   position: absolute;
   right: 1rem;
-  font-size: 1.7rem;
-  line-height: 1.4em;
+  top: 50%;
+  transform: translateY(-50%); /* the star in the middle of the row's height */
+  font-size: 1.3rem;
   color: lightgray;
   display: none;
   cursor: pointer;
@@ -1507,8 +1557,8 @@ info:after {
 #song .song-card[data-user-fav="true"] .star:after,
 #songbookList li[data-user-fav="true"] .star:after,
 #songbook_header .title[data-user-fav="true"] .star:after {
-  content: '★';
-  color: black;
+  --ico: var(--i-star-filled);
+  color: var(--text-color);
   display: inline-block;
 }
 .column_header {
@@ -1717,6 +1767,11 @@ li.sortable-drag > a {
   right: .75em;
   top: .5rem;
 }
+.edit #songbook_content li > button:not(.status-btn) { /* editing: the pencil and trash in the middle of the row */
+  top: 50%;
+  transform: translateY(-50%);
+  line-height: 1;
+}
 /* A song's status while its book is edited (lib.js addBookRowButtons, UX audit #15): a round button in front of
    its name, there only while Song Status is on, in place of the plain mark the book shows when not editing */
 #songbook_content li > button.status-btn {
@@ -1742,9 +1797,9 @@ li.sortable-drag > a {
   box-shadow: var(--btn-shadow-var), inset 0 0 0 1px var(--btn-edge);
 }
 #songbook_content.showStatus li[data-song-status="n"] > button.status-btn::before,
-#songbook_content.showStatus li:not([data-song-status="a"]):not([data-song-status="r"]) > button.status-btn::before { content: '~'; }
-#songbook_content.showStatus li[data-song-status="a"] > button.status-btn::before { content: '✓'; color: mediumseagreen; } /* readable in dark mode too */
-#songbook_content.showStatus li[data-song-status="r"] > button.status-btn::before { content: '✗'; color: orangered; }
+#songbook_content.showStatus li:not([data-song-status="a"]):not([data-song-status="r"]) > button.status-btn::before { --ico: var(--i-tilde); }
+#songbook_content.showStatus li[data-song-status="a"] > button.status-btn::before { --ico: var(--i-check); color: mediumseagreen; } /* readable in dark mode too */
+#songbook_content.showStatus li[data-song-status="r"] > button.status-btn::before { --ico: var(--i-close); color: orangered; }
 #songbook_content.showStatus li:has(> .status-btn) > a::before {
   content: none;
 }
@@ -1893,27 +1948,28 @@ span.deleteicon {
 span.deleteicon span {
   position: absolute;
   display: block;
-  top: 0;
-  right: 10px;
+  top: 0; /* at the box's top: the count bubble above it, the magnifier under the bubble's edge, as always */
+  right: calc(1rem + 8px); /* inside the box (its wrapper is 1rem wider), under the count bubble: the count is what the search found */
   width: 16px;
   height: 16px;
   cursor: pointer;
 }
-input.deletable + span:after {   
+input.deletable + span:after {
   position: absolute;
-  top: 0; 
-  left: 0;
-  width: 1.2em;
+  top: .5px; /* the drawing in the middle of the 23px box's height */
+  left: -3px;
+  width: 21px;
+  height: 21px;
+  color: var(--light-text-color);
 }
 input.deletable:not(:placeholder-shown) + span:after {
-  padding-left: 5px;
-  content: '  X';
+  --ico: var(--i-clear); /* clears the search: a filled circle with the × cut out */
 }
 input.deletable:placeholder-shown + span:after {
-  content: '🔍';
+  --ico: var(--i-search);
 }
 span.deleteicon input {
-  padding-right: 24px;
+  padding-right: 32px; /* clear of the magnifier or ×, 22px wide */
 }
 
 /*Login CSS */
@@ -2418,9 +2474,9 @@ input.seg-field {
   box-shadow: none;
 }
 .export-chip[aria-pressed="true"]::before {
-  content: '✕ ';
+  --ico: var(--i-close);
   display: inline-block; /* not struck through */
-  margin-right: .2rem;
+  margin-right: .3rem;
 }
 .export-table {
   border-collapse: collapse;
@@ -2463,10 +2519,11 @@ input.seg-field {
   font-weight: bold;
 }
 .export-more-title::after {
-  content: ' ▾';
+  --ico: var(--i-chevron-down);
+  margin-left: .3rem;
 }
 .export-more[open] .export-more-title::after {
-  content: ' ▴';
+  --ico: var(--i-chevron-up);
 }
 /* Open, the bar and what's in it are one box */
 .export-more[open] {
@@ -2534,19 +2591,15 @@ th {
 [rel=tooltip] {
   position: relative;
 }
-[rel=tooltip]:after {
+[rel=tooltip]:after { /* a hint: "?" in a bubble explains what's beside it. The circled i (Info) opens details. */
   position: absolute;
   top: -4px;
-  color: blue;
-  content: 'i';
+  color: var(--light-text-color);
+  content: '?';
   width: 1rem;
   height: 1rem;
-  font-size: small;
-  font-style: italic;
-  font-weight: normal;
+  font: .75rem/1rem system-ui, sans-serif; /* light, no ring */
   text-align: center;
-  padding-right: 1px;
-  padding-bottom: 1px;
   border-radius: 50%;
   background-color: var(--highlight-color);
 }
@@ -3107,6 +3160,13 @@ html._admin .account-menu .admin, html.churchAdmin .account-menu .admin {
     padding-right: 1rem;
   }
 }
+/* A wide screen that is also tall (not a phone on its side): a little room under the name button before the
+   columns start, so the gray beside them doesn't touch it */
+@media only screen and (min-width: 40rem) and (min-height: 31.26rem) {
+  body header { /* "body": the wide rule for header, further down, would win otherwise */
+    flex: 0 0 3.8rem;
+  }
+}
 /** Phone in landscape **/
 @media only screen and (max-height: 31.25rem) and (min-width: 40rem) {
   .songList #header,
@@ -3449,14 +3509,14 @@ only screen and (max-height: 31.25rem) {
   }
   #songbook_header .title[data-user-fav="true"] .star:hover:after,
   #song .song-card[data-user-fav="true"] .star:hover:after {
-    content: '☆';
-    color: black;
+    --ico: var(--i-star);
+    color: var(--text-color);
   }
   #songbook_header .title .star:hover:after,
   #song .star:hover:after {
-    content: '★';
+    --ico: var(--i-star-filled);
     cursor: pointer;
-    color: black;
+    color: var(--text-color);
   }
 }
 @media (hover: hover) and (min-width: 40rem) and (min-height: 31.26rem) {
@@ -3472,14 +3532,13 @@ only screen and (max-height: 31.25rem) {
 .search-row {
   display: flex;
   align-items: center;
-  gap: .5rem;
+  gap: .75rem; /* the same space after the search box (its count bubble hangs into it) and after the ? */
 }
 /* Beside the song list's search: the same i bubble as Export, saying what search looks at */
 .search-tips {
   flex: none;
   width: 1rem;
   height: 1rem;
-  align-self: flex-start;
 }
 .search-tips:after {
   top: 0;
@@ -3489,7 +3548,10 @@ only screen and (max-height: 31.25rem) {
   min-width: 0;
 }
 .search-row .search {
-  width: calc(100% - 1rem);
+  width: 100%; /* no blank strip after it here: the row's gap spaces it */
+}
+.search-row span.deleteicon span {
+  right: 8px;
 }
 .song-filter {
   display: inline-flex;
@@ -3984,7 +4046,7 @@ only screen and (max-height: 31.25rem) {
   box-shadow: var(--box-shadow-var);
   max-width: 340px;
   opacity: 0;
-  transition: opacity 50ms ease-in-out, top 50ms ease-in-out;
+  transition: opacity 120ms ease-in-out; /* fades in where it belongs; moving "top" too made it fly in from the page top */
   pointer-events: none; /* when it opens over its icon, the icon still gets the hover and the tap */
 }
 

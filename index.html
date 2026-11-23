@@ -29,15 +29,15 @@
            the screen you're on, then Install and Logout -->
       <div class="content">
         <nav class="account-menu" id="account_menu" aria-label="Your menu">
-          <button type="button" data-open="help"><span class="am-icon" aria-hidden="true">?</span>Help</button>
-          <button type="button" data-open="userProfile"><span class="am-icon" aria-hidden="true">&#9786;</span>My Profile</button>
-          <button type="button" data-open="appSettings"><span class="am-icon" aria-hidden="true">&#9881;</span>Settings</button>
-          <button type="button" data-open="categorySettings"><span class="am-icon" aria-hidden="true">#</span>Categories</button>
-          <button type="button" data-open="trash"><span class="am-icon" aria-hidden="true">&#128465;</span>Trash</button>
-          <button type="button" data-open="adminSettings" class="admin"><span class="am-icon" aria-hidden="true">&#9733;</span>Admin</button>
+          <button type="button" data-open="help"><svg class="icon am-icon" aria-hidden="true"><use href="icons.svg#help"/></svg>Help</button>
+          <button type="button" data-open="userProfile"><svg class="icon am-icon" aria-hidden="true"><use href="icons.svg#person"/></svg>My Profile</button>
+          <button type="button" data-open="appSettings"><svg class="icon am-icon" aria-hidden="true"><use href="icons.svg#settings"/></svg>Settings</button>
+          <button type="button" data-open="categorySettings"><svg class="icon am-icon" aria-hidden="true"><use href="icons.svg#tag"/></svg>Categories</button>
+          <button type="button" data-open="trash"><svg class="icon am-icon" aria-hidden="true"><use href="icons.svg#trash"/></svg>Trash</button>
+          <button type="button" data-open="adminSettings" class="admin"><svg class="icon am-icon" aria-hidden="true"><use href="icons.svg#admin"/></svg>Admin</button>
           <hr>
-          <button type="button" data-open="install" class="install-btn"><span class="am-icon" aria-hidden="true">&#8681;</span>Install yCanta</button>
-          <button type="button" data-open="logout"><span class="am-icon" aria-hidden="true">&#8618;</span>Logout</button>
+          <button type="button" data-open="install" class="install-btn"><svg class="icon am-icon" aria-hidden="true"><use href="icons.svg#install"/></svg>Install yCanta</button>
+          <button type="button" data-open="logout"><svg class="icon am-icon" aria-hidden="true"><use href="icons.svg#logout"/></svg>Logout</button>
         </nav>
       </div>
     </fieldset>
@@ -51,7 +51,7 @@
           <h2>Login:</h2>
           <select id="db_select" aria-label="Songs to open">
             <option value="new">Create local</option>
-          </select><button tabindex="-1" class="btn btn-small" style="display: none" id="deleteDb" onclick="if(confirm('Are you sure you want to delete: '+document.getElementById('db_select').value+'?')){destroyDb(document.getElementById('db_select').value)}" title="delete this database">🗑</button>
+          </select><button tabindex="-1" class="btn btn-small" style="display: none" id="deleteDb" onclick="if(confirm('Are you sure you want to delete: '+document.getElementById('db_select').value+'?')){destroyDb(document.getElementById('db_select').value)}" title="delete this database"><svg class="icon" aria-hidden="true"><use href="icons.svg#trash"/></svg></button>
           <!-- One line on what each choice is -->
           <p class="login-help d_none login_demo">New to yCanta? Look around with sample songs on this device. No account needed: just press Login.</p>
           <p class="login-help d_none login_remote">Your church's songs, from its server.</p>
@@ -85,7 +85,7 @@
             <summary>Trouble signing in?</summary>
             <p>Check the church or songs picked at the top. Forgot your password or PIN? Use "Forgot password?" or "Forgot PIN?" above.</p>
             <p>If this device's copy seems broken, clearing it can help: your church's songs download again when you sign in. Songs kept only on this device are lost.</p>
-            <button tabindex="-1" class="btn" style="color: red;" onclick="if(confirm('Delete everything yCanta keeps on this device?\n\nYour church\'s songs download again when you sign in, but songs kept only on this device (and the demo) are gone for good. This can\'t be undone.')){clearAllData();};">🗑 Clear all data on this device</button>
+            <button tabindex="-1" class="btn" style="color: red;" onclick="if(confirm('Delete everything yCanta keeps on this device?\n\nYour church\'s songs download again when you sign in, but songs kept only on this device (and the demo) are gone for good. This can\'t be undone.')){clearAllData();};"><svg class="icon" aria-hidden="true"><use href="icons.svg#trash"/></svg> Clear all data on this device</button>
           </details>
         </div>
         <div id="logged_in">
@@ -191,7 +191,7 @@
                .filter-chips: what the filter shows
              Each song shown is a .song-card (db.js loadSong): its own header, then <song>, the song itself. -->
         <div class="float-menu">
-          <a data-songbook-edit="new" class="float-menu-item"><span class="float-menu-icon">+</span> Add songbook </a>
+          <a data-songbook-edit="new" class="float-menu-item"><span class="float-menu-icon"><svg class="icon" aria-hidden="true"><use href="icons.svg#plus"/></svg></span> Add songbook </a>
         </div>
         <div class="row">
           <div class="subcolumn">
@@ -314,7 +314,7 @@
       </div>
       <div class="column" id="export">
         <div class="float-menu"><!-- wider screens; a phone has the × in the title row instead -->
-          <button class="float-menu-item" onclick="closeExport()"><span class="float-menu-icon">&#10005;</span> Close</button>
+          <button class="float-menu-item" onclick="closeExport()"><span class="float-menu-icon"><svg class="icon" aria-hidden="true"><use href="icons.svg#close"/></svg></span> Close</button>
         </div>
         <div class="row">
           <div class="subcolumn">
@@ -334,7 +334,7 @@
                    field hidden beside it. Those fields are what a Format saves, with the same names as before, so
                    saved Formats, Copy and Paste work as they did. -->
               <div class="export-top">
-                <span id="exportDownload"><button type="button" class="btn export-download" disabled>&#11123; Download PDF</button></span>
+                <span id="exportDownload"><button type="button" class="btn export-download" disabled><svg class="icon" aria-hidden="true"><use href="icons.svg#download"/></svg> Download PDF</button></span>
                 <small id="export_info" class="export-help"></small>
                 <div id="pdf_progress_bar">
                   <div id="pdf_progress"></div>
@@ -557,9 +557,9 @@
                     <div class="export-row">
                       <span class="export-name">By status</span>
                       <div class="export-choices">
-                        <label class="export-check"><input type="checkbox" id="print_a" name="print_a"> ✓ Approved</label>
-                        <label class="export-check"><input type="checkbox" id="print_n" name="print_n"> ~ New</label>
-                        <label class="export-check"><input type="checkbox" id="print_r" name="print_r"> ✗ Rejected</label>
+                        <label class="export-check"><input type="checkbox" id="print_a" name="print_a"> <svg class="icon" aria-hidden="true"><use href="icons.svg#check"/></svg> Approved</label>
+                        <label class="export-check"><input type="checkbox" id="print_n" name="print_n"> <svg class="icon" aria-hidden="true"><use href="icons.svg#tilde"/></svg> New</label>
+                        <label class="export-check"><input type="checkbox" id="print_r" name="print_r"> <svg class="icon" aria-hidden="true"><use href="icons.svg#close"/></svg> Rejected</label>
                       </div>
                       <small class="export-help">Only songs with these marks in this songbook. None ticked prints every song.</small>
                     </div>
@@ -573,7 +573,7 @@
                   <div class="export-actions-head">
                     <b>Format</b>
                     <span class="split-pill">
-                      <button type="button" id="export_copy" onclick="copyToClipboard(JSON.stringify(serializeForm('export_form')));" title="Copy this format, to paste into another export">📄 Copy</button><button type="button" id="export_paste" onclick="pasteFromClipboard();" title="Paste a format someone copied">📋 Paste</button>
+                      <button type="button" id="export_copy" onclick="copyToClipboard(JSON.stringify(serializeForm('export_form')));" title="Copy this format, to paste into another export"><svg class="icon" aria-hidden="true"><use href="icons.svg#copy"/></svg> Copy</button><button type="button" id="export_paste" onclick="pasteFromClipboard();" title="Paste a format someone copied"><svg class="icon" aria-hidden="true"><use href="icons.svg#paste"/></svg> Paste</button>
                     </span>
                   </div>
                   <div id="cfg_buttons"></div>
@@ -636,10 +636,10 @@
       <small class="player-video-title player-caption"></small>
       <div class="player-controls">
         <span class="player-count"></span>
-        <button type="button" class="btn emoji" onclick="playerPrev()" aria-label="Previous video">⏮</button>
-        <button type="button" class="btn emoji player-play" onclick="toggleVideo()" aria-label="Play or pause">▶</button>
-        <button type="button" class="btn emoji" onclick="playerNext()" aria-label="Next video">⏭</button>
-        <button type="button" id="loop" class="btn emoji" onclick="toggleLoop()" aria-label="Repeat">🔁</button>
+        <button type="button" class="btn emoji" onclick="playerPrev()" aria-label="Previous video"><svg class="icon" aria-hidden="true"><use href="icons.svg#prev"/></svg></button>
+        <button type="button" class="btn emoji player-play" onclick="toggleVideo()" aria-label="Play or pause"><svg class="icon" aria-hidden="true"><use href="icons.svg#play"/></svg></button>
+        <button type="button" class="btn emoji" onclick="playerNext()" aria-label="Next video"><svg class="icon" aria-hidden="true"><use href="icons.svg#next"/></svg></button>
+        <button type="button" id="loop" class="btn emoji" onclick="toggleLoop()" aria-label="Repeat"><svg class="icon" aria-hidden="true"><use href="icons.svg#repeat"/></svg></button>
       </div>
       <!-- videos found by a YouTube search (#151): YouTube's rules want this notice; Keep is for those who can edit -->
       <div class="player-found">
@@ -647,16 +647,16 @@
         <button type="button" class="btn btn-small player-keep" onclick="keepFoundVideo()" title="Save this video's link in the song">Keep this video</button>
       </div>
       <div class="player-foot">
-        <button type="button" class="btn player-min" onclick="setPlayerLook('pill')" title="Minimize it to the bottom"><span>&#9662; Minimize</span></button>
-        <button type="button" class="btn" onclick="closePlayer()" title="Stop and close">X</button>
+        <button type="button" class="btn player-min" onclick="setPlayerLook('pill')" title="Minimize it to the bottom"><span><svg class="icon" aria-hidden="true"><use href="icons.svg#chevron-down"/></svg> Minimize</span></button>
+        <button type="button" class="btn" onclick="closePlayer()" title="Stop and close" aria-label="Stop and close"><svg class="icon" aria-hidden="true"><use href="icons.svg#close"/></svg></button>
       </div>
       <div class="player-pill-buttons">
-        <button type="button" onclick="playerNext()" aria-label="Next video">⏭</button>
-        <button type="button" class="player-unfold" onclick="setPlayerLook('dialog')" title="Open the player" aria-label="Open the player">&#9652;</button>
+        <button type="button" onclick="playerNext()" aria-label="Next video"><svg class="icon" aria-hidden="true"><use href="icons.svg#next"/></svg></button>
+        <button type="button" class="player-unfold" onclick="setPlayerLook('dialog')" title="Open the player" aria-label="Open the player"><svg class="icon" aria-hidden="true"><use href="icons.svg#chevron-up"/></svg></button>
       </div>
       <div class="player-tab">
-        <button type="button" onclick="setPlayerLook('dialog')" title="Open the player" aria-label="Open the player">&#9835;</button>
-        <button type="button" class="player-play" onclick="toggleVideo()" aria-label="Play or pause">▶</button>
+        <button type="button" onclick="setPlayerLook('dialog')" title="Open the player" aria-label="Open the player"><svg class="icon" aria-hidden="true"><use href="icons.svg#music"/></svg></button>
+        <button type="button" class="player-play" onclick="toggleVideo()" aria-label="Play or pause"><svg class="icon" aria-hidden="true"><use href="icons.svg#play"/></svg></button>
       </div>
     </div>
     <!-- A part's presentation preview, while a song is edited (#156): floats and drags like the Info window,

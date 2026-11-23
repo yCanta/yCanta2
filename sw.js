@@ -39,6 +39,7 @@ var prefetchedURLs = [
   'Sortable.min.js',
   'notyf.min.css',
   'style.css',
+  'icons.svg', // yCanta's own icons (#95)
   'myTransposer.css',
   '2html.css',
   'apple-touch-icon.png',

@@ -520,8 +520,9 @@ try {
     ok(!(await ev(`[...document.getElementById('format').options].some(o => o.textContent === ${JSON.stringify(`Your ${RUN} Cfg`)})`)), 'export: the × deletes a config, after asking');
     // this window is wider than a phone: Close in the menu bar; the × in the title row is a phone's
     const closes = await ev(`({ menu: document.querySelector('#export .float-menu').textContent.trim(),
+      icon: document.querySelector('#export .float-menu use')?.getAttribute('href'),
       x: getComputedStyle(document.querySelector('#export .column_header .close-icon-mobile')).display })`);
-    ok(closes.menu === '✕ Close' && closes.x === 'none', 'export: Close in the menu bar on a wide screen (the × is for phones)', JSON.stringify(closes));
+    ok(closes.menu === 'Close' && closes.icon === 'icons.svg#close' && closes.x === 'none', 'export: Close in the menu bar on a wide screen (the × is for phones)', JSON.stringify(closes));
     await ev(`document.querySelector('#export .float-menu button').click()`);
     await until(`location.hash === '#${bookId}'`, 'Close to leave the export');
     ok(true, 'export: Close goes back to the songbook');

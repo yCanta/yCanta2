@@ -18,6 +18,12 @@ function escapeHtml(text) {
     .replace(/'/g, '&#39;');
 }
 
+// One of yCanta's own icons (#95), from icons.svg: a line drawing in the text color, the same on every
+// device. Hidden from screen readers; the button or link it's in says what it does.
+function icon(name, cls = '') {
+  return `<svg class="icon${cls ? ' ' + cls : ''}" aria-hidden="true"><use href="icons.svg#${name}"/></svg>`;
+}
+
 // Song text shows as text, never as page code: a title like <img onerror=...> would otherwise run for
 // everyone who opens the list. Fields are plain text (the editor saves them as text). A lyric line keeps
 // the markup songs really carry: chords (<c>), line breaks, blocks pasted in (<div>), and links to web
@@ -662,7 +668,7 @@ function showPresentationReport(report) {
   const time = ms => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   const day = new Date(report.start).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
   const row = (it, i) => `<tr><td><input type="checkbox" data-i="${i}"${it.counted ? ' checked' : ''} aria-label="Count it"></td>
-    <td>${it.kind === 'passage' ? '📖 ' : ''}${escapeHtml(it.title)}</td><td>${escapeHtml(it.ccli)}</td>
+    <td>${it.kind === 'passage' ? icon('book') + ' ' : ''}${escapeHtml(it.title)}</td><td>${escapeHtml(it.ccli)}</td>
     <td>${clock(it.seconds)}</td><td>${it.shown} of ${it.total}</td></tr>`;
   const head = '<tr class="report-head"><td></td><td>Song or scripture</td><td>CCLI #</td><td>On screen</td><td>Slides</td></tr>';
   const rows = filter => report.items.map((it, i) => filter(it) ? row(it, i) : '').join('');
@@ -1491,10 +1497,10 @@ async function updateUser() {
   // Buttons
   profileHtml += `
     <button onclick="editProfileName()" class="btn">
-      <span class="mirror">&#9998;</span> Name
+      ${icon('edit')} Name
     </button>
     <button onclick="change${document.documentElement.classList.contains('_admin') ? 'Admin' : 'User'}Password(window.user._id.replace('u-', ''))" class="btn">
-      ↻ Password
+      ${icon('key')} Password
     </button>`;
 
   userContent.innerHTML = profileHtml;
@@ -1509,7 +1515,7 @@ async function loadCategories() {
     const result = await db.get('categories');
     
     // Build HTML content
-    let html = `<h3>Ordered List <button type="button" class="btn btn-small editor-only" onclick="editCategories()"><span class="mirror">&#9998;</span> Edit</button></h3><ul>`;
+    let html = `<h3>Ordered List <button type="button" class="btn btn-small editor-only" onclick="editCategories()">${icon('edit')} Edit</button></h3><ul>`;
 
     // Each category as a list item. A "-----" divider starts a group: "----- Seasons" shows Seasons as a
     // heading, a plain "-----" a line (#84). A category listed twice shows once.
@@ -1574,7 +1580,7 @@ async function editCategories() {
     return;
   }
   const row = (kind, text, original = '') => `<li class="cat-row${kind === 'heading' ? ' cat-heading' : ''}" data-kind="${kind}" data-original="${escapeHtml(original)}">
-      <span class="cat-grip" aria-hidden="true" title="Drag to move">⠿</span>
+      <span class="cat-grip" aria-hidden="true" title="Drag to move">${icon('drag')}</span>
       <input type="text" value="${escapeHtml(text)}" aria-label="${kind === 'heading' ? 'Group heading' : 'Category name'}" placeholder="${kind === 'heading' ? 'A line, or a group name' : 'Category name'}">
       <button type="button" class="cat-remove" aria-label="Remove" title="Remove">×</button>
     </li>`;
@@ -1584,7 +1590,7 @@ async function editCategories() {
     return divider ? row('heading', divider[1].trim()) : cat ? row('cat', cat, cat) : '';
   }).join('');
   box.innerHTML = `<div class="cat-edit">
-      <p class="cat-edit-help">Drag ⠿ to move. A group heading starts a new group. Removing a category here doesn't take it off songs that have it.</p>
+      <p class="cat-edit-help">Drag ${icon('drag')} to move. A group heading starts a new group. Removing a category here doesn't take it off songs that have it.</p>
       <ul class="cat-list">${rows}</ul>
       <div class="cat-edit-buttons">
         <button type="button" class="btn btn-small" data-add="cat">+ Category</button>
@@ -2002,12 +2008,12 @@ function setSongbookInfo(songbook) {
   if (floatMenu.dataset.builtFor !== menuKey) {
     floatMenu.dataset.builtFor = menuKey;
     floatMenu.innerHTML = `
-      ${songbook._id === 'sb-allSongs' ? '<a data-song-edit="new" class="float-menu-item"><span class="float-menu-icon">+</span>Add Song</a>' : ''}
-      ${editable ? `<button data-home onclick="deleteSongbook('${songbook._id}')" class="float-menu-item delete"><span class="float-menu-icon">&#128465;</span>Delete</button>` : ''}
-      <button data-songbook-present class="float-menu-item" id="present"><span class="float-menu-icon">&#128253;</span>Present</button>
-      <a data-songbook-export class="float-menu-item"><span class="float-menu-icon">&#128424;</span>Export</a>
-      ${editable ? '<a data-songbook-edit class="float-menu-item"><span class="float-menu-icon">&#9998;</span>Edit</a>' : ''}
-      <span class="float-menu-item float-menu-toggle"><button type="button" class="float-menu-icon" aria-label="Actions" title="Actions: present, export, edit">+</button></span>`;
+      ${songbook._id === 'sb-allSongs' ? '<a data-song-edit="new" class="float-menu-item"><span class="float-menu-icon">' + icon('plus') + '</span>Add Song</a>' : ''}
+      ${editable ? `<button data-home onclick="deleteSongbook('${songbook._id}')" class="float-menu-item delete"><span class="float-menu-icon">${icon('trash')}</span>Delete</button>` : ''}
+      <button data-songbook-present class="float-menu-item" id="present"><span class="float-menu-icon">${icon('present')}</span>Present</button>
+      <a data-songbook-export class="float-menu-item"><span class="float-menu-icon">${icon('export')}</span>Export</a>
+      ${editable ? '<a data-songbook-edit class="float-menu-item"><span class="float-menu-icon">' + icon('edit') + '</span>Edit</a>' : ''}
+      <span class="float-menu-item float-menu-toggle"><button type="button" class="float-menu-icon" aria-label="Actions" title="Actions: present, export, edit">${icon('plus')}</button></span>`;
   }
 
   // Handle info dialog
@@ -2258,7 +2264,7 @@ function songCategoryBody(name) {
     const empty = group.cats.filter(cat => !songs.some(facts => facts.cats.includes(cat))).length;
     const picked = group.cats.filter(cat => f.cat.has(cat)).length;
     const about = [group.cats.length, empty && `${empty} with no songs`, picked && `${picked} picked`].filter(Boolean).join(' · ');
-    return `<div class="filter-group"><button type="button" class="filter-group-head" data-cat-group="${escapeHtml(group.name)}" aria-expanded="${open}">${escapeHtml(group.name)} <span class="about">${about}</span><span class="arrow" aria-hidden="true">${open ? '▾' : '▸'}</span></button>${open ? chips : ''}</div>`;
+    return `<div class="filter-group"><button type="button" class="filter-group-head" data-cat-group="${escapeHtml(group.name)}" aria-expanded="${open}">${escapeHtml(group.name)} <span class="about">${about}</span><span class="arrow" aria-hidden="true">${icon(open ? 'chevron-down' : 'chevron-right')}</span></button>${open ? chips : ''}</div>`;
   }).join('');
 }
 
@@ -2572,7 +2578,7 @@ function addBookRowButtons(row) {
     labelStatusButton(row);
   }
   const deleteButton = document.createElement('button');
-  deleteButton.innerHTML = '&#128465;';
+  deleteButton.innerHTML = icon('trash');
   deleteButton.title = 'Take out of the songbook';
   deleteButton.setAttribute('aria-label', 'Take out of the songbook');
   deleteButton.addEventListener('click', () => {
@@ -2605,7 +2611,7 @@ async function showReading(ref) {
     <section class="song-card reading-card">
       <div class="column_header">
         <div class="title">
-          <h3 class="song-title"><a class="title_link">📖 ${escapeHtml(ref)}</a></h3>
+          <h3 class="song-title"><a class="title_link">${icon('book')} ${escapeHtml(ref)}</a></h3>
           <span class="buttonsRight"><span class="fsButton" role="button" tabindex="0" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }" aria-label="Full width" title="Full width" onclick="toggleFullscreen(this)"></span></span>
         </div>
       </div>
@@ -2791,7 +2797,7 @@ function makeChunksSortable(songElement) {
 function add_edit_pencil(song, edit) {
   const editBtn = document.createElement('button');
   editBtn.className = 'edit_pencil';
-  editBtn.textContent = '✏️';
+  editBtn.innerHTML = icon('edit');
   editBtn.title = 'Edit';
   editBtn.setAttribute('aria-label', 'Edit');
   editBtn.addEventListener('click', () => edit());
@@ -3169,7 +3175,7 @@ async function editSong() {
     grip.className = 'drag-grip';
     grip.title = 'Drag to move';
     grip.setAttribute('aria-hidden', 'true');
-    grip.textContent = '⠿';
+    grip.innerHTML = icon('drag');
     wrapper.appendChild(grip);
     chunk.parentNode.insertBefore(wrapper, chunk);
     wrapper.appendChild(chunk);
@@ -3588,7 +3594,7 @@ async function prepExport() {
   progressBar.style.width = '0%';
   progressText.textContent = '0%';
   // No PDF yet: the big Download button waits, and the Preview's is empty
-  document.getElementById('exportDownload').innerHTML = '<button type="button" class="btn export-download" disabled>&#11123; Download PDF</button>';
+  document.getElementById('exportDownload').innerHTML = '<button type="button" class="btn export-download" disabled>' + icon('download') + ' Download PDF</button>';
   document.getElementById('downloadPDF').innerHTML = '';
   exportInfo();
   await loadExcludeChips(); // before a Format is applied, so an old "Needs,Duplicate" reads as the Work to do group
@@ -3611,8 +3617,8 @@ async function prepExport() {
       if (e.data[0] === 'pdf') {
         // Two Download buttons: the big one at the top of the form, and the Preview's (handy in full width)
         const link = (cls, label) => `<a class="btn ${cls}" href="${escapeHtml(e.data[1])}" target="_blank" download="${escapeHtml(window.exportObject.title)}.pdf">${label}</a>`;
-        document.getElementById('exportDownload').innerHTML = link('export-download', '&#11123; Download PDF');
-        document.getElementById('downloadPDF').innerHTML = link('', 'Download ⭳');
+        document.getElementById('exportDownload').innerHTML = link('export-download', icon('download') + ' Download PDF');
+        document.getElementById('downloadPDF').innerHTML = link('', 'Download ' + icon('download'));
         exportInfo(e.data[2]);
 
         // Hand the PDF to the new viewer once it has started up: from the offline copy the PDF can be ready
@@ -3742,8 +3748,8 @@ function setupExportForm() {
     seg.setAttribute('role', 'group');
     seg.setAttribute('aria-label', seg.closest('.export-row')?.querySelector('.export-name')?.textContent || '');
     seg.innerHTML = choices.map(([value, label]) => `<button type="button" data-value="${escapeHtml(value)}">${escapeHtml(label)}</button>`).join('')
-      + (seg.dataset.other ? `<button type="button" data-other>${escapeHtml(seg.dataset.other)} ▾</button>` : '')
-      + (seg.dataset.custom ? '<button type="button" data-custom>Custom ▾</button>' : '');
+      + (seg.dataset.other ? `<button type="button" data-other>${escapeHtml(seg.dataset.other)} ${icon('chevron-down')}</button>` : '')
+      + (seg.dataset.custom ? '<button type="button" data-custom>Custom ' + icon('chevron-down') + '</button>' : '');
     seg.addEventListener('click', e => {
       const button = e.target.closest('button');
       if (!button) return;
@@ -3928,7 +3934,7 @@ function syncExportForm() {
     .map(([id, name]) => `<span class="sum-badge" title="${name} index: ${where[value(id)]}">${name}</span>`);
   say('export_index', lists.length ? [lists.join(' '), `${preset('index')} size`] : ['None']);
 
-  const marks = [['print_a', '✓'], ['print_n', '~'], ['print_r', '✗']].filter(([id]) => document.getElementById(id).checked).map(([, mark]) => mark);
+  const marks = [['print_a', icon('check')], ['print_n', icon('tilde')], ['print_r', icon('close')]].filter(([id]) => document.getElementById(id).checked).map(([, mark]) => mark);
   say('export_status', [marks.length ? `Only ${marks.join(' ')}` : 'Every song']);
 }
 function export_form_summary_update() {
@@ -4971,7 +4977,7 @@ function onPlayerStateChange(event){
   showPlayerQueue();
   // every play button of the player (the window's and the tab's) shows play or pause
   const playing = state === 1;
-  document.querySelectorAll('#playerDock .player-play').forEach(button => { button.textContent = playing ? '⏸' : '▶'; });
+  document.querySelectorAll('#playerDock .player-play').forEach(button => { button.innerHTML = icon(playing ? 'pause' : 'play'); });
   document.getElementById('playerDock').classList.toggle('playing', playing);
 }
 

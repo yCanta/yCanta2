@@ -39,13 +39,13 @@ Amazing grace, how sweet the sound</pre>
     ['Making a songbook', `<p>On Songbooks, press + Add songbook. Then Edit it (in its menu button) and open "Add songs" to
       pick songs. "New Section" adds a heading, and "New Reading" a Bible passage.</p>`],
     ['Order and removing', `<p>While editing, drag songs to put them in order (with a finger, hold a moment first). Drag a song
-      back into "Add songs", or use its 🗑, to take it out of the book. Cancel puts everything back as it was.</p>`],
-    ['Status', `<p>Turn on "Song Status" while editing to mark each song ✓ approved, ~ new or ✗ rejected: click the round
+      back into "Add songs", or use its ${icon('trash')}, to take it out of the book. Cancel puts everything back as it was.</p>`],
+    ['Status', `<p>Turn on "Song Status" while editing to mark each song ${icon('check')} approved, ${icon('tilde')} new or ${icon('close')} rejected: click the round
       button in front of a song's name to change it. Export can print only the ones you pick.</p>`],
   ]},
   { id: 'present', title: 'Presenting', items: [
     ['Starting', `<p>Open a songbook and choose Present (in its menu button). The words fill the screen. Press Space for the
-      part people sing next, and h or the Menu button for Help & Settings. Esc twice, or ✕ Leave, goes back.</p>`],
+      part people sing next, and h or the Menu button for Help & Settings. Esc twice, or ${icon('close')} Leave, goes back.</p>`],
     ['A second screen', `<p>In Help & Settings, "Open a mirror" opens a second window. Drag it to the projector and press F11
       for full screen. Set its look there, so the room never sees a panel.</p>`],
     ['Phones and tablets', `<p>"Share with other devices" shows a code and a QR code. Phones and tablets that open it follow

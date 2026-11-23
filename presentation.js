@@ -265,6 +265,18 @@ function escapeText(text) {
   return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+// The few of yCanta's icons (#95) a presentation shows. Drawn right here, not taken from icons.svg, because a
+// presentation can be downloaded and opened as one file with nothing beside it. Same drawings as icons.svg.
+const PRES_ICONS = {
+  book: '<path d="M12 6c-2-1.5-5-2-8-2v14c3 0 6 .5 8 2 2-1.5 5-2 8-2V4c-3 0-6 .5-8 2zM12 6v14"/>',
+  close: '<path d="M6 6l12 12M18 6L6 18"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+};
+function presIcon(name) {
+  return '<svg class="icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"'
+    + ' stroke-linecap="round" stroke-linejoin="round">' + PRES_ICONS[name] + '</svg>';
+}
+
 // ---- Bible verses on screen (#157). bible.js finds the verses; here they become a passage that's shown like
 // a song: its title (the reference) on the first slide, the translation's credit on the last, and each
 // slide as many whole verses as fit at a readable size. A passage goes in after the song on screen and stays
@@ -547,7 +559,7 @@ function renderReport() {
   if (!box) return;
   const report = presentationReport();
   const row = it => '<tr><td><input type="checkbox" data-id="' + escapeText(it.id) + '"' + (it.counted ? ' checked' : '') + '></td>'
-    + '<td>' + (it.kind === 'passage' ? '📖 ' : '') + escapeText(it.title) + '</td><td>' + escapeText(it.ccli) + '</td>'
+    + '<td>' + (it.kind === 'passage' ? presIcon('book') + ' ' : '') + escapeText(it.title) + '</td><td>' + escapeText(it.ccli) + '</td>'
     + '<td>' + clockTime(it.seconds) + '</td><td>' + it.shown + ' of ' + it.total + '</td></tr>';
   const table = items => '<table class="report-list"><tr class="report-head"><td></td><td>Song or scripture</td><td>CCLI #</td><td>On screen</td><td>Slides</td></tr>'
     + items.map(row).join('') + '</table>';
@@ -1348,9 +1360,9 @@ function toggleHelp() {
 let menuPeekTimer = null, menuHintAtStart = true;
 function setupMenuButton() {
   // Leave (#5 of the UX audit): a way out that needs no keyboard and no browser Back button, in an installed app too
-  const leave = canLeave() ? '<button type="button" id="leaveButton" onclick="leavePresentation()" title="Back to the songbook (Esc twice)">✕ Leave</button>' : '';
+  const leave = canLeave() ? '<button type="button" id="leaveButton" onclick="leavePresentation()" title="Back to the songbook (Esc twice)">' + presIcon('close') + ' Leave</button>' : '';
   document.body.insertAdjacentHTML('beforeend', '<div id="cornerButtons">' + leave
-    + '<button type="button" id="menuButton" onclick="toggleHelp()" title="Help & Settings (h)">☰ Menu</button></div>');
+    + '<button type="button" id="menuButton" onclick="toggleHelp()" title="Help & Settings (h)">' + presIcon('menu') + ' Menu</button></div>');
   document.body.classList.toggle('can-leave', !!leave);
   cornerButtons().forEach(b => b.classList.add('start'));
   peekMenu(45000);
