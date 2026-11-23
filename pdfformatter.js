@@ -80,6 +80,15 @@ class Songbook {
   }
 }
 
+// Blank space at the top of a column: with the songbook's title across the top of the first page, each of that
+// page's other columns starts below the title (paginate)
+class TitleSpacer {
+  constructor(height) {
+    this.height = height;
+    this.height_after = 0;
+  }
+}
+
 class Index extends Array {
   constructor() {
     super();
@@ -851,7 +860,32 @@ function paginate(songbook, cfg) {
   else {
     list_of_songs = songbook.songs;
     p = [songbook];
+    if(cfg.BOOKTITLE_MODE == 'page') { // a title page: the songs start on the next sheet (or booklet page)
+      pages.push(p);
+      while(pages.length % cfg.COLUMNS != 0) {
+        pages.push([]);
+      }
+      p = [];
+    }
   }
+  // A heading across the top of a page (the songbook's title, or an index's heading, below): the page's other
+  // columns start with a space as tall as it, so they line up under it. span is that page's first column and
+  // the heading's height; each new column starts empty unless it's one of that page's other columns.
+  let span = (cfg.BOOKTITLE_MODE == 'span' && !(songbook instanceof Song)) ? { start: 0, height: songbook.height } : null;
+  const new_page = () => (span && pages.length > span.start && pages.length < span.start + cfg.COLUMNS)
+    ? [new TitleSpacer(span.height)] : [];
+  const has_content = page => page.some(item => !(item instanceof TitleSpacer)); // a column with only that space is still empty
+  // An index on its own page starts a fresh page, and its heading takes the book title's look: across the top
+  // when the title is across the top or on its own page (a page with only "Index" on it would waste a page).
+  // Otherwise, or an index right after the songs, its heading stays at the top of its column.
+  const push_index_heading = (heading, setting) => {
+    heading.span = (cfg.BOOKTITLE_MODE == 'span' || cfg.BOOKTITLE_MODE == 'page')
+      && setting == INDEX_ON_NEW_PAGE && p.length == 0 && pages.length % cfg.COLUMNS == 0;
+    if(heading.span) {
+      span = { start: pages.length, height: heading.height };
+    }
+    p.push(heading);
+  };
 
   let songs_have_been_added = false;
 
@@ -860,7 +894,7 @@ function paginate(songbook, cfg) {
     // or if we can't fit the song header and a non-intro chunk on the page go to the next page
     if(cfg.START_SONG_ON_NEW_PAGE && songs_have_been_added || page_height(p) + song.height + height_of_introduction_plus_first_chunk(song.chunks) > USABLE_HEIGHT) {
       pages.push(p);
-      p = []; // new page
+      p = new_page(); // new page
       // A "page" here is one column. To start on a new sheet (or booklet page), leave the rest of this one's
       // columns empty (#145).
       if(cfg.START_SONG_ON_NEW_PAGE == 'page' && songs_have_been_added) {
@@ -896,7 +930,7 @@ function paginate(songbook, cfg) {
       // this chunk doesn't fit -- next page 
       if(page_height(p) + (chunk.height - songline_correct) > USABLE_HEIGHT) {
         pages.push(p);
-        p = []; // new page
+        p = new_page(); // new page
 
         // duplicate the chorus on each new page/column/etc if the page layout says it is needed
         // Also ... if there are enough verses left in this song (i.e. > 1) then we want to dupe the chorus AFTER adding the verse
@@ -932,14 +966,14 @@ function paginate(songbook, cfg) {
 
   if(cfg.DISPLAY_CAT_INDEX == INDEX_ON_NEW_PAGE) {
     // Fresh page if current page has anything on it.
-    if(p.length != 0) {
+    if(has_content(p)) {
       pages.push(p);
-      p = [];
+      p = new_page();
     }
     // add pages until previous page not visible so index is not visible from last song 
     while(cfg.page_layout.previous_page_visible(pages)) {
       pages.push(p);
-      p = [];
+      p = new_page();
     }
   }
 
@@ -948,17 +982,17 @@ function paginate(songbook, cfg) {
     // create a new page if no room on current page
     if(page_height(p) + songbook.cat_index.height > USABLE_HEIGHT) {
       pages.push(p);
-      p = [];
+      p = new_page();
     }
 
     // add cat_index title to page
-    p.push(songbook.cat_index);
+    push_index_heading(songbook.cat_index, cfg.DISPLAY_CAT_INDEX);
     const cat_entries = Object.entries(songbook.cat_index).sort();
     for(let cat of cat_entries) { //!!!!IS THIS SORTED ?
       if(cat[1] instanceof Array) {
         if((page_height(p) + songbook.cat_index.cat_height + cat[1].height) > USABLE_HEIGHT) {  // can't fit category + one index entry
           pages.push(p);
-          p = [];
+          p = new_page();
         }
         p.push(new Category(cat[0], songbook.cat_index.cat_height));
 
@@ -980,7 +1014,7 @@ function paginate(songbook, cfg) {
           // if there is no room for this entry, then the page is complete and we start a new one
           if ((page_height(p) + index_entry.height) > USABLE_HEIGHT) {
             pages.push(p);
-            p = [];
+            p = new_page();
           }
 
           // add the cat_index entry
@@ -993,14 +1027,14 @@ function paginate(songbook, cfg) {
   // done with category index -- add last page if scripture index starts on next page and len(p) > 0
   if(cfg.DISPLAY_SCRIP_INDEX == INDEX_ON_NEW_PAGE) { 
     // Fresh page if current page has anything on it.
-    if(p.length != 0) {
+    if(has_content(p)) {
       pages.push(p);
-      p = [];
+      p = new_page();
     }
     // add pages until previous index is not visible so index is not visible
     while(cfg.page_layout.previous_page_visible(pages)){
       pages.push(p);
-      p = [];
+      p = new_page();
     }
   }
 
@@ -1009,11 +1043,11 @@ function paginate(songbook, cfg) {
     // create a new page if no room on current page
     if(page_height(p) + songbook.index.height > USABLE_HEIGHT) {
       pages.push(p);
-      p = [];
+      p = new_page();
     }
 
     // add index title to page
-    p.push(songbook.scrip_index);
+    push_index_heading(songbook.scrip_index, cfg.DISPLAY_SCRIP_INDEX);
 
     // sort index entries then add to page
     let entries = songbook.scrip_index.sort(function(a,b) {
@@ -1033,7 +1067,7 @@ function paginate(songbook, cfg) {
       // if there is no room for this entry, then the page is complete and we start a new one
       if ((page_height(p) + index_entry.height) > USABLE_HEIGHT) {
         pages.push(p);
-        p = [];
+        p = new_page();
       }
 
       // add the index entry
@@ -1044,14 +1078,14 @@ function paginate(songbook, cfg) {
   // done with scripture index -- add final page if index starts on next page and len(p) > 0
   if(cfg.DISPLAY_INDEX == INDEX_ON_NEW_PAGE) {
     // Fresh page if current page has anything on it.
-    if (p.length != 0) {
+    if(has_content(p)) {
       pages.push(p);
-      p = [];
+      p = new_page();
     }
     // add pages until previous index is not visible so index is not visible
     while(cfg.page_layout.previous_page_visible(pages)) {
       pages.push(p);
-      p = [];
+      p = new_page();
     }
   }
 
@@ -1060,11 +1094,11 @@ function paginate(songbook, cfg) {
     // create a new page if no room on current page
     if(page_height(p) + songbook.index.height > USABLE_HEIGHT) {
       pages.push(p);
-      p = [];
+      p = new_page();
     }
 
     // add index title to page
-    p.push(songbook.index);
+    push_index_heading(songbook.index, cfg.DISPLAY_INDEX);
 
     // sort index entries then add to page
     let entries = songbook.index.sort(function(a,b) { 
@@ -1086,7 +1120,7 @@ function paginate(songbook, cfg) {
       // if there is no room for this entry, then the page is complete and we start a new one
       if((page_height(p) + index_entry.height) > USABLE_HEIGHT) {
         pages.push(p);
-        p = [];
+        p = new_page();
       }
 
       // add the index entry
@@ -1095,7 +1129,7 @@ function paginate(songbook, cfg) {
   }
 
   // add final page (index or last song page if index is disabled)
-  if(p.length != 0) {
+  if(has_content(p)) {
     pages.push(p);
   }
 
@@ -1329,6 +1363,31 @@ function format_page(doc, cfg, page_mapping) {
         page_mapping.endx-page_mapping.startx,page_mapping.endy-page_mapping.starty);
   }
 
+  // A heading across the top (the songbook's title, or an index's heading, paginate), or the title on a page of
+  // its own: centered over every column of the page, so it goes before the column's clip below. (From this, the
+  // first, column's left edge to the last one's right edge; cfg.PAGE_WIDTH is a column's width as the layout set
+  // it, half a sheet for a booklet.) Too wide, it shrinks.
+  const first = page_mapping.page[0];
+  let heading = null;
+  if(first instanceof Songbook && (cfg.BOOKTITLE_MODE == 'span' || cfg.BOOKTITLE_MODE == 'page')) {
+    // a title page puts it a third of the way down (a phone's page is only as tall as the title)
+    const top = (cfg.BOOKTITLE_MODE == 'page' && !cfg.PHONE) ? (page_mapping.endy - page_mapping.starty) / 3 : 0;
+    heading = { text: first.title, font: cfg.FONT_FACE, size: cfg.BOOKTITLE_SIZE, top: top };
+  }
+  else if(first && first.span) {
+    const text = first instanceof CatIndex ? 'Category Index' : first instanceof ScripIndex ? 'Scripture Index' : 'Alphabetical Index';
+    heading = { text: text, font: cfg.INDEX_TITLE_FONT, size: cfg.INDEX_TITLE_SIZE, top: 0 };
+  }
+  if(heading) {
+    const span = cfg.COLUMNS * cfg.PAGE_WIDTH + (cfg.COLUMNS - 1) * (cfg.COLUMN_GUTTER + cfg.PAGE_MARGIN_LEFT + cfg.PAGE_MARGIN_RIGHT);
+    let size = heading.size;
+    while(size > 6 && myStringWidth(heading.text, heading.font, size, doc) > span) {
+      size -= 1;
+    }
+    const x = page_mapping.startx + Math.max(0, (span - myStringWidth(heading.text, heading.font, size, doc)) / 2);
+    doc.font(heading.font).fontSize(size).text(heading.text, x, page_mapping.starty + heading.top, { lineBreak: false });
+  }
+
   // make a bounding box to keep from printing out of bounds
   doc
   .rect(page_mapping.startx, page_mapping.starty,
@@ -1348,9 +1407,16 @@ function format_page(doc, cfg, page_mapping) {
       //outline_level = 1;
 
       // SONGBOOK TITLE
-      if(!cfg.HIDE_BOOKTITLE) {
+      if(cfg.BOOKTITLE_MODE == 'column') {
         y = print_line(doc, cfg.FONT_FACE, cfg.BOOKTITLE_SIZE, y, 0, cfg.BOOKTITLE_SPACE, page_mapping, item.title);
       }
+      else if(cfg.BOOKTITLE_MODE == 'span') { // drawn across the page above: leave its room
+        y += item.height;
+      }
+    }
+    // the room the title across the top takes, in the first page's other columns
+    else if(item instanceof TitleSpacer) {
+      y += item.height;
     }
     // SONG
     else if(item instanceof Song) {
@@ -1495,6 +1561,10 @@ function format_page(doc, cfg, page_mapping) {
 
         //DBG:doc.rect(page_mapping.startx+5, page_mapping.starty - (starty+cfg.SONGLINE_SIZE), 20, starty-y)
     // INDEX
+    // (an index heading drawn across the top of its page, above: leave its room)
+    else if((item instanceof Index || item instanceof ScripIndex || item instanceof CatIndex) && item.span) {
+      y += item.height;
+    }
     else if((item instanceof Index) && cfg.DISPLAY_INDEX != INDEX_OFF) { // top-level index which contains index entries
       if(cfg.DISPLAY_INDEX == INDEX_NO_PAGE_BREAK) {
         y += cfg.INDEX_TITLE_B4;  // only add space when index not starting on a new page
@@ -1624,7 +1694,7 @@ function format(songbook, cfg) {
   stream.on('finish', function() {
     console.log(new Date() - old_time);
     console.log('Finished making pdf, posting to main thread');
-    postMessage(['pdf',stream.toBlobURL('application/pdf')]);
+    postMessage(['pdf', stream.toBlobURL('application/pdf'), pages_ordered.length]); // and its page count, for the export's info line
   });
 }
 
@@ -1755,12 +1825,11 @@ function read_config(config_array, export_object = {}) {
     options.SONGTITLE_FORMAT = '${num}. ${title}';
   }
 
-  if (options.HIDE_BOOKTITLE && options.HIDE_BOOKTITLE.toLowerCase() == 'yes') {
-    options.HIDE_BOOKTITLE = true;
-  }
-  else {
-    options.HIDE_BOOKTITLE = false;
-  }
+  // The songbook's title: 'no' at the top of the first column, 'span' across the top of the first page, 'page'
+  // on a page of its own, 'yes' left off (the setting was a yes/no "hide", so old Formats still mean the same)
+  const titleSetting = String(options.HIDE_BOOKTITLE || 'no').toLowerCase();
+  options.HIDE_BOOKTITLE = titleSetting == 'yes';
+  options.BOOKTITLE_MODE = options.HIDE_BOOKTITLE ? 'off' : (['span', 'page'].includes(titleSetting) ? titleSetting : 'column');
 
   // Where each song starts (#145): 'column' the next column, 'page' the next page, false wherever the last song
   // ended. 'on' is the old switch (saved setups still have it), which always meant the next column.

@@ -851,6 +851,11 @@ def_configs['Phone'] = [
 // "Start each song" was an on/off switch: saved setups have true (a new column) or false (#145)
 function exportSettingValue(element, value) {
   if (element.id === 'start_song_on_new_page' && typeof value === 'boolean') return value ? 'on' : 'no';
+  // The index's old default "Needs,Duplicate" meant the songs still being worked on, but a category has to
+  // match a name exactly, so it only ever left out Duplicate. It reads as this church's "Work to do" group
+  // (loadExcludeChips finds it), in a saved Format too.
+  if (element.id === 'index_cat_exclude' && window.exportWorkGroup?.length
+    && String(value).split(',').map(c => c.trim()).join(',') === 'Needs,Duplicate') return window.exportWorkGroup.join(',');
   return value;
 }
 
@@ -3585,7 +3590,8 @@ async function prepExport() {
   // No PDF yet: the big Download button waits, and the Preview's is empty
   document.getElementById('exportDownload').innerHTML = '<button type="button" class="btn export-download" disabled>&#11123; Download PDF</button>';
   document.getElementById('downloadPDF').innerHTML = '';
-  loadExcludeChips();
+  exportInfo();
+  await loadExcludeChips(); // before a Format is applied, so an old "Needs,Duplicate" reads as the Work to do group
 
   // Trigger chords display change
   const chordsDisplay = document.getElementById('display_chords');
@@ -3607,6 +3613,7 @@ async function prepExport() {
         const link = (cls, label) => `<a class="btn ${cls}" href="${escapeHtml(e.data[1])}" target="_blank" download="${escapeHtml(window.exportObject.title)}.pdf">${label}</a>`;
         document.getElementById('exportDownload').innerHTML = link('export-download', '&#11123; Download PDF');
         document.getElementById('downloadPDF').innerHTML = link('', 'Download ⭳');
+        exportInfo(e.data[2]);
 
         // Hand the PDF to the new viewer once it has started up: from the offline copy the PDF can be ready
         // first, and a viewer given it too early showed nothing. Offline on a device that hasn't saved the
@@ -3772,18 +3779,43 @@ function setupExportForm() {
 }
 const excludedCategories = () => document.getElementById('index_cat_exclude').value.split(',').map(c => c.trim()).filter(Boolean);
 const excludeChip = cat => `<button type="button" class="export-chip" data-cat="${escapeHtml(cat)}">${escapeHtml(cat)}</button>`;
-// The church's categories as chips (headings and lines in the list left out). syncExportForm adds any in the
-// "Leave out" list that aren't categories now, so they can still be taken out.
+// The church's categories as chips, under the list's own headings ("----- Seasons" starts a group, #84). Also
+// finds the "Work to do" group the index leaves out by default: the categories under a heading with "work to
+// do" in it, or with no such heading, any starting with "Needs", and Duplicate.
 async function loadExcludeChips() {
-  let cats = [];
+  let list = [];
   try {
-    cats = (await db.get('categories')).categories || [];
+    list = (await db.get('categories')).categories || [];
   } catch (err) {
     if (err.status !== 404) console.warn("Couldn't read the categories for the export:", err);
   }
-  cats = [...new Set(cats.map(c => String(c).trim()).filter(c => c && !/^-{3,}/.test(c)))];
-  document.getElementById('cat_exclude_chips').innerHTML = cats.map(excludeChip).join('');
+  const groups = [{ heading: '', cats: [] }], seen = new Set();
+  list.forEach(raw => {
+    const cat = String(raw).trim();
+    const divider = cat.match(/^-{3,}\s*(.*)$/);
+    if (divider) groups.push({ heading: divider[1].trim(), cats: [] });
+    else if (cat && !seen.has(cat)) { seen.add(cat); groups[groups.length - 1].cats.push(cat); }
+  });
+  const work = groups.find(g => /work to do/i.test(g.heading))?.cats
+    || [...seen].filter(cat => /^needs\b/i.test(cat) || /^duplicates?$/i.test(cat));
+  window.exportWorkGroup = work;
+  document.getElementById('cat_exclude_chips').innerHTML = groups.filter(g => g.cats.length).map(g => `<div class="export-chip-group">
+      ${g.heading ? `<small class="export-chip-heading">${escapeHtml(g.heading)}</small>` : ''}
+      <div class="export-chips">${g.cats.map(excludeChip).join('')}</div></div>`).join('');
+  const input = document.getElementById('index_cat_exclude');
+  input.value = exportSettingValue(input, input.value); // the page's own starting value is the old default too
   syncExportForm();
+}
+// The line under Download: what's in the PDF ("Sunday Songs · 24 songs · 31 pages"). The page count comes with
+// each new PDF; until then it's left off.
+function exportInfo(pages) {
+  const ob = window.exportObject;
+  if (!ob) return;
+  // (one song's export just says its title and pages: "1 song" goes without saying)
+  const songs = Array.isArray(ob.songs) ? ob.songs.filter(s => !s.reading && !isBookExtra(s.id || s._id)).length : null;
+  const parts = [ob.title, songs !== null && `${songs} ${songs === 1 ? 'song' : 'songs'}`];
+  if (pages) parts.push(`${pages} ${pages === 1 ? 'page' : 'pages'}`);
+  document.getElementById('export_info').textContent = parts.filter(Boolean).join(' · ');
 }
 // Brings the stand-ins in line with the fields: after a click, a Format, Paste, or any change
 function syncExportForm() {
@@ -3815,29 +3847,89 @@ function syncExportForm() {
     span.textContent = booklet ? span.dataset.booklet : span.dataset.plain;
   });
 
+  // (a name in the list that isn't a category gets no chip: it matches nothing, and stays as it was saved)
   const chips = document.getElementById('cat_exclude_chips');
   const out = excludedCategories();
-  out.filter(cat => ![...chips.children].some(chip => chip.dataset.cat === cat)).forEach(cat => chips.insertAdjacentHTML('beforeend', excludeChip(cat)));
-  chips.querySelectorAll('[data-cat]').forEach(chip => chip.setAttribute('aria-pressed', String(out.includes(chip.dataset.cat))));
+  const shownOut = [...chips.querySelectorAll('[data-cat]')].filter(chip => {
+    const left = out.includes(chip.dataset.cat);
+    chip.setAttribute('aria-pressed', String(left));
+    return left;
+  }).map(chip => chip.dataset.cat);
+  // the whole Work to do group says so; a few say their names; more say how many
+  const work = window.exportWorkGroup || [];
+  const isWork = work.length && shownOut.length === work.length && work.every(cat => shownOut.includes(cat));
+  document.getElementById('cat_exclude_summary').textContent = 'Leaving out: ' + (isWork ? '"Work to do" categories'
+    : shownOut.length > 3 ? `${shownOut.slice(0, 2).join(', ')} and ${shownOut.length - 2} more`
+    : shownOut.join(', ') || 'none');
+  // rows that do nothing until an index is on
+  const catIndex = value('display_cat_index') !== 'no-index';
+  document.getElementById('cat_exclude_row').hidden = !catIndex;
+  document.getElementById('index_sizes_row').hidden = !catIndex
+    && value('display_index') === 'no-index' && value('display_scrip_index') === 'no-index';
 
-  // What's set under "More options", so it can be checked without opening it
-  const font = document.getElementById('font_face');
+  document.getElementById('first_line_row').hidden = value('display_index') === 'no-index';
+
+  // Each folded card's line says what's set inside it, with small drawings, so it can be checked without
+  // opening it (parts are HTML: anything typed in the form is escaped)
+  const say = (id, parts) => { document.getElementById(id + '_summary').innerHTML = parts.filter(Boolean).join(' · '); };
   const preset = id => value(id) === 'custom' ? 'Custom' : value(id)[0].toUpperCase() + value(id).slice(1);
-  const pressed = id => form.querySelector(`.seg[data-for="${id}"] [aria-pressed="true"]`)?.textContent;
-  const parts = [
-    font.options[font.selectedIndex]?.textContent || font.value,
-    `${preset('text')} sizes`,
-    `${preset('margin')} margins`,
-    pressed('page_layout'),
-  ];
-  if (!document.body.classList.contains('song')) {
-    if (value('display_cat_index') !== 'no-index') parts.push('Category index');
-    if (value('display_scrip_index') !== 'no-index') parts.push('Scripture index');
-    if (document.getElementById('export')?.classList.contains('showStatus')
-      && ['print_a', 'print_n', 'print_r'].some(id => document.getElementById(id).checked)) parts.push('Some songs by status');
+
+  // Words & titles: the sample title in the chosen font, as the PDF will set it
+  const font = document.getElementById('font_face');
+  const face = value('font_face');
+  const family = /^Helvetica/.test(face) ? 'Helvetica, Arial, sans-serif' : /^Courier/.test(face) ? '"Courier New", Courier, monospace' : '"Times New Roman", Times, serif';
+  const title = value('songtitle_format').replace('${num}', '1') + 'Arise' + (value('scripture_location') === 'in-title' ? ' (Jude 1)' : '');
+  say('export_words', [
+    `<span class="font-sample" style="font-family: ${family}; font-weight: ${/Bold/.test(face) ? 'bold' : 'normal'}; font-style: ${/Italic|Oblique/.test(face) ? 'italic' : 'normal'}">${escapeHtml(title.trim())}</span>`,
+    escapeHtml(font.options[font.selectedIndex]?.textContent || face),
+    value('scripture_location') === 'under-title' && 'Scripture under it',
+    !document.body.classList.contains('song') && { no: 'Book title in column 1', span: 'Book title across the top', page: 'Title page' }[value('hide_booktitle')],
+    value('ccli').trim() ? `CCLI ${escapeHtml(value('ccli').trim())}` : 'No CCLI',
+  ]);
+
+  // Page & printing: a drawing of the paper (one sheet, a sheet with its back, or an open booklet with its
+  // fold), with the margins dashed and the columns; then the words, with the margins' size
+  const layoutName = value('page_layout'); // (booklet, from above, is any of the booklet ones)
+  const wide = value('paper_orientation') === 'landscape' && value('paper_size') !== 'PHONE';
+  const [pw, ph] = booklet ? [13, 18] : wide ? [22, 17] : [17, 22]; // a booklet's page is half a sheet
+  const m = { narrow: 1.8, normal: 2.6, wide: 3.8, phone: 1.4 }[value('margin')] ?? 2.6;
+  const cols = Math.max(1, Math.min(6, parseInt(value('columns'), 10) || 1));
+  const page = (x, y) => `<rect x="${x + .5}" y="${y + .5}" width="${pw - 1}" height="${ph - 1}" rx="1.2"/>`
+    + `<rect class="page-icon-margin" x="${x + m}" y="${y + m}" width="${pw - 2 * m}" height="${ph - 2 * m}"/>`
+    + Array.from({ length: cols - 1 }, (_, i) => {
+      const cx = (x + m + (i + 1) * (pw - 2 * m) / cols).toFixed(1);
+      return `<line x1="${cx}" y1="${y + m}" x2="${cx}" y2="${y + ph - m}"/>`;
+    }).join('');
+  let drawing, w, h;
+  if (booklet) { // two pages side by side, joined at the fold
+    [w, h] = [pw * 2, ph];
+    drawing = page(0, 0) + page(pw, 0) + `<line class="page-icon-fold" x1="${pw}" y1="0" x2="${pw}" y2="${ph}"/>`;
+  } else if (layoutName === 'double-sided') { // the back sheet peeking out behind
+    [w, h] = [pw + 3, ph + 3];
+    drawing = `<rect class="page-icon-back" x="3.5" y=".5" width="${pw - 1}" height="${ph - 1}" rx="1.2"/>` + page(0, 3);
+  } else {
+    [w, h] = [pw, ph];
+    drawing = page(0, 0);
   }
-  if (value('ccli').trim()) parts.push(`CCLI ${value('ccli').trim()}`);
-  document.getElementById('export_more_summary').textContent = parts.filter(Boolean).join(' · ');
+  const edges = ['paper_margin_top', 'paper_margin_bottom', 'paper_margin_left', 'paper_margin_right'].map(id => parseFloat(value(id)) || 0);
+  const [lo, hi] = [Math.min(...edges), Math.max(...edges)];
+  const layout = { 'single-sided': 'One side', 'double-sided': 'Both sides', booklet: 'Booklet', 'adobe-booklet': 'Booklet (Adobe)' };
+  const binding = parseFloat(value('paper_margin_gutter')) || 0;
+  say('export_page', [
+    `<svg class="page-icon" aria-hidden="true" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${drawing}</svg>${layout[layoutName]}`,
+    `${preset('margin')} margins (${lo === hi ? `${lo}"` : `${lo}–${hi}"`})`,
+    binding && `Binding ${binding}"`,
+  ]);
+
+  // Index: a badge for each list that's on, and where it goes
+  const where = { 'on-new-page': 'own page', 'no-page-break': 'after the songs' };
+  const lists = [['display_index', 'A–Z'], ['display_cat_index', 'Category'], ['display_scrip_index', 'Scripture']]
+    .filter(([id]) => value(id) !== 'no-index')
+    .map(([id, name]) => `<span class="sum-badge" title="${name} index: ${where[value(id)]}">${name}</span>`);
+  say('export_index', lists.length ? [lists.join(' '), `${preset('index')} size`] : ['None']);
+
+  const marks = [['print_a', '✓'], ['print_n', '~'], ['print_r', '✗']].filter(([id]) => document.getElementById(id).checked).map(([, mark]) => mark);
+  say('export_status', [marks.length ? `Only ${marks.join(' ')}` : 'Every song']);
 }
 function export_form_summary_update() {
   // Helper function to get element value
@@ -3863,23 +3955,6 @@ function export_form_summary_update() {
         (element ? exportSettingValue(element, objA.value) === exportSettingValue(element, objB.value) : objA.value === objB.value);
     });
   };
-
-  // Update format select
-  const formatSelect = document.getElementById('format');
-  formatSelect.value = JSON.stringify([]);
-  for (const option of formatSelect.options) {
-    const values = JSON.parse(option.value);
-    if (values.length === 0) continue;
-
-    const opts = values.map(item => ({
-      name: item.name,
-      value: getValue(item.name)
-    }));
-    if (arraysOfObjectsEqual(opts, values)) {
-      formatSelect.value = option.value;
-      break; // first match wins, so "Your Default" shows ahead of a built-in preset
-    }
-  }
 
   // Which margin preset the numbers match
   const margins = [
@@ -3910,17 +3985,37 @@ function export_form_summary_update() {
 
   document.getElementById('text').value = textName;
 
-  // Which index size preset the numbers match
-  const indexValues = window.export.index.default.map(item => ({
+  // Which index size preset the numbers match (not the categories left out: the presets carry a list, but a
+  // tapped category isn't a size)
+  const indexSizes = list => list.filter(item => item.name !== 'index_cat_exclude');
+  const indexValues = indexSizes(window.export.index.default).map(item => ({
     name: item.name,
     value: getValue(item.name)
   }));
 
-  const indexName = Object.entries(window.export.index).find(([name, values]) => 
-    arraysOfObjectsEqual(values, indexValues)
+  const indexName = Object.entries(window.export.index).find(([name, values]) =>
+    arraysOfObjectsEqual(indexSizes(values), indexValues)
   )?.[0] || 'custom';
 
   document.getElementById('index').value = indexName;
+
+  // Which Format it all matches, after the presets above (a Format lists "text", "margin" and "index": with
+  // them read first, changed sizes still showed the Format they no longer matched)
+  const formatSelect = document.getElementById('format');
+  formatSelect.value = JSON.stringify([]);
+  for (const option of formatSelect.options) {
+    const values = JSON.parse(option.value);
+    if (values.length === 0) continue;
+
+    const opts = values.map(item => ({
+      name: item.name,
+      value: getValue(item.name)
+    }));
+    if (arraysOfObjectsEqual(opts, values)) {
+      formatSelect.value = option.value;
+      break; // first match wins, so "Your Default" shows ahead of a built-in preset
+    }
+  }
 
   syncExportForm(); // the button rows, the tables and the "More options" summary
 

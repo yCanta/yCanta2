@@ -335,19 +335,20 @@
                    saved Formats, Copy and Paste work as they did. -->
               <div class="export-top">
                 <span id="exportDownload"><button type="button" class="btn export-download" disabled>&#11123; Download PDF</button></span>
+                <small id="export_info" class="export-help"></small>
                 <div id="pdf_progress_bar">
                   <div id="pdf_progress"></div>
                   <span id="pdf_progress_text"></span>
                 </div>
                 <div class="export-refresh">
                   <label><input id="auto_refresh" type="checkbox" checked> Update the PDF as I change things</label>
-                  <button type="button" class="btn btn-small" onclick="generatePdf()">Update now</button>
+                  <button type="button" class="export-link" onclick="generatePdf()">Update now</button>
                 </div>
               </div>
               <div class="export-row export-format">
                 <label class="export-name" for="format">Format</label>
                 <div class="export-choices"><select id="format"></select></div>
-                <small class="export-help">Saved setups. Change anything below, then save it as a new format at the bottom.</small>
+                <small class="export-help">Saved setups. Change anything below, then save it as a new format at the bottom or copy it to <span class="hide_for_songs">another songbook</span><span class="show_for_songs">another song or songbook</span>.</small>
               </div>
               <form id="export_form">
                 <div class="export-card">
@@ -381,61 +382,49 @@
                       </select>
                     </div>
                   </div>
+                  <div class="export-row">
+                    <span class="export-name">Text size</span>
+                    <div class="export-choices">
+                      <div class="seg" data-for="text" data-values="small=Small|default=Default|large=Large" data-custom="text_table"></div>
+                      <select class="seg-field" id="text">
+                        <option value="default">Default</option><option value="small">Small</option><option value="large">Large</option><option value="custom">Custom</option>
+                      </select>
+                    </div>
+                    <small class="export-help">How big the words print. Custom shows each size, in points.</small>
+                    <table id="text_table" class="export-table" hidden>
+                      <tr><th></th><th>Size <small>pt</small></th><th title="Space after it (before it, for Copyright)">Space <small>pt</small></th></tr>
+                      <tr class="hide_for_songs"><td>Book title</td><td><input type="number" inputmode="decimal" id="booktitle_size" name="booktitle_size" value="24"></td><td><input type="number" inputmode="decimal" id="booktitle_space" name="booktitle_space" value="12"></td></tr>
+                      <tr><td>Song title</td><td><input type="number" inputmode="decimal" id="songtitle_size" name="songtitle_size" value="14"></td><td><input type="number" inputmode="decimal" id="songtitle_space" name="songtitle_space" value="6"></td></tr>
+                      <tr><td>Author and scripture</td><td><input type="number" inputmode="decimal" id="small_size" name="small_size" value="8"></td><td><input type="number" inputmode="decimal" id="small_space" name="small_space" value="8"></td></tr>
+                      <tr><td>Words</td><td><input type="number" inputmode="decimal" id="songline_size" name="songline_size" value="12"></td><td><input type="number" inputmode="decimal" id="songline_space" name="songline_space" value="4"></td></tr>
+                      <tr><td>Chords</td><td><input type="number" inputmode="decimal" id="songchord_size" name="songchord_size" value="12"></td><td><input type="number" inputmode="decimal" id="songchord_space" name="songchord_space" value="1"></td></tr>
+                      <tr><td>Copyright</td><td><input type="number" inputmode="decimal" id="copyright_size" name="copyright_size" value="8"></td><td><input type="number" inputmode="decimal" id="copyright_space_b4" name="copyright_space_b4" value="3"></td></tr>
+                      <tr><td colspan="2">Between parts <small>(verse, chorus…)</small></td><td><input type="number" inputmode="decimal" id="songchunk_b4" name="songchunk_b4" value="12"></td></tr>
+                      <tr><td colspan="2">Between songs</td><td><input type="number" inputmode="decimal" id="song_space_after" name="song_space_after" value="12"></td></tr>
+                      <tr><td>Long lines</td><td colspan="2">
+                        <select id="resize_percent" name="resize_percent">
+                          <option value="100">Don't shrink</option><option value="95">Shrink to 95%</option><option value="90">Shrink to 90%</option><option value="85">Shrink to 85%</option><option value="80">Shrink to 80%</option><option value="75">Shrink to 75%</option><option value="70">Shrink to 70%</option><option value="65">Shrink to 65%</option><option value="60">Shrink to 60%</option><option value="55">Shrink to 55%</option><option value="50">Shrink to 50%</option>
+                          <option value="0">Wrap to the next line</option>
+                        </select>
+                      </td></tr>
+                    </table>
+                  </div>
                   <div class="export-row hide_for_songs">
                     <span class="export-name">Each song starts</span>
                     <div class="export-choices">
-                      <div class="seg" data-for="start_song_on_new_page" data-values="no=Where the last ends|on=In a new column|page=On a new page"></div>
-                      <select class="seg-field" id="start_song_on_new_page" name="start_song_on_new_page">
-                        <option value="no">where the last ends</option><option value="on">in a new column</option><option value="page">on a new page</option>
+                      <select id="start_song_on_new_page" name="start_song_on_new_page">
+                        <option value="no">Where the last one ends</option><option value="on">In a new column</option><option value="page">On a new page</option>
                       </select>
                     </div>
-                  </div>
-                  <div class="export-row hide_for_songs">
-                    <span class="export-name">Index</span>
-                    <div class="export-choices">
-                      <div class="seg" data-for="display_index" data-values="no-index=None|on-new-page=On its own page|no-page-break=Right after the songs"></div>
-                      <select class="seg-field" id="display_index" name="display_index">
-                        <option value="on-new-page">On, new page</option><option value="no-page-break">On, inline</option><option value="no-index">Off</option>
-                      </select>
-                    </div>
-                    <small class="export-help">The song titles, A to Z, at the back. More index choices are under More options.</small>
                   </div>
                 </div>
 
-                <details class="export-more" id="export_more">
-                  <summary><span class="export-more-title">More options</span> <small id="export_more_summary"></small></summary>
-
+                <details class="export-more" id="export_words">
+                  <summary><span class="export-more-title">Words &amp; titles</span> <small class="export-more-summary" id="export_words_summary"></small></summary>
                   <div class="export-card">
-                    <h4>Words</h4>
                     <div class="export-row">
                       <label class="export-name" for="font_face">Font</label>
                       <div class="export-choices"><select class="font-select" id="font_face" name="font_face"></select></div>
-                    </div>
-                    <div class="export-row">
-                      <span class="export-name">Sizes</span>
-                      <div class="export-choices">
-                        <div class="seg" data-for="text" data-values="small=Small|default=Default|large=Large" data-custom="text_table"></div>
-                        <select class="seg-field" id="text">
-                          <option value="default">Default</option><option value="small">Small</option><option value="large">Large</option><option value="custom">Custom</option>
-                        </select>
-                      </div>
-                      <table id="text_table" class="export-table" hidden>
-                        <tr><th></th><th>Size <small>pt</small></th><th title="Space after it (before it, for Copyright)">Space <small>pt</small></th></tr>
-                        <tr class="hide_for_songs"><td>Book title</td><td><input type="number" inputmode="decimal" id="booktitle_size" name="booktitle_size" value="24"></td><td><input type="number" inputmode="decimal" id="booktitle_space" name="booktitle_space" value="12"></td></tr>
-                        <tr><td>Song title</td><td><input type="number" inputmode="decimal" id="songtitle_size" name="songtitle_size" value="14"></td><td><input type="number" inputmode="decimal" id="songtitle_space" name="songtitle_space" value="6"></td></tr>
-                        <tr><td>Author and scripture</td><td><input type="number" inputmode="decimal" id="small_size" name="small_size" value="8"></td><td><input type="number" inputmode="decimal" id="small_space" name="small_space" value="8"></td></tr>
-                        <tr><td>Words</td><td><input type="number" inputmode="decimal" id="songline_size" name="songline_size" value="12"></td><td><input type="number" inputmode="decimal" id="songline_space" name="songline_space" value="4"></td></tr>
-                        <tr><td>Chords</td><td><input type="number" inputmode="decimal" id="songchord_size" name="songchord_size" value="12"></td><td><input type="number" inputmode="decimal" id="songchord_space" name="songchord_space" value="1"></td></tr>
-                        <tr><td>Copyright</td><td><input type="number" inputmode="decimal" id="copyright_size" name="copyright_size" value="8"></td><td><input type="number" inputmode="decimal" id="copyright_space_b4" name="copyright_space_b4" value="3"></td></tr>
-                        <tr><td colspan="2">Between parts <small>(verse, chorus…)</small></td><td><input type="number" inputmode="decimal" id="songchunk_b4" name="songchunk_b4" value="12"></td></tr>
-                        <tr><td colspan="2">Between songs</td><td><input type="number" inputmode="decimal" id="song_space_after" name="song_space_after" value="12"></td></tr>
-                        <tr><td>Long lines</td><td colspan="2">
-                          <select id="resize_percent" name="resize_percent">
-                            <option value="100">Don't shrink</option><option value="95">Shrink to 95%</option><option value="90">Shrink to 90%</option><option value="85">Shrink to 85%</option><option value="80">Shrink to 80%</option><option value="75">Shrink to 75%</option><option value="70">Shrink to 70%</option><option value="65">Shrink to 65%</option><option value="60">Shrink to 60%</option><option value="55">Shrink to 55%</option><option value="50">Shrink to 50%</option>
-                            <option value="0">Wrap to the next line</option>
-                          </select>
-                        </td></tr>
-                      </table>
                     </div>
                     <div class="export-row">
                       <label class="export-name" for="songtitle_format">Number before titles</label>
@@ -452,13 +441,14 @@
                       </div>
                     </div>
                     <div class="export-row hide_for_songs">
-                      <span class="export-name">Songbook's title</span>
+                      <label class="export-name" for="hide_booktitle">Songbook's title</label>
                       <div class="export-choices">
-                        <div class="seg" data-for="hide_booktitle" data-values="no=At the top|yes=Leave it off"></div>
-                        <select class="seg-field" id="hide_booktitle" name="hide_booktitle">
-                          <option value="no">no</option><option value="yes">yes</option>
+                        <!-- (once a yes/no "hide": no and yes keep their meaning, so old Formats print as before) -->
+                        <select id="hide_booktitle" name="hide_booktitle">
+                          <option value="yes">Leave it off</option><option value="no">Top of the first column</option><option value="span">Across the top of the page</option><option value="page">On its own page</option>
                         </select>
                       </div>
+                      <small class="export-help">On its own page, it's a booklet's front cover. Across the top or on its own page, an index that starts on its own page gets its heading across the top too.</small>
                     </div>
                     <div class="export-row">
                       <label class="export-name" for="ccli">CCLI license #</label>
@@ -466,15 +456,16 @@
                       <small class="export-help">Your church's CCLI number, printed with the songs.</small>
                     </div>
                   </div>
+                </details>
 
+                <details class="export-more" id="export_page">
+                  <summary><span class="export-more-title">Page &amp; printing</span> <small class="export-more-summary" id="export_page_summary"></small></summary>
                   <div class="export-card">
-                    <h4>Page</h4>
                     <div class="export-row">
                       <span class="export-name">Printing</span>
                       <div class="export-choices">
-                        <div class="seg" data-for="page_layout" data-values="single-sided=One side|double-sided=Both sides|booklet=Booklet|adobe-booklet=Booklet (Adobe)"></div>
-                        <select class="seg-field" id="page_layout" name="page_layout">
-                          <option value="single-sided">single-sided</option><option value="booklet">booklet</option><option value="double-sided">double-sided</option><option value="adobe-booklet">adobe-booklet</option>
+                        <select id="page_layout" name="page_layout">
+                          <option value="single-sided">One side of the paper</option><option value="double-sided">Both sides</option><option value="booklet">Booklet</option><option value="adobe-booklet">Booklet, for Adobe Reader</option>
                         </select>
                       </div>
                       <small class="export-help">Both sides: the binding space moves to the other edge on the back of each page. Booklet: pages in the order to fold in half and staple. Booklet (Adobe): the same, for Adobe Reader's own booklet printing.</small>
@@ -501,42 +492,44 @@
                       </select>
                     </div>
                   </div>
+                </details>
 
-                  <div class="export-card hide_for_songs">
-                    <h4>Index</h4>
+                <details class="export-more hide_for_songs" id="export_index">
+                  <summary><span class="export-more-title">Index</span> <small class="export-more-summary" id="export_index_summary"></small></summary>
+                  <div class="export-card">
                     <div class="export-row">
                       <span class="export-name">Titles A to Z</span>
                       <div class="export-choices">
-                        <label class="export-check"><input type="checkbox" id="include_first_line" name="include_first_line"> List each song's first lines too (verse and chorus)</label>
+                        <select id="display_index" name="display_index">
+                          <option value="no-index">None</option><option value="on-new-page">At the back, on its own page</option><option value="no-page-break">Right after the songs</option>
+                        </select>
                       </div>
+                      <!-- part of A to Z, so it sits under its menu, shown only when that index is on -->
+                      <label class="export-check export-sub" id="first_line_row"><input type="checkbox" id="include_first_line" name="include_first_line"> Also list each song's first lines (verse and chorus)</label>
                     </div>
                     <div class="export-row">
                       <span class="export-name">By category</span>
                       <div class="export-choices">
-                        <div class="seg" data-for="display_cat_index" data-values="no-index=None|on-new-page=On its own page|no-page-break=Right after"></div>
-                        <select class="seg-field" id="display_cat_index" name="display_cat_index">
-                          <option value="on-new-page">On, new page</option><option value="no-page-break">On, inline</option><option value="no-index">Off</option>
+                        <select id="display_cat_index" name="display_cat_index">
+                          <option value="no-index">None</option><option value="on-new-page">On its own page</option><option value="no-page-break">Right after</option>
                         </select>
                       </div>
-                    </div>
-                    <div class="export-row">
-                      <span class="export-name">Leave out</span>
-                      <div class="export-choices">
-                        <div class="export-chips" id="cat_exclude_chips"></div>
-                        <input type="hidden" id="index_cat_exclude" name="index_cat_exclude">
+                      <!-- part of By category, so it sits under its menu, shown only when that index is on -->
+                      <div class="export-sub" id="cat_exclude_row">
+                        <details class="export-chips-wrap"><summary id="cat_exclude_summary">Leaving out: none</summary><div class="export-chip-groups" id="cat_exclude_chips"></div>
+                          <small class="export-help">Tap a category to leave it out of this index, or to put it back.</small></details>
+                        <input type="hidden" id="index_cat_exclude" name="index_cat_exclude" value="Needs,Duplicate">
                       </div>
-                      <small class="export-help">Categories left out of the category index. Tap one to change it.</small>
                     </div>
                     <div class="export-row">
                       <span class="export-name">By scripture</span>
                       <div class="export-choices">
-                        <div class="seg" data-for="display_scrip_index" data-values="no-index=None|on-new-page=On its own page|no-page-break=Right after"></div>
-                        <select class="seg-field" id="display_scrip_index" name="display_scrip_index">
-                          <option value="on-new-page">On, new page</option><option value="no-page-break">On, inline</option><option value="no-index">Off</option>
+                        <select id="display_scrip_index" name="display_scrip_index">
+                          <option value="no-index">None</option><option value="on-new-page">On its own page</option><option value="no-page-break">Right after</option>
                         </select>
                       </div>
                     </div>
-                    <div class="export-row">
+                    <div class="export-row" id="index_sizes_row">
                       <span class="export-name">Index sizes</span>
                       <div class="export-choices">
                         <div class="seg" data-for="index" data-values="small=Small|default=Default|large=Large" data-custom="index_table"></div>
@@ -555,10 +548,12 @@
                       </table>
                     </div>
                   </div>
+                </details>
 
                   <!-- An older feature, for building a printed songbook together: print only the songs marked this way -->
-                  <div class="export-card export_status hide_for_songs">
-                    <h4>Songs to print</h4>
+                <details class="export-more export_status hide_for_songs" id="export_status">
+                  <summary><span class="export-more-title">Songs to print</span> <small class="export-more-summary" id="export_status_summary"></small></summary>
+                  <div class="export-card">
                     <div class="export-row">
                       <span class="export-name">By status</span>
                       <div class="export-choices">
@@ -571,15 +566,18 @@
                   </div>
                 </details>
               </form>
-              <!-- Two groups: the settings (save them, or copy and paste them), then the songs themselves as a file
-                   for another yCanta (#131). Copy and Paste move the settings only, so they sit with Save. -->
+              <!-- Two groups: saving the settings as a Format, then the songs themselves as a file for another
+                   yCanta (#131). Copy and Paste, to share a Format, are a small pill at the right of its heading. -->
               <div class="export-actions">
                 <div class="export-actions-group">
-                  <b>Format</b>
+                  <div class="export-actions-head">
+                    <b>Format</b>
+                    <span class="split-pill">
+                      <button type="button" id="export_copy" onclick="copyToClipboard(JSON.stringify(serializeForm('export_form')));" title="Copy this format, to paste into another export">📄 Copy</button><button type="button" id="export_paste" onclick="pasteFromClipboard();" title="Paste a format someone copied">📋 Paste</button>
+                    </span>
+                  </div>
                   <div id="cfg_buttons"></div>
                   <button class="btn" id="export_new_config" onclick="createExportCfg();">+ Save as a new format</button>
-                  <button class="btn" id="export_copy" onclick="copyToClipboard(JSON.stringify(serializeForm('export_form')));" title="Copy this format, to paste into another export">📄 Copy</button>
-                  <button class="btn" id="export_paste" onclick="pasteFromClipboard();" title="Paste a format someone copied">📋 Paste</button>
                 </div>
                 <div class="export-actions-group">
                   <b>Export</b>
@@ -774,7 +772,8 @@
       });
       document.getElementById('index').addEventListener('change', function() {
         if(this.value != 'custom'){
-          let index = window.export.index[this.value];
+          // the sizes only: the categories left out stay as they are
+          let index = window.export.index[this.value].filter(item => item.name !== 'index_cat_exclude');
           set_value_by_id(index);
         }
       });

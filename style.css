@@ -2165,75 +2165,363 @@ body.present.songList #presentation {
   float: right;
 }
 
-/*Export accordion*/
-input[type='radio'].toggle {
-  display: none;
+/* The export form (UX audit #17): the PDF at the top, then cards of rows, each a name, its choices and a line
+   of help. The rest folds under "More options", whose bar says what's set there. */
+.export-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem .75rem;
+  margin: .5rem 0 1rem;
 }
-.lbl-toggle * {
-  color: white;
-  font-size: 0.75rem;
-  font-family: monospace !important;
-  vertical-align: middle;
+#export .export-download {
+  margin: 0;
+  font-size: 1.1rem;
+  padding: .45rem 1.2rem;
+  text-decoration: none;
 }
-.lbl-toggle span {
-  display: inline-block;
+#export .export-download:disabled {
+  opacity: .55;
+  cursor: default;
 }
-.lbl-toggle {
-  display: block;
-  font-weight: bold;
-  font-family: monospace !important;
-  font-size: 1.2rem;
-  text-transform: uppercase;
-  padding: 0.5rem;
-  background: var(--song-color);
-  cursor: pointer;
-  border-radius: 8px;
-  border: none;
-}
-.lbl-toggle::before {
-  transform: rotate(0) translateX(0) translateY(-2px);
-  transition: all .2s;
-  content: ' ';
-  display: inline-block;
-
-  border-top: 5px solid transparent;
-  border-bottom: 5px solid transparent;
-  border-left: 5px solid currentColor;
-
-  vertical-align: middle;
-  margin-right: .7rem;
-}
-.collapsible-content .content-inner {
-  --background-color: var(--edit-color);
-  background-color: var(--background-color);
-  border-bottom-left-radius: 8px;
-  border-bottom-right-radius: 8px;
-  padding: .5rem 1rem;
-  min-height: 0;
+#pdf_progress_bar {
+  flex: 1 1 8rem;
+  position: relative;
+  height: 1.3rem;
+  border-radius: 1rem;
   overflow: hidden;
-  transition: padding .2s;
+  background: var(--background-color);
+  box-shadow: inset 0 0 0 1px var(--light-text-color);
 }
-/* An export section opens to its own height, however tall (a fixed 650px cut the Text and Index sections
-   off on a phone): its one row grows from 0fr to 1fr */
-.collapsible-content {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows .2s;
+#pdf_progress {
+  width: 0%;
+  height: 100%;
+  background: var(--song-color);
+  transition: all 0s;
+}
+#pdf_progress_text {
+  position: absolute;
+  inset: 0;
+  text-align: center;
+  font-size: small;
+  line-height: 1.3rem;
+  white-space: nowrap;
+}
+.export-refresh {
+  order: 3;
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .25rem 1rem;
+  font-size: .9rem;
+}
+#export_info { /* "Sunday Songs · 24 songs · 31 pages", on its own line under Download */
+  order: 2;
+  flex-basis: 100%;
+  margin-top: -.25rem;
+}
+.export-link { /* a quiet action beside a checkbox: Download PDF stays the one big button */
+  text-decoration: underline;
+  color: var(--light-text-color);
+  font-size: .9rem;
+}
+.export-link:hover {
+  color: var(--text-color);
+}
+.export-card {
+  background: var(--background-color);
+  border: 1px solid rgba(128, 128, 128, .35);
+  border-radius: 1rem;
+  padding: .25rem 1rem;
   margin-bottom: 1rem;
 }
-.toggle:checked + .lbl-toggle + .collapsible-content {
-  grid-template-rows: 1fr;
+.export-card h4 {
+  margin: .75rem 0 .25rem;
+  font-size: 1rem;
 }
-.toggle:not(:checked) + .lbl-toggle + .collapsible-content .content-inner {
+/* a row: its name on the left and its choices beside it; on a narrow panel the choices go under the name */
+.export-row {
+  display: grid;
+  grid-template-columns: 8.5rem 1fr;
+  align-items: center;
+  gap: .25rem .75rem;
+  padding: .55rem 0;
+  border-bottom: 1px solid rgba(128, 128, 128, .2);
+}
+.export-row:last-child {
+  border-bottom: none;
+}
+.export-row[hidden] { /* a row that does nothing yet (the grid above would show it anyway) */
+  display: none;
+}
+.export-format {
+  border-bottom: none;
   padding-top: 0;
-  padding-bottom: 0;
 }
-.toggle:checked + .lbl-toggle::before {
-  transform: rotate(90deg) translateX(-3px);
+.export-actions-head { /* the Format card's heading on the left, Copy | Paste on the right */
+  flex-basis: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: .9rem;
 }
-.toggle:checked + .lbl-toggle {
-  border-bottom-right-radius: 0;
-  border-bottom-left-radius: 0;
+.split-pill { /* two small actions in one pill, split by a line */
+  display: inline-flex;
+  border-radius: 1rem;
+  overflow: hidden;
+  background: var(--btn-color);
+  box-shadow: var(--btn-shadow-var), inset 0 0 0 1px var(--btn-edge);
+}
+.split-pill button {
+  padding: .2rem .7rem;
+  font-size: .85rem;
+  font-weight: bold;
+  white-space: nowrap;
+}
+.split-pill button + button {
+  border-left: 1px solid rgba(128, 128, 128, .35);
+}
+.split-pill button:active {
+  background: var(--song-color);
+}
+.export-name {
+  font-weight: bold;
+}
+.export-choices {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem .6rem;
+  min-width: 0;
+}
+.export-choices select { /* a menu: the same size as the buttons beside it */
+  max-width: 100%;
+  font-size: 1rem;
+  padding: .35rem .5rem;
+  border-radius: .5rem;
+  border: 1px solid var(--light-text-color);
+}
+.export-chips-wrap > summary {
+  cursor: pointer;
+  padding: .2rem 0;
+}
+.export-chips-wrap > summary::after {
+  content: ' · Change';
+  text-decoration: underline;
+  color: var(--light-text-color);
+}
+.export-chips-wrap[open] > summary::after {
+  content: ' · Done';
+}
+.export-chip-group { /* one heading of the church's category list and its categories */
+  margin: .5rem 0;
+}
+.export-chip-heading {
+  display: block;
+  font-weight: bold;
+  color: var(--light-text-color);
+  margin-bottom: .2rem;
+}
+#format {
+  width: 100%;
+  font-weight: bold;
+}
+.export-help,
+.export-row > .export-table {
+  grid-column: 2;
+}
+.export-help {
+  color: var(--light-text-color);
+  font-size: .9rem;
+  line-height: 1.3;
+}
+@container (max-width: 26rem) {
+  .export-row { grid-template-columns: 1fr; }
+  .export-help, .export-row > .export-table { grid-column: 1; }
+}
+#export .subcolumn:first-child > .content {
+  container-type: inline-size;
+}
+/* A row of buttons standing in for one field, the one picked filled in. Each is its own round button, so a row
+   that wraps on a narrow panel still reads as choices. */
+.seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+}
+.seg button {
+  padding: .35rem .9rem;
+  font-size: 1rem;
+  border-radius: 1rem;
+  white-space: nowrap;
+  background: var(--btn-color);
+  box-shadow: var(--btn-shadow-var), inset 0 0 0 1px var(--btn-edge);
+}
+.seg button[aria-pressed="true"] {
+  background: var(--song-color);
+  font-weight: bold;
+}
+.seg button:focus-visible {
+  outline: 2px solid var(--text-color);
+  outline-offset: 1px;
+}
+.seg-field {
+  display: none;
+}
+.seg.show-field + .seg-field {
+  display: inline-block;
+}
+input.seg-field {
+  width: 4rem;
+}
+#export_form:not(.paper-phone) .export-phone-only,
+#export_form.paper-phone .export-not-phone {
+  display: none;
+}
+.export-check {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+}
+/* an option of the row's own choice (A to Z's first lines): under it, in the same row, set in a little */
+.export-sub {
+  grid-column: 2;
+  align-items: flex-start;
+  padding-left: .25rem;
+  line-height: 1.3;
+}
+.export-sub input {
+  margin-top: .15rem;
+}
+.export-sub[hidden] {
+  display: none;
+}
+@container (max-width: 26rem) {
+  .export-sub { grid-column: 1; }
+}
+.export-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+}
+.export-chip {
+  padding: .2rem .65rem;
+  border-radius: 1rem;
+  font-size: .85rem;
+  background: var(--btn-color);
+  box-shadow: inset 0 0 0 1px var(--light-text-color);
+}
+.export-chip[aria-pressed="true"] { /* left out of the index */
+  text-decoration: line-through;
+  background: var(--edit-color);
+  box-shadow: none;
+}
+.export-chip[aria-pressed="true"]::before {
+  content: '✕ ';
+  display: inline-block; /* not struck through */
+  margin-right: .2rem;
+}
+.export-table {
+  border-collapse: collapse;
+  margin: .25rem 0 .25rem;
+}
+.export-table th {
+  font-weight: normal;
+  color: var(--light-text-color);
+  font-size: .85rem;
+  padding: 0 .4rem;
+}
+.export-table td {
+  padding: .2rem .4rem;
+}
+.export-table td:first-child {
+  padding-left: 0;
+}
+.export-table select { /* the index's font menus fit their column on a narrow panel */
+  width: 100%;
+  max-width: 10rem;
+  min-width: 5rem;
+}
+/* The folded cards under the main one (Words & titles, Page & printing, Index): each bar says what's set
+   inside, and any of them can be open at once */
+.export-more {
+  margin-bottom: .75rem;
+}
+.export-more > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: .6rem 1rem;
+  border-radius: 1rem;
+  background: var(--btn-color);
+  box-shadow: var(--btn-shadow-var), inset 0 0 0 1px var(--btn-edge);
+}
+.export-more > summary::-webkit-details-marker {
+  display: none;
+}
+.export-more-title {
+  font-weight: bold;
+}
+.export-more-title::after {
+  content: ' ▾';
+}
+.export-more[open] .export-more-title::after {
+  content: ' ▴';
+}
+/* Open, the bar and what's in it are one box */
+.export-more[open] {
+  border: 1px solid rgba(128, 128, 128, .35);
+  border-radius: 1rem;
+  background: var(--background-color);
+  overflow: hidden;
+}
+.export-more[open] > summary {
+  border-radius: 0;
+  box-shadow: none;
+  border-bottom: 1px solid rgba(128, 128, 128, .35);
+}
+.export-more .export-card {
+  border: none;
+  border-radius: 0;
+  margin: 0;
+}
+.export-more-summary {
+  display: block;
+  color: var(--light-text-color);
+  margin-top: .15rem;
+}
+.page-icon { /* Page & printing's drawing of the page */
+  vertical-align: middle;
+  margin-right: .4rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1;
+}
+.page-icon .page-icon-margin {
+  stroke-dasharray: 1.5 1.5;
+  stroke-width: .75;
+}
+.page-icon .page-icon-back { /* both sides: the back of the sheet, behind */
+  fill: var(--background-color);
+  opacity: .6;
+}
+.page-icon rect:not(.page-icon-margin):not(.page-icon-back) {
+  fill: var(--background-color); /* the front sheet hides the back one */
+}
+.page-icon .page-icon-fold {
+  stroke-width: 1.5;
+}
+.font-sample { /* Words & titles: the sample title, set in the font picked */
+  color: var(--text-color);
+  font-size: 1rem;
+}
+.sum-badge { /* Index: one for each list that's on */
+  display: inline-block;
+  padding: 0 .45rem;
+  border-radius: .6rem;
+  font-size: .8rem;
+  color: var(--text-color);
+  background: var(--song-color);
 }
 .table tr td, .table tr th {
   border-bottom: solid 1px grey;
@@ -2273,57 +2561,16 @@ input[type="number"] {
 .fr {
   float: right;
 }
-.expandedTableHeader {
-  border-top-right-radius: 2rem;
-  border-top-left-radius: 2rem;
-  padding: .5rem 1rem;
-  padding-bottom: 1rem;
-  margin-bottom: 0;
-  box-shadow: var(--btn-shadow-var);
-  cursor: pointer;
-}
-.expandedTable {
-  box-shadow: var(--btn-shadow-var);
-  width: 100%;
-}
-/* Its font menus and the Excluded box fill their cells: sized to their longest choice ("Helvetica-
-   BoldOblique") or 30 letters, they pushed the Index table past the panel's edge on a phone */
-.expandedTable select,
-.expandedTable input[type="text"] {
-  width: 100%;
-  box-sizing: border-box;
-}
-.expandedTableHeader.collapsed {
-  border-radius: 2rem;
-}
-/* the same arrow as the Key button's, so it's clear Text Details and Index Details open (#131) */
-.expandedTableHeader::after {
-  content: '▴';
-  margin-left: .35rem;
-  font-size: .85em;
-}
-.expandedTableHeader.collapsed::after {
-  content: '▾';
-}
-.expandedTableHeader.collapsed + .expandedTable {
-  display: none;
-}
 .mirror {
   display: inline-block;
   transform: scaleX(-1);
 }
-.t3 > :not(:first-child) { /*t3 is a random class name*/
-  float: right;
-}
-.t3 > :first-child {
-  display: inline-block;
-  height: 2rem;
-}
+/* "Songs to print", by status: only for a songbook with Song Status on */
 .export_status {
   display: none;
 }
 .showStatus .export_status {
-  display: initial;
+  display: block;
 }
 .song .hide_for_songs,
 body:not(.song) .show_for_songs { /* and what's only for exporting one song */
@@ -3217,110 +3464,6 @@ only screen and (max-height: 31.25rem) {
     opacity: 1;
     pointer-events: auto;
   }
-}
-/*Export CSS Icons */
-#page_icon {
-  display: inline-flex;
-  width: .9rem;
-  height: 1.2rem;
-  border: 1px solid white;
-  padding: 0;
-  position: relative;
-}
-#page_icon.single_sided:before {
-  width: 100%;
-  height: 100%;
-  display: block;
-  position: absolute;
-  content: '';
-  top: -3px;
-  left: -4px;
-  border-left: 1px solid white;
-  border-top: 1px solid white;
-}
-#page_icon.double_sided:before {
-  width: 30%;
-  height: 30%;
-  display: block;
-  position: absolute;
-  content: '';
-  bottom: -4px;
-  right: -3px;
-  border-right: 1px solid white;
-  border-bottom: 1px solid white;
-}
-#page_icon.landscape {
-  width: 1.2rem;
-  height: 0.9rem;
-}
-#page_icon .col {
-  display: inline-block;
-  flex: 1 100%;
-  height: 100%;
-  padding: 0;
-  margin: 0;
-  border-right: 0.5px solid white;
-  border-left: 0.5px solid white;
-}
-#margin_icon {
-  width: 1rem;
-  height: 1.4rem;
-}
-#margin_icon.landscape {
-  width: 1.4rem;
-  height: 1rem;
-}
-.flex:not(:last-child) {
-  border-bottom: 1px white solid;
-}
-.flex {
-  height: 33%;
-  display: flex !important;
-  margin: 0;
-  padding: 0;
-  vertical-align: unset !important;
-}
-.flex .col:not(:last-child) {
-  border-right: 1px solid white;
-}
-.flex .col {
-  display: inline-block;
-  flex: 1 100%;
-  padding: 0;
-  margin: 0;
-}
-.normal .flex {
-  height: 25%;
-}
-.normal .flex:nth-child(2) {
-  height: 50%;
-}
-.normal .flex .col:nth-child(2) {
-  flex-basis: 200%;
-}
-.narrow .flex {
-  height: 17%;
-}
-.narrow .flex:nth-child(2) {
-  height: 66%;
-}
-.narrow .flex .col:nth-child(2) {
-  flex-basis: 300%;
-}
-.wide .flex {
-  height: 25%;
-}
-.wide .flex:nth-child(2) {
-  height: 50%;
-}
-.wide .flex .col:nth-child(2) {
-  flex-basis: 100%;
-}
-.custom .flex:nth-child(2) .col:nth-child(2):after {
-   content: '*';
-   color: red;
-   position: relative;
-   top: -2.5px;
 }
 /* The song filter (#84): a Filter button beside a song list's search box, chips for what's on, and a
    panel that drops down over the list (a sheet from the bottom on phones) */
