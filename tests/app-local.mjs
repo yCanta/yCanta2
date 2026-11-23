@@ -819,7 +819,7 @@ try {
   ok(ownCopy.copied > 0, 'own copy: it starts from the shared copy instead of downloading everything', JSON.stringify(ownCopy));
   ok(!ownCopy.eddies, "own copy: another person's device record (with their offline password) isn't in it", JSON.stringify(ownCopy));
   const titleText = await ev(`document.querySelector('#title a')?.textContent.replace(/\s+/g, ' ').trim()`);
-  ok(titleText === 'Church A REMOTE', 'own copy: the title still names the church, not the copy', titleText);
+  ok(titleText === 'Church A', 'own copy: the title still names the church, not the copy', titleText); // no REMOTE tag now (UX audit #24)
   // put the device back as it was: signed out, no kept sign-in, no copies on disk
   await ev(`(async () => { await dbLogout(); localStorage.removeItem('loggedin');
     for (const name of ['church_a(remote)~alice', 'church_a(remote)']) await new PouchDB(name).destroy();

@@ -17,6 +17,7 @@ var prefetchedURLs = [
   'blob-stream.js',
   'db.js',
   'lib.js',
+  'help.js',
   'sw.js',
   'myTransposer.js',
   'toTextarea.js',

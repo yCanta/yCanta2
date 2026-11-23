@@ -81,9 +81,10 @@
             <a class="btn songbookList-color" href="#songbooks">Songbooks</a>
             <a class="btn songList-color" href="#sb-allSongs">All Songs</a>
 
-            <h2>Brief Introduction</h2>
+            <h2>Welcome to yCanta</h2>
 
-            You can view songbooks or songs by selecting one of the above buttons.<br><br>
+            <p>yCanta keeps your church's songs in one place. Find a song by its words, put songbooks together, print them as a PDF, and show the words on a screen. Once you've signed in, it works without internet too.</p>
+            <p>Start with Songbooks or All Songs above. Your name at the top right opens Settings. <button type="button" class="btn btn-small" onclick="openHelp()">Help</button> explains the rest.</p>
             <fieldset class="updatedSongs closed-mobile">
               <legend onclick="(this.parentElement.classList.contains('closed-mobile') && (window.innerWidth < 640) ? this.parentElement.classList.remove('closed-mobile') : this.parentElement.classList.toggle('closed'));">Recently Updated Songs</legend>
               <div class="content">
@@ -741,11 +742,11 @@
                    for another yCanta (#131). Copy and Paste move the settings only, so they sit with Save. -->
               <div class="export-actions">
                 <div class="export-actions-group">
-                  <b>Settings</b>
+                  <b>Format</b>
                   <div id="cfg_buttons"></div>
-                  <button class="btn" id="export_new_config" onclick="createExportCfg();">+ Save new Config</button>
-                  <button class="btn" id="export_copy" onclick="copyToClipboard(JSON.stringify(serializeForm('export_form')));" title="Copy these settings, to paste into another export">📄 Copy</button>
-                  <button class="btn" id="export_paste" onclick="pasteFromClipboard();" title="Paste settings someone copied">📋 Paste</button>
+                  <button class="btn" id="export_new_config" onclick="createExportCfg();">+ Save as a new format</button>
+                  <button class="btn" id="export_copy" onclick="copyToClipboard(JSON.stringify(serializeForm('export_form')));" title="Copy this format, to paste into another export">📄 Copy</button>
+                  <button class="btn" id="export_paste" onclick="pasteFromClipboard();" title="Paste a format someone copied">📋 Paste</button>
                 </div>
                 <div class="export-actions-group">
                   <b>Export</b>
@@ -856,6 +857,7 @@
     <script src="qrcode.min.js"></script> <!-- qrcode-generator 1.4.4 (MIT, Kazuhiko Arase): the join code on screen (#51) -->
     <script src="mark.min.js"></script>
     <script src="lib.js"></script>
+    <script src="help.js"></script>
     <script src="bible.js"></script>
     <script src="myTransposer.js"></script>
     <script src="toTextarea.js"></script>

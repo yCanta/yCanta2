@@ -314,7 +314,7 @@ function dbChanges() {
           window.location.hash = '#songbooks';
         }
       } else if (id.startsWith('cfg-') && id.includes(window.user._id)) {
-        notyf.info('Config deleted', 'var(--export-color)');
+        notyf.info('Format deleted', 'var(--export-color)');
       }
       return;
     }
@@ -339,7 +339,7 @@ function dbChanges() {
         notyf.info('Song updated', 'var(--song-color)');
       } else {
         notyf.info(
-          `Song "${escapeHtml(change.doc.title)}" updated by ${escapeHtml(window.users[change.doc.editedBy])}`,
+          `Song "${escapeHtml(change.doc.title)}" updated by ${escapeHtml(window.users[change.doc.editedBy] || String(change.doc.editedBy || 'someone').replace(/^u-/, ''))}`,
           'var(--song-color)',
           `#${window.songbook._id}&${change.doc._id}`
         );
@@ -389,7 +389,7 @@ function dbChanges() {
         notyf.info('Songbook updated', 'var(--songList-color)');
       } else {
         notyf.info(
-          `Songbook "${escapeHtml(change.doc.title)}" updated by ${escapeHtml(window.users[change.doc.editedBy])}`,
+          `Songbook "${escapeHtml(change.doc.title)}" updated by ${escapeHtml(window.users[change.doc.editedBy] || String(change.doc.editedBy || 'someone').replace(/^u-/, ''))}`,
           'var(--songList-color)',
           `#${change.doc._id}`
         );
@@ -480,7 +480,7 @@ function dbChanges() {
     // Config changes
     else if (change.doc._id.startsWith('cfg-') && change.doc._id.includes(window.user._id)) {
       notyf.info(
-        escapeHtml(change.doc.name || 'Default') + ' config ' + (change.deleted ? 'deleted' : 'saved'),
+        escapeHtml(change.doc.name || 'Default') + ' format ' + (change.deleted ? 'deleted' : 'saved'),
         'var(--export-color)'
       );
     }
@@ -578,7 +578,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
           console.error('Remote connection error:', error);
           dbLogout();
           const message = error.name === 'no_access' ? error.message
-            : error.duringSetup ? `Couldn't finish logging in: ${error.message}`
+            : error.duringSetup ? `Signed in, but couldn't finish setting up. Check your internet connection and try again.\n\n(Details: ${error.message})`
             : error.name === 'unauthorized' || error.name === 'forbidden'
             ? 'Username or password are incorrect'
             : 'Please check your login information';
@@ -624,11 +624,11 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     dbLogout();
     
     if(error.duringSetup) {
-      alert(`Couldn't finish logging in: ${error.message || error.name}`);
+      alert(`Signed in, but couldn't finish setting up. Check your internet connection and try again.\n\n(Details: ${error.message || error.name})`);
     } else if(error.name === 'unauthorized' || error.name === 'forbidden') {
       alert('Username or password are incorrect');
     } else {
-      alert(error.message || 'There was an error during login');
+      alert(`Couldn't sign in. Please try again.${error.message ? `\n\n(Details: ${error.message})` : ''}`);
     }
     
     return false;
@@ -678,7 +678,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
 
     const categories = {
       _id: 'categories',
-      categories: ["----- Topics", "Adoration", "Aspiration/Desire", "Assurance", "Atonement", "Awe", "Bereavement", "Brokenness", "Calvary", "Christ as Bridegroom", "Christ as King", "Christ as Lamb", "Christ as Redeemer", "Christ as Savior", "Christ as Shepherd", "Christ as Son", "Christ's Blood", "Christ's Return", "Church as Christ's Body", "Church as Christ's Bride", "Church as God's House", "Cleansing", "Comfort", "Commitment", "Compassion", "Condemnation", "Consecration", "Conviction of Sin", "Courage", "Creation", "The Cross", "Dedication/Devotion", "Dependence on God", "Encouragement", "Endurance", "Eternal Life", "Evangelism", "Faith", "Faithfulness", "Fear", "Fear of God", "Fellowship", "Forgiveness", "Freedom", "God as Creator", "God as Father", "God as Friend", "God as Refuge", "God's Creation", "God's Faithfulness", "God's Glory", "God's Goodness", "God's Guidance", "God's Harvest", "God's Holiness", "God's Love", "God's Mercy", "God's Power", "God's Presence", "God's Strength", "God's Sufficiency", "God's Timelessness", "God's Victory", "God's Wisdom", "God's Word", "Godly Family", "Grace", "Gratefulness", "Healing", "Heaven", "Holiness", "Holy Spirit", "Hope", "Humility", "Hunger/Thirst for God", "Incarnation", "Invitation", "Jesus as Messiah", "Joy", "Kingdom of God", "Knowing Jesus", "Lordship of Christ", "Love for God", "Love for Jesus", "Love for Others", "Majesty", "Meditation", "Mercy", "Missions", "Mortality", "Neediness", "New Birth", "Obedience", "Oneness in Christ", "Overcoming Sin", "Patience", "Peace", "Persecution", "Praise", "Prayer", "Proclamation", "Provision", "Purity", "Purpose", "Quietness", "Redemption", "Refreshing", "Repentance", "Rest", "Resurrection", "Revival", "Righteousness", "Salvation", "Sanctification", "Security", "Seeking God", "Service", "Servanthood", "Sorrow", "Spiritual Warfare", "Submission to God", "Suffering for Christ", "Surrender", "Temptation", "Trials", "Trust", "Victorious Living", "Waiting on God", "Worship", "----- Seasons", "Christmas", "Easter", "Good Friday", "Thanksgiving", "----- Occasions", "Baptism", "Birth", "Closing Worship", "Communion", "Death", "Engagement", "Opening Worship", "Table Songs", "Wedding", "----- Song types", "Children's Songs", "Rounds", "Scripture Reading", "Scripture Songs", "----- Work to do", "Needs Work", "Needs Chord Work", "Needs Categorical Work", "Duplicate", "----- Other", "Norway", "Secular", "Delete", "Spanish words", "Celebration", "Add category", "Palm Sunday"]
+      categories: ["----- Topics", "Adoration", "Aspiration/Desire", "Assurance", "Atonement", "Awe", "Bereavement", "Brokenness", "Calvary", "Celebration", "Christ as Bridegroom", "Christ as King", "Christ as Lamb", "Christ as Redeemer", "Christ as Savior", "Christ as Shepherd", "Christ as Son", "Christ's Blood", "Christ's Return", "Church as Christ's Body", "Church as Christ's Bride", "Church as God's House", "Cleansing", "Comfort", "Commitment", "Compassion", "Condemnation", "Consecration", "Conviction of Sin", "Courage", "Creation", "The Cross", "Dedication/Devotion", "Dependence on God", "Encouragement", "Endurance", "Eternal Life", "Evangelism", "Faith", "Faithfulness", "Fear", "Fear of God", "Fellowship", "Forgiveness", "Freedom", "God as Creator", "God as Father", "God as Friend", "God as Refuge", "God's Creation", "God's Faithfulness", "God's Glory", "God's Goodness", "God's Guidance", "God's Harvest", "God's Holiness", "God's Love", "God's Mercy", "God's Power", "God's Presence", "God's Strength", "God's Sufficiency", "God's Timelessness", "God's Victory", "God's Wisdom", "God's Word", "Godly Family", "Grace", "Gratefulness", "Healing", "Heaven", "Holiness", "Holy Spirit", "Hope", "Humility", "Hunger/Thirst for God", "Incarnation", "Invitation", "Jesus as Messiah", "Joy", "Kingdom of God", "Knowing Jesus", "Lordship of Christ", "Love for God", "Love for Jesus", "Love for Others", "Majesty", "Meditation", "Mercy", "Missions", "Mortality", "Neediness", "New Birth", "Obedience", "Oneness in Christ", "Overcoming Sin", "Patience", "Peace", "Persecution", "Praise", "Prayer", "Proclamation", "Provision", "Purity", "Purpose", "Quietness", "Redemption", "Refreshing", "Repentance", "Rest", "Resurrection", "Revival", "Righteousness", "Salvation", "Sanctification", "Security", "Seeking God", "Service", "Servanthood", "Sorrow", "Spiritual Warfare", "Submission to God", "Suffering for Christ", "Surrender", "Temptation", "Trials", "Trust", "Victorious Living", "Waiting on God", "Worship", "----- Seasons", "Christmas", "Easter", "Good Friday", "Palm Sunday", "Thanksgiving", "----- Occasions", "Baptism", "Birth", "Closing Worship", "Communion", "Death", "Engagement", "Opening Worship", "Table Songs", "Wedding", "----- Song types", "Children's Songs", "Rounds", "Scripture Reading", "Scripture Songs", "----- Work to do", "Needs Work", "Needs Chord Work", "Needs Categorical Work", "Duplicate", "----- Other", "Secular", "Spanish words"]
     };
 
     // Setup user document
@@ -3290,10 +3290,10 @@ async function saveRawDbObject(element) {
   }
 }
 
-// "+ Save new Config": ask for a name in the app's own dialog (not the browser's prompt), then save
+// "+ Save as a new format": ask for a name in the app's own dialog (not the browser's prompt), then save
 async function createExportCfg(){
   blueHighlight(document.getElementById('export_new_config'));
-  const dialog = new TaskDialog('Save new config');
+  const dialog = new TaskDialog('Save as a new format');
   const done = await dialog.run({
     text: 'Save these export settings under a name, so you can pick them from the Format menu later.',
     fields: [{ name: 'name', label: 'Name', maxlength: 40 }],
@@ -3312,12 +3312,12 @@ async function deleteExportCfg(cfgId){
   try {
     doc = await db.get(cfgId);
   } catch (err) {
-    reportDbError(err, 'find that export config');
+    reportDbError(err, 'find that format');
     return;
   }
   const dialog = new TaskDialog(`Delete "${doc.name || 'Default'}"?`);
   const done = await dialog.run({
-    text: 'This config will be gone from the Format menu. The export settings on screen stay as they are.',
+    text: 'This format will be gone from the Format menu. The export settings on screen stay as they are.',
     submit: 'Delete',
     danger: true,
     working: 'Deleting…',

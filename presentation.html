@@ -848,13 +848,19 @@
       #sugCard[hidden], #suggestBox[hidden] {
         display: none;
       }
-      /* Whole song and Grid: a big Menu button for touch screens (the live bar's ? does it when it shows) */
-      #menuButton {
-        display: none;
+      /* Whole song and Grid: a big Menu button for touch screens (the live bar's ? does it when it shows).
+         Leave sits beside it, in a presentation opened from the app, and shows and fades with it. */
+      #cornerButtons {
         position: fixed;
         top: .75rem;
         right: .75rem;
         z-index: 4;
+        display: flex;
+        gap: .5rem;
+        align-items: flex-start;
+      }
+      #menuButton, #leaveButton {
+        display: none;
         min-height: 2.75rem;
         padding: .5rem 1.1rem;
         border: none;
@@ -867,25 +873,39 @@
         font-weight: bold;
         cursor: pointer;
       }
-      body.wholesong #menuButton, body.gridview #menuButton, #menuButton.peek {
+      body.wholesong #menuButton, body.gridview #menuButton, #menuButton.peek,
+      body.wholesong #leaveButton, body.gridview #leaveButton, #leaveButton.peek {
         display: block;
       }
-      #menuButton {
+      #menuButton, #leaveButton {
         transition: opacity .8s;
       }
-      body:not(.wholesong):not(.gridview) #menuButton.fade {
+      body:not(.wholesong):not(.gridview) #menuButton.fade,
+      body:not(.wholesong):not(.gridview) #leaveButton.fade {
         opacity: 0;
       }
-      #menuButton.start::after {
+      #menuButton.start::after, #leaveButton.start::after {
         content: '  ·  press h';
         font-weight: normal;
         color: var(--light-text-color);
         white-space: pre;
       }
-      body.has-livebar #menuButton {
+      #leaveButton.start::after {
+        content: '  ·  Esc twice';
+      }
+      body.has-livebar #menuButton, body.has-livebar #leaveButton {
         display: none;
       }
-      #menuButton:active {
+      /* On a black background (t) they go dark too, so a bright button doesn't glare on the projector */
+      body.black #menuButton, body.black #leaveButton {
+        background-color: #222;
+        color: #ddd;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, .6), inset 0 0 0 1px #444;
+      }
+      body.black #menuButton.start::after, body.black #leaveButton.start::after {
+        color: #999;
+      }
+      #menuButton:active, #leaveButton:active {
         transform: scale3d(0.9, 0.9, 1);
       }
       /* After one Esc: a second one within a few seconds leaves the presentation */
@@ -912,6 +932,27 @@
       }
       body.gridview .grid-song:first-child .grid-song-head {
         margin-right: 7rem; /* the first song's name stays clear of the Menu button */
+      }
+      /* Help's key for the progress bar: the same colors as #progress */
+      #help .bar-legend {
+        font-size: .85rem;
+        color: var(--light-text-color);
+      }
+      #help .bar-legend .swatch {
+        display: inline-block;
+        width: 1.2em;
+        height: .45em;
+        margin: 0 .3em 0 .2em;
+        border-radius: 2px;
+        vertical-align: middle;
+        background-color: gray;
+      }
+      #help .bar-legend .verse { background-color: blue; }
+      #help .bar-legend .chorus { background-color: green; }
+      #help .bar-legend .bridge { background-color: yellow; }
+      #help .bar-legend .ending { background-color: red; }
+      body.can-leave.gridview .grid-song:first-child .grid-song-head {
+        margin-right: 13rem; /* and of Leave beside it */
       }
       #liveBar[hidden], #liveBar [hidden] {
         display: none;

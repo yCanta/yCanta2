@@ -1776,8 +1776,42 @@ ul li {
 .songList-color {
   background-color: var(--songList-color);
 }
-.offline::after {
+/* No internet (UX audit #23): the green line along the bottom (html::after) becomes a yellow strip that says
+   so. yCanta keeps working; changes sync once it's back. In a presentation it stays a thin yellow line, since
+   words there would show on the projector. */
+html.offline::after {
+  content: 'Offline: your changes sync when the internet is back';
+  top: auto;
+  border-bottom: none;
+  padding: .1rem 1rem;
+  background: #ffe680;
+  color: #333;
+  font-size: .75rem;
+  text-align: center;
+  pointer-events: none;
+}
+html.offline:has(body.present)::after {
+  content: '';
+  top: calc(100vh - 5px);
+  padding: 0;
+  background: none;
   border-bottom: 5px solid yellow;
+}
+/* While the app starts (UX audit #27): the page is hidden until it's ready, so say it's coming. It waits a
+   moment first, so a quick start doesn't flash it. */
+html:has(body.loading)::before {
+  content: 'Loading yCanta…';
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--light-text-color, gray);
+  font-size: 1.1rem;
+  animation: loading-note .3s .6s both;
+}
+@keyframes loading-note {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 span.deleteicon {
   position: relative;
@@ -3275,6 +3309,191 @@ only screen and (max-height: 31.25rem) {
   margin: .6rem 0;
   border: 0;
   border-top: 1px dashed rgba(128, 128, 128, .5);
+}
+/* Editing the categories (UX audit #21): one row each, a grip to drag, a box to rename, × to remove. About
+   as wide as the list it edits, not the whole column (the help line and the boxes would stretch it). */
+.cat-edit {
+  width: 22rem; /* a plain width: the box sizes to what's in it, and a % here made it measure the help line unwrapped */
+  max-width: 100%;
+}
+.cat-edit-help {
+  font-size: .85rem;
+  color: var(--light-text-color);
+}
+.cat-list {
+  list-style: none;
+  padding: 0;
+  margin: .5rem 0;
+}
+.cat-row {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .15rem 0;
+}
+.cat-row input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  padding: .2rem .4rem;
+  border-radius: .4rem;
+  border: 1px solid rgba(128, 128, 128, .5);
+  background: var(--background-color);
+  color: var(--text-color);
+}
+.cat-heading {
+  margin-top: .6rem;
+}
+.cat-heading input {
+  font-size: .85rem;
+  font-weight: bold;
+  color: var(--light-text-color);
+  border-style: dashed;
+}
+.cat-grip {
+  cursor: grab;
+  touch-action: none;
+  padding: .2rem;
+  color: var(--light-text-color);
+}
+.cat-remove {
+  border: none;
+  background: none;
+  color: var(--light-text-color);
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: .2rem .4rem;
+  cursor: pointer;
+}
+.cat-edit-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin: .4rem 0;
+}
+.cat-edit .btn.primary {
+  background-color: var(--song-color);
+  color: black;
+}
+/* Help (help.js): a card over the screen on a computer; on a phone, a sheet the height of the screen */
+#helpOverlay {
+  width: min(46rem, calc(100vw - 2rem));
+  max-height: min(48rem, calc(100dvh - 2rem));
+  padding: 0;
+  border: none;
+  border-radius: 1.2rem;
+  background: var(--background-color);
+  color: var(--text-color);
+  box-shadow: var(--box-shadow-var);
+  overflow: hidden;
+}
+#helpOverlay[open] {
+  display: flex;
+  flex-direction: column;
+}
+#helpOverlay::backdrop {
+  background: rgba(0, 0, 0, .35);
+}
+#helpOverlay .help-top {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .8rem 1rem .4rem 1.25rem;
+}
+#helpOverlay h2 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+#helpOverlay .help-find {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  padding: .3rem .7rem;
+  border-radius: 2rem;
+  border: 1px solid rgba(128, 128, 128, .5);
+  background: var(--background-color);
+  color: var(--text-color);
+}
+#helpOverlay .help-x {
+  border: none;
+  background: none;
+  color: var(--light-text-color);
+  font-size: 1.6rem;
+  line-height: 1;
+  padding: .1rem .4rem;
+  cursor: pointer;
+}
+#helpOverlay .help-tabs {
+  display: flex;
+  gap: .4rem;
+  overflow-x: auto;
+  padding: .3rem 1.25rem .6rem;
+  border-bottom: 1px solid rgba(128, 128, 128, .25);
+  scrollbar-width: none;
+}
+#helpOverlay .help-tab {
+  flex: none;
+  border: none;
+  border-radius: 2rem;
+  padding: .3rem .8rem;
+  font: inherit;
+  font-size: .9rem;
+  background: var(--btn-color);
+  color: var(--text-color);
+  box-shadow: var(--btn-shadow-var), inset 0 0 0 1px var(--btn-edge);
+  cursor: pointer;
+}
+#helpOverlay .help-tab[aria-current="true"] {
+  background: var(--song-color);
+  color: black;
+  font-weight: bold;
+}
+#helpOverlay .help-body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: .5rem 1.25rem 1.25rem;
+  line-height: 1.45;
+}
+#helpOverlay .help-section h3 {
+  margin: .6rem 0 .2rem;
+  font-size: 1.1rem;
+}
+#helpOverlay .help-item h4 {
+  margin: .9rem 0 .2rem;
+}
+#helpOverlay .help-item p {
+  margin: .2rem 0 .5rem;
+}
+#helpOverlay pre {
+  margin: .3rem 0 .6rem;
+  padding: .5rem .75rem;
+  border-radius: .5rem;
+  background: rgba(var(--edit-color-rgb), .6);
+  font-size: .9rem;
+  overflow-x: auto;
+}
+#helpOverlay kbd {
+  display: inline-block;
+  min-width: 1.2em;
+  padding: 0 .35em;
+  border-radius: .3em;
+  border: 1px solid rgba(128, 128, 128, .5);
+  box-shadow: 0 1px 0 rgba(128, 128, 128, .5);
+  font: .85em/1.5 system-ui, sans-serif;
+  text-align: center;
+}
+#helpOverlay .help-none {
+  color: var(--light-text-color);
+}
+@media (max-width: 39.99rem) {
+  #helpOverlay {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    margin: 0;
+    border-radius: 0;
+  }
 }
 .filter-clear[hidden],
 .filter-clear-all[hidden] {

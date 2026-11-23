@@ -301,7 +301,8 @@ async function showPassage(refText) {
   try {
     passage = await Bible.passage(refText, bibleTranslation());
   } catch (err) {
-    showBibleProblem(err.message || String(err));
+    // offline, the same plain words as the song page, not "Failed to fetch" (UX audit #23)
+    showBibleProblem(navigator.onLine ? (err.message || String(err)) : "These verses aren't saved on this device yet. Connect to the internet to load them.");
     return;
   }
   if (!passage.verses.length) {
@@ -1208,7 +1209,8 @@ function toggleHelp() {
     content += '<div class="help-head"><h3>' + (mirror ? 'This window' : 'Help & Settings') + '</h3>'
       + (main ? '<button type="button" class="btn" onclick="savePresentation()" title="Download this presentation as one file, to open offline or email">Download</button>'
         + '<button type="button" class="btn" onclick="toggleReport()">Presentation Stats</button>' : '') // (#53, #158)
-      + (canLeave() ? '<button type="button" class="btn" onclick="leavePresentation()" title="Back to the songbook (Esc twice)">Leave</button>' : '')
+      + (canLeave() ? '<button type="button" class="btn" onclick="openAppHelp()" title="yCanta\'s Help, on presenting">Help</button>'
+        + '<button type="button" class="btn" onclick="leavePresentation()" title="Back to the songbook (Esc twice)">Leave</button>' : '')
       + '<button type="button" class="help-close" onclick="hideHelp()" aria-label="Close" title="Close (Esc)">×</button></div>';
 
     // This screen first: what it shows sets everything else on it
@@ -1299,7 +1301,13 @@ function toggleHelp() {
     content += '<details id="helpKeys"' + (keysOpen() ? ' open' : '') + '><summary>Keys</summary><div class="keys">'
       + keys.map(([caps, what]) => '<div><span class="caps">' + caps.map(cap => '<kbd>' + escapeText(cap) + '</kbd>').join('')
         + '</span><span>' + escapeText(what) + '</span></div>').join('')
-      + '</div></details>';
+      + '</div>'
+      // What the thin bar at the bottom means (UX audit #27): its colors are the progress bar's own
+      + '<p class="bar-legend">The thin bar at the bottom is the song, one piece per part: '
+      + [['verse', 'verse'], ['chorus', 'chorus'], ['bridge', 'bridge'], ['ending', 'ending'], ['other', 'other']]
+        .map(([cls, label]) => '<span class="swatch ' + cls + '"></span>' + label).join(', ')
+      + '. The bright piece is the part on screen, and the small arrow is where Space goes next.</p>'
+      + '</details>';
     content += '</div></div>';
     document.body.insertAdjacentHTML('afterbegin', content);
     const help = document.getElementById('help');
@@ -1322,8 +1330,12 @@ function toggleHelp() {
 // moves or the screen is tapped once, so a phone or tablet can always reach the menu.
 let menuPeekTimer = null, menuHintAtStart = true;
 function setupMenuButton() {
-  document.body.insertAdjacentHTML('beforeend', '<button type="button" id="menuButton" onclick="toggleHelp()" title="Help & Settings (h)">☰ Menu</button>');
-  document.getElementById('menuButton').classList.add('start');
+  // Leave (#5 of the UX audit): a way out that needs no keyboard and no browser Back button, in an installed app too
+  const leave = canLeave() ? '<button type="button" id="leaveButton" onclick="leavePresentation()" title="Back to the songbook (Esc twice)">✕ Leave</button>' : '';
+  document.body.insertAdjacentHTML('beforeend', '<div id="cornerButtons">' + leave
+    + '<button type="button" id="menuButton" onclick="toggleHelp()" title="Help & Settings (h)">☰ Menu</button></div>');
+  document.body.classList.toggle('can-leave', !!leave);
+  cornerButtons().forEach(b => b.classList.add('start'));
   peekMenu(45000);
   let lastPeek = 0;
   document.addEventListener('mousemove', () => {
@@ -1340,15 +1352,15 @@ function setupMenuButton() {
     tapAt = null;
   }, { passive: true });
 }
+const cornerButtons = () => ['leaveButton', 'menuButton'].map(id => document.getElementById(id)).filter(Boolean);
 function peekMenu(ms) {
-  const button = document.getElementById('menuButton');
-  if (!button) return;
-  button.classList.add('peek');
-  button.classList.remove('fade');
+  const buttons = cornerButtons();
+  if (!buttons.length) return;
+  buttons.forEach(b => { b.classList.add('peek'); b.classList.remove('fade'); });
   clearTimeout(menuPeekTimer);
   menuPeekTimer = setTimeout(() => {
-    button.classList.add('fade');
-    menuPeekTimer = setTimeout(() => button.classList.remove('peek', 'fade', 'start'), 800);
+    buttons.forEach(b => b.classList.add('fade'));
+    menuPeekTimer = setTimeout(() => buttons.forEach(b => b.classList.remove('peek', 'fade', 'start')), 800);
   }, ms);
 }
 // the presentation got going: the start hint fades soon
@@ -1453,6 +1465,44 @@ function gridHtml() {
   });
   return html;
 }
+// Draw the grid. A song that opens slides open and one that closes slides shut, instead of jumping: when Space
+// moves on, or a song's row is clicked. (Only from a grid already showing: switching to Grid just draws it.)
+const GRID_SLIDE_MS = 250;
+function drawGrid(content) {
+  const songOf = el => el.querySelector('[data-open-song]')?.dataset.openSong;
+  const wasGrid = !!content.querySelector('.grid-song');
+  const before = new Map();
+  content.querySelectorAll('.grid-song').forEach(el => { const g = el.querySelector(':scope > .grid'); if (g) before.set(songOf(el), g); });
+  content.innerHTML = gridHtml();
+  const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!wasGrid || calm || !Element.prototype.animate) return false;
+  const slide = (grid, open) => {
+    const height = grid.offsetHeight + 'px';
+    const shut = { height: '0px', opacity: 0, marginTop: '0px', marginBottom: '0px' };
+    const full = { height, opacity: 1 };
+    grid.style.overflow = 'hidden';
+    return grid.animate(open ? [shut, full] : [full, shut], { duration: GRID_SLIDE_MS, easing: 'ease-in-out', fill: open ? 'none' : 'forwards' });
+  };
+  let moved = false;
+  content.querySelectorAll('.grid-song').forEach(el => {
+    const s = songOf(el), grid = el.querySelector(':scope > .grid');
+    if (grid && !before.has(s)) {
+      moved = true;
+      slide(grid, true).onfinish = () => grid.style.removeProperty('overflow');
+    } else if (!grid && before.has(s)) {
+      // the old parts, back for a moment to slide shut: no outline, no marker, not clickable
+      const ghost = before.get(s);
+      ghost.classList.add('grid-closing');
+      ghost.setAttribute('aria-hidden', 'true');
+      ghost.querySelectorAll('.current, .space-next').forEach(c => c.classList.remove('current', 'space-next'));
+      ghost.querySelectorAll('[data-part]').forEach(c => c.removeAttribute('data-part'));
+      el.appendChild(ghost);
+      moved = true;
+      slide(ghost, false).onfinish = () => ghost.remove();
+    }
+  });
+  return moved; // the caller waits for the slide before scrolling the part on screen into view
+}
 // After the grid is drawn: the part on screen in view
 function scrollGrid() {
   const card = document.querySelector('#cur_slide .grid-card.current') || document.querySelector('#cur_slide .grid-song.on-screen');
@@ -1470,7 +1520,7 @@ function pickPart(event) {
     const s = Number(target.dataset.openSong);
     if (s === window.songbook.song_index && !document.getElementById('pres_title')) return; // the song on screen stays open
     if (grid_open.has(s)) grid_open.delete(s); else grid_open.add(s);
-    document.querySelector('#cur_slide .content').innerHTML = gridHtml();
+    drawGrid(document.querySelector('#cur_slide .content'));
     return;
   }
   const s = target.dataset.song !== undefined ? Number(target.dataset.song) : window.songbook.song_index;
@@ -1702,8 +1752,9 @@ function showChunk(name) {
 
     part_slide_html = build_chunk(current_song.doc.content[current_song.chunk_index]);
     const view = currentView();
-    document.querySelector('#cur_slide .content').innerHTML = view === 'whole' ? wholeSongHtml() : view === 'grid' ? gridHtml() : part_slide_html;
-    if (view === 'grid') setTimeout(scrollGrid);
+    const slideContent = document.querySelector('#cur_slide .content');
+    if (view === 'grid') setTimeout(scrollGrid, drawGrid(slideContent) ? GRID_SLIDE_MS + 20 : 0);
+    else slideContent.innerHTML = view === 'whole' ? wholeSongHtml() : part_slide_html;
 
     //now add the other chunks.
     let pre_chunk;
@@ -2166,6 +2217,11 @@ function escapeAction() {
 function canLeave() {
   try { return window.parent !== window && /\?present/.test(window.parent.location.hash); } catch (err) { return false; }
 }
+// yCanta's own Help, on presenting: it opens over the presentation in the app's page, which holds it
+function openAppHelp() {
+  hideHelp();
+  try { window.parent.openHelp('present'); } catch (err) { /* not in the app's page */ }
+}
 function leavePresentation() {
   if (!canLeave()) return;
   window.parent.location.hash = window.parent.location.hash.replace(/\?present.*$/, '');
@@ -2183,6 +2239,7 @@ function showLeaveHint() {
 
 const MOVE_KEYS = new Set([' ', 'ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'PageDown', 'PageUp', '>', '.', '<', ',', 'Home', 'End', 'c', 'b', 'e',
   '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'Enter']);
+const SCROLL_KEYS = new Set([' ', 'ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End']);
 function processKey(e){
   if (e.target && e.target.closest && e.target.closest('#suggestBox')) return; // typing a suggestion, not keys
   // A held key counts as one press (#51): holding an arrow or Space used to run on through the songs
@@ -2209,6 +2266,9 @@ function processKey(e){
 
   if(key in presentation_key_map){
   //  console.log("Presentation map function: ", presentation_key_map[key])
+    // The key moves the slides, so the browser mustn't also scroll: in Grid, Space scrolled the page down a
+    // screen as well as moving to the next part
+    if (SCROLL_KEYS.has(key) && !isSearching()) e.preventDefault();
     presentation_key_map[key][0](); // call the right function
   }
   //else {

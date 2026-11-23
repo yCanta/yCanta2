@@ -146,7 +146,7 @@ try {
   ok(!/Child Windows|data:image\/svg|Image backgrounds|<select/.test(panel.html), 'setup panel: no cast icon or dead controls');
   ok(/This screen/.test(panel.text) && /Open a mirror/.test(panel.text) && /Share with other devices/.test(panel.text), 'setup panel: this screen, a mirror, share', panel.text.slice(0, 200));
   const head = await d.ev(`[...${P}.document.querySelectorAll('#help .help-head .btn')].map(b => b.textContent).join('|')`);
-  ok(head === 'Download|Presentation Stats|Leave', "the panel's buttons: Download, Presentation Stats, Leave", head);
+  ok(head === 'Download|Presentation Stats|Help|Leave', "the panel's buttons: Download, Presentation Stats, Help, Leave", head);
   const order = await d.ev(`[...${P}.document.querySelectorAll('#help section h4')].map(h => h.textContent).join('|')`);
   ok(order === 'This screen|Screens & Sharing', 'This screen comes before Screens & Sharing', order);
   // a click outside the panel closes it

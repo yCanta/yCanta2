@@ -317,7 +317,7 @@ const copyToClipboard = str => {
     document.getSelection().removeAllRanges();    // Unselect everything on the HTML document
     document.getSelection().addRange(selected);   // Restore the original selection
   }
-  notyf.info('Config copied to your clipboard', 'var(--export-color)');
+  notyf.info('Format copied to your clipboard', 'var(--export-color)');
   blueHighlight(document.getElementById('export_copy'));
 };
 // Paste export settings someone copied. It says so only once they're in, and says plainly when the
@@ -340,7 +340,7 @@ async function pasteFromClipboard() {
   }
   set_value_by_id(settings);
   document.getElementById('paper_margin_top').dispatchEvent(new Event('change', { bubbles: true }));
-  notyf.info('Config pasted from your clipboard', 'var(--export-color)');
+  notyf.info('Format pasted from your clipboard', 'var(--export-color)');
 }
 function blueHighlight(highlightElement){
   highlightElement.classList.add('bluehighlight'); 
@@ -587,7 +587,7 @@ window.presentationEnded = function(json) {
   cornerCard.open({
     type: 'info',
     className: 'corner-card', // the whole card opens the list
-    message: `${what ? `Presented ${what}.` : 'Nothing was on screen long enough to count.'} <u>See the list</u>`
+    message: `${what ? `Counted ${what} for your CCLI report.` : 'Nothing was on screen long enough to count for your CCLI report.'} <u>See the list</u>`
   }).on('click', () => showPresentationReport(report));
 };
 // The list, as the presentation showed it: counted ones ticked, to copy for a CCLI report
@@ -811,7 +811,34 @@ function set_value_by_id(list) {
     }
   }
 }
+// A new version (UX audit #23): sw.js takes over as soon as it installs, but this page still runs the old code
+// until it reloads. Say so once, and let a click reload. Not during a presentation (it would show on the
+// projector): it waits until the presentation closes.
+function offerUpdateReload() {
+  if (offerUpdateReload.shown) return;
+  if (document.body.classList.contains('present')) {
+    window.addEventListener('hashchange', offerUpdateReload, { once: true });
+    return;
+  }
+  offerUpdateReload.shown = true;
+  const toast = notyf.open({
+    type: 'info',
+    duration: 0, // stays until it's clicked or closed
+    dismissible: true,
+    background: 'var(--songbookList-color)',
+    message: 'A new version of yCanta is ready. <u>Reload</u>',
+  });
+  toast.on('click', () => {
+    if (window.songEditing || window.songbookEditing) {
+      notyf.info('Save or cancel your changes first, then reload.', 'var(--songbookList-color)');
+      return;
+    }
+    location.reload();
+  });
+}
 if ('serviceWorker' in navigator) {
+  // only an update: the first visit has no worker yet, and getting one isn't news
+  if (navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', offerUpdateReload);
   navigator.serviceWorker.register('sw.js', {
     scope: './'
   })
@@ -1394,8 +1421,8 @@ async function updateUser() {
 
   // Buttons
   profileHtml += `
-    <button onclick="loadRawDbObject(window.user._id, document.getElementById('user_content'), 'updateUser();')" class="btn">
-      <span class="mirror">&#9998;</span> Edit
+    <button onclick="editProfileName()" class="btn">
+      <span class="mirror">&#9998;</span> Name
     </button>
     <button onclick="change${document.documentElement.classList.contains('_admin') ? 'Admin' : 'User'}Password(window.user._id.replace('u-', ''))" class="btn">
       ↻ Password
@@ -1413,7 +1440,7 @@ async function loadCategories() {
     const result = await db.get('categories');
     
     // Build HTML content
-    let html = `<h3>Ordered List <a href="#" onclick="loadRawDbObject('categories', document.getElementById('category_content'), 'loadCategories();')" class="mirror editor-only">&#9998;</a>      </h3><ul>`;
+    let html = `<h3>Ordered List <button type="button" class="btn btn-small editor-only" onclick="editCategories()"><span class="mirror">&#9998;</span> Edit</button></h3><ul>`;
 
     // Each category as a list item. A "-----" divider starts a group: "----- Seasons" shows Seasons as a
     // heading, a plain "-----" a line (#84). A category listed twice shows once.
@@ -1442,6 +1469,146 @@ async function loadCategories() {
     console.error('Error loading categories:', err);
     categoryContent.innerHTML = '<p>Error loading categories</p>';
   }
+}
+
+// ---- Plain forms for the profile and the categories (UX audit #21). They used to open a raw record editor
+// that showed field names like fav_sbs and analyticsNoticed.
+
+// Your name, as others see it ("updated by", "Added by"). Signing in still uses the account name.
+async function editProfileName() {
+  const account = window.user._id.replace(/^u-/, '');
+  const dialog = new TaskDialog('Your name');
+  const done = await dialog.run({
+    text: `How others see your name, like on songs you add or change. You still sign in as ${account}.`,
+    fields: [{ name: 'name', label: 'Name', value: window.user.name || account, maxlength: 60, autocomplete: 'name' }],
+    submit: 'Save',
+    working: 'Saving…',
+    action: async ({ name }) => {
+      if (!name) throw new Error('Please type a name.');
+      await saveUserSettings({ name });
+    },
+  });
+  if (done === null) return;
+  dialog.close();
+  updateUser();
+}
+
+// The category list, edited in place: drag to reorder, type to rename, × to remove, and group headings
+// ("----- Seasons" in the list). A renamed category can be renamed on the songs that have it too.
+async function editCategories() {
+  const box = document.getElementById('category_content');
+  let doc;
+  try {
+    doc = await db.get('categories');
+  } catch (err) {
+    reportDbError(err, 'load the categories');
+    return;
+  }
+  const row = (kind, text, original = '') => `<li class="cat-row${kind === 'heading' ? ' cat-heading' : ''}" data-kind="${kind}" data-original="${escapeHtml(original)}">
+      <span class="cat-grip" aria-hidden="true" title="Drag to move">⠿</span>
+      <input type="text" value="${escapeHtml(text)}" aria-label="${kind === 'heading' ? 'Group heading' : 'Category name'}" placeholder="${kind === 'heading' ? 'A line, or a group name' : 'Category name'}">
+      <button type="button" class="cat-remove" aria-label="Remove" title="Remove">×</button>
+    </li>`;
+  const rows = (doc.categories || []).map(raw => {
+    const cat = String(raw).trim();
+    const divider = cat.match(/^-{3,}\s*(.*)$/);
+    return divider ? row('heading', divider[1].trim()) : cat ? row('cat', cat, cat) : '';
+  }).join('');
+  box.innerHTML = `<div class="cat-edit">
+      <p class="cat-edit-help">Drag ⠿ to move. A group heading starts a new group. Removing a category here doesn't take it off songs that have it.</p>
+      <ul class="cat-list">${rows}</ul>
+      <div class="cat-edit-buttons">
+        <button type="button" class="btn btn-small" data-add="cat">+ Category</button>
+        <button type="button" class="btn btn-small" data-add="heading">+ Group heading</button>
+      </div>
+      <div class="cat-edit-buttons">
+        <button type="button" class="btn" data-cancel>Cancel</button>
+        <button type="button" class="btn primary" data-save>Save</button>
+      </div>
+    </div>`;
+  const list = box.querySelector('.cat-list');
+  Sortable.create(list, { handle: '.cat-grip', animation: 150 });
+  box.querySelector('.cat-edit').addEventListener('click', event => {
+    const button = event.target.closest('button');
+    if (!button) return;
+    if (button.classList.contains('cat-remove')) button.closest('.cat-row').remove();
+    else if (button.dataset.add) {
+      // a new category goes at the end; a new heading too, ready for categories under it
+      list.insertAdjacentHTML('beforeend', row(button.dataset.add, ''));
+      list.lastElementChild.querySelector('input').focus();
+    }
+    else if (button.hasAttribute('data-cancel')) loadCategories();
+    else if (button.hasAttribute('data-save')) saveCategoryEdits(box, doc);
+  });
+}
+
+async function saveCategoryEdits(box, doc) {
+  const categories = [], renames = new Map(), seen = new Set();
+  box.querySelectorAll('.cat-row').forEach(li => {
+    const text = li.querySelector('input').value.trim().replace(/\s+/g, ' ');
+    if (li.dataset.kind === 'heading') {
+      categories.push(text ? `----- ${text}` : '-----');
+    } else if (text && !seen.has(text)) {
+      seen.add(text);
+      categories.push(text);
+      if (li.dataset.original && li.dataset.original !== text) renames.set(li.dataset.original, text);
+    }
+  });
+  try {
+    await db.put({ ...doc, categories });
+  } catch (err) {
+    reportDbError(err, 'save the categories');
+    return;
+  }
+  window.songCategories = categories;
+  notyf.info('Categories saved', 'var(--edit-color)');
+  loadCategories();
+  if (renames.size) await renameCategoryOnSongs(renames);
+}
+
+// After a rename in the list: the songs that have the old name, renamed too (if the person says so)
+async function renameCategoryOnSongs(renames) {
+  let songs;
+  try {
+    songs = (await db.allDocs({ startkey: 's-', endkey: 's-￿', include_docs: true })).rows
+      .map(r => r.doc).filter(song => Array.isArray(song?.categories) && song.categories.some(c => renames.has(c)));
+  } catch (err) {
+    reportDbError(err, 'find the songs with that category');
+    return;
+  }
+  if (!songs.length) return;
+  const names = [...renames].map(([from, to]) => `"${from}" → "${to}"`).join(', ');
+  const changed = new Set();
+  const dialog = new TaskDialog('Rename on songs too?');
+  const done = await dialog.run({
+    text: `You renamed ${names}. ${songs.length} song${songs.length === 1 ? ' has' : 's have'} the old name. Change ${songs.length === 1 ? 'it' : 'them'} too?`,
+    submit: `Change ${songs.length} song${songs.length === 1 ? '' : 's'}`,
+    cancel: 'Only the list',
+    working: 'Changing the songs…',
+    action: async () => {
+      let failed = 0;
+      for (const song of songs) {
+        if (changed.has(song._id)) continue; // a retry does only the ones that failed
+        song.categories = [...new Set(song.categories.map(c => renames.get(c) ?? c))];
+        // the song's search text has its categories too ("c:A c:B"), so c: searches find the new name
+        if (typeof song.search === 'string') {
+          song.search = song.search.replace(/(^|\0)c:[^\0]*\0/, `$1c:${song.categories.length ? song.categories.join(' c:') : '!c'}\0`)
+            .replace(/editedBy:[^\0]*\0/, `editedBy:${window.user._id.replace(/^u-/, '')}\0`);
+        }
+        song.edited = Date.now();
+        song.editedBy = window.user._id;
+        try {
+          song._rev = (await saveWithHistory(song)).rev;
+          changed.add(song._id);
+        } catch (err) {
+          failed++;
+          console.error('Could not rename the category on', song._id, err);
+        }
+      }
+      if (failed) throw new Error(`${failed} song${failed === 1 ? '' : 's'} couldn't be changed. Try again to finish them.`);
+    },
+  });
+  if (done !== null) dialog.close();
 }
 
 // Mirrors database/validate.js: editors and church admins change anything; everyone else what they added
@@ -1567,9 +1734,10 @@ function setLoginState({ route = true } = {}) {
   if (titleLink) {
     const dbNameParts = (window.dbChoice || window.db.name).split('('); // the church, not this person's copy (#139)
     const dbName = capEachWord(dbNameParts[0], "_");
-    const dbType = dbNameParts[1] ? dbNameParts[1].replace(')', '').toUpperCase() : '';
-    
-    titleLink.innerHTML = `${dbName}<sup style="font-size: .8rem; font-weight: normal; color: var(--songList-color);"> ${dbType}</sup>`;
+    // Plain words, not LOCAL / REMOTE (UX audit #24): a church's songs need no tag; songs kept only here get one
+    const onlyHere = dbNameParts[1]?.startsWith('local') ? 'on this device only' : '';
+
+    titleLink.innerHTML = `${dbName}<sup style="font-size: .8rem; font-weight: normal; color: var(--songList-color);"> ${onlyHere}</sup>`;
   }
   
   if (!route) return;
@@ -3012,7 +3180,8 @@ async function editSong() {
   const firstPart = songElement.querySelector('.wrap');
   if (firstPart && !songElement.querySelector('.edit-hint')) {
     firstPart.insertAdjacentHTML('beforebegin', '<p class="edit-hint">Put chords on their own line above the words, lined up with spaces. '
-      + 'Press Enter twice to start a new part; Backspace at the start of a part joins it to the one above. Drag a part to move it.</p>');
+      + 'Press Enter twice to start a new part; Backspace at the start of a part joins it to the one above. Drag a part to move it. '
+      + '<a href="#" contenteditable="false" onclick="openHelp(\'songs\'); return false;">More in Help</a></p>');
   }
   window.songEditSnapshot = songEditState(); // leaving without a change doesn't ask
 }
@@ -3398,7 +3567,7 @@ async function loadExportSetups() {
         // new button once the list is rebuilt, since this one is replaced then (#131).
         cfgButtons.insertAdjacentHTML('beforeend', `
           <button class="btn" data-save-name="${escapeHtml(row.doc.name || 'Default')}" onclick="saveExport(this.dataset.saveName);">
-            Save as ${escapeHtml(row.doc.name || 'Default')}<span class="export_close" title="Delete this config"
+            Save as ${escapeHtml(row.doc.name || 'Default')}<span class="export_close" title="Delete this format"
               onclick="event.stopPropagation(); deleteExportCfg(${escapeHtml(JSON.stringify(row.doc._id))});">×</span>
           </button>`);
         mine += option(`Your ${escapeHtml(row.doc.name || 'Default')}`);
