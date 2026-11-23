@@ -998,7 +998,7 @@
         hashchanged();
         // keep page from reloading if editing
         window.onbeforeunload = function() {
-          return ((window.songEditing || window.songbookEditing) ? "If you leave this page you will lose your unsaved changes." : null);
+          return (((window.songEditing && songEditChanged()) || window.songbookEditing) ? "If you leave this page, you will lose your unsaved changes." : null);
         }
       });   
       async function hashchanged(e) {

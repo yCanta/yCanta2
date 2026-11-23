@@ -165,7 +165,8 @@ introduction:before {
 .edit cclis {
   margin-bottom: 0;
 }
-stitle[contentEditable=true]:empty:before{
+stitle[contentEditable=true]:empty:before,
+.song-title .title_link[contentEditable=true]:empty:before{ /* the editor's title is this link now */
   content: 'Title ';
 }
 key[contentEditable=true]:empty:before{
@@ -185,9 +186,12 @@ introduction[contentEditable=true]:empty:before{
   color: salmon;
 }
 chunk[contentEditable=true]:empty:before{
-  content: 'Verse/Chorus/Comment ';
-  top: 0;
-  left: 0;
+  content: 'Type the words here';
+  position: static; /* inside the empty part's box, not over its label and Preview button */
+  display: inline;
+  margin: 0;
+  font-family: inherit;
+  color: gray;
 }
 copyright[contentEditable=true]:empty:before{
   content: 'Copyright ';

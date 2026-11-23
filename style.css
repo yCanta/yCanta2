@@ -1223,6 +1223,13 @@ li[data-song-id="reading"] > a {
   font-style: italic;
   margin: .25rem 0 1.25rem;
 }
+/* Above the first part in the song editor: how chords and parts are typed (UX audit #14) */
+.edit-hint {
+  color: var(--light-text-color);
+  font-size: .85rem;
+  font-style: italic;
+  margin: .5rem 0 1rem;
+}
 /* A section's name or a reading's verses being typed in the songbook editor, and what they'll be (#157) */
 .row-input {
   flex: 1;

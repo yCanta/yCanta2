@@ -3000,7 +3000,27 @@ async function editSong() {
 
   const elements = songElement.querySelectorAll('.song-title .title_link, authors, scripture_ref, introduction, key, chunk, copyright, cclis');
   convertChunksToEditable(elements);
+
+  // How the editor works, which nothing else shows (UX audit #14); not part of the song (prepSaveSong drops it)
+  const firstPart = songElement.querySelector('.wrap');
+  if (firstPart && !songElement.querySelector('.edit-hint')) {
+    firstPart.insertAdjacentHTML('beforebegin', '<p class="edit-hint">Put chords on their own line above the words, lined up with spaces. '
+      + 'Press Enter twice to start a new part; Backspace at the start of a part joins it to the one above. Drag a part to move it.</p>');
+  }
+  window.songEditSnapshot = songEditState(); // leaving without a change doesn't ask
 }
+// What the song editor holds, to tell whether anything changed before warning about leaving
+function songEditState() {
+  const card = document.querySelector('#song .song-card');
+  if (!card) return '';
+  return JSON.stringify([
+    [...card.querySelectorAll('.song-title .title_link, authors, scripture_ref, introduction, key, chunk, copyright, cclis')].map(el => el.textContent),
+    [...card.querySelectorAll('.wrap select')].map(select => select.value),
+    [...document.querySelectorAll('#categories [type="checkbox"]')].map(box => box.checked),
+    !!document.getElementById('ccli-checkbox')?.checked,
+  ]);
+}
+function songEditChanged() { return !window.songEditSnapshot || songEditState() !== window.songEditSnapshot; }
 // The song editor's scripture references (#157). While they're typed, a note under the box says how they'll
 // be written, and which ones the Bible doesn't know and why. When the box is left, each one it knows is
 // written the usual way ("ps 95:1,2" -> "Psalm 95:1, 2"), so they look alike, sort right in the PDF's index
@@ -3246,6 +3266,7 @@ async function prepSaveSong() {
   // Save from a copy of the editor, so a failed save leaves the editor and its edits in place (#1)
   const editor = document.querySelector('#song .song-card'); // the card: its header holds the title
   const songElement = editor.cloneNode(true);
+  songElement.querySelectorAll('.edit-hint').forEach(hint => hint.remove()); // the editor's how-to, not the song
   const ccliCheckbox = document.getElementById('ccli-checkbox');
   const ccliElement = songElement.querySelector('cclis');
 
@@ -3870,10 +3891,15 @@ function confirmWhenEditing(oldHashList, newHashList) {
   // Check song editing state
   if (window.songEditing) {
     const songTitle = document.querySelector('#song .song-title a')?.textContent || 'Current Song';
-    // No oldHashList means a direct call (e.g. logout), so always ask
+    // No oldHashList means a direct call (e.g. logout), so always ask, if anything changed
     if (!oldHashList || oldHashList[1]?.[1] === 'edit') {
-      confirmMessages.push('songEditing');
-      changes.push(`Song: ${songTitle}`);
+      if (songEditChanged()) {
+        confirmMessages.push('songEditing');
+        changes.push(`Song: ${songTitle}`);
+      } else { // nothing changed: just leave the editor, as a confirmed leave does
+        window.songEditing = false;
+        window.song._id = '';
+      }
     }
   }
 
@@ -3889,7 +3915,7 @@ function confirmWhenEditing(oldHashList, newHashList) {
 
   // If there are changes to confirm
   if (confirmMessages.length > 0) {
-    const message = `If you leave this page you may lose changes to:\n- ${changes.join('\n- ')}`;
+    const message = `If you leave this page, you will lose your changes to:\n- ${changes.join('\n- ')}`;
     
     if (confirm(message)) {
       // User confirmed - reset editing states
