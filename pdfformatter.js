@@ -301,6 +301,10 @@ function parse(export_object, cfg) {
   if (export_object._id.startsWith('s-')) {
     let song = parse_song(export_object);
     song.num = 1;
+    if (export_object.reading) { // a Bible reading on its own (#157): no number, its verses wrap
+      song.reading = true;
+      song.num = '';
+    }
     return song;
   }
 

@@ -61,10 +61,9 @@ song {
   column-gap: 4rem;
   margin-bottom: 1rem;
 }
-.edit [type=verse]:before {
-  top: -3.5rem !important;
-  left: 6rem !important;
-  pointer-events: none;
+.edit .wrap > [type=verse]:before {
+  content: none; /* the editor numbers the part's row instead (style.css, .song .edit .wrap::before);
+                    an old version shown beside it keeps its own numbers */
 }
 .nochords [type=verse]:before {
   top: 0rem;

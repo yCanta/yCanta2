@@ -124,7 +124,8 @@ function reportDbError(err, whatFailed, { stay = false, more = '', onClick = nul
 const stickyErrors = new Map();
 function stickyError(message, onClick = null, kind = message) {
   clearStickyError(kind);
-  const notice = dysmyssable.open({ type: 'error', message, background: 'crimson' });
+  // className replaces the type's own (Notyf merges the two), so the error look's class goes in too
+  const notice = dysmyssable.open({ type: 'error', message, background: 'crimson', className: 'notyf__toast--error' + (onClick ? ' clickable-note' : '') });
   stickyErrors.set(kind, notice);
   notice.on('dismiss', () => { if (stickyErrors.get(kind) === notice) stickyErrors.delete(kind); });
   if (onClick) notice.on('click', () => {
@@ -465,7 +466,8 @@ notyf.info = function(message, color='var(--songbookList-color)', url=false){
     notyf.open({
       type: 'info',
       message: message,
-      background: color
+      background: color,
+      className: 'clickable-note'
     }).on('click', ({target, event}) => {
       window.location.href = url;
     });
@@ -494,7 +496,8 @@ dysmyssable.info = function(message, color='var(--songbookList-color)', url=fals
     dysmyssable.open({
       type: 'info',
       message: message,
-      background: color
+      background: color,
+      className: 'clickable-note'
     }).on('click', ({target, event}) => {
       window.location.hash = url;
     });
@@ -583,13 +586,43 @@ function toggleAccountMenu(open, fromKeyboard = false) {
   if (show && fromKeyboard) accountMenuItems()[0]?.focus({ preventScroll: true }); // a mouse or a tap leaves focus be
 }
 const accountMenuItems = () => [...document.querySelectorAll('#account_menu button')].filter(b => b.offsetParent);
+// The home page's cards (My Profile, Categories, Settings, Admin, Trash) open one at a time, from the menu
+// under your name; a closed one isn't shown at all (style.css #settings), so opening one closes the others
+// On a phone (the one-column layout, under 40rem wide like style.css's phone rules) Recently Updated Songs
+// folds up while one is open, out of its way, and opens again when it closes (unless you had folded it
+// yourself). Wider, the card sits beside it, so it stays open.
+// Unsaved changes in the Categories editor are asked about first; false means they kept editing.
+async function closeOtherHomeCards(id) {
+  if (id !== 'categorySettings' && !await okToDropCategoryEdits()) return false;
+  document.querySelectorAll('#settings > fieldset:not(.closed)').forEach(f => { if (f.id !== id) f.classList.add('closed'); });
+  const recent = document.querySelector('.updatedSongs');
+  if (recent && !recent.classList.contains('closed') && matchMedia('(max-width: 39.99rem)').matches) {
+    recent.classList.add('closed');
+    recent.dataset.foldedForCard = '1';
+  }
+  return true;
+}
+function reopenRecentSongs() {
+  const recent = document.querySelector('.updatedSongs');
+  if (recent?.dataset.foldedForCard && !document.querySelector('#settings > fieldset:not(.closed)')) {
+    recent.classList.remove('closed');
+    delete recent.dataset.foldedForCard;
+  }
+}
+// a card's title closes it (its own onclick); then Recently Updated comes back. Folding or opening Recently
+// Updated yourself ends the automatic part.
+document.addEventListener('click', e => {
+  if (e.target.closest('#settings > fieldset > legend')) setTimeout(reopenRecentSongs);
+  else if (e.target.closest('.updatedSongs > legend')) delete document.querySelector('.updatedSongs').dataset.foldedForCard;
+});
 // Go home, open a card there (its header's click runs whatever it loads), and bring it into view
 function openHomeCard(id) {
   const card = document.getElementById(id);
   if (!card) return;
   const atHome = () => location.hash === '#' || location.hash === '';
-  const show = () => {
+  const show = async () => {
     if (!atHome()) return; // they stayed, at "you'll lose your changes"
+    if (!await closeOtherHomeCards(id)) return;
     if (card.classList.contains('closed')) card.querySelector(':scope > legend')?.click();
     setTimeout(() => card.scrollIntoView({ block: 'start', behavior: 'smooth' }), 350);
   };
@@ -605,7 +638,7 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleAccountMenu(false);
     const what = item.dataset.open;
     if (what === 'help') openHelp();
-    else if (what === 'logout') dbLogout();
+    else if (what === 'logout') okToDropCategoryEdits().then(ok => ok && dbLogout());
     else if (what === 'install') showInstallSteps();
     else openHomeCard(what);
   });
@@ -901,6 +934,7 @@ function offerUpdateReload() {
     duration: 0, // stays until it's clicked or closed
     dismissible: true,
     background: 'var(--songbookList-color)',
+    className: 'clickable-note',
     message: 'A new version of yCanta is ready. <u>Reload</u>',
   });
   toast.on('click', () => {
@@ -1427,7 +1461,9 @@ async function updateUser() {
   usernameContainer.innerHTML = html;
 
   // Build user profile content
-  let profileHtml = `<h3>${escapeHtml(name)}</h3>`;
+  // the pencil beside the name changes it (the name others see)
+  let profileHtml = `<h3>${escapeHtml(name)}<button type="button" class="inline-icon" onclick="editProfileName()"
+    aria-label="Change your name" title="Change your name">${icon('edit')}</button></h3>`;
 
   // Favorite Songbooks
   const favSongbooks = (Array.isArray(window.user.fav_sbs) ? window.user.fav_sbs : []).filter(sb => typeof sb === 'string' && sb.length !== 0);
@@ -1492,15 +1528,12 @@ async function updateUser() {
   ].join(': ');
   
   profileHtml += `<h4>Permissions</h4><ul class="fit-text">${permissions}</ul>`;
-  if (remoteDb) profileHtml += '<h4>Recovery email</h4><div id="recovery_email">…</div>';
+  if (remoteDb) profileHtml += '<h4>Recovery email</h4><div id="recovery_email"><p class="hint">Loading…</p></div>';
 
-  // Buttons
-  profileHtml += `
-    <button onclick="editProfileName()" class="btn">
-      ${icon('edit')} Name
-    </button>
+  // the password last, under its own heading (the name's pencil is beside the name, the email's beside it)
+  profileHtml += `<h4>Password</h4>
     <button onclick="change${document.documentElement.classList.contains('_admin') ? 'Admin' : 'User'}Password(window.user._id.replace('u-', ''))" class="btn">
-      ${icon('key')} Password
+      ${icon('reset')} Change password
     </button>`;
 
   userContent.innerHTML = profileHtml;
@@ -1615,6 +1648,46 @@ async function editCategories() {
     else if (button.hasAttribute('data-cancel')) loadCategories();
     else if (button.hasAttribute('data-save')) saveCategoryEdits(box, doc);
   });
+  box.dataset.startList = categoryEditList(box); // what "changed" is measured against
+}
+// The editor's list as it stands, to compare with how it started
+const categoryEditList = box => JSON.stringify([...box.querySelectorAll('.cat-row')]
+  .map(li => [li.dataset.kind, li.querySelector('input').value.trim()]));
+function categoryEditsChanged() {
+  const box = document.getElementById('category_content');
+  return !!box?.querySelector('.cat-edit') && categoryEditList(box) !== box.dataset.startList;
+}
+// Before something would close or replace the Categories editor: ask, if it has changes. True means go
+// ahead (nothing changed, or they chose to drop the changes, and the plain list is back).
+async function okToDropCategoryEdits() {
+  if (!categoryEditsChanged()) return true;
+  const dialog = new TaskDialog('Unsaved category changes');
+  const drop = await dialog.run({
+    text: "You changed the category list but haven't saved it. Drop those changes?",
+    submit: 'Drop changes', cancel: 'Keep editing', danger: true,
+    action: () => true,
+  });
+  if (drop === null) {
+    const card = document.getElementById('categorySettings');
+    card.classList.remove('closed');
+    card.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    return false;
+  }
+  dialog.close();
+  await loadCategories();
+  return true;
+}
+// The Categories title: opens the plain list, or closes the card (asking first about unsaved changes)
+async function toggleCategoryCard(card) {
+  if (card.classList.contains('closed')) {
+    card.classList.remove('closed');
+    loadCategories();
+    return;
+  }
+  if (!await okToDropCategoryEdits()) return;
+  card.classList.add('closed');
+  loadCategories();
+  reopenRecentSongs();
 }
 
 async function saveCategoryEdits(box, doc) {
@@ -1789,7 +1862,8 @@ function handleDarkMode(){
   //save value to system/user prefs.  
   localStorage.setItem(window.user._id+'darkMode',value);
 }
-function goToSettings(){
+async function goToSettings(){
+  if (!await closeOtherHomeCards('appSettings')) return;
   document.getElementById('appSettings').classList.remove('closed');
   setTimeout(function() {scrollIntoViewIfNeed(document.getElementById('appSettings'))},300);
 }
@@ -2479,7 +2553,16 @@ function dataxInBookUpdate(song, remove = false) {
 function editHash(e) {
   e.preventDefault();
   if (e.target.closest('.status-btn')) return; // its own click changes the status (addBookRowButtons)
-  if (isBookExtra(this.getAttribute('data-song-id'))) return; // nothing to open (a reading's pencil changes it)
+  const extra = this.getAttribute('data-song-id');
+  if (extra === 'reading') { // its verses open on the right, as a song's editor does; its pencil and box still change it
+    // not "New Reading" in "Add songs" (a click there adds it), nor a new row whose verses aren't typed yet
+    const href = this.querySelector('a')?.getAttribute('href');
+    const ref = href ? decodeURIComponent(href.replace(/^.*&r-/, '')).trim() : '';
+    if (this.closest('#songbook_edit_togglesongs') || !ref || ref === 'New Reading') return;
+    if (!e.target.closest('button, input, textarea')) location.hash = href.replace(/^.*#/, '').replace(window.songbook._id, window.songbook._id + '?edit');
+    return;
+  }
+  if (isBookExtra(extra)) return; // a section: nothing to open (its pencil changes it)
   if(window.innerWidth <= 1150 && !document.body.classList.contains('song') && e.target.closest('#songbook_edit_togglesongs')) {
     return;  //we're not popping open edit song from the add song window.
   }
@@ -2606,7 +2689,10 @@ function newBookRow(adderRow) {
 // its reference. Its link is #<book>&r-<reference>.
 async function showReading(ref) {
   const content = document.querySelector('#song .content');
-  document.querySelector('#song .float-menu').innerHTML = ''; // nothing to edit, delete or export on its own
+  // it exports on its own, as a song does (its verses as a one-reading PDF); nothing to edit or delete here
+  document.querySelector('#song .float-menu').innerHTML = `
+    <a class="float-menu-item" href="${escapeHtml(readingLink(ref))}?export"><span class="float-menu-icon">${icon('export')}</span>Export</a>
+    <span class="float-menu-item float-menu-toggle"><button type="button" class="float-menu-icon" aria-label="Actions" title="Actions: export">${icon('plus')}</button></span>`;
   content.innerHTML = `
     <section class="song-card reading-card">
       <div class="column_header">
@@ -2908,7 +2994,7 @@ async function editSongbook() {
     const toggleButtons = document.createElement('span');
     toggleButtons.className = 'edit_buttons';
     toggleButtons.innerHTML = `
-      Song Status:
+      <span class="nowrap">Song Status:
       <label id="showStatusID" class="switch" onchange="(function(checkbox) {
         const content = document.getElementById('songbook_content');
         const isChecked = checkbox.checked;
@@ -2922,8 +3008,8 @@ async function editSongbook() {
       })(this.firstElementChild)">
         <input type="checkbox" id="statusON" ${window.songbook.showStatus ? 'checked' : ''}>
         <div class="slider"></div>
-      </label>
-      Comments:
+      </label></span>
+      <span class="nowrap">Comments:
       <label class="switch" onchange="(function(checkbox) {
         const content = document.getElementById('songbook_content');
         const isChecked = checkbox.checked;
@@ -2937,7 +3023,7 @@ async function editSongbook() {
       })(this.firstElementChild)">
         <input type="checkbox" id="commentsON" ${window.songbook.showComments ? 'checked' : ''}>
         <div class="slider"></div>
-      </label>`;
+      </label></span>`; // each label stays on its switch's line (a phone wrapped between them)
     header.appendChild(toggleButtons);
   };
 
@@ -3216,7 +3302,7 @@ async function editSong() {
     const cclisText = cclisElement.textContent.replace('CCLI Song #: ', '').trim(); // Extract CCLI text.
 
     const wrapper = document.createElement('div'); // Create wrapper div.
-    wrapper.style.marginBottom = '1rem'; // Add margin to wrapper.
+    wrapper.className = 'ccli-row'; // one line, centered (style.css)
 
     const checkbox = document.createElement('input'); // Create checkbox.
     checkbox.type = 'checkbox';
@@ -3456,10 +3542,17 @@ async function previewChunk(button) {
     new ResizeObserver(scalePreviewFrame).observe(win.querySelector('.slide-preview'));
   }
   const opening = win.hidden || !win.dataset.placed;
+  // a size it was dragged to before, in rem so it grows with the Text size setting (the CSS keeps it on screen)
+  const width = Number(previewSetting('widthRem', 0));
+  win.style.width = width ? width + 'rem' : '';
   win.querySelector('[name="ratio"]').value = previewSetting('ratio', '16:9');
   win.querySelector('[name="chords"]').checked = previewSetting('chords', 'false') === 'true';
   win.hidden = false;
   drawChunkPreview();
+  if (win.offsetHeight > innerHeight - 16) { // a size from a taller screen (or a wider shape): fit this one
+    const fit = previewWidthForHeight(win, innerHeight - 16);
+    win.style.width = Math.max(parseFloat(getComputedStyle(win).minWidth) || 0, fit) + 'px';
+  }
   if (opening) { // where it was left, else the bottom right corner (out of the way on a phone); on screen either way
     win.dataset.placed = '1';
     let place = null;
@@ -3503,6 +3596,39 @@ function drawChunkPreview() {
     fitPreviewSlide(frame.contentWindow);
   }
 }
+
+// How wide the preview can be and still be no taller than `height`: its slide grows with its width, in the
+// slide's shape, and the rest (title bar, choices, padding) stays the same
+function previewWidthForHeight(win, height) {
+  const slide = win.querySelector('.slide-preview');
+  if (!slide?.offsetWidth) return Infinity;
+  const shape = slide.offsetHeight / slide.offsetWidth;
+  const sides = win.offsetWidth - slide.offsetWidth, rest = win.offsetHeight - slide.offsetHeight;
+  return Math.max(0, (height - rest) / shape + sides);
+}
+
+// The corner grip: drag it to make the preview wider or narrower (its height follows the screen's shape).
+// The top left corner stays put; the size is kept for next time on this device.
+document.querySelector('#chunkPreview .preview-resize')?.addEventListener('pointerdown', e => {
+  const win = document.getElementById('chunkPreview'), grip = e.currentTarget;
+  const startX = e.clientX, startWidth = win.offsetWidth, { left, top } = win.getBoundingClientRect();
+  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  const least = parseFloat(getComputedStyle(win).minWidth) || 14 * rem; // the CSS's min-width
+  const most = Math.min(innerWidth - left - 8, previewWidthForHeight(win, innerHeight - top - 8));
+  e.preventDefault();
+  grip.setPointerCapture(e.pointerId);
+  const move = ev => {
+    const px = Math.max(least, Math.min(most, startWidth + ev.clientX - startX));
+    win.style.width = (px / rem).toFixed(2) + 'rem';
+  };
+  const end = () => {
+    grip.removeEventListener('pointermove', move);
+    keepPreviewSetting('widthRem', (win.offsetWidth / rem).toFixed(2));
+  };
+  grip.addEventListener('pointermove', move);
+  grip.addEventListener('pointerup', end, { once: true });
+  grip.addEventListener('pointercancel', end, { once: true });
+});
 
 function closeChunkPreview() {
   document.getElementById('chunkPreview').hidden = true;

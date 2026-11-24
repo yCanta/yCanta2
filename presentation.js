@@ -1250,7 +1250,8 @@ function toggleHelp() {
     content += '<div class="segmented" role="radiogroup" aria-label="Show">' + choice('part', 'One part', 'One part at a time, as big as fits (w and g go back to it)')
       + choice('whole', 'Whole song', 'Every part of the song, the one on screen outlined. Click a part to show it. (w)')
       + (mirror ? '' : choice('grid', 'Grid', 'The whole book, the song on screen open. Click a part to show it. (g)')) + '</div>';
-    if (main) content += '<p class="help-note">Whole song and Grid are for your own screen: the mirror and the other screens keep showing one part at a time.</p>';
+    // said out loud, not only in the choices' hover tips (a touch screen never shows those)
+    if (main) content += '<p class="help-note">Whole song and Grid are for your own screen: the mirror and the other screens keep showing one part at a time. The part on screen is outlined; the arrow marks where Space goes next.</p>';
     content += '<div class="switches">'
       + switchHtml('fgText', 'White text', on('white'), 'whiteScreen(true)', 'f')
       + switchHtml('bgColor', 'Black background', on('black'), 'blackScreen(true)', 't')

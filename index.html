@@ -97,22 +97,23 @@
 
             <p>yCanta keeps your church's songs in one place. Find a song by its words, put songbooks together, print them as a PDF, and show the words on a screen. Once you've signed in, it works without internet too.</p>
             <p>Start with Songbooks or All Songs above. Your name at the top right opens a menu with Settings and more. <button type="button" class="btn btn-small" onclick="openHelp()">Help</button> explains the rest.</p>
-            <fieldset class="updatedSongs closed-mobile">
-              <legend onclick="(this.parentElement.classList.contains('closed-mobile') && (window.innerWidth < 640) ? this.parentElement.classList.remove('closed-mobile') : this.parentElement.classList.toggle('closed'));">Recently Updated Songs</legend>
+            <!-- always on the page, open to start on every screen size; its title opens and closes it -->
+            <fieldset class="updatedSongs">
+              <legend onclick="this.parentElement.classList.toggle('closed');">Recently Updated Songs</legend>
               <div class="content">
                 <ul class="list" data-empty="No songs have changed lately."></ul>
               </div>
             </fieldset>
           </div>
           <div id="settings">
-            <fieldset id="userProfile" class="align-right">
+            <fieldset id="userProfile" class="closed align-right"><!-- opened from the menu under your name, like the rest -->
               <legend onclick="this.parentElement.classList.toggle('closed');">My Profile</legend>
               <div class="content">
                 <div id="user_content"></div>
               </div>
             </fieldset>
             <fieldset class="closed align-right" id="categorySettings">
-              <legend onclick="this.parentElement.classList.toggle('closed'); loadCategories();">Categories</legend>
+              <legend onclick="toggleCategoryCard(this.parentElement)">Categories</legend>
               <div class="content">
                 <div id="category_content"></div>
               </div>
@@ -152,7 +153,7 @@
               <div class="content">
                 <b>Import</b>
                 <div>Bring songs in from a file: a .json file from a yCanta export, or a .zip of songs from the old yCanta (version 1). Choose the file, then press Import.</div>
-                <span style="margin: 1rem;"><input type="file" id="file" name="file" accept=".json,.zip" style="max-width: 200px; background: var(--edit-color);"/><button class="btn" onclick="startHandlingFiles();">Import</button></span>
+                <div class="import-row"><input type="file" id="file" name="file" accept=".json,.zip"/><button class="btn" onclick="startHandlingFiles();">Import</button></div>
                 <div id="result" style="max-width: 400px;">
                 </div>
               </div>
@@ -672,6 +673,7 @@
         <label class="chord-switch"><input type="checkbox" name="chords" onchange="keepPreviewSetting('chords', this.checked); drawChunkPreview()"><span class="switch-track" aria-hidden="true"></span>Chords</label>
       </div>
       <div class="slide-preview"><iframe title="How this part will show" tabindex="-1"></iframe></div>
+      <button type="button" class="preview-resize" aria-label="Drag to resize the preview" title="Drag to resize"><svg class="icon" aria-hidden="true"><use href="icons.svg#resize"/></svg></button>
     </div>
     <footer>
     </footer>
@@ -824,7 +826,7 @@
         hashchanged();
         // keep page from reloading if editing
         window.onbeforeunload = function() {
-          return (((window.songEditing && songEditChanged()) || window.songbookEditing) ? "If you leave this page, you will lose your unsaved changes." : null);
+          return (((window.songEditing && songEditChanged()) || window.songbookEditing || categoryEditsChanged()) ?"If you leave this page, you will lose your unsaved changes." : null);
         }
       });   
       async function hashchanged(e) {
@@ -894,6 +896,26 @@
         const ref = decodeURIComponent(route.slice(2));
         window.document.title = `yCanta2: ${window.songbook.title} > ${ref}`;
         await showReading(ref);
+        if (piece[1] == 'export') { // the reading alone, as a one-song PDF of its verses
+          document.getElementById('export').classList.add('active');
+          if (piece[1] !== context.oldHashOb[route] || context.oldHashOb['login']) {
+            document.getElementById('export').classList.remove('showStatus');
+            const asked = location.hash;
+            const doc = await readingSongDoc(ref, await churchBible());
+            if (location.hash !== asked) {
+              // they went somewhere else while the verses loaded: leave that page be
+            } else if (!doc) {
+              showError("These verses couldn't load, so there's nothing to export.");
+              window.location = readingLink(ref);
+            } else {
+              // one saved Format for every reading (cfg-s-reading); reading: no number, verses wrap
+              window.exportObject = { ...doc, _id: 's-reading', reading: true };
+              await prepExport();
+              applyFirstExportSetup();
+              window.document.title = `yCanta2: Exporting ${ref}`;
+            }
+          }
+        }
       }
     } catch (err) {
       console.error(`Error handling route ${route}:`, err);
@@ -946,6 +968,9 @@ function _getClassesFromHash(hashList) {
             }
         } else if (route.startsWith('r-')) {
             classSet.add('song'); // a reading shows where a song does (#157)
+            if (mode === 'export') {
+                classSet.add('export'); // and exports on its own, as a song does
+            }
         } else if (route.startsWith('sb-')) {
             classSet.add('songList');
             if (mode === 'export') {

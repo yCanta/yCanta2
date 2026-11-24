@@ -36,7 +36,7 @@
           --btn-shadow-var: 0 2px 2px 2px rgba(0, 0, 0, 0.3);
           --btn-color: #2c2c2c;
           --btn-edge: rgba(255, 255, 255, .16);
-          --song-color: #00B0CC;
+          --song-color: #008296; /* dark mode: white text reads on it (4.5:1) */
         }
       }
       body.black {
@@ -967,6 +967,20 @@
       #help .bar-legend .ending { background-color: red; }
       body.can-leave.gridview .grid-song:first-child .grid-song-head {
         margin-right: 13rem; /* and of Leave beside it */
+      }
+      /* Phone-width: Leave and Menu take most of the top row, so the Grid starts below them instead of beside
+         them, and the buttons drop their keyboard hints (Esc twice, press h), which only made them wider */
+      @media (max-width: 39.99rem) {
+        body.gridview #cur_slide .content {
+          padding-top: 3.25rem;
+        }
+        body.gridview .grid-song:first-child .grid-song-head,
+        body.can-leave.gridview .grid-song:first-child .grid-song-head {
+          margin-right: 0;
+        }
+        #menuButton.start::after, #leaveButton.start::after {
+          content: none;
+        }
       }
       #liveBar[hidden], #liveBar [hidden] {
         display: none;

@@ -17,10 +17,10 @@
   --btn-edge: transparent;
 }
 :root.dark {
-  --songbookList-color: #f2c249;
-  --songList-color: #E6772E;
-  --song-color: #00B0CC;
-  --export-color: #00cc66;
+  --songbookList-color: #976f0b;
+  --songList-color: #be5917;
+  --song-color: #008296;
+  --export-color: #008744;
   --edit-color: #222;
   --edit-color-rgb: 34,34,34;
   
@@ -36,10 +36,10 @@
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --songbookList-color: #f2c249;
-    --songList-color: #E6772E;
-    --song-color: #00B0CC;
-    --export-color: #00cc66;
+    --songbookList-color: #976f0b;
+    --songList-color: #be5917;
+    --song-color: #008296;
+    --export-color: #008744;
     --edit-color: #222;
     --edit-color-rgb: 34,34,34;
     
@@ -421,6 +421,16 @@ html._admin .admin, html.churchAdmin .admin {display: revert;}
     grid-column: 1 / -1;
   }
 }
+@media (max-width: 39.99rem) { /* a phone: Reset password and the level on one line, Remove under them (three across
+                                  ran past the card), the level menus still lined up */
+  #all_users .people-list {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  #all_users .people-list select { /* the level menu takes what room is left, so the row fits a small phone */
+    width: 100%;
+    min-width: 0;
+  }
+}
 .people-list button {
   white-space: nowrap;
 }
@@ -563,6 +573,89 @@ legend {
   max-width: 0;
 }
 
+/* The home page's cards open one at a time from the menu under your name (lib.js openHomeCard); a closed one
+   isn't shown, so its name isn't a second copy of that menu down the side. An open one's title closes it. */
+#settings > fieldset.closed {
+  display: none;
+}
+#settings > fieldset { /* a card never runs past a phone's edge: its padding counts inside its width, and it can
+                          be narrower than its contents' widest line (a fieldset's own minimum held it wide) */
+  box-sizing: border-box;
+  min-width: 0;
+}
+/* Settings > Import: the file picker's button looks like the app's buttons, its "No file chosen" has room and
+   follows dark mode, and the row lines up with the words above it (it had three different left edges) */
+.import-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+  margin-top: .75rem;
+}
+.import-row input[type="file"] {
+  flex: 1 1 12rem;
+  min-width: 0;
+  color: var(--text-color);
+  font: inherit;
+  font-size: .9rem;
+}
+.import-row input[type="file"]::file-selector-button {
+  margin-right: .5rem;
+  padding: .35rem .9rem;
+  border: none;
+  border-radius: 2rem;
+  background-color: var(--btn-color);
+  box-shadow: var(--btn-shadow-var), inset 0 0 0 1px var(--btn-edge);
+  color: var(--text-color);
+  font: inherit;
+  font-weight: bold;
+  cursor: pointer;
+}
+.import-row .btn {
+  margin: 0;
+}
+/* A pencil or trash right beside what it changes (My Profile: the name, the recovery email) */
+button.inline-icon {
+  margin-left: .5rem;
+  padding: .15rem;
+  font-size: 1.1rem;
+  line-height: 1;
+  vertical-align: -.1em;
+  color: var(--light-text-color);
+  cursor: pointer;
+}
+#recovery_email .hint { /* "Loading…" while the account helper is asked */
+  color: var(--light-text-color);
+}
+/* My Profile: each part (favorites, permissions, recovery email, password) under a thin line, its heading
+   close to what it's about, so each pencil, trash or button plainly belongs to the part it sits in */
+#user_content h4 {
+  margin: .75rem 0 .4rem;
+  padding-top: .75rem;
+  border-top: 1px solid var(--background-color);
+}
+#user_content ul,
+#recovery_email p {
+  margin: 0;
+}
+#user_content > button.btn {
+  margin: 0;
+}
+#userProfile:not(.closed) { /* room for an email and its pencil and trash on one line */
+  min-width: min(20rem, 100%);
+}
+.nowrap { /* a value and its pencil and trash stay on one line */
+  white-space: nowrap;
+}
+button.inline-icon:hover,
+button.inline-icon:focus-visible {
+  color: var(--text-color);
+}
+/* Settings: no wider than its controls need (its long Import line made it stretch the Dark mode choices and
+   the text size slider across the whole column) */
+#appSettings:not(.closed) {
+  width: min(30rem, 100%);
+}
 #darkmode {
   background: linear-gradient(rgba(255, 255, 255, 0) 45%, rgba(var(--background-color-rgb), 1) 45%, rgba(var(--background-color-rgb), 1) 65%, rgba(255, 255, 255, 0) 65%);  
   display: flex;
@@ -598,8 +691,10 @@ legend {
 .task-dialog::backdrop {
   background: rgba(0, 0, 0, .45);
 }
-/* A card in the bottom right corner (lib.js cornerCard): a click on it does what it offers */
-.corner-card {
+/* A card in the bottom right corner (lib.js cornerCard), and any note a click acts on (Undo, Reload, try again,
+   a note that opens something): the pointing hand, as on a link */
+.corner-card,
+.notyf__toast.clickable-note {
   cursor: pointer;
 }
 /* Error notes (lib.js showError, reportDbError, stickyError; UX audit #24): calm, not alarming. The app's own
@@ -827,9 +922,29 @@ legend {
 /* A part's presentation preview, while a song is edited (#156): a floating window like the player's,
    with the part drawn in a screen-shaped frame */
 #chunkPreview {
-  width: min(20rem, 75vw); /* on a phone, room beside it to see the song */
+  /* bigger on a big screen; on a phone, room beside it to see the song. The corner grip resizes it. */
+  width: min(max(20rem, 30vw), 75vw);
+  max-width: calc(100vw - 16px);
+  min-width: 14rem;
   padding: .75rem 1rem 1rem;
   border-radius: 1.5rem;
+}
+#chunkPreview .preview-resize {
+  position: absolute;
+  right: .3rem;
+  bottom: .3rem;
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: gray;
+  cursor: nwse-resize;
+  touch-action: none; /* a finger drags the corner, not the page */
+}
+#chunkPreview .preview-resize .icon {
+  width: 100%;
+  height: 100%;
 }
 #chunkPreview * {
   transition: none; /* not the page's .25s on everything: the frame would grow from full size each time */
@@ -1230,8 +1345,13 @@ body.player-pill .subcolumn:not(.sidebar)::after {
   height: calc(100vh - 9rem);
 }
 
-.current_rev {
-  box-shadow: 0 9px 0 0 var(--background-color), 0 -9px 0 0 var(--background-color), 1px 0 0px 0px blue, -1px 0 0px 0px blue;
+/* An old version open beside the song: room before its words, and the one opened last marked by a bar in the
+   song blue down its left side (it had a thin dark-blue line down each side, with the words touching the left) */
+.song-card.revision {
+  padding-left: .75rem;
+}
+.song-card.current_rev {
+  box-shadow: inset 3px 0 0 var(--song-color);
 }
 
 /*CSS FOR Song Display*/
@@ -1486,6 +1606,44 @@ stitle, cat, author, scrip_ref, key, copyright, cclis {
 
 .song .edit .wrap {
   cursor: move;
+  /* one row: the type menu, a verse's number, Preview, and the grip at the far end; the words under it */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: .5rem;
+}
+.song .edit .wrap > select {
+  order: -2;
+}
+.song .edit .wrap > chunk {
+  flex: 1 1 100%; /* a line of its own, shrinking by its own indent so it ends at the column's edge */
+  min-width: 0;
+}
+/* a verse's number beside its type menu, counted like the song's own (2html.css verse_n). Every part keeps
+   the room for one, so the Preview buttons line up. */
+.song .edit .wrap::before {
+  order: -1;
+  content: '';
+  min-width: 1.5rem;
+  color: var(--light-text-color);
+  pointer-events: none;
+}
+.song .edit .wrap:has(> chunk[type=verse]) {
+  counter-increment: verse_n;
+}
+.song .edit .wrap:has(> chunk[type=verse])::before {
+  content: counter(verse_n) ")";
+}
+/* CCLI: the label, the checkbox and the number's box on one line */
+.song .edit .ccli-row {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  margin-bottom: 1rem;
+}
+.song .edit .ccli-row cclis {
+  min-width: 5rem;
+  margin: 0;
 }
 .song .edit .wrap:hover,
 .song .edit .wrap.previewed { /* the part the floating preview shows (#156) */
@@ -1530,8 +1688,8 @@ info:after {
   cursor: pointer;
   position: absolute;
   left: .3rem;
-  top: .2rem;
-  font-size: 1.4rem;
+  top: 0; /* level with the star beside it, and its size */
+  font-size: 1.5rem;
 }
 .fsButton:after { /* full width: arrows out; while wide, arrows in (Material's open_in_full / close_fullscreen) */
   --ico: var(--i-fullscreen);
@@ -1543,6 +1701,11 @@ info:after {
 }
 .column.fullscreen .fsButton:after {
   --ico: var(--i-shrink);
+}
+.song-card .fsButton:after { /* level with the star and i beside it, in their gray and size (so the same line weight) */
+  top: 0;
+  font-size: 1.5rem;
+  color: var(--light-text-color);
 }
 #songbookList li span:after {
   position: absolute;
@@ -1711,8 +1874,7 @@ li.sortable-drag > a {
 .song .edit .wrap > .drag-grip {
   /* at the right end of the type menu's row, clear of the menu and of an empty part's hint */
   display: inline-block;
-  float: right;
-  margin-top: 1rem;
+  margin-left: auto;
   padding: .25rem .6rem;
   font-size: 1.3rem;
   line-height: 1;
@@ -1749,12 +1911,15 @@ li.sortable-drag > a {
   content: '+ ';
   font-style: normal;
 }
+#songListEdit li[data-song-id="section"] a { /* on the section's orange: the full text color, which reads in dark mode */
+  color: var(--text-color);
+}
 /* While a songbook is edited, why its search is gone */
 .edit-search-note {
   margin: .25rem 0 0;
   font-size: .8rem;
   font-style: italic;
-  color: var(--light-text-color);
+  color: var(--text-color); /* on the editor's orange header: the gray read poorly in dark mode */
 }
 #songListEdit li {
   cursor: pointer;
@@ -1949,17 +2114,17 @@ span.deleteicon span {
   position: absolute;
   display: block;
   top: 0; /* at the box's top: the count bubble above it, the magnifier under the bubble's edge, as always */
-  right: calc(1rem + 8px); /* inside the box (its wrapper is 1rem wider), under the count bubble: the count is what the search found */
-  width: 16px;
-  height: 16px;
+  right: 1.5rem; /* inside the box (its wrapper is 1rem wider), under the count bubble: the count is what the search found */
+  width: 1rem;
+  height: 1rem;
   cursor: pointer;
 }
 input.deletable + span:after {
   position: absolute;
-  top: .5px; /* the drawing in the middle of the 23px box's height */
-  left: -3px;
-  width: 21px;
-  height: 21px;
+  top: .03rem; /* the drawing in the middle of the box's height */
+  left: -.1875rem;
+  width: 1.3125rem;
+  height: 1.3125rem;
   color: var(--light-text-color);
 }
 input.deletable:not(:placeholder-shown) + span:after {
@@ -1969,7 +2134,7 @@ input.deletable:placeholder-shown + span:after {
   --ico: var(--i-search);
 }
 span.deleteicon input {
-  padding-right: 32px; /* clear of the magnifier or ×, 22px wide */
+  padding-right: 2rem; /* clear of the magnifier or × */
 }
 
 /*Login CSS */
@@ -2593,7 +2758,7 @@ th {
 }
 [rel=tooltip]:after { /* a hint: "?" in a bubble explains what's beside it. The circled i (Info) opens details. */
   position: absolute;
-  top: -4px;
+  top: -.25rem;
   color: var(--light-text-color);
   content: '?';
   width: 1rem;
@@ -2642,7 +2807,7 @@ body:not(.song) .show_for_songs { /* and what's only for exporting one song */
 
 /*Switch*/
 .switch.switch-wide {
-  width: 300px;
+  width: min(18.75rem, 100%); /* no wider than its card on a small phone */
 }
 .switch {
   position: relative;
@@ -2681,7 +2846,8 @@ body:not(.song) .show_for_songs { /* and what's only for exporting one song */
   background-color: var(--edit-color);
 }
 .switch.switch-wide input:checked + .slider:before {
-  transform: translate(270px, 50%);
+  left: calc(100% - 1.75rem); /* the far end, however wide the switch is */
+  transform: translateY(50%); /* not the 50px slide of the short switches below */
 }
 .switch input:checked + .slider:before {
   transform: translate(50px, 50%);
@@ -2699,6 +2865,15 @@ body:not(.song) .show_for_songs { /* and what's only for exporting one song */
 }
 .switch input:checked + .slider:after {
   content:'On';
+}
+/* On looks on: the track fills with the song blue (Off and On differed only by the knob's side), and a thin edge
+   keeps the track visible on a card in dark mode, where it had matched the card */
+.slider {
+  box-shadow: inset 0 0 0 1px rgba(128, 128, 128, .45);
+}
+.switch input:checked + .slider {
+  background-color: var(--song-color);
+  filter: none;
 }
 #export_form .switch {
   height: 1.75rem;
@@ -2758,8 +2933,8 @@ body:not(.song) .show_for_songs { /* and what's only for exporting one song */
 }
 /* Saving over your Default changes what every export of this songbook starts with: it looks different */
 #cfg_buttons .export-default {
-  background-color: var(--export-color); /* bisque in light mode, green in dark: dark text reads on both */
-  color: #222;
+  background-color: var(--export-color); /* bisque in light mode, deep green in dark */
+  color: var(--text-color); /* black on bisque, white on the green */
 }
 /* Old versions window (showHistory in db.js, #138) */
 .task-dialog .history-list {
@@ -2893,6 +3068,7 @@ html._admin .account-menu .admin, html.churchAdmin .account-menu .admin {
   display: flex; /* the "admins only" rule would set it back to a plain block, out of line */
 }
 .install-offer .account-menu .install-btn {
+  display: flex; /* a menu row like the others (.install-offer .install-btn's block lost the icon's gap) */
   width: 100%;
   margin: 0 !important;
   font-size: inherit;
@@ -2918,8 +3094,8 @@ html._admin .account-menu .admin, html.churchAdmin .account-menu .admin {
   ul li a{
     padding: .3125rem .625rem;
     margin: 5px 0 5px 0;
-    border-top: 1px solid #EEE;
-    border-bottom: 1px solid #EEE;
+    border-top: 1px solid rgba(128, 128, 128, .25); /* faint in light and dark mode (#EEE glared white in dark) */
+    border-bottom: 1px solid rgba(128, 128, 128, .25);
     border-radius: 20px;
   }
   header,
@@ -2935,13 +3111,6 @@ html._admin .account-menu .admin, html.churchAdmin .account-menu .admin {
     transform: translate3d(0, max(100vh, 800px), 0);
     height: calc(100vh - 4rem);
     opacity: 0;
-  }
-  fieldset.closed-mobile {
-    height: 1.857rem;
-    padding: 0;
-    border: none;
-    box-shadow: none;
-    background: none;
   }
   #lower fieldset {
     width: 100%;
@@ -2986,7 +3155,7 @@ html._admin .account-menu .admin, html.churchAdmin .account-menu .admin {
     position: absolute;
     top: 2.5rem;
     right: 3rem;
-    transform: scale(.75);
+    transform: scale(.9); /* was .75: too small a target for a finger */
   }
   .songList #songbookList .search,
   .song #songbookList .search,
@@ -3401,9 +3570,19 @@ only screen and (max-height: 31.25rem) {
   body.export.songList #songList {
     flex-shrink: 1;
   }
-  body.export.song #songList,
-  body.export.songList #songbookList {
-    flex-shrink: 2;
+  /* the list beside what's exported folds away, so the export and its preview have room and it isn't squeezed
+     until its header is cut off: a song's (or reading's) list goes, and a songbook's Songbooks column becomes
+     its sideways tab, as when a song is open */
+  body.export.song #songList {
+    flex: 0 0 0;
+    min-width: 0;
+    overflow: hidden;
+  }
+  body.export.songList:not(.song) #songbookList {
+    flex: 0 0 2.5rem;
+  }
+  body.export.songList:not(.song) #songbookList .subcolumn {
+    overflow: hidden;
   }
   body.export #export .sidebar {
     flex: 3 0 22.5rem;
@@ -3416,7 +3595,7 @@ only screen and (max-height: 31.25rem) {
     bottom: 0;
   }
   ul li a{
-    border-left: 1px solid #EEE;
+    border: 1px solid rgba(128, 128, 128, .2); /* the whole faint outline: a left edge alone showed as a "(" before each name */
     border-radius: 20px;
     padding: .125rem .5rem;
     margin: 2px 0 2px 0;
@@ -3448,18 +3627,21 @@ only screen and (max-height: 31.25rem) {
   body.songList #songList.edit {
     flex: 0.4 .2 56.25rem;
   }
-  body.song #songbookList #songbooks_header h3 {
+  body.song #songbookList #songbooks_header h3,
+  body.export.songList #songbookList #songbooks_header h3 {
     height: 100vh;
     display: block;
   }
-  body.song #songbookList .title_link {
+  body.song #songbookList .title_link,
+  body.export.songList #songbookList .title_link {
     transform: translate3d(-100%, 0, 0) rotate(-90deg);
     transform-origin: right;
     z-index: 10;
     display: block;
     width: max-content;
   }
-  body.song #songbookList #songbooks_header {
+  body.song #songbookList #songbooks_header,
+  body.export.songList #songbookList #songbooks_header {
     background-color: var(--songbookList-color);
   }
   #songbooks_container {
@@ -3537,11 +3719,15 @@ only screen and (max-height: 31.25rem) {
 /* Beside the song list's search: the same i bubble as Export, saying what search looks at */
 .search-tips {
   flex: none;
-  width: 1rem;
-  height: 1rem;
+  width: 1.25rem;
+  height: 1.25rem;
 }
-.search-tips:after {
+.search-tips:after { /* a little bigger here, closer to the search box and Filter beside it */
   top: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  font-size: .85rem;
+  line-height: 1.25rem;
 }
 .search-row .deleteicon {
   flex: 1;
@@ -3551,7 +3737,7 @@ only screen and (max-height: 31.25rem) {
   width: 100%; /* no blank strip after it here: the row's gap spaces it */
 }
 .search-row span.deleteicon span {
-  right: 8px;
+  right: .5rem;
 }
 .song-filter {
   display: inline-flex;
@@ -3636,6 +3822,12 @@ only screen and (max-height: 31.25rem) {
   border-radius: 50%;
   background-color: crimson;
   box-shadow: 0 0 0 2px var(--background-color);
+}
+.install-dot .accountBtn:not(.closed) .install-btn::after { /* in the menu: right after the words, on their line */
+  position: static;
+  flex: none;
+  margin-left: -.2rem;
+  box-shadow: none;
 }
 .install-hide {
   padding: 0;

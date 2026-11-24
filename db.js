@@ -205,12 +205,14 @@ async function readingSongDoc(ref, translation) {
   if (!item) return null;
   const vs = item.passage.verses;
   const chapters = new Set(vs.map(v => v.book + v.chapter)).size > 1; // then each chapter's first verse says which
-  const lines = vs.flatMap((v, i) => {
+  // each verse its own part, so a long reading flows from page to page (and column to column) the way a song's
+  // parts do, its title staying with the first verse; one part for the whole chapter was taller than a page
+  const content = vs.map((v, i) => {
     const num = chapters && (i === 0 || v.chapter !== vs[i - 1].chapter) ? `${v.chapter}:${v.verse}` : v.verse;
-    return v.text.split('\n').map(line => line.trim()).filter(Boolean).map((line, j) => (j ? '    ' : num + ' ') + line);
-  });
+    return [{ type: 'no label' }, v.text.split('\n').map(line => line.trim()).filter(Boolean).map((line, j) => (j ? '    ' : num + ' ') + line)];
+  }).filter(([, lines]) => lines.length);
   return songShape({ _id: 'reading', title: item.passage.label, authors: [], scripture_ref: [],
-    copyright: item.passage.translation.credit, content: [[{ type: 'no label' }, lines]] });
+    copyright: item.passage.translation.credit, content });
 }
 
 // The church's Bible translation for presentations (#157): its "settings" doc, which church admins set in the
@@ -1013,6 +1015,7 @@ async function dbLogout() {
     }
     remoteDb = null; // even if closing failed, so the next login doesn't reuse this connection
     syncHandler = null;
+    forgetRecoveryEmail(); // the next person on this device doesn't see it
     setLogoutState();
   }
 }
@@ -1333,7 +1336,7 @@ async function loadAllUsers() {
     // so the level menus line up in every row
     return `<li data-name="${escapeHtml(name)}">
       <span class="person-name">${escapeHtml(name)}${self ? ' (you)' : ''}</span>
-      ${canReset(name, level) ? '<button onclick="resetChurchPassword(this)">' + icon('key') + ' Password</button>' : '<span></span>'}
+      ${canReset(name, level) ? `<button onclick="resetChurchPassword(this)" title="Set a new password for ${escapeHtml(name)}">${icon('reset')} Reset password</button>` : '<span></span>'}
       <select aria-label="Level for ${escapeHtml(name)}" onchange="setChurchPersonLevel(this)"${self && !window.church.serverAdmin ? ' disabled title="Ask another church admin to change your own level"' : ''}>${options}</select>
       ${self ? '<span></span>' : '<button onclick="removeChurchPerson(this)">' + icon('trash') + ' Remove</button>'}
     </li>`;
@@ -1447,6 +1450,32 @@ function checkSignInName(name) {
 // The profile is drawn more than once at sign-in, so ask the helper once per person per session and
 // reuse the answer (or the request still on its way). Changing or removing the email asks again.
 let recoveryEmailLookup = null;
+
+// The last answer is kept on this device (until sign out), so the card shows it at once and the helper, which
+// can take a while to wake, only checks it. CouchDB 3 doesn't let a person read their own account record,
+// where the email is, so the helper is the only way to ask.
+const recoveryEmailKey = userId => 'recoveryEmail.' + userId;
+function keptRecoveryEmail(userId) {
+  try { return localStorage.getItem(recoveryEmailKey(userId)); } catch { return null; } // null: never asked here
+}
+function keepRecoveryEmail(userId, email) {
+  try { localStorage.setItem(recoveryEmailKey(userId), email || ''); } catch {}
+}
+function forgetRecoveryEmail() {
+  try { if (window.user?._id) localStorage.removeItem(recoveryEmailKey(window.user._id)); } catch {}
+  recoveryEmailLookup = null;
+}
+
+// The address with its pencil and trash, or a way to add one
+function recoveryEmailHtml(email) {
+  return email
+    // the pencil and trash beside the address change or remove just the address
+    ? `<p>${escapeHtml(email)}<span class="nowrap"><button type="button" class="inline-icon" onclick="setRecoveryEmail()" aria-label="Change your recovery email" title="Change your recovery email">${icon('edit')}</button>`
+      + `<button type="button" class="inline-icon" onclick="clearRecoveryEmail()" aria-label="Remove your recovery email" title="Remove your recovery email">${icon('trash')}</button></span>`
+      + `<br><small>Used only to reset your password if you forget it.</small></p>`
+    : `<p>None yet. Add one so you can reset your password if you forget it.</p><button class="btn" onclick="setRecoveryEmail()">Add email</button>`;
+}
+
 async function loadRecoveryEmail({ fresh = false } = {}) {
   const box = document.getElementById('recovery_email');
   if (!box) return;
@@ -1455,23 +1484,41 @@ async function loadRecoveryEmail({ fresh = false } = {}) {
     return;
   }
   const userId = window.user._id;
+  const kept = keptRecoveryEmail(userId); // fresh still shows it: a change or a remove keeps its result first
+  if (kept !== null) box.innerHTML = recoveryEmailHtml(kept); // at once; the helper's answer replaces it if it changed
   if (fresh || recoveryEmailLookup?.userId !== userId) {
     if (!navigator.onLine) {
-      box.innerHTML = '<p>Connect to the internet to see or change it.</p>';
+      if (kept === null) box.innerHTML = '<p>Connect to the internet to see or change it.</p>';
       return;
     }
     recoveryEmailLookup = { userId, reply: callOwnAccount({ action: 'getEmail' }) };
   }
   const lookup = recoveryEmailLookup;
+  // with nothing kept: say it's asking, and say so again if the helper is slow to wake
+  let slow;
+  if (kept === null) {
+    box.innerHTML = '<p class="hint">Loading…</p>';
+    slow = setTimeout(() => {
+      const now = document.getElementById('recovery_email');
+      if (now && recoveryEmailLookup === lookup && now.querySelector('.hint')) now.innerHTML = '<p class="hint">Still asking the account helper…</p>';
+    }, 8000);
+  }
+  // the answer goes in the box on the page when it comes: the profile can be drawn again while it's on its way
+  const target = () => document.getElementById('recovery_email');
   try {
     const { email } = await lookup.reply;
-    if (!document.body.contains(box)) return; // the profile was redrawn meanwhile
-    box.innerHTML = email
-      ? `<p>${escapeHtml(email)}</p><button class="btn" onclick="setRecoveryEmail()">Change</button> <button class="btn" onclick="clearRecoveryEmail()">Remove</button>`
-      : `<p>None yet. Add one so you can reset your password if you forget it.</p><button class="btn" onclick="setRecoveryEmail()">Add email</button>`;
+    clearTimeout(slow);
+    if (recoveryEmailLookup !== lookup) return; // a newer ask (a change) will fill it
+    keepRecoveryEmail(userId, email);
+    const box = target();
+    if (box) box.innerHTML = recoveryEmailHtml(email);
   } catch (err) {
-    if (recoveryEmailLookup === lookup) recoveryEmailLookup = null; // try again next time
-    box.textContent = err.message;
+    clearTimeout(slow);
+    if (recoveryEmailLookup !== lookup) return; // a newer ask will fill it
+    recoveryEmailLookup = null; // try again next time
+    if (kept !== null) return; // the kept answer stays on the card; the next look asks again
+    const box = target();
+    if (box) box.innerHTML = `<p>${escapeHtml(err.message)}</p><button class="btn" onclick="loadRecoveryEmail({ fresh: true })">${icon('undo')} Try again</button>`;
   }
 }
 
@@ -1497,6 +1544,7 @@ async function setRecoveryEmail() {
     action: values => callOwnAccount({ action: 'confirmEmail', code: values.code }),
   });
   if (saved === null) return;
+  keepRecoveryEmail(window.user._id, saved.email || email); // shown now, even if the check after it fails
   loadRecoveryEmail({ fresh: true });
   await dialog.finish(`Your recovery email is now ${saved.email}.`);
 }
@@ -1513,6 +1561,7 @@ async function clearRecoveryEmail() {
   if (done === null) return;
   dialog.close();
   notyf.info('Recovery email removed', 'olive');
+  keepRecoveryEmail(window.user._id, '');
   loadRecoveryEmail({ fresh: true });
 }
 
@@ -2811,6 +2860,7 @@ function offerUndo(title, id, rev, where) {
     type: 'info',
     duration: 8000,
     background: 'var(--songbookList-color)',
+    className: 'clickable-note',
     message: `Moved "${escapeHtml(title)}" to the Trash. <u>Undo</u>`,
   });
   toast.on('click', async () => {
