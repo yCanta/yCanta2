@@ -503,7 +503,9 @@ try {
     ok(setup.picked === setup.first && setup.picked !== 'Custom', 'an export starts with the first setup in its menu', JSON.stringify(setup));
     // #131: "+ Save new Config" asks for a name in the app's own dialog, saves, shows the new setup in the
     // menu and its button, and doesn't restart the preview; the × deletes it after asking
-    await ev(`document.getElementById('pdf').contentWindow.appTestMark = 1; 'ok'`); // a restarted preview is a new window, without it
+    // a restarted preview is a new window, without the mark; mark it once its viewer has loaded (marked while still
+    // loading, the loaded viewer replaced the window, and the mark with it, on a busy computer)
+    await ev(`window.exportViewerLoaded.then(() => { document.getElementById('pdf').contentWindow.appTestMark = 1; return 'ok'; })`);
     await click('#export_new_config');
     await until(`!!document.querySelector('dialog[open] input[name="name"]')`, 'the new config dialog');
     await type('dialog[open] input[name="name"]', `${RUN} Cfg`);
