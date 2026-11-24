@@ -133,10 +133,13 @@ const go = async (to, readyExpr, what) => { await ev(`location.hash = ${JSON.str
 const iconCheck = where => ev(`(async () => {
   const names = window.__iconNames || (window.__iconNames = await fetch('icons.svg').then(r => r.text())
     .then(t => [...new DOMParser().parseFromString(t, 'image/svg+xml').querySelectorAll('symbol')].map(s => s.id)));
-  const uses = [...document.querySelectorAll('svg.icon use')];
-  const shown = uses.filter(u => u.closest('svg').getBoundingClientRect().width > 0);
-  const unknown = uses.map(u => u.getAttribute('href')).filter(h => !h.startsWith('icons.svg#') || !names.includes(h.split('#')[1]));
-  const blank = shown.filter(u => { try { return !(u.getBBox().width > 0); } catch { return true; } }).map(u => u.getAttribute('href'));
+  // icons are drawn right into the page from icons.svg (lib.js icon, drawIcons), each naming its drawing in data-icon;
+  // the few made before icons.svg is in use <use href="icons.svg#...">
+  const icons = [...document.querySelectorAll('svg.icon')];
+  const shown = icons.filter(s => s.getBoundingClientRect().width > 0);
+  const unknown = [...icons.filter(s => !names.includes(s.dataset.icon)).map(s => 'unknown drawing: ' + s.dataset.icon),
+    ...[...document.querySelectorAll('svg.icon use')].map(u => u.getAttribute('href')).filter(h => !h.startsWith('icons.svg#') || !names.includes(h.split('#')[1]))];
+  const blank = shown.filter(s => { try { return !(s.getBBox().width > 0); } catch { return true; } }).map(s => s.outerHTML.slice(0, 60));
   const symbolRe = /[\\u{1F000}-\\u{1FAFF}\\u2190-\\u21FF\\u2300-\\u23FF\\u25A0-\\u25FF\\u2600-\\u27BF\\u2B00-\\u2BFF\\u2800-\\u28FF]/u;
   const leftover = [...document.querySelectorAll('button, a, [role=button], .float-menu-icon')]
     .filter(e => e.getClientRects().length && !e.closest('#helpOverlay, kbd') && symbolRe.test(e.textContent))
@@ -200,7 +203,7 @@ try {
   await click('#username_legend');
   const menu = await ev(`(() => { const items = [...document.querySelectorAll('#account_menu button')].filter(b => b.offsetParent);
     return { open: !document.querySelector('.accountBtn').classList.contains('closed'), items: items.map(b => b.textContent.trim()),
-      drawn: items.filter(b => b.querySelector('svg.icon use')).length }; })()`);
+      drawn: items.filter(b => b.querySelector('svg.icon')?.getBBox().width > 0).length }; })()`);
   ok(menu.open && menu.items.length >= 6 && menu.drawn === menu.items.length, 'menu: your name opens the list, each item with its icon', JSON.stringify(menu));
   await iconOk('the menu under your name');
   await key('Escape', 'Escape', 27);
@@ -297,7 +300,7 @@ try {
   const mid = await ev(`(() => { const li = document.querySelector('#songbook_content li'), b = li.querySelector(':scope > button[aria-label="Take out of the songbook"]'); const a = li.getBoundingClientRect(), c = b.getBoundingClientRect();
     return Math.round((c.top + c.height / 2) - (a.top + a.height / 2)) + 0; })()`); // + 0: a -0 comes back from the browser as nothing
   ok(Math.abs(mid) <= 2, "songbook editor: a row's trash sits in the middle of the row", String(mid));
-  await click('#songbook_content .edit_buttons button:nth-child(2)'); // Cancel
+  await click('#songbook_content .edit_buttons [data-cancel]'); // Cancel
   await until(`!location.hash.includes('?edit')`, 'leaving the songbook editor');
 
   // ---- the export page's cards ----
@@ -360,8 +363,8 @@ try {
   await go(`#${bookId}`, `!!document.querySelector('#songbook_content li')`, 'the book on a phone');
   const toggle = '#songList .float-menu-toggle button';
   await click(toggle);
-  const fab = await ev(`(() => { const b = document.querySelector(${JSON.stringify(toggle)}); return { turned: b.classList.contains('icon-rotate'), plus: b.querySelector('use')?.getAttribute('href') }; })()`);
-  ok(fab.turned && fab.plus === 'icons.svg#plus', 'phone: the + button opens its menu and turns into ×', JSON.stringify(fab));
+  const fab = await ev(`(() => { const b = document.querySelector(${JSON.stringify(toggle)}); return { turned: b.classList.contains('icon-rotate'), plus: b.querySelector('svg.icon')?.dataset.icon }; })()`);
+  ok(fab.turned && fab.plus === 'plus', 'phone: the + button opens its menu and turns into ×', JSON.stringify(fab));
   await iconOk('the + menu on a phone');
 } catch (err) {
   ok(false, 'the test ran to the end', err.message);

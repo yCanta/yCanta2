@@ -412,7 +412,7 @@ function dbChanges() {
       // In the open book, with its comments showing: show the change, and say when someone else just commented
       const songId = window.songbook?._id && change.doc._id.startsWith(`c_${window.songbook._id}_`) ? songIdOfComment(change.doc) : null;
       const row = songId && document.querySelector(`#songbook_content .list li[data-song-id="${CSS.escape(songId)}"]`);
-      if (row?.querySelector(':scope > .commentsContainer')) {
+      if (row?.querySelector(':scope > .toggle_comment')) { // the book's comments are showing
         loadSongbookComments(songId);
         const c = Array.isArray(change.doc.comments) ? change.doc.comments.at(-1) : change.doc;
         const justWritten = c && !c.removed && !c.edited && !change.doc._deleted && Date.now() - (c.date || 0) < 10 * 60 * 1000;
@@ -3178,20 +3178,29 @@ function commentsFrom(docs) {
   return list.sort((a, b) => (a.date || 0) - (b.date || 0));
 }
 
-// A song row's comment button (with how many) and its comments box, closed to start
+// A song row's comment button (with how many). Its comments box is made the first time it's opened: a box on
+// every row of a long book, most never opened, made the page much bigger and slower to change.
 function addCommentUI(li) {
-  if (li.querySelector(':scope > .commentsContainer') || !li.querySelector('a')) return;
+  if (li.querySelector(':scope > .toggle_comment') || !li.querySelector('a')) return;
   li.querySelector('a').insertAdjacentHTML('afterend', `<button type="button" class="toggle_comment" onclick="toggleComments(this)" aria-expanded="false" aria-label="Comments" title="Comments">${icon('comment')}</button>`);
-  li.insertAdjacentHTML('beforeend', `
-    <div class="commentsContainer" hidden>
-      <div class="comments"></div>
-      <p class="comment-note">Comments save right away, apart from the songbook's Save.</p>
-      <textarea class="comment" rows="2" placeholder="Add a comment" aria-label="Add a comment"></textarea>
-      <div class="comment-buttons"><button type="button" class="btn btn-small primary comment-post" disabled onclick="addComment(this)">Post</button></div>
-    </div>`);
+}
+function commentBox(li) {
+  let box = li.querySelector(':scope > .commentsContainer');
+  if (!box) {
+    li.insertAdjacentHTML('beforeend', `
+      <div class="commentsContainer" hidden>
+        <div class="comments"></div>
+        <p class="comment-note">Comments save right away, apart from the songbook's Save.</p>
+        <textarea class="comment" rows="2" placeholder="Add a comment" aria-label="Add a comment"></textarea>
+        <div class="comment-buttons"><button type="button" class="btn btn-small primary comment-post" disabled onclick="addComment(this)">Post</button></div>
+      </div>`);
+    box = li.querySelector(':scope > .commentsContainer');
+    if (li.commentList) drawComments(li, li.commentList); // the comments already read for this row
+  }
+  return box;
 }
 function toggleComments(btn, open) {
-  const box = btn.closest('li').querySelector(':scope > .commentsContainer');
+  const box = commentBox(btn.closest('li'));
   const show = open ?? box.hidden;
   box.hidden = !show;
   btn.setAttribute('aria-expanded', show);
@@ -3228,12 +3237,14 @@ async function loadSongbookComments(songId) {
   rows.forEach(li => drawComments(li, commentsFrom(bySong.get(li.dataset.songId) || []))); // a song can be in a book twice
 }
 function drawComments(li, list) {
+  li.commentList = list; // kept for when its box is first opened
   const box = li.querySelector(':scope > .commentsContainer .comments');
-  if (!box) return;
-  const me = window.user._id, admin = !!window.church?.admin;
-  const shown = list.filter((c, i) => !c.removed || list.slice(i + 1).some(later => !later.removed));
-  shown.forEach(c => commentRefs.set(c.key, c));
-  box.innerHTML = shown.map(c => commentHtml(c, c.user === me, c.user === me || admin)).join('');
+  if (box) {
+    const me = window.user._id, admin = !!window.church?.admin;
+    const shown = list.filter((c, i) => !c.removed || list.slice(i + 1).some(later => !later.removed));
+    shown.forEach(c => commentRefs.set(c.key, c));
+    box.innerHTML = shown.map(c => commentHtml(c, c.user === me, c.user === me || admin)).join('');
+  }
   const count = list.filter(c => !c.removed).length;
   const toggle = li.querySelector(':scope > .toggle_comment');
   if (!toggle) return;

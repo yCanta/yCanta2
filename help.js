@@ -89,7 +89,7 @@ function helpOverlay() {
       <div class="help-top">
         <h2 id="helpOverlayTitle">Help</h2>
         <input type="search" class="help-find" placeholder="Find in help" aria-label="Find in help">
-        <button type="button" class="help-x close-x" aria-label="Close" title="Close (Esc)"><svg class="icon" aria-hidden="true"><use href="icons.svg#close"/></svg></button>
+        <button type="button" class="help-x close-x" aria-label="Close" title="Close (Esc)">${icon('close')}</button>
       </div>
       <nav class="help-tabs" aria-label="Help sections">${tabs}</nav>
       <div class="help-body">${sections}<p class="help-none" hidden>Nothing in Help matches that.</p></div>

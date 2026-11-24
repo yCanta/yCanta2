@@ -1348,7 +1348,7 @@ body.player-pill .subcolumn:not(.sidebar)::after {
   padding: .3125rem;
 }
 
-/*Standard Styling for columns */
+/*Standard Styling for columns (lib.js setBarColor follows how these stack on a phone: change it with them) */
 #songbookList {
   --highlight-color: var(--songbookList-color);
   z-index: 1;
@@ -1844,12 +1844,18 @@ info:after {
   flex-wrap: wrap;
   gap: .5rem 1.25rem;
 }
-.edit_buttons .btn { /* an editor's Save, Cancel and Reset */
-  background-color: var(--edit-color);
+/* An editor's Reset, Cancel and Save: the app's usual buttons, Reset off at the left on its own and Cancel and Save
+   at the right, as in the dialogs, so a thumb going for Save doesn't land on Reset */
+.save-bar {
+  display: flex;
+  align-items: center;
 }
-/* The main button of a form or editor, its Save (#159): the song blue, in the editors as in the dialogs */
-.btn.primary,
-.edit_buttons .btn.primary {
+.save-bar [data-reset] {
+  margin-right: auto;
+}
+/* The main button of a form or dialog (#159): the song blue. Not in the editors, whose Save band is already a
+   card's color (in the song editor, that same blue) */
+.btn.primary {
   background-color: var(--song-color);
   color: black;
 }
@@ -3172,6 +3178,12 @@ html._admin .account-menu .admin, html.churchAdmin .account-menu .admin {
     border-bottom: 1px solid rgba(128, 128, 128, .25);
     border-radius: 20px;
   }
+  /* an editor's row buttons, level with the middle of these taller rows (the row's 1px edge, the link's 5px gap,
+     1px edge and padding, then half the words' height) */
+  .edit #songbook_content li > button:not(.status-btn),
+  #songbook_content.showStatus li > button.status-btn {
+    top: calc(7px + .3125rem + .65rem);
+  }
   header,
   main,
   .column {
@@ -3306,10 +3318,11 @@ html._admin .account-menu .admin, html.churchAdmin .account-menu .admin {
     gap: .75rem;
     margin: 0;
     padding: 0;
-    border: none;
+    border: 1px solid var(--btn-edge); /* a layer over the page: the buttons' thin edge (dark mode) and their lift */
+    border-right: none; /* where it meets its drawer */
     border-radius: 1rem 0 0 1rem;
     background-color: var(--highlight-color);
-    box-shadow: var(--box-shadow-var);
+    box-shadow: var(--btn-shadow-var), var(--box-shadow-var);
     color: var(--text-color);
     font: inherit;
     cursor: pointer;

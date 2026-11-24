@@ -20,9 +20,36 @@ function escapeHtml(text) {
 
 // One of yCanta's own icons (#95), from icons.svg: a line drawing in the text color, the same on every
 // device. Hidden from screen readers; the button or link it's in says what it does.
+// icons.svg is read once, and each icon is drawn right into the page. (It was <use href="icons.svg#...">: the
+// browser copied the drawing out of the file into every icon a bit at a time, and each copy made it restyle
+// the page again. With a book's rows full of icons, opening a songbook took about four times as long as in v21.)
+const iconDrawings = new Map(); // name -> { attributes: [[name, value]...], parts: its inside, as markup }
 function icon(name, cls = '') {
-  return `<svg class="icon${cls ? ' ' + cls : ''}" aria-hidden="true"><use href="icons.svg#${name}"/></svg>`;
+  const drawing = iconDrawings.get(name);
+  const start = `<svg class="icon${cls ? ' ' + cls : ''}" aria-hidden="true" data-icon="${name}"`; // which drawing, for the tests
+  // before icons.svg is in: the slower kind, which always draws (drawIcons swaps the ones on the page when it's in)
+  if (!drawing) return `${start}><use href="icons.svg#${name}"/></svg>`;
+  return `${start} ${drawing.attributes.map(([a, v]) => `${a}="${v}"`).join(' ')}>${drawing.parts}</svg>`;
 }
+// The icons already on the page in the slower kind (<use href="icons.svg#...">): drawn right into the page instead
+function drawIcons(root = document) {
+  root.querySelectorAll('svg > use[href^="icons.svg#"]').forEach(use => {
+    const svg = use.parentElement, name = use.getAttribute('href').split('#')[1], drawing = iconDrawings.get(name);
+    if (!drawing) return;
+    drawing.attributes.forEach(([a, v]) => svg.setAttribute(a, v));
+    svg.dataset.icon = name;
+    svg.innerHTML = drawing.parts;
+  });
+}
+fetch('icons.svg').then(r => r.text()).then(text => {
+  new DOMParser().parseFromString(text, 'image/svg+xml').querySelectorAll('symbol[id]').forEach(symbol => {
+    iconDrawings.set(symbol.id, {
+      attributes: [...symbol.attributes].filter(a => a.name !== 'id').map(a => [a.name, a.value]),
+      parts: symbol.innerHTML.replace(/ xmlns="[^"]*"/g, ''),
+    });
+  });
+  drawIcons();
+}).catch(err => console.error("Couldn't load the icons:", err));
 
 // Song text shows as text, never as page code: a title like <img onerror=...> would otherwise run for
 // everyone who opens the list. Fields are plain text (the editor saves them as text). A lyric line keeps
@@ -2970,11 +2997,12 @@ async function editSongbook() {
   // Create and append edit buttons
   const createEditButtons = () => {
     const buttons = document.createElement('div');
-    buttons.className = 'edit_buttons';
+    buttons.className = 'edit_buttons save-bar';
+    // Reset off at the left, away from the others; Cancel, then Save at the right, as in the app's dialogs
     buttons.innerHTML = `
-      <button data-songbook class="btn primary" onclick="saveSongbookFromEditor();">Save</button>
-      <button data-songbook class="btn" onclick="cancelSongbook(this);">Cancel</button>
-      <button data-songbook class="btn" title="Throw away your changes and start this songbook's edit over" onclick="resetSongbook()">Reset</button>`;
+      <button data-songbook data-reset class="btn" title="Throw away your changes and start this songbook's edit over" onclick="resetSongbook()">Reset</button>
+      <button data-songbook data-cancel class="btn" onclick="cancelSongbook(this);">Cancel</button>
+      <button data-songbook data-save class="btn" onclick="saveSongbookFromEditor();">Save</button>`;
     const buttonsClone = buttons.cloneNode(true); // Create a deep copy
     document.getElementById('songbook_content').prepend(buttons);
     document.getElementById('songbook_content').append(buttonsClone);
@@ -3193,17 +3221,12 @@ async function editSong() {
 
   // Create and add edit buttons
   const buttonsHTML = `
-    <div class="edit_buttons">
-      <button data-song class="btn primary" onclick="prepSaveSong(this)">Save</button>
-      <a ${window.song._id === 's-new-song' ? 'data-songbook' : 'data-song'} 
-              class="btn" 
-              onclick="window.songEditing=false; delete window.song; window.location.hash=this.getAttribute('href');">
-        Cancel
-      </a>
-      <button data-song class="btn" title="Throw away your changes and start this song's edit over" onclick="resetSongEdit()">
-        Reset
-      </button>
-    </div>`;
+    <div class="edit_buttons save-bar">
+      <button data-song data-reset class="btn" title="Throw away your changes and start this song's edit over" onclick="resetSongEdit()">Reset</button>
+      <a ${window.song._id === 's-new-song' ? 'data-songbook' : 'data-song'} data-cancel class="btn"
+              onclick="window.songEditing=false; delete window.song; window.location.hash=this.getAttribute('href');">Cancel</a>
+      <button data-song data-save class="btn" onclick="prepSaveSong(this)">Save</button>
+    </div>`; // Reset off at the left, away from the others; Cancel, then Save at the right, as in the app's dialogs
   
   const songElement = document.querySelector('#song .song-card'); // the card: the buttons go above its header and below the song
 
@@ -5414,39 +5437,55 @@ function remToPx(rem) {
     return rem * parseFloat(getComputedStyle(document.documentElement).fontSize);
 }
 
-// The phone's status bar (and an installed app's title bar) takes the color of the card at the top of the
-// screen. It's checked only when something there may have changed: a move to another page (once its slide
-// ends), a card let go of after a drag, the page's look (dark mode, which page is open), the window's size,
-// and coming back to the app. It used to check 50 times a second on a phone, which kept the browser working
-// out the whole page's layout all the time; #142 (old pieces of other pages showing through) may come from that.
-function checkColor() {
-  const corner = document.elementFromPoint(1,1); // null while the page isn't shown: nothing to match
-  if (!corner) return;
-  const color = window.getComputedStyle(corner).getPropertyValue('--highlight-color').trim();
-  const meta = document.querySelector("meta[name=theme-color]");
-  if (color && meta.getAttribute('content') !== color) meta.setAttribute('content', color);
+// The phone's status bar (and an installed app's title bar) takes the color of what will be at the top of the
+// screen once a move ends. It's known from the page being opened and the screen's size, so it's set the moment
+// the page changes, with nothing read from the page. (It used to look at the corner pixel: 50 times a second
+// until v22, then after each slide, which was late and made the browser work out the page's look mid-slide.
+// #142 may have come from that too.)
+// What's at the top follows style.css: a phone ("max-width: 39.99rem") stacks the cards as layers and the layer
+// just above the open page shows at the top; a phone on its side ("max-height: 31.25rem") puts them side by side
+// with the header folded away, so the songbook list is at the left edge; a wide screen has the page header.
+const barColors = {}; // the four colors it can be, read once, and again when dark mode changes
+const phoneLayers = window.matchMedia('(max-width: 39.99rem)');
+const phoneOnItsSide = window.matchMedia('(max-height: 31.25rem) and (min-width: 40rem)');
+function readBarColors() {
+  const style = getComputedStyle(document.documentElement);
+  for (const name of ['background', 'songbookList', 'songList', 'song']) barColors[name] = style.getPropertyValue(`--${name}-color`).trim();
 }
-let colorCheckQueued = false;
-function queueColorCheck() { // at most once a frame, however many things changed at once
-  if (colorCheckQueued) return;
-  colorCheckQueued = true;
-  requestAnimationFrame(() => {
-    colorCheckQueued = false;
-    checkColor();
-  });
+function setBarColor() {
+  if (!document.body) return;
+  if (!barColors.background) readBarColors();
+  const page = document.body.classList;
+  let top = 'background';
+  if (!page.contains('present')) { // a presentation covers the whole screen
+    if (phoneLayers.matches) {
+      if (page.contains('export')) top = page.contains('song') ? 'song' : 'songList';
+      else if (page.contains('song')) top = 'songList';
+      else if (page.contains('songList')) top = 'songbookList';
+    } else if (phoneOnItsSide.matches) { // a song's export starts at the song; anything else at the songbook list
+      if (page.contains('export') && page.contains('song')) top = 'song';
+      else if (['songList', 'song', 'export'].some(c => page.contains(c))) top = 'songbookList';
+    }
+  }
+  const meta = document.querySelector('meta[name=theme-color]');
+  if (barColors[top] && meta && meta.getAttribute('content') !== barColors[top]) meta.setAttribute('content', barColors[top]);
 }
-// a change of look eases over a quarter second (index.html's transitions): check again once it's done
-const queueColorCheckAfterEase = () => { queueColorCheck(); setTimeout(queueColorCheck, 350); };
-window.addEventListener('hashchange', queueColorCheckAfterEase);
-window.addEventListener('resize', queueColorCheck);
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') queueColorCheck(); });
-document.addEventListener('transitionend', e => { if (e.target.classList?.contains('column')) queueColorCheck(); }); // a card done sliding
-new MutationObserver(queueColorCheckAfterEase).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] }); // dark mode
+let darkLook = null; // the Dark / Light setting is a class on <html>; other classes there don't change the colors
+new MutationObserver(() => {
+  const look = ['dark', 'light'].filter(c => document.documentElement.classList.contains(c)).join();
+  if (look === darkLook) return;
+  darkLook = look;
+  readBarColors();
+  setBarColor();
+}).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { readBarColors(); setBarColor(); }); // the phone's own, on "System"
+phoneLayers.addEventListener('change', setBarColor);
+phoneOnItsSide.addEventListener('change', setBarColor);
 document.addEventListener('DOMContentLoaded', () => {
-  new MutationObserver(queueColorCheckAfterEase).observe(document.body, { attributes: true, attributeFilter: ['class'] }); // which page is open
-  queueColorCheck();
+  new MutationObserver(setBarColor).observe(document.body, { attributes: true, attributeFilter: ['class'] }); // which page is open
+  setBarColor();
 });
-checkColor();
+setBarColor();
 function capEachWord(toCapitalize, dividingChar = " ") {
   return toCapitalize.split(dividingChar).map(word => word[0].toUpperCase()+word.substr(1)).join(" ");
 }

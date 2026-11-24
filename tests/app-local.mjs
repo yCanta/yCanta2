@@ -392,7 +392,7 @@ try {
   await ev(`location.hash = location.hash + '?edit'`);
   await until(`!!document.querySelector('#song .edit_buttons')`, 'the bad song editor', 10000).catch(() => {});
   ok(await ev(`!!document.querySelector('#song .edit_buttons')`), 'bad records: the bad song opens in the editor');
-  await click('#song .edit_buttons a'); // Cancel: nothing is saved
+  await click('#song .edit_buttons [data-cancel]'); // Cancel: nothing is saved
   await until(`!location.hash.includes('?edit')`, 'leaving the bad song editor', 10000).catch(() => {});
   await ev(`location.hash = '#${badBookId}?export'`);
   await until(`document.getElementById('format')?.options.length > 1`, 'the export of the bad songbook', 10000).catch(() => {});
@@ -413,7 +413,7 @@ try {
   if (ok(await ev(`!!document.querySelector('#song .edit_buttons')`), 'Add Song opens the editor', `at ${await hash()}`)) {
     await type('#song .song-title a', `${RUN} Song`);
     await type('#song chunk', 'A line from the app test');
-    await click('#song .edit_buttons button');
+    await click('#song .edit_buttons [data-save]');
     await until(`/&s-\\d/.test(location.hash) && !location.hash.includes('?edit') && !!document.querySelector('#song .song-card[data-rev^="1-"]')`, 'the saved song');
     const songId = (await hash()).split('&')[1];
     made.push(songId);
@@ -431,7 +431,7 @@ try {
     await ev(`(() => { const s = document.querySelector('#song .wrap > select[name="types"]'); s.value = 'chorus';
       s.dispatchEvent(new Event('change', { bubbles: true })); return 'ok'; })()`);
     ok((await ev(`document.querySelector('#song .wrap > .drag-grip').hasAttribute('type')`)) === false, "the part's type menu leaves the drag grip alone");
-    await click('#song .edit_buttons button');
+    await click('#song .edit_buttons [data-save]');
     await until(`!location.hash.includes('?edit') && !!document.querySelector('#song .song-card[data-rev^="2-"]')`, 'the edited song');
     const edited = await remoteWhen(songId, d => d.title === `${RUN} Song Edited`);
     ok(edited.title === `${RUN} Song Edited`, 'an edit is saved', edited.title);
@@ -441,7 +441,7 @@ try {
     await ev(`location.hash = location.hash + '?edit'`);
     await until(`!!document.querySelector('#song .edit_buttons')`, 'the song editor');
     await type('#song .song-title a', `${RUN} Should Not Save`, true);
-    await click('#song .edit_buttons a');
+    await click('#song .edit_buttons [data-cancel]');
     await until(`!location.hash.includes('?edit') && !document.querySelector('#song .edit_buttons')`, 'leaving the editor');
     await sleep(2000); // time for a save to reach the server, if one were (wrongly) made
     const afterCancel = await remote(songId);
@@ -468,7 +468,7 @@ try {
     await mouseDrag(await spot(`#songbook_content ul.list > li:last-child`), { x: top.x, y: top.top + 4 });
     const moved = await bookOrder();
     ok(moved[0] === bottomId && moved.length === 2, 'mouse: a song dragged up in the book moves up', JSON.stringify(moved));
-    await click('#songbook_content .edit_buttons button');
+    await click('#songbook_content .edit_buttons [data-save]');
     await until(`/^#sb-(?!new)/.test(location.hash) && !location.hash.includes('?edit')`, 'the saved songbook');
     const bookId = (await hash()).slice(1).split('&')[0];
     made.push(bookId);
@@ -489,7 +489,7 @@ try {
     ok(left.length === 1 && !left.includes(outId), 'mouse: a song dragged back to "Add songs" comes out of the book', JSON.stringify(left));
     ok(await ev(`!document.querySelector('#songbook_edit_togglesongs li[data-song-id="${outId}"]').hasAttribute('data-xInBook')`),
       'mouse: "Add songs" no longer marks it as in the book');
-    await click('#songbook_content .edit_buttons button:nth-child(2)');
+    await click('#songbook_content .edit_buttons [data-cancel]');
     await until(`location.hash === '#${bookId}'`, 'leaving the songbook editor');
     await sleep(2000);
     ok((await remote(bookId))._rev === book._rev, 'Cancel on a songbook saves nothing');
@@ -520,9 +520,9 @@ try {
     ok(!(await ev(`[...document.getElementById('format').options].some(o => o.textContent === ${JSON.stringify(`Your ${RUN} Cfg`)})`)), 'export: the × deletes a config, after asking');
     // this window is wider than a phone: Close in the menu bar; the × in the title row is a phone's
     const closes = await ev(`({ menu: document.querySelector('#export .float-menu').textContent.trim(),
-      icon: document.querySelector('#export .float-menu use')?.getAttribute('href'),
+      icon: document.querySelector('#export .float-menu svg.icon')?.dataset.icon,
       x: getComputedStyle(document.querySelector('#export .column_header .close-icon-mobile')).display })`);
-    ok(closes.menu === 'Close' && closes.icon === 'icons.svg#close' && closes.x === 'none', 'export: Close in the menu bar on a wide screen (the × is for phones)', JSON.stringify(closes));
+    ok(closes.menu === 'Close' && closes.icon === 'close' && closes.x === 'none', 'export: Close in the menu bar on a wide screen (the × is for phones)', JSON.stringify(closes));
     await ev(`document.querySelector('#export .float-menu button').click()`);
     await until(`location.hash === '#${bookId}'`, 'Close to leave the export');
     ok(true, 'export: Close goes back to the songbook');
@@ -534,7 +534,7 @@ try {
     await mouseDrag(await spot(`#songbook_content ul.list > li[data-song-id="${partsId}"]`), await spot('#song song'));
     ok((await hash()) === `#${bookId}?edit&${partsId}`, 'mouse: a song dropped on the open song opens it', await hash());
     ok((await bookOrder()).length === 2, 'mouse: dropping it there leaves the book as it was', JSON.stringify(await bookOrder()));
-    await click('#songbook_content .edit_buttons button:nth-child(2)'); // Cancel
+    await click('#songbook_content .edit_buttons [data-cancel]'); // Cancel
     await until(`!location.hash.includes('?edit')`, 'leaving the book editor');
 
     // 6b. With a mouse: drag a song's last part to the top in the song editor, and save
@@ -547,7 +547,7 @@ try {
     // a click in a part's words still puts the cursor there (it doesn't start a drag)
     await click('#song song .wrap chunk');
     ok(await ev(`!!document.activeElement?.closest('chunk')`), 'mouse: a click in a part\'s words puts the cursor there');
-    await click('#song .edit_buttons button');
+    await click('#song .edit_buttons [data-save]');
     await until(`!location.hash.includes('?edit') && !!document.querySelector('#song .song-card[data-rev^="2-"]')`, 'the saved three-part song');
     const parts = await remoteWhen(partsId, d => d._rev.startsWith('2-'));
     ok(JSON.stringify(parts.content?.map(c => c[1][0])) === JSON.stringify(['Third part', 'First part', 'Second part']), 'the dragged parts order is saved', JSON.stringify(parts.content?.map(c => c[1])));
@@ -631,7 +631,7 @@ try {
       await until(`!location.hash.includes('?edit')`, 'leaving the songbook editor by pulling down', 5000).catch(() => {});
       ok(!(await hash()).includes('?edit') && dialogs.length > asked, 'phone: pulling down while editing and answering OK leaves the editor', `${await hash()}, asked: ${dialogs.length > asked}`);
       if ((await hash()).includes('?edit')) {
-        await click('#songbook_content .edit_buttons button:nth-child(2)'); // Cancel
+        await click('#songbook_content .edit_buttons [data-cancel]'); // Cancel
         await until(`!location.hash.includes('?edit')`, 'leaving the songbook editor');
       }
       // the book opens fresh afterwards, not still looking like the editor
@@ -643,7 +643,7 @@ try {
       await until(`!!document.querySelector('#song .edit_buttons')`, 'the song editor on a phone');
       await sleep(800);
       await phonePanel('song-categories', '#song-edit');
-      await click('#song .edit_buttons a'); // Cancel
+      await click('#song .edit_buttons [data-cancel]'); // Cancel
       await until(`!location.hash.includes('?edit') && !document.querySelector('#song .edit_buttons')`, 'leaving the song editor');
 
       // with a finger: press, hold and drag a song's last part (by its grip) to the top
@@ -655,7 +655,7 @@ try {
       await touchHoldDrag(await spot(gripOf(2)), { x: topPart.x, y: topPart.top - 6 });
       const partsAfter = await chunkOrder();
       ok(partsAfter[0] === partsBefore[2], 'finger: press, hold and drag moves a part to the top', JSON.stringify(partsAfter));
-      await click('#song .edit_buttons a'); // Cancel
+      await click('#song .edit_buttons [data-cancel]'); // Cancel
       await until(`!location.hash.includes('?edit') && !document.querySelector('#song .edit_buttons')`, 'leaving the song editor');
 
       await ev(`location.hash = '#${bookId}?export'`);
@@ -772,7 +772,7 @@ try {
   // 7. Cancel a new songbook: back to the songbooks list, nothing saved (#149)
   await openNewSongbook();
   await type('#songbook_title', `${RUN} Cancelled Book`);
-  await click('#songbook_content .edit_buttons button:nth-child(2)');
+  await click('#songbook_content .edit_buttons [data-cancel]');
   await until(`!location.hash.includes('?edit')`, 'leaving the new songbook editor');
   ok((await hash()) === '#songbooks', 'Cancel on a new songbook goes back to the songbooks list', await hash());
   const books = (await req(as('alice'), 'GET', `${DB}/_all_docs?startkey=%22sb-%22&endkey=%22sb-%EF%BF%B0%22&include_docs=true`)).json.rows;
