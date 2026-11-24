@@ -1224,7 +1224,7 @@ function savePresentation() {
 // Help & Settings (h or ?): screens and sharing, this screen's look, backgrounds, and the keys (#51). A mirror's
 // panel has only its own look, since its slides come from the main window; a follower's has its look and keys.
 function switchHtml(id, label, checked, onchange, title = '', disabled = false) {
-  return '<label class="chord-switch"' + (title ? ' title="' + escapeText(title) + '"' : '') + '><input type="checkbox" id="' + id + '"'
+  return '<label class="switch"' + (title ? ' title="' + escapeText(title) + '"' : '') + '><input type="checkbox" id="' + id + '"'
     + (checked ? ' checked' : '') + (disabled ? ' disabled' : '') + ' onchange="' + onchange + '"><span class="switch-track"></span>' + label + '</label>';
 }
 function keysOpen() { try { return localStorage.getItem('yCantaKeysOpen') === '1'; } catch (err) { return false; } }
@@ -1240,7 +1240,7 @@ function toggleHelp() {
         + '<button type="button" class="btn" onclick="toggleReport()">Presentation Stats</button>' : '') // (#53, #158)
       + (canLeave() ? '<button type="button" class="btn" onclick="openAppHelp()" title="yCanta\'s Help, on presenting">Help</button>'
         + '<button type="button" class="btn" onclick="leavePresentation()" title="Back to the songbook (Esc twice)">Leave</button>' : '')
-      + '<button type="button" class="help-close" onclick="hideHelp()" aria-label="Close" title="Close (Esc)">×</button></div>';
+      + '<button type="button" class="help-close" onclick="hideHelp()" aria-label="Close" title="Close (Esc)">' + presIcon('close') + '</button></div>';
 
     // This screen first: what it shows sets everything else on it
     content += '<section><h4>' + (mirror ? 'Look' : 'This screen') + '</h4>';

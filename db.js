@@ -69,7 +69,7 @@ async function startDemo() {
   const username = 'Johannes Gutenberg';
   const pin = '42';
 
-  notyf.info('<b>Login Info</b><br>Username: Johannes Gutenberg<br> Pin: 42', 'green');
+  notyf.info('<b>Login Info</b><br>Username: Johannes Gutenberg<br> Pin: 42');
 
   const made = !!(databases && databases['demo(local)']);
   await dbLogin(made ? 'login_local' : 'create_local', 'demo(local)', username, pin);
@@ -87,7 +87,7 @@ async function startDemo() {
 
       setTimeout(() => {
         handleFile(file);
-        notyf.info('Imported Public Domain songs', 'green');
+        notyf.info('Imported Public Domain songs');
       }, 500);
     } catch (error) {
       console.error('Error fetching file:', error);
@@ -119,7 +119,6 @@ async function loginRemoteDb(remote_url, username, pwd) {
   }
   window.roles = batman.roles.reduce((a, v) => ({ ...a, [v]: true}), {});
   sessionPwd = pwd; // kept in memory only, for the account helper (see callAccountsHelper)
-  notyf.info('Connected to server', 'green');
 }
 // Each person gets their own copy of a church from the server on a device (#139): "canaan(remote)~vera".
 // On a shared device, a change the server refused for one person (it stays in their copy) can't be sent
@@ -410,29 +409,21 @@ function dbChanges() {
     }
     // Comment changes
     else if (change.doc._id.startsWith('c_')) {
-      const songbookId = change.doc._id.match(/sb-.*?_/g)?.[0]?.replace('_','');
-      
-      if (songbookId && window.songbook?._id === songbookId && window.songbook.showComments) {
-        const songId = change.doc._id.match(/s-.*?$/g)?.[0];
-        if (songId) {
-          const songElements = document.querySelectorAll(`li[data-song-id="${songId}"]`); // a song can be in a book twice
-          if (songElements.length) {
-            songElements.forEach(songElement => {
-              const toggleComment = songElement.querySelector('.toggle_comment');
-              const commentsContainer = songElement.querySelector('.comments');
-              if (toggleComment) {
-                toggleComment.dataset.commentNumber = change.doc.comments.length;
-              }
-              if (commentsContainer) {
-                commentsContainer.innerHTML = change.doc.comments.map(commentHtml).join('');
-              }
-            });
-
-            notyf.info(
-              `Comment added to "${escapeHtml(songId)}" by ${escapeHtml(change.doc.comments.at(-1).user)}`,
-              'var(--songList-color)'
-            );
-          }
+      // In the open book, with its comments showing: show the change, and say when someone else just commented
+      const songId = window.songbook?._id && change.doc._id.startsWith(`c_${window.songbook._id}_`) ? songIdOfComment(change.doc) : null;
+      const row = songId && document.querySelector(`#songbook_content .list li[data-song-id="${CSS.escape(songId)}"]`);
+      if (row?.querySelector(':scope > .commentsContainer')) {
+        loadSongbookComments(songId);
+        const c = Array.isArray(change.doc.comments) ? change.doc.comments.at(-1) : change.doc;
+        const justWritten = c && !c.removed && !c.edited && !change.doc._deleted && Date.now() - (c.date || 0) < 10 * 60 * 1000;
+        if (justWritten && c.user !== window.user._id) {
+          const title = row.querySelector('a')?.textContent.trim() || 'a song';
+          notyf.open({
+            type: 'info',
+            message: `${escapeHtml(personName(c.user))} commented on "${escapeHtml(title)}"`,
+            background: 'var(--songList-color)',
+            className: 'clickable-note',
+          }).on('click', () => openComments(songId));
         }
       }
     }
@@ -668,7 +659,7 @@ async function dbLogin(type, dbName=false, username=false, pin=false, pwd=false,
     }
     window.roles = localUser.roles;
     window.church = localUser.church; // what the church's lists said at the last online login
-    notyf.info('Offline: using the songs saved on this device', 'green');
+    notyf.info('Offline: using the songs saved on this device');
     await takeNextStep(username, dbName);
   }
 
@@ -954,8 +945,9 @@ function setUpSyncHandler() {
         });
       }
     });
-    clearStickyError('keep syncing with the server'); // sync is back: the message about it stopping can go
-    notyf.info('Sync established', 'green');
+    // Quiet on a normal start (the green line along the bottom says you're online, #159). After a note said
+    // syncing had stopped, that note goes and a short one says it's back.
+    if (clearStickyError('keep syncing with the server')) notyf.info('Syncing with the server again');
   }
   catch(err) {
     reportDbError(err, 'start syncing with the server');
@@ -986,7 +978,7 @@ async function reconnectSync() {
     window.church = await loadChurchAccess(username);
     showChurchLevel();
     await db.upsert('_local/u-' + username, doc => ({ ...doc, church: window.church }));
-    setUpSyncHandler(); // says "Sync established"
+    setUpSyncHandler(); // clears the note that said syncing stopped
   } catch (err) {
     remoteDb = null;
     console.warn('Still no connection to the server; trying again in a minute:', err?.message || err);
@@ -1518,7 +1510,7 @@ async function loadRecoveryEmail({ fresh = false } = {}) {
     recoveryEmailLookup = null; // try again next time
     if (kept !== null) return; // the kept answer stays on the card; the next look asks again
     const box = target();
-    if (box) box.innerHTML = `<p>${escapeHtml(err.message)}</p><button class="btn" onclick="loadRecoveryEmail({ fresh: true })">${icon('undo')} Try again</button>`;
+    if (box) box.innerHTML = `<p>${escapeHtml(err.message)}</p><button class="btn" onclick="loadRecoveryEmail({ fresh: true })">${icon('reset')} Try again</button>`;
   }
 }
 
@@ -1560,7 +1552,7 @@ async function clearRecoveryEmail() {
   });
   if (done === null) return;
   dialog.close();
-  notyf.info('Recovery email removed', 'olive');
+  notyf.info('Recovery email removed');
   keepRecoveryEmail(window.user._id, '');
   loadRecoveryEmail({ fresh: true });
 }
@@ -1694,7 +1686,7 @@ async function setChurchPersonLevel(select) {
   select.disabled = true;
   try {
     await updateChurchPeople([[name, select.value]]);
-    notyf.info(`${escapeHtml(name)} is now: ${levelLabels[select.value]}`, 'green');
+    notyf.info(`${escapeHtml(name)} is now: ${levelLabels[select.value]}`);
   } catch (err) {
     await TaskDialog.message('Could not change that', err.message || String(err));
   }
@@ -1713,7 +1705,7 @@ async function removeChurchPerson(button) {
   });
   if (done === null) return;
   dialog.close();
-  notyf.info(`Removed ${escapeHtml(name)}`, 'red');
+  notyf.info(`Removed ${escapeHtml(name)}`);
   loadAllUsers();
 }
 
@@ -2103,7 +2095,7 @@ function loadSong(song_id, song_rev = false) {
             <div class="title">
               <h3 class="song-title"><a data-song class="title_link">${shown.title}</a></h3>
               <span class="buttonsRight">
-                ${song_rev ? `${canEdit(window.song) ? `<button onclick="restoreSongRev('${escapeHtml(song._rev)}')" class="btn btn-tiny" title="Make this the current version">${icon('undo')} Restore</button>` : ''}<button type="button" onclick="this.closest('.song-card').remove()" class="close-icon" aria-label="Close">&times;</button>` : `
+                ${song_rev ? `${canEdit(window.song) ? `<button onclick="restoreSongRev('${escapeHtml(song._rev)}')" class="btn btn-tiny" title="Make this the current version">${icon('undo')} Restore</button>` : ''}<button type="button" onclick="this.closest('.song-card').remove()" class="close-x" aria-label="Close" title="Close">${icon('close')}</button>` : `
                   <span class="star" role="button" tabindex="0" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }" aria-label="Favorite song" title="Favorite" onclick="event.stopPropagation(); toggleFavorite(this.closest('.song-card').dataset.id,'fav_songs')"></span>
                   <info role="button" tabindex="0" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }" aria-label="Song info" title="Info" onclick="event.stopPropagation(); loadInfo();"></info>
                   <span class="fsButton" role="button" tabindex="0" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }" aria-label="Full width" title="Full width" onclick="toggleFullscreen(this)"></span>
@@ -2117,7 +2109,7 @@ function loadSong(song_id, song_rev = false) {
             ${song.deletedAt && canEdit(song) ? `<button class="btn btn-tiny" onclick="restoreOpenSong(this)">${icon('undo')} Restore</button>` : ''}</p>` : ''}
           <authors><author>${shown.authors.join('</author>, <author>')}</author></authors>
           <scripture_ref><scrip_ref>${shown.scripture_ref.join('</scrip_ref>, <scrip_ref>')}</scrip_ref></scripture_ref>
-          ${!song_rev ? `<span id="keyToggleContainer"><span id="keyToggleFilter">` : ''}<key>${shown.key}</key>${!song_rev ? `<button id="keyToggle" type="button" aria-expanded="false" title="Change the key">Key: <b class="key-name">${shown.key}</b><span class="chevron" aria-hidden="true"></span></button><label class="chord-switch" hidden><input type="checkbox" id="chordSwitch"><span class="switch-track" aria-hidden="true"></span>Chords</label></span></span>` : ''}
+          ${!song_rev ? `<span id="keyToggleContainer"><span id="keyToggleFilter">` : ''}<key>${shown.key}</key>${!song_rev ? `<button id="keyToggle" type="button" aria-expanded="false" title="Change the key">Key: <b class="key-name">${shown.key}</b><span class="chevron" aria-hidden="true"></span></button><label class="switch" hidden><input type="checkbox" id="chordSwitch"><span class="switch-track" aria-hidden="true"></span>Chords</label></span></span>` : ''}
           <categories><cat>${shown.categories.sort().join('</cat>, <cat>')}</cat></categories>
           <cclis>${(song.cclis ? (!isNaN(song.cclis) ? 'CCLI Song #: ' + shown.cclis : 'In CCLI') : '')}</cclis>
           <introduction>${shown.introduction}</introduction>
@@ -3158,89 +3150,204 @@ async function loadSongbook(songbook_id, forceReload=false) {
   }
 }
 
-function loadSongbookComments() {
-  db.allDocs({
-    include_docs: true,
-    startkey: `c_${window.songbook._id}`,
-    endkey: `c_${window.songbook._id}\ufff0`
-  }).then(({rows}) => {
-    // Add comment UI to all songs
-    document.querySelectorAll('#songbook_content .list li:not([data-song-id="section"], [data-song-id="reading"])').forEach(li => {
-      if (!li.querySelector('.commentsContainer')) {
-        li.insertAdjacentHTML('beforeend', `
-          <div class="commentsContainer">
-            <div class="comments"></div>
-            <textarea class="comment" style="width:100%"></textarea>
-            <button class="btn" onclick="addComment(this)">Add comment</button>
-          </div>
-        `);
-      }
-      if (!li.querySelector('.toggle_comment') && li.querySelector('a')) {
-        li.querySelector('a').insertAdjacentHTML('afterend', 
-          '<button class="toggle_comment" onclick="this.nextElementSibling.style.display=getComputedStyle(this.nextElementSibling).display===\'none\'?\'block\':\'none\'" aria-label="Comments" title="Comments">' + icon('comment') + '</button>');
-      }
-    });
+// Comments on a song in a songbook. Each comment is its own record, "c_<book>_<song>|<when>", so two people
+// commenting at once can't lose one. Older ones sit together, one record per song, "c_<book>_<song>" with a
+// list, and still show. You change or remove your own; a church admin removes any (database/validate.js).
+// A removed comment stays as a cleared stub: it shows as "Comment removed" while a later comment needs it to
+// make sense, and not at all once nothing comes after it.
+const commentRefs = new Map(); // each shown comment, by its data-key: what it says and where it's saved
 
-    // Populate existing comments
-    rows.forEach(({doc: song}) => {
-      const songId = song._id.match(/s-.*/)?.[0];
-      // Every row for this song (a song can be in a book twice); add-song panel rows have no .comments
-      document.querySelectorAll(`li[data-song-id="${songId}"]`).forEach(li => {
-        const commentsBox = li.querySelector('.comments');
-        if (!commentsBox) return;
-        commentsBox.innerHTML = song.comments.map(commentHtml).join('');
-        li.querySelector('.toggle_comment')?.setAttribute('data-comment-number', song.comments.length);
-      });
-    });
-  }).catch(console.error);
+// The records for one song in this book, or for the whole book
+function commentRange(songId) {
+  const base = `c_${window.songbook._id}_${songId || ''}`;
+  return { startkey: base, endkey: base + (songId ? '|￰' : '￰') };
 }
-// One comment as HTML; user and comment text are escaped since anyone with DB access can write them
-function commentHtml(comment) {
-  const when = new Date(comment.date).toLocaleTimeString(undefined, {
-    weekday: 'long', year: 'numeric', month: 'short',
-    day: 'numeric', hour: '2-digit', minute: '2-digit'
+function songIdOfComment(doc) {
+  if (doc.song) return doc.song;
+  const prefix = `c_${window.songbook?._id}_`;
+  return doc._id.startsWith(prefix) ? doc._id.slice(prefix.length).split('|')[0] : null;
+}
+// Every comment in these records, oldest first, each knowing where it's saved
+function commentsFrom(docs) {
+  const list = [];
+  docs.forEach(doc => {
+    if (!doc || doc._deleted) return;
+    if (Array.isArray(doc.comments)) doc.comments.forEach(c => c && list.push({ ...c, key: `${doc._id}#${c.user}#${c.date}`, thread: doc._id }));
+    else if (typeof doc.comment === 'string') list.push({ ...doc, key: doc._id });
   });
-  return `<div><b>${escapeHtml(comment.user)} </b>${when}<pre>${escapeHtml(comment.comment)}</pre></div>`;
+  return list.sort((a, b) => (a.date || 0) - (b.date || 0));
 }
-async function addComment(btn) {
+
+// A song row's comment button (with how many) and its comments box, closed to start
+function addCommentUI(li) {
+  if (li.querySelector(':scope > .commentsContainer') || !li.querySelector('a')) return;
+  li.querySelector('a').insertAdjacentHTML('afterend', `<button type="button" class="toggle_comment" onclick="toggleComments(this)" aria-expanded="false" aria-label="Comments" title="Comments">${icon('comment')}</button>`);
+  li.insertAdjacentHTML('beforeend', `
+    <div class="commentsContainer" hidden>
+      <div class="comments"></div>
+      <p class="comment-note">Comments save right away, apart from the songbook's Save.</p>
+      <textarea class="comment" rows="2" placeholder="Add a comment" aria-label="Add a comment"></textarea>
+      <div class="comment-buttons"><button type="button" class="btn btn-small primary comment-post" disabled onclick="addComment(this)">Post</button></div>
+    </div>`);
+}
+function toggleComments(btn, open) {
+  const box = btn.closest('li').querySelector(':scope > .commentsContainer');
+  const show = open ?? box.hidden;
+  box.hidden = !show;
+  btn.setAttribute('aria-expanded', show);
+}
+// From a note about a new comment: open that song's comments
+function openComments(songId) {
+  const li = document.querySelector(`#songbook_content .list li[data-song-id="${CSS.escape(songId)}"]`);
+  const btn = li?.querySelector(':scope > .toggle_comment');
+  if (!btn) return;
+  toggleComments(btn, true);
+  li.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+
+// Shows the comments for one song (songId) or for every song in the book
+async function loadSongbookComments(songId) {
+  if (!window.songbook?._id || window.songbook._id === 'sb-new-songbook') return; // a book not saved yet has none
+  const rows = [...document.querySelectorAll('#songbook_content .list li:not([data-song-id="section"], [data-song-id="reading"])')]
+    .filter(li => !songId || li.dataset.songId === songId);
+  rows.forEach(addCommentUI);
+  let result;
   try {
-    const comment = btn.previousElementSibling.value.trim();
-    if (!comment) return showError('Type a comment first.');
-
-    const li = btn.closest('li');
-    const commentId = `c_${window.songbook._id}_${li.dataset.songId}`;
-    const newComment = {
-      date: Date.now(),
-      user: window.user._id,
-      comment
-    };
-
-    try {
-      const doc = await db.get(commentId);
-      await db.put({...doc, comments: [...doc.comments, newComment]});
-    } catch (err) {
-      if (err.status === 404) {
-        await db.put({_id: commentId, comments: [newComment]});
-      } else {
-        throw err;
-      }
-    }
-
-    // Update UI
-    btn.previousElementSibling.value = '';
-    const commentsDiv = li.querySelector('.comments');
-    if (commentsDiv) {
-      commentsDiv.insertAdjacentHTML('beforeend', commentHtml(newComment));
-      const toggle = li.querySelector('.toggle_comment');
-      if (toggle) toggle.dataset.commentNumber = 
-        (parseInt(toggle.dataset.commentNumber || 0) + 1);
-    }
-
+    result = await db.allDocs({ include_docs: true, ...commentRange(songId) });
   } catch (err) {
-    console.error('Failed to save comment:', err);
-    notyf.error('Failed to save comment');
+    console.error('Error loading comments:', err);
+    return;
+  }
+  const bySong = new Map();
+  result.rows.forEach(({ doc }) => {
+    const id = doc && songIdOfComment(doc);
+    if (!id || (songId && id !== songId)) return;
+    if (!bySong.has(id)) bySong.set(id, []);
+    bySong.get(id).push(doc);
+  });
+  rows.forEach(li => drawComments(li, commentsFrom(bySong.get(li.dataset.songId) || []))); // a song can be in a book twice
+}
+function drawComments(li, list) {
+  const box = li.querySelector(':scope > .commentsContainer .comments');
+  if (!box) return;
+  const me = window.user._id, admin = !!window.church?.admin;
+  const shown = list.filter((c, i) => !c.removed || list.slice(i + 1).some(later => !later.removed));
+  shown.forEach(c => commentRefs.set(c.key, c));
+  box.innerHTML = shown.map(c => commentHtml(c, c.user === me, c.user === me || admin)).join('');
+  const count = list.filter(c => !c.removed).length;
+  const toggle = li.querySelector(':scope > .toggle_comment');
+  if (!toggle) return;
+  if (count) toggle.dataset.commentNumber = count;
+  else delete toggle.dataset.commentNumber;
+  toggle.title = count ? `${count} comment${count === 1 ? '' : 's'}` : 'Comments';
+  toggle.setAttribute('aria-label', toggle.title);
+}
+function commentWhen(date) {
+  const d = new Date(date);
+  const thisYear = d.getFullYear() === new Date().getFullYear();
+  return d.toLocaleString(undefined, { month: 'short', day: 'numeric', ...(thisYear ? {} : { year: 'numeric' }), hour: 'numeric', minute: '2-digit' });
+}
+// One comment as HTML: who (the name they chose), when, and the words; the writer's own has a pencil and a
+// trash can, and a church admin's view has the trash can on every one. Names and words are escaped.
+function commentHtml(c, canChange = false, canRemove = false) {
+  if (c.removed) return '<div class="comment-item removed">Comment removed</div>';
+  return `<div class="comment-item" data-key="${escapeHtml(c.key)}">
+      <div class="comment-head"><b>${escapeHtml(personName(c.user))}</b> <span class="comment-when">${commentWhen(c.date)}${c.edited ? ' · edited' : ''}</span>${
+        canChange ? `<button type="button" class="inline-icon" onclick="editComment(this)" aria-label="Edit your comment" title="Edit">${icon('edit')}</button>` : ''}${
+        canRemove ? `<button type="button" class="inline-icon" onclick="removeComment(this)" aria-label="Remove this comment" title="Remove">${icon('trash')}</button>` : ''}</div>
+      <div class="comment-text">${escapeHtml(c.comment)}</div>
+    </div>`;
+}
+
+async function addComment(btn) {
+  const li = btn.closest('li');
+  const field = btn.closest('.commentsContainer').querySelector(':scope > textarea.comment');
+  const comment = field.value.trim();
+  if (!comment) return;
+  const songId = li.dataset.songId, date = Date.now();
+  const doc = {
+    _id: `c_${window.songbook._id}_${songId}|${date.toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+    sb: window.songbook._id, song: songId, user: window.user._id, date, comment,
+  };
+  btn.disabled = true;
+  try {
+    await db.put(doc);
+    field.value = '';
+    await loadSongbookComments(songId);
+  } catch (err) {
+    reportDbError(err, 'save your comment');
+    btn.disabled = false;
   }
 }
+// Changes one shown comment: its own record, or its place in an older thread
+async function saveCommentChange(key, change) {
+  const c = commentRefs.get(key);
+  if (!c) throw new Error('That comment has changed. Close the comments and open them again.');
+  if (!c.thread) {
+    const doc = await db.get(c._id);
+    await db.put({ ...doc, ...change });
+    return;
+  }
+  const doc = await db.get(c.thread);
+  const i = doc.comments.findIndex(x => x && x.user === c.user && x.date === c.date);
+  if (i < 0) throw new Error("That comment isn't there anymore.");
+  doc.comments[i] = { ...doc.comments[i], ...change };
+  await db.put(doc);
+}
+// The pencil: the words become a box, with Save and Cancel
+function editComment(btn) {
+  const item = btn.closest('.comment-item');
+  const c = commentRefs.get(item.dataset.key);
+  if (!c || item.querySelector('.comment-edit')) return;
+  const li = item.closest('li'), text = item.querySelector('.comment-text');
+  text.hidden = true;
+  text.insertAdjacentHTML('afterend', `<div class="comment-edit"><textarea class="comment" rows="2" aria-label="Your comment"></textarea>
+      <div class="comment-buttons"><button type="button" class="btn btn-small" data-cancel>Cancel</button><button type="button" class="btn btn-small primary" data-save>Save</button></div></div>`);
+  const edit = item.querySelector('.comment-edit'), field = edit.querySelector('textarea');
+  field.value = c.comment;
+  field.focus();
+  const done = () => { edit.remove(); text.hidden = false; };
+  edit.querySelector('[data-cancel]').onclick = done;
+  edit.querySelector('[data-save]').onclick = async () => {
+    const comment = field.value.trim();
+    if (!comment || comment === c.comment) return done(); // to take it away, the trash can
+    try {
+      await saveCommentChange(c.key, { comment, edited: Date.now() });
+      await loadSongbookComments(li.dataset.songId);
+    } catch (err) {
+      reportDbError(err, 'save your comment');
+    }
+  };
+}
+async function removeComment(btn) {
+  const item = btn.closest('.comment-item');
+  const c = commentRefs.get(item.dataset.key);
+  if (!c) return;
+  const li = item.closest('li');
+  const whose = c.user === window.user._id ? 'Your comment' : `${personName(c.user)}'s comment`;
+  const dialog = new TaskDialog('Remove this comment?');
+  const removed = await dialog.run({
+    text: `${whose} will be gone for everyone. If someone replied after it, a "Comment removed" line stays so their reply still makes sense.`,
+    submit: 'Remove', cancel: 'Keep it', danger: true,
+    action: async () => {
+      await saveCommentChange(c.key, { comment: '', removed: { by: window.user._id, date: Date.now() } });
+      return true;
+    },
+  });
+  if (removed === null) return;
+  dialog.close();
+  await loadSongbookComments(li.dataset.songId);
+}
+// Post lights up once something's typed; Ctrl+Enter (Cmd+Enter on a Mac) posts or saves
+document.addEventListener('input', e => {
+  if (e.target.matches?.('.commentsContainer > textarea.comment')) e.target.parentElement.querySelector('.comment-post').disabled = !e.target.value.trim();
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' || !(e.ctrlKey || e.metaKey) || !e.target.matches?.('.commentsContainer textarea')) return;
+  e.preventDefault();
+  const button = e.target.parentElement.querySelector(e.target.matches('.commentsContainer > textarea.comment') ? '.comment-post' : '[data-save]');
+  if (!button?.disabled) button?.click();
+});
 
 function addSongToSongbook(song_id, songbook_id=window.songbook._id) {
   if(songbook_id == undefined) {
@@ -3319,8 +3426,8 @@ async function loadRawDbObject(rawDbId, elementDrop, onclick) {
     // Add action buttons
     html += `
       </div>
-      <button class="btn" onclick="${onclick}" style="background-color: var(--background-color);">Cancel</button>
-      <button class="btn" onclick="saveRawDbObject(document.getElementById('${element.id}'));" style="background-color: var(--background-color);">Save</button>
+      <button class="btn primary" onclick="saveRawDbObject(document.getElementById('${element.id}'));">Save</button>
+      <button class="btn" onclick="${onclick}">Cancel</button>
     `;
 
     // Update DOM

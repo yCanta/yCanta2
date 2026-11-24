@@ -285,7 +285,7 @@ try {
 
   // ---- the songbook editor: the round status button ----
   await go(`#${bookId}?edit`, `!!document.getElementById('statusON')`, 'the songbook editor');
-  if (!(await ev(`document.getElementById('songbook_content').classList.contains('showStatus')`))) await click('#showStatusID .slider');
+  if (!(await ev(`document.getElementById('songbook_content').classList.contains('showStatus')`))) await click('#showStatusID .switch-track');
   await sleep(400);
   await iconOk('the songbook editor');
   const before = await ev(`location.hash`);
@@ -294,8 +294,8 @@ try {
   const st = await ev(`(() => { const li = document.querySelector('#songbook_content li'); return { status: li.dataset.songStatus, label: li.querySelector('.status-btn').getAttribute('aria-label') }; })()`);
   ok(st.status === 'a' && st.label !== label0 && (await ev('location.hash')) === before, 'status: the round button moves a song on (new to approved), says so, and opens nothing', JSON.stringify({ label0, ...st }));
   ok((await maskOf('#songbook_content li > .status-btn', '::before')).includes('svg'), 'status: its mark is a drawing');
-  const mid = await ev(`(() => { const li = document.querySelector('#songbook_content li'), b = li.querySelector(':scope > button:not(.status-btn)'); const a = li.getBoundingClientRect(), c = b.getBoundingClientRect();
-    return Math.round((c.top + c.height / 2) - (a.top + a.height / 2)); })()`);
+  const mid = await ev(`(() => { const li = document.querySelector('#songbook_content li'), b = li.querySelector(':scope > button[aria-label="Take out of the songbook"]'); const a = li.getBoundingClientRect(), c = b.getBoundingClientRect();
+    return Math.round((c.top + c.height / 2) - (a.top + a.height / 2)) + 0; })()`); // + 0: a -0 comes back from the browser as nothing
   ok(Math.abs(mid) <= 2, "songbook editor: a row's trash sits in the middle of the row", String(mid));
   await click('#songbook_content .edit_buttons button:nth-child(2)'); // Cancel
   await until(`!location.hash.includes('?edit')`, 'leaving the songbook editor');

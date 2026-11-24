@@ -51,18 +51,33 @@ function (newDoc, oldDoc, userCtx, secObj) {
     return;
   }
 
-  // Comments: everyone can add their own; only editors change or remove them
+  // Comments: everyone adds their own, and changes or removes only their own (church admins, above, any).
+  // A removed comment stays as a cleared stub, so the replies after it still make sense.
   if (id.indexOf('c_') === 0) {
-    if (isEditor) return;
-    if (newDoc._deleted) no('Only editors can remove comments.');
+    var cleared = function (c) { return !c.removed || !c.comment; }; // removed means its words are gone too
+    // One comment on its own: "c_<book>_<song>|<when>"
+    if (id.indexOf('|') !== -1) {
+      if ((oldDoc ? oldDoc.user : newDoc.user) !== me) no('Only the person who wrote a comment, or a church admin, can change or remove it.');
+      if (newDoc._deleted) no('A comment is removed by clearing it, not deleting it.');
+      if (newDoc.user !== me || typeof newDoc.comment !== 'string') no('A comment has to be your own words.');
+      if (oldDoc && newDoc.date !== oldDoc.date) no('A comment keeps the time it was written.');
+      if (!oldDoc && newDoc.removed) no('A new comment can\'t start out removed.');
+      if (!cleared(newDoc)) no('A removed comment has to be cleared.');
+      return;
+    }
+    // An older thread of comments in one record, "c_<book>_<song>" (the app no longer starts these)
+    if (newDoc._deleted) no('Only church admins can remove a whole thread of comments.');
     if (!Array.isArray(newDoc.comments)) no('Comments have to be a list.');
     var before = (oldDoc && !oldDoc._deleted && oldDoc.comments) || [];
     var after = newDoc.comments || [];
-    if (after.length < before.length) no('Only editors can remove comments.');
+    if (after.length < before.length) no('A comment is removed by clearing it, not taking it out.');
     for (var i = 0; i < after.length; i++) {
+      if (!after[i]) no('A comment can\'t be empty.');
       if (i < before.length) {
-        if (JSON.stringify(after[i]) !== JSON.stringify(before[i])) no('Only editors can change comments.');
-      } else if (!after[i] || after[i].user !== me) {
+        if (JSON.stringify(after[i]) === JSON.stringify(before[i])) continue;
+        if (before[i].user !== me) no('Only the person who wrote a comment, or a church admin, can change or remove it.');
+        if (after[i].user !== me || after[i].date !== before[i].date || !cleared(after[i])) no('A comment keeps its writer and time, and a removed one is cleared.');
+      } else if (after[i].user !== me || after[i].removed) {
         no('A new comment has to be your own.');
       }
     }

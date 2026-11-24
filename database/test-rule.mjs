@@ -77,9 +77,39 @@ await put("viewer changes someone else's comment", false, 'vic', { ...c, comment
 await put('viewer adds a comment as someone else', false, 'vic', { ...c, comments: [...c.comments, { date: 3, user: 'u-vera', comment: 'fake' }] });
 await put('viewer removes comments', false, 'vic', { ...c, comments: [c.comments[1]] });
 await put('viewer deletes the thread', false, 'vic', { ...c, _deleted: true });
-await put('editor edits a comment', true, 'eddie', { ...c, comments: [{ ...c.comments[0], comment: 'tidied' }, c.comments[1]] });
+await put("editor changes someone else's comment", false, 'eddie', { ...c, comments: [{ ...c.comments[0], comment: 'tidied' }, c.comments[1]] });
+await put('viewer edits own comment in a thread', true, 'vic', { ...c, comments: [c.comments[0], { ...c.comments[1], comment: 'yo!', edited: 5 }] });
 c = await get('c_sb-x_s-y');
 await put('viewer turns comments into a non-list', false, 'vic', { ...c, comments: { length: 2, 0: c.comments[0], 1: c.comments[1] } });
+await put('viewer moves own comment to another time', false, 'vic', { ...c, comments: [c.comments[0], { ...c.comments[1], date: 99 }] });
+await put('viewer removes own comment but keeps the words', false, 'vic', { ...c, comments: [c.comments[0], { ...c.comments[1], removed: { by: 'u-vic', date: 7 } }] });
+await put('viewer removes own comment in a thread (cleared)', true, 'vera', { ...c, comments: [{ ...c.comments[0], comment: '', removed: { by: 'u-vera', date: 6 } }, c.comments[1]] });
+c = await get('c_sb-x_s-y');
+await put("church admin removes anyone's comment in a thread", true, 'alice', { ...c, comments: [c.comments[0], { ...c.comments[1], comment: '', removed: { by: 'u-alice', date: 8 } }] });
+c = await get('c_sb-x_s-y');
+await put('viewer deletes the whole thread', false, 'vera', { ...c, _deleted: true });
+
+// one comment per record: "c_<book>_<song>|<when>"
+await put('viewer adds a comment of their own', true, 'vera', { _id: 'c_sb-x_s-y|a1', sb: 'sb-x', song: 's-y', date: 10, user: 'u-vera', comment: 'hello' });
+await put('viewer adds a comment as someone else (one record)', false, 'vic', { _id: 'c_sb-x_s-y|a2', date: 11, user: 'u-vera', comment: 'fake' });
+await put('viewer adds a comment that starts out removed', false, 'vic', { _id: 'c_sb-x_s-y|a3', date: 12, user: 'u-vic', comment: '', removed: { by: 'u-vic', date: 12 } });
+let one = await get('c_sb-x_s-y|a1');
+await put("other viewer edits someone else's comment", false, 'vic', { ...one, comment: 'changed' });
+await put("editor edits someone else's comment", false, 'eddie', { ...one, comment: 'changed' });
+await put("editor removes someone else's comment", false, 'eddie', { ...one, comment: '', removed: { by: 'u-eddie', date: 13 } });
+await put('viewer edits own comment', true, 'vera', { ...one, comment: 'hello there', edited: 14 });
+one = await get('c_sb-x_s-y|a1');
+await put('viewer changes the time on own comment', false, 'vera', { ...one, date: 1 });
+await put('viewer hands own comment to someone else', false, 'vera', { ...one, user: 'u-vic' });
+await expect('viewer deletes own comment outright', false, 'vera', 'DELETE', `${encodeURIComponent(one._id)}?rev=${one._rev}`);
+await put('viewer removes own comment but keeps the words (one record)', false, 'vera', { ...one, removed: { by: 'u-vera', date: 15 } });
+await put('viewer removes own comment (cleared)', true, 'vera', { ...one, comment: '', removed: { by: 'u-vera', date: 15 } });
+await put('editor adds own comment', true, 'eddie', { _id: 'c_sb-x_s-y|a4', date: 16, user: 'u-eddie', comment: 'mine' });
+const ed = await get('c_sb-x_s-y|a4');
+await put('editor removes own comment', true, 'eddie', { ...ed, comment: '', removed: { by: 'u-eddie', date: 17 } });
+await put('viewer adds a comment', true, 'vic', { _id: 'c_sb-x_s-y|a6', date: 19, user: 'u-vic', comment: 'by vic' });
+const vics = await get('c_sb-x_s-y|a6');
+await put("church admin removes anyone's comment", true, 'alice', { ...vics, comment: '', removed: { by: 'u-alice', date: 20 } });
 await put('viewer saves the built-in "All Songs" songbook', false, 'vera', { _id: 'sb-allSongs', title: 'x', addedBy: 'u-vera' });
 await put('church admin saves the built-in "Favorite Songs" songbook', false, 'alice', { _id: 'sb-favoriteSongs', title: 'x', addedBy: 'u-alice' });
 

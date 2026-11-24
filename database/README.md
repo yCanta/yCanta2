@@ -8,8 +8,13 @@ CouchDB runs it on every save, including saves that arrive by sync, so the rules
 |---|---|---|
 | Server admin | CouchDB server admin | Anything |
 | Church admin | Name in the database's `_security.admins` | Anything in that church, including this rule |
-| Editor | Name in `_security.editors` | Any song, songbook, comment, and the category list |
-| Everyone else in `_security.members` | | Their own songs and songbooks (`addedBy`), new comments of their own, their own export settings (`cfg-`) and profile (`u-`) |
+| Editor | Name in `_security.editors` | Any song or songbook, and the category list; comments like everyone else |
+| Everyone else in `_security.members` | | Their own songs and songbooks (`addedBy`), comments of their own, their own export settings (`cfg-`) and profile (`u-`) |
+
+**Comments** (`c_` docs) work the same for everyone but church admins: you add your own, and edit or remove only your
+own. A church admin removes any. Each new comment is its own doc, `c_<songbook>_<song>|<when>`; older ones share one
+doc per song, `c_<songbook>_<song>`, with a `comments` list. Only a church admin deletes a comment doc: a removed
+comment is kept with its words cleared and `removed: {by, date}`, so the replies after it still make sense.
 
 Everyone in the church can also add **kept old versions** (`h-` docs, issue #138): before the app saves a song or
 songbook, it saves a copy of the version being replaced, as `h-<doc id>|<revision number, 6 digits>-<revision hash>`.

@@ -2,6 +2,7 @@
   --songbookList-color: lemonchiffon;
   --songList-color: lightsalmon;
   --song-color: lightblue;
+  --song-color-rgb: 173,216,230;
   --export-color: bisque;
   --edit-color: gainsboro;
   --edit-color-rgb: 220,220,220;
@@ -15,12 +16,14 @@
   --btn-shadow-var: 0 2px 2px 2px rgba(0, 0, 0, 0.1);
   --btn-color: white; /* buttons: their own surface and edge, so they stand out in dark mode too */
   --btn-edge: transparent;
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23555' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); /* a dropdown's arrow, in --light-text-color */
 }
 :root.dark {
   --songbookList-color: #976f0b;
   --songList-color: #be5917;
   --song-color: #008296;
-  --export-color: #008744;
+  --song-color-rgb: 0,130,150;
+  --export-color: #83643f; /* a dark tan: bisque's color family, as each section keeps its own in both modes (#159) */
   --edit-color: #222;
   --edit-color-rgb: 34,34,34;
   
@@ -33,13 +36,15 @@
   --btn-shadow-var: 0 2px 2px 2px rgba(0, 0, 0, 0.3);
   --btn-color: #2c2c2c;
   --btn-edge: rgba(255, 255, 255, .16);
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23bbb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --songbookList-color: #976f0b;
     --songList-color: #be5917;
     --song-color: #008296;
-    --export-color: #008744;
+    --song-color-rgb: 0,130,150;
+    --export-color: #83643f; /* a dark tan: bisque's color family, as each section keeps its own in both modes (#159) */
     --edit-color: #222;
     --edit-color-rgb: 34,34,34;
     
@@ -52,11 +57,13 @@
     --btn-shadow-var: 0 2px 2px 2px rgba(0, 0, 0, 0.3);
     --btn-color: #2c2c2c;
     --btn-edge: rgba(255, 255, 255, .16);
+    --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23bbb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   }
   :root.light {
     --songbookList-color: lemonchiffon;
     --songList-color: lightsalmon;
     --song-color: lightblue;
+    --song-color-rgb: 173,216,230;
     --export-color: bisque;
     --edit-color: gainsboro;
     --edit-color-rgb: 220,220,220;
@@ -70,6 +77,7 @@
     --btn-shadow-var: 0 2px 2px 2px rgba(0, 0, 0, 0.1);
     --btn-color: white;
     --btn-edge: transparent;
+    --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23555' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); /* a dropdown's arrow, in --light-text-color */
   }
 }
 :root {
@@ -102,7 +110,7 @@
   vertical-align: -.2em;
   pointer-events: none; /* a tap or click is on its button or grip, as with the old text symbols */
 }
-#songbook_content.showStatus li[data-song-status] a:before,
+#songbook_content.showStatus li:is([data-song-status="n"], [data-song-status="a"], [data-song-status="r"]) a:before, /* only a real status has a mark: a section, or a song being dragged in, has none */
 #songbook_content.showStatus li > button.status-btn::before,
 .yt-play.yt-search::after,
 li[data-song-id="reading"] > a::before,
@@ -182,6 +190,32 @@ button,
 select {
   text-transform: none;
 }
+/* Every dropdown (#159): closed, it looks like the app's buttons, rounded on the button surface, with the app's
+   own arrow. The list that opens stays the phone's or browser's own. */
+select {
+  -webkit-appearance: none;
+  appearance: none;
+  max-width: 100%;
+  padding: .3rem 1.9rem .3rem .75rem;
+  border: none;
+  border-radius: 2rem;
+  background-color: var(--btn-color);
+  background-image: var(--select-chevron);
+  background-repeat: no-repeat;
+  background-position: right .6rem center;
+  background-size: .9em;
+  box-shadow: var(--btn-shadow-var), inset 0 0 0 1px var(--btn-edge);
+  color: var(--text-color);
+  cursor: pointer;
+}
+select:focus-visible {
+  outline: 2px solid var(--song-color);
+  outline-offset: 2px;
+}
+select:disabled {
+  opacity: .6;
+  cursor: default;
+}
 button,
 [type="button"],
 [type="reset"],
@@ -251,9 +285,9 @@ html, body,
 body {
   background-color: var(--background-color);
 }
-/* the line along the bottom: green online, yellow offline */
+/* the line along the bottom: green online, yellow offline (the green of an approved song's check mark) */
 html::after {
-  border-bottom: 5px solid green;
+  border-bottom: 5px solid mediumseagreen;
   z-index: 10;
   content: '';
   display: block;
@@ -545,7 +579,7 @@ legend {
 .left {
   text-align: left;
 }
-#songbook_content.showStatus li[data-song-status] a:before {
+#songbook_content.showStatus li:is([data-song-status="n"], [data-song-status="a"], [data-song-status="r"]) a:before {
   margin-right: .3em;
   cursor: pointer;
 }
@@ -730,12 +764,26 @@ button.inline-icon:focus-visible {
   text-align: center;
   color: white !important; /* Notyf colors the icon to match its dot */
 }
-.notyf__toast--error .notyf__dismiss-btn {
+/* A note's × (#159): easy to see and to hit, in the text color. Notyf's was a faint white 12px cross on a gray bar. */
+.notyf .notyf__dismiss-btn, /* .notyf: notyf.min.css loads after this file */
+.notyf .notyf__dismiss-btn:hover {
   background-color: transparent;
+  opacity: .75;
 }
-.notyf__toast--error .notyf__dismiss-btn::before,
-.notyf__toast--error .notyf__dismiss-btn::after {
+.notyf .notyf__dismiss-btn:hover {
+  opacity: 1;
+}
+.notyf .notyf__dismiss-btn::before,
+.notyf .notyf__dismiss-btn::after {
   background: var(--text-color);
+  height: 1rem;
+  width: .15rem;
+  left: calc(50% - .075rem);
+  top: calc(50% - .5rem);
+}
+/* Every note is a rounded card, on a phone too (#159): Notyf made them square there. */
+.notyf .notyf__toast {
+  border-radius: 1rem;
 }
 /* What a presentation showed (#158): the list is wider, for its five columns */
 .task-dialog.report-dialog {
@@ -814,10 +862,6 @@ button.inline-icon:focus-visible {
 }
 .task-dialog .btn {
   margin: 0;
-}
-.task-dialog .btn.primary {
-  background-color: var(--song-color);
-  color: black;
 }
 .task-dialog .btn.danger {
   background-color: crimson;
@@ -965,14 +1009,7 @@ button.inline-icon:focus-visible {
   font-size: .9em;
   font-weight: bold;
 }
-#chunkPreview .preview-head button {
-  background: none;
-  border: 0;
-  color: inherit;
-  font-size: 1.5rem;
-  line-height: 1;
-  cursor: pointer;
-}
+
 #chunkPreview .preview-controls {
   display: flex;
   align-items: center;
@@ -1298,11 +1335,11 @@ body.player-pill .subcolumn:not(.sidebar)::after {
 #dialog .handle {
   cursor: pointer;
 }
-#dialog .btn.close {
+#dialog .close-x { /* the round window keeps its × at the bottom, inside the circle */
   position: absolute;
-  bottom: 0;
-  padding: .3125rem .5rem;
-  cursor: pointer;
+  bottom: .5rem;
+  left: 50%;
+  transform: translateX(-50%);
 }
 #dialog small {
   font-size: .65rem;
@@ -1523,7 +1560,7 @@ stitle, cat, author, scrip_ref, key, copyright, cclis {
   display: inline-block;
 }
 #song.edit #keyToggle,
-#song.edit .chord-switch,
+#song.edit #keyToggleFilter .switch,
 #song.edit .transpose-keys {
   display: none;
 }
@@ -1549,21 +1586,25 @@ stitle, cat, author, scrip_ref, key, copyright, cclis {
 #keyToggleContainer.active #keyToggle .chevron::after {
   --ico: var(--i-chevron-up);
 }
-.chord-switch {
+/* the one switch (#159): a small track, blue when on, with its words beside it; the keyboard reaches it */
+.switch {
   position: relative; /* keeps the hidden checkbox here, so focusing it doesn't scroll the page */
   display: inline-flex;
   align-items: center;
-  gap: .4rem;
+  gap: .45rem;
   vertical-align: middle;
-  font-size: .9em;
-  color: var(--light-text-color);
   cursor: pointer;
   user-select: none;
 }
-.chord-switch[hidden] {
+#keyToggleFilter .switch, /* beside the key and in the Preview: quieter */
+#chunkPreview .switch {
+  font-size: .9em;
+  color: var(--light-text-color);
+}
+.switch[hidden] {
   display: none;
 }
-.chord-switch input {
+.switch input {
   position: absolute;
   top: 0;
   left: 0;
@@ -1579,6 +1620,7 @@ stitle, cat, author, scrip_ref, key, copyright, cclis {
   height: 1rem;
   border-radius: 1rem;
   background: rgba(128, 128, 128, .45);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .25); /* a thin edge, so the light blue of On shows on a gray card */
   transition: background .2s;
 }
 .switch-track::after {
@@ -1593,15 +1635,18 @@ stitle, cat, author, scrip_ref, key, copyright, cclis {
   box-shadow: 0 1px 2px rgba(0, 0, 0, .3);
   transition: transform .2s;
 }
-.chord-switch input:checked + .switch-track {
+.switch input:checked + .switch-track {
   background: var(--song-color);
 }
-.chord-switch input:checked + .switch-track::after {
+.switch input:checked + .switch-track::after {
   transform: translateX(.8rem);
 }
-.chord-switch input:focus-visible + .switch-track {
+.switch input:focus-visible + .switch-track {
   outline: 2px solid var(--song-color);
   outline-offset: 2px;
+}
+.switch input:disabled + .switch-track {
+  opacity: .5;
 }
 
 .song .edit .wrap {
@@ -1656,8 +1701,6 @@ stitle, cat, author, scrip_ref, key, copyright, cclis {
 .song .edit song select {
   margin-bottom: 1rem;
   margin-top: 1rem;
-  background-color: var(--edit-color);
-  border: 1px gray dashed;
 }
 .edit .subcolumn:not(.sidebar) .buttonsRight { /* the star, info and full screen, while editing (a side panel keeps its ×) */
   display: none;
@@ -1752,12 +1795,6 @@ info:after {
   gap: .5rem;
   padding-top: 0;
 }
-.buttonsRight > .close-icon-mobile { /* a header's round ×, the size of its title */
-  font-size: 1.17em;
-  width: 1.75em;
-  height: 1.75em;
-  text-align: center;
-}
 .buttonsRight > .btn, /* a button with words (an old version's Restore) is as wide as they are */
 .buttonsRight > #downloadPDF { /* the export Preview's Download button */
   width: auto;
@@ -1802,8 +1839,19 @@ info:after {
   top: 4rem;
   padding-right: 1rem;
 }
+#songbook_header .edit_buttons { /* the songbook editor's Song Status and Comments switches */
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem 1.25rem;
+}
 .edit_buttons .btn { /* an editor's Save, Cancel and Reset */
   background-color: var(--edit-color);
+}
+/* The main button of a form or editor, its Save (#159): the song blue, in the editors as in the dialogs */
+.btn.primary,
+.edit_buttons .btn.primary {
+  background-color: var(--song-color);
+  color: black;
 }
 .edit_buttons:first-child {
   position: sticky;
@@ -1892,8 +1940,9 @@ li.sortable-drag > a {
 #songListEdit [data-xInBook] {
   position: relative;
 }
-#songListEdit [data-xInBook] a {
-  background-color: limegreen;
+#songListEdit [data-xInBook] a { /* already in the book: a wash of the song blue, as they're songs (#159); lighter than
+                                 the full blue of the song that's open */
+  background-color: rgba(var(--song-color-rgb), .7);
 }
 #songListEdit [data-xInBook]:before {
   content: attr(data-xInBook);
@@ -1932,8 +1981,10 @@ li.sortable-drag > a {
   right: .75em;
   top: .5rem;
 }
-.edit #songbook_content li > button:not(.status-btn) { /* editing: the pencil and trash in the middle of the row */
-  top: 50%;
+/* editing: the pencil, comment and trash level with the middle of the row's line (its 2px gap, 1px edge and 2px
+   padding, then half the words' height). Not halfway down the whole row, which grows when its comments open. */
+.edit #songbook_content li > button:not(.status-btn) {
+  top: calc(5px + .65rem);
   transform: translateY(-50%);
   line-height: 1;
 }
@@ -1948,7 +1999,7 @@ li.sortable-drag > a {
   position: absolute;
   left: .4rem;
   right: auto;
-  top: 50%;
+  top: calc(5px + .65rem); /* level with the name, as the trash is */
   transform: translateY(-50%);
   width: 1.6rem;
   height: 1.6rem;
@@ -2046,23 +2097,37 @@ ul li {
   list-style-type: none;
   position: relative;
 }
-.close-icon {
-  font-size:2rem;
-}
-.close-icon-mobile { /* a header's round × (phones only) */
-  border-radius: 5em;
-  background-color: var(--highlight-color);
-  box-shadow: var(--btn-shadow-var);
-}
-.column_header:not(.sidebar *) .buttonsRight > .close-icon-mobile { /* on a column's colored header: like the account
-                                                                    badge above it (dark, its size), so the two line up */
-  background-color: var(--edit-color);
-  font-weight: bold;
-  font-size: 1.2rem;
-  width: 1.625rem;
-  height: 1.625rem;
-  line-height: 1;
+/* The one close button (#159): a round × on the button surface, at the top right of what it closes. Used by
+   the side panels and Export (.close-icon-mobile: phones only), an old version, the Preview, Help and the Info
+   window. An × means close and nothing else; removing something is the trash can. */
+.close-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  box-sizing: border-box;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin: 0;
   padding: 0;
+  border: none;
+  border-radius: 50%;
+  background-color: var(--btn-color);
+  box-shadow: var(--btn-shadow-var), inset 0 0 0 1px var(--btn-edge);
+  color: var(--text-color);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.close-x .icon {
+  vertical-align: 0;
+}
+.close-x:active {
+  transform: scale3d(0.9, 0.9, 1);
+}
+.close-x:focus-visible {
+  outline: 2px solid var(--song-color);
+  outline-offset: 2px;
 }
 .songbookList-color {
   background-color: var(--songbookList-color);
@@ -2302,28 +2367,113 @@ select:has(option[value=""]:checked) ~ :is(input) {
   width: 100%;
 }
 
-.commentsContainer {
+/* Comments on a song in a songbook (db.js loadSongbookComments): a drawer that opens out of the song's row,
+   from the row's comment button, which shows how many there are and stays lit while it's open. The songbook's
+   Comments switch shows or hides all of it. */
+#songbook_content:not(.showComments) .toggle_comment,
+#songbook_content:not(.showComments) .commentsContainer {
   display: none;
-  margin: 0 0 0 1rem;
-  padding: 0.5rem;
-  background-color: var(--edit-color);
-  border-bottom-right-radius: 1rem;
-  border-bottom-left-radius: 1rem;
 }
-.comments pre {
-  padding: 0px;
-  margin: 0px;
-  margin-bottom: 2px;
+.edit #songbook_content li > .toggle_comment { /* editing: beside the trash can, not on it */
+  right: 2.6em;
 }
-.toggle_comment:after {
-  display: block;
+.toggle_comment[aria-expanded="true"] { /* its drawer is open */
+  background-color: var(--song-color);
+  box-shadow: 0 0 0 .2rem var(--song-color); /* a little bigger than the icon, without moving it */
+  border-radius: .3rem;
+  color: black;
+}
+.toggle_comment[data-comment-number]::after { /* how many, on the button's corner */
   content: attr(data-comment-number);
   position: absolute;
-  top: -.5rem;
-  left: 1rem;
+  top: -.45rem;
+  right: -.35rem;
+  min-width: 1rem;
+  padding: 0 .2rem;
+  box-sizing: border-box;
+  border-radius: 1rem;
+  background-color: var(--song-color);
+  color: black;
+  font-size: .7rem;
+  font-weight: bold;
+  line-height: 1rem;
+  text-align: center;
+}
+/* The drawer hangs from the flat part of the song's rounded row (1rem in from each end, past its curves),
+   square on top and rounded below. It's one step off from what's around it: gray on the white page, and the
+   page color in the editor, where the rows sit on gray. */
+.commentsContainer {
+  margin: -2px 1rem .5rem; /* -2px: up against the row's edge, over the gap under it */
+  padding: .6rem .75rem;
+  background-color: var(--edit-color);
+  border: 1px solid rgba(128, 128, 128, .2); /* the row's own edge */
+  border-top: none;
+  border-radius: 0 0 1rem 1rem;
+  cursor: auto;
+  transition: none; /* it just opens (the page eases everything) */
+}
+.edit #songbook_content .commentsContainer {
   background-color: var(--background-color);
-  padding: 2px;
-  border-radius: 2rem;
+}
+.commentsContainer[hidden] {
+  display: none;
+}
+.comment-item {
+  padding: .35rem 0;
+  border-bottom: 1px solid rgba(128, 128, 128, .25);
+}
+.comment-item.removed {
+  color: var(--light-text-color);
+  font-style: italic;
+  font-size: .9em;
+}
+.comment-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 .4rem;
+}
+.comment-when {
+  color: var(--light-text-color);
+  font-size: .85em;
+}
+.comment-head .inline-icon {
+  margin-left: 0;
+}
+.comment-text {
+  white-space: pre-wrap; /* their line breaks, in the app's own font */
+  overflow-wrap: anywhere;
+}
+.comment-note { /* only while the book is being edited: Cancel and Reset don't take a comment back */
+  display: none;
+  margin: .4rem 0 0;
+  font-size: .8rem;
+  font-style: italic;
+  color: var(--light-text-color);
+}
+#songList.edit .comment-note {
+  display: block;
+}
+.commentsContainer textarea.comment {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin: .5rem 0 0;
+  padding: .4rem .6rem;
+  border: 1px solid rgba(128, 128, 128, .45);
+  border-radius: .75rem;
+  font: inherit;
+  resize: vertical;
+}
+/* Post, and an edit's Cancel and Save, at the right under the box, as in most comment boxes and the app's dialogs */
+.comment-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: .4rem;
+  margin-top: .4rem;
+}
+.commentsContainer .btn {
+  margin: 0 !important;
 }
 
 /*Fullscreen*/
@@ -2517,11 +2667,9 @@ body.present.songList #presentation {
   min-width: 0;
 }
 .export-choices select { /* a menu: the same size as the buttons beside it */
-  max-width: 100%;
   font-size: 1rem;
-  padding: .35rem .5rem;
-  border-radius: .5rem;
-  border: 1px solid var(--light-text-color);
+  padding-top: .35rem;
+  padding-bottom: .35rem;
 }
 .export-chips-wrap > summary {
   cursor: pointer;
@@ -2805,80 +2953,6 @@ body:not(.song) .show_for_songs { /* and what's only for exporting one song */
   padding: 0.5rem;
 }
 
-/*Switch*/
-.switch.switch-wide {
-  width: min(18.75rem, 100%); /* no wider than its card on a small phone */
-}
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 80px;
-  height: 34px;
-  vertical-align: middle;
-}
-.switch input {display:none;}
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  transition: .4s;
-  border-radius: 34px;
-  background-color: var(--edit-color);
-  filter: brightness(0.9);
-}
-.slider:before {
-  position: absolute;
-  content: attr(data-text);
-  padding-left: 3px;
-  height: 20px;
-  width: 17px;
-  left: 4px;
-  bottom: 50%;
-  transform: translateY(50%);
-  background-color: var(--highlight-color);
-  transition: .4s;
-  border-radius: 50%;
-}
-.slider.background:before {
-  background-color: var(--edit-color);
-}
-.switch.switch-wide input:checked + .slider:before {
-  left: calc(100% - 1.75rem); /* the far end, however wide the switch is */
-  transform: translateY(50%); /* not the 50px slide of the short switches below */
-}
-.switch input:checked + .slider:before {
-  transform: translate(50px, 50%);
-}
-.slider:after {
- content: 'Off';
- display: block;
- position: absolute;
- transform: translate(-50%,-50%);
- top: 50%;
- left: 50%;
- font-size: .75rem;
- font-family: Verdana, sans-serif;
- font-weight: bold;
-}
-.switch input:checked + .slider:after {
-  content:'On';
-}
-/* On looks on: the track fills with the song blue (Off and On differed only by the knob's side), and a thin edge
-   keeps the track visible on a card in dark mode, where it had matched the card */
-.slider {
-  box-shadow: inset 0 0 0 1px rgba(128, 128, 128, .45);
-}
-.switch input:checked + .slider {
-  background-color: var(--song-color);
-  filter: none;
-}
-#export_form .switch {
-  height: 1.75rem;
-}
-/*End Switch*/
 
 /* The export's Save and Share buttons, in two groups (#131) */
 .export-actions {
@@ -2933,8 +3007,8 @@ body:not(.song) .show_for_songs { /* and what's only for exporting one song */
 }
 /* Saving over your Default changes what every export of this songbook starts with: it looks different */
 #cfg_buttons .export-default {
-  background-color: var(--export-color); /* bisque in light mode, deep green in dark */
-  color: var(--text-color); /* black on bisque, white on the green */
+  background-color: var(--export-color); /* bisque in light mode, a dark tan in dark */
+  color: var(--text-color); /* black on bisque, white on the dark tan */
 }
 /* Old versions window (showHistory in db.js, #138) */
 .task-dialog .history-list {
@@ -3849,7 +3923,7 @@ only screen and (max-height: 31.25rem) {
   border: 0;
   border-top: 1px dashed rgba(128, 128, 128, .5);
 }
-/* Editing the categories (UX audit #21): one row each, a grip to drag, a box to rename, × to remove. About
+/* Editing the categories (UX audit #21): one row each, a grip to drag, a box to rename, the trash can to remove. About
    as wide as the list it edits, not the whole column (the help line and the boxes would stretch it). */
 .cat-edit {
   width: 22rem; /* a plain width: the box sizes to what's in it, and a % here made it measure the help line unwrapped */
@@ -3895,11 +3969,11 @@ only screen and (max-height: 31.25rem) {
   padding: .2rem;
   color: var(--light-text-color);
 }
-.cat-remove {
+.cat-remove { /* the trash can, as in the songbook editor and Admin (#159); an × only ever closes */
   border: none;
   background: none;
   color: var(--light-text-color);
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   line-height: 1;
   padding: .2rem .4rem;
   cursor: pointer;
@@ -3909,10 +3983,6 @@ only screen and (max-height: 31.25rem) {
   flex-wrap: wrap;
   gap: .5rem;
   margin: .4rem 0;
-}
-.cat-edit .btn.primary {
-  background-color: var(--song-color);
-  color: black;
 }
 /* Help (help.js): a card over the screen on a computer; on a phone, a sheet the height of the screen */
 #helpOverlay {
@@ -3953,15 +4023,7 @@ only screen and (max-height: 31.25rem) {
   background: var(--background-color);
   color: var(--text-color);
 }
-#helpOverlay .help-x {
-  border: none;
-  background: none;
-  color: var(--light-text-color);
-  font-size: 1.6rem;
-  line-height: 1;
-  padding: .1rem .4rem;
-  cursor: pointer;
-}
+
 #helpOverlay .help-tabs {
   display: flex;
   gap: .4rem;

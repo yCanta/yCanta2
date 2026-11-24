@@ -144,11 +144,7 @@
                 </label>
               </div>
               <div class="content">
-                <b>Send Analytics</b><br><br>
-                <label class="switch switch-wide">
-                  <input type="checkbox" id="analytics" name="analytics" checked onclick="setAnalytics(this.checked)">
-                  <div class="slider" data-text=" "></div>
-                </label>
+                <label class="switch"><input type="checkbox" id="analytics" name="analytics" checked onchange="setAnalytics(this.checked)"><span class="switch-track" aria-hidden="true"></span><b>Send Analytics</b></label>
               </div>
               <div class="content">
                 <b>Import</b>
@@ -256,7 +252,7 @@
               <div class="column_header">
                 <div class="title">
                   <h3>Add songs</h3>
-                  <span class="buttonsRight"><button type="button" onclick="this.closest('.sidebar-open').classList.remove('sidebar-open');" class="close-icon-mobile" aria-label="Close">&times;</button></span>
+                  <span class="buttonsRight"><button type="button" onclick="this.closest('.sidebar-open').classList.remove('sidebar-open');" class="close-x close-icon-mobile" aria-label="Close" title="Close"><svg class="icon" aria-hidden="true"><use href="icons.svg#close"/></svg></button></span>
                 </div>
                 <div class="search-row">
                   <input aria-label="Search" class="search deletable" type="text" data-target="#songbook_edit_togglesongs" data-trigger="change" placeholder="Search">
@@ -294,7 +290,7 @@
               <div class="column_header">
                 <div class="title">
                   <h3>Song Categories</h3>
-                  <span class="buttonsRight"><button type="button" onclick="this.closest('.sidebar-open').classList.remove('sidebar-open');" class="close-icon-mobile" aria-label="Close">&times;</button></span>
+                  <span class="buttonsRight"><button type="button" onclick="this.closest('.sidebar-open').classList.remove('sidebar-open');" class="close-x close-icon-mobile" aria-label="Close" title="Close"><svg class="icon" aria-hidden="true"><use href="icons.svg#close"/></svg></button></span>
                 </div>
                 <div class="search-row">
                   <input aria-label="Search" class="search deletable" type="text" data-target="#categories" data-trigger="change" placeholder="Search">
@@ -326,7 +322,7 @@
                 <div class="title">
                   <h3 class="export_header">Export</h3>
                   <span class="buttonsRight">
-                    <button type="button" class="close-icon-mobile" onclick="closeExport()" aria-label="Close" title="Close">&times;</button>
+                    <button type="button" class="close-x close-icon-mobile" onclick="closeExport()" aria-label="Close" title="Close"><svg class="icon" aria-hidden="true"><use href="icons.svg#close"/></svg></button>
                   </span>
                 </div>
               </div>
@@ -601,7 +597,7 @@
                     <span class="buttonsRight">
                       <span id="downloadPDF"></span>
                       <span class="fsButton" role="button" tabindex="0" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }" aria-label="Full width" title="Full width" onclick="toggleFullscreen(this)"></span>
-                      <button type="button" onclick="this.closest('.sidebar-open').classList.remove('sidebar-open');" class="close-icon-mobile" aria-label="Close">&times;</button>
+                      <button type="button" onclick="this.closest('.sidebar-open').classList.remove('sidebar-open');" class="close-x close-icon-mobile" aria-label="Close" title="Close"><svg class="icon" aria-hidden="true"><use href="icons.svg#close"/></svg></button>
                     </span>
                   </div>
                 </div>
@@ -621,7 +617,7 @@
       <b class="title" style="overflow-wrap: break-word;"></b>
       <div class="content"></div>
       <div class="center_contents">
-        <button class="close btn" aria-label="Close" title="Close" onclick="document.getElementById('dialog').style.display = 'none';">×</button>
+        <button type="button" class="close-x" aria-label="Close" title="Close" onclick="document.getElementById('dialog').style.display = 'none';"><svg class="icon" aria-hidden="true"><use href="icons.svg#close"/></svg></button>
       </div>
     </dialog>
     <!-- The video player (#140): one player with three looks, set by data-look. 'dialog' floats and drags
@@ -666,11 +662,11 @@
       <div class="preview-head">
         <h5 class="handle">Preview</h5>
         <span class="preview-part"></span>
-        <button type="button" onclick="closeChunkPreview()" aria-label="Close the preview" title="Close">&times;</button>
+        <button type="button" class="close-x" onclick="closeChunkPreview()" aria-label="Close the preview" title="Close"><svg class="icon" aria-hidden="true"><use href="icons.svg#close"/></svg></button>
       </div>
       <div class="preview-controls">
         <select name="ratio" aria-label="Screen shape" onchange="keepPreviewSetting('ratio', this.value); drawChunkPreview()"></select>
-        <label class="chord-switch"><input type="checkbox" name="chords" onchange="keepPreviewSetting('chords', this.checked); drawChunkPreview()"><span class="switch-track" aria-hidden="true"></span>Chords</label>
+        <label class="switch"><input type="checkbox" name="chords" onchange="keepPreviewSetting('chords', this.checked); drawChunkPreview()"><span class="switch-track" aria-hidden="true"></span>Chords</label>
       </div>
       <div class="slide-preview"><iframe title="How this part will show" tabindex="-1"></iframe></div>
       <button type="button" class="preview-resize" aria-label="Drag to resize the preview" title="Drag to resize"><svg class="icon" aria-hidden="true"><use href="icons.svg#resize"/></svg></button>

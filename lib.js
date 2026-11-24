@@ -135,11 +135,12 @@ function stickyError(message, onClick = null, kind = message) {
   return notice;
 }
 // Take a kind's message away, e.g. when the save it was about worked after all
-function clearStickyError(kind) {
+function clearStickyError(kind) { // true if there was one to clear
   const notice = stickyErrors.get(kind);
-  if (!notice) return;
+  if (!notice) return false;
   stickyErrors.delete(kind);
   dysmyssable.dismiss(notice);
+  return true;
 }
 // One style for errors (UX audit #24): the app's own red note, never the browser's alert box. A short one fades
 // after 5 seconds in the corner; stay: true keeps it at the top until it's closed, for one worth reading twice
@@ -1601,7 +1602,7 @@ async function editProfileName() {
   updateUser();
 }
 
-// The category list, edited in place: drag to reorder, type to rename, × to remove, and group headings
+// The category list, edited in place: drag to reorder, type to rename, the trash can to remove, and group headings
 // ("----- Seasons" in the list). A renamed category can be renamed on the songs that have it too.
 async function editCategories() {
   const box = document.getElementById('category_content');
@@ -1615,7 +1616,7 @@ async function editCategories() {
   const row = (kind, text, original = '') => `<li class="cat-row${kind === 'heading' ? ' cat-heading' : ''}" data-kind="${kind}" data-original="${escapeHtml(original)}">
       <span class="cat-grip" aria-hidden="true" title="Drag to move">${icon('drag')}</span>
       <input type="text" value="${escapeHtml(text)}" aria-label="${kind === 'heading' ? 'Group heading' : 'Category name'}" placeholder="${kind === 'heading' ? 'A line, or a group name' : 'Category name'}">
-      <button type="button" class="cat-remove" aria-label="Remove" title="Remove">×</button>
+      <button type="button" class="cat-remove" aria-label="Remove" title="Remove">${icon('trash')}</button>
     </li>`;
   const rows = (doc.categories || []).map(raw => {
     const cat = String(raw).trim();
@@ -2566,7 +2567,9 @@ function editHash(e) {
   if(window.innerWidth <= 1150 && !document.body.classList.contains('song') && e.target.closest('#songbook_edit_togglesongs')) {
     return;  //we're not popping open edit song from the add song window.
   }
-  location.hash = e.target.href.replace(/^.*#/,'').replace(window.songbook._id, window.songbook._id+'?edit');
+  if (e.target.closest('button, input, textarea, .commentsContainer')) return; // a row's own buttons (its trash can) and its comments do their own thing
+  const href = this.querySelector('a')?.getAttribute('href'); // the row's link, wherever on the row the click was
+  if (href) location.hash = href.replace(/^.*#/,'').replace(window.songbook._id, window.songbook._id+'?edit');
 }
 function bind_songbook_edit(song){
   song.addEventListener('click', editHash, false);
@@ -2807,7 +2810,7 @@ async function editReading(row, isNew = false) {
 function makeSongbookSortable() {
   const book = document.querySelector('#songbook_content ul.list');
   const adder = document.querySelector('#songbook_edit_togglesongs ul.list');
-  const notEditing = (evt) => !window.songbookEditing || !!evt.target.closest('button, input'); // buttons still click, a reading's box still types
+  const notEditing = (evt) => !window.songbookEditing || !!evt.target.closest('button, input, textarea, .commentsContainer'); // buttons still click, a reading's box and the comments still type
   const changed = () => window.songbook_list?.reIndex();
   if (book && !Sortable.get(book)) {
     Sortable.create(book, {
@@ -2937,18 +2940,30 @@ function cancelSongbook(el) {
     }
   }
 }
-function resetSongbook() {
-  if (window.songbookEditing || window.songEditing) {
-    window.songbookEditing = false; // Reset editing state first
-    window.songEditing = false; // Reset song editing state
-    const confirmed = confirmWhenEditing(); // Then check for confirmation
-    if (!confirmed) {
-      location.reload(); // Reload the page to reset state
-    } else {
-      window.songbookEditing = true; // Restore editing state if not confirmed
-      window.songEditing = true; // Restore song editing state
-    }
-  }
+// Reset: start an edit over from what's saved, in place. It used to reload the whole app, which also threw
+// away any other edit that was open and made you wait for sign-in and sync again.
+async function okToStartOver(what) {
+  const dialog = new TaskDialog('Start over?');
+  const go = await dialog.run({
+    text: `Throw away your changes to this ${what} and start over from what's saved?`,
+    submit: 'Start over', cancel: 'Keep editing', danger: true,
+    action: () => true,
+  });
+  if (go === null) return false;
+  dialog.close();
+  return true;
+}
+async function resetSongbook() {
+  if (!window.songbookEditing || !await okToStartOver('songbook')) return;
+  await loadSongbook(window.songbook._id, true); // the saved book, and its rows, switches and title as saved
+  await editSongbook();
+}
+async function resetSongEdit() {
+  if (!window.songEditing) return;
+  if (songEditChanged() && !await okToStartOver('song')) return; // nothing changed: just start over
+  closeChunkPreview();
+  document.getElementById('song-edit')?.classList.remove('sidebar-open');
+  await editSong(); // loads the saved song (or a blank new one) and builds the editor again
 }
 
 async function editSongbook() {
@@ -2957,9 +2972,9 @@ async function editSongbook() {
     const buttons = document.createElement('div');
     buttons.className = 'edit_buttons';
     buttons.innerHTML = `
-      <button data-songbook class="btn" onclick="saveSongbookFromEditor();">Save</button>
+      <button data-songbook class="btn primary" onclick="saveSongbookFromEditor();">Save</button>
       <button data-songbook class="btn" onclick="cancelSongbook(this);">Cancel</button>
-      <button data-songbook class="btn" onclick="resetSongbook();">Reset</button>`;
+      <button data-songbook class="btn" title="Throw away your changes and start this songbook's edit over" onclick="resetSongbook()">Reset</button>`;
     const buttonsClone = buttons.cloneNode(true); // Create a deep copy
     document.getElementById('songbook_content').prepend(buttons);
     document.getElementById('songbook_content').append(buttonsClone);
@@ -2994,36 +3009,10 @@ async function editSongbook() {
     const toggleButtons = document.createElement('span');
     toggleButtons.className = 'edit_buttons';
     toggleButtons.innerHTML = `
-      <span class="nowrap">Song Status:
-      <label id="showStatusID" class="switch" onchange="(function(checkbox) {
-        const content = document.getElementById('songbook_content');
-        const isChecked = checkbox.checked;
-        if (isChecked) {
-          content.classList.add('showStatus');
-          window.songbook.showStatus = true;
-        } else {
-          content.classList.remove('showStatus');
-          window.songbook.showStatus = false;
-        }
-      })(this.firstElementChild)">
-        <input type="checkbox" id="statusON" ${window.songbook.showStatus ? 'checked' : ''}>
-        <div class="slider"></div>
-      </label></span>
-      <span class="nowrap">Comments:
-      <label class="switch" onchange="(function(checkbox) {
-        const content = document.getElementById('songbook_content');
-        const isChecked = checkbox.checked;
-        if (isChecked) {
-          content.classList.add('showComments');
-          window.songbook.showComments = true;
-        } else {
-          content.classList.remove('showComments');
-          window.songbook.showComments = false;
-        }
-      })(this.firstElementChild)">
-        <input type="checkbox" id="commentsON" ${window.songbook.showComments ? 'checked' : ''}>
-        <div class="slider"></div>
-      </label></span>`; // each label stays on its switch's line (a phone wrapped between them)
+      <label id="showStatusID" class="switch"><input type="checkbox" id="statusON" ${window.songbook.showStatus ? 'checked' : ''}
+        onchange="document.getElementById('songbook_content').classList.toggle('showStatus', this.checked); window.songbook.showStatus = this.checked"><span class="switch-track" aria-hidden="true"></span>Song Status</label>
+      <label class="switch"><input type="checkbox" id="commentsON" ${window.songbook.showComments ? 'checked' : ''}
+        onchange="document.getElementById('songbook_content').classList.toggle('showComments', this.checked); window.songbook.showComments = this.checked"><span class="switch-track" aria-hidden="true"></span>Comments</label>`;
     header.appendChild(toggleButtons);
   };
 
@@ -3068,6 +3057,7 @@ async function editSongbook() {
   await loadSongsIntoAdder();
   bindSongbookListEvents();
   makeSongbookSortable(); // drag to reorder, to add from "Add songs" and to take out
+  await loadSongbookComments(); // read and add them while editing too; the Comments switch shows or hides them
 }
 
 // One song in the songbook editor's "Add songs" list: clicking it adds a copy to the end of the book
@@ -3204,14 +3194,13 @@ async function editSong() {
   // Create and add edit buttons
   const buttonsHTML = `
     <div class="edit_buttons">
-      <button data-song class="btn" onclick="prepSaveSong(this)">Save</button>
+      <button data-song class="btn primary" onclick="prepSaveSong(this)">Save</button>
       <a ${window.song._id === 's-new-song' ? 'data-songbook' : 'data-song'} 
               class="btn" 
               onclick="window.songEditing=false; delete window.song; window.location.hash=this.getAttribute('href');">
         Cancel
       </a>
-      <button data-song class="btn" title="Throw away your changes and start this song's edit over"
-              onclick="if (confirm('Throw away your changes to this song and start over?')) { window.songEditing=false; location.reload(); }">
+      <button data-song class="btn" title="Throw away your changes and start this song's edit over" onclick="resetSongEdit()">
         Reset
       </button>
     </div>`;
@@ -5180,16 +5169,6 @@ if (typeof document.addEventListener !== "undefined" && visibilityChange) {
   console.log("Your browser doesn't support playing music in background");
 }
 
-// #142: back in the installed app on an Android phone, Chrome sometimes shows old pieces of the other
-// pages (and of the player) through the open one, until a scroll redraws them. Coming back, everything
-// is marked to be drawn again: hidden and shown again before the screen updates, so nothing blinks, and
-// nothing moves or loses its scroll spot.
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState !== 'visible') return;
-  document.body.style.visibility = 'hidden';
-  getComputedStyle(document.body).visibility; // makes the browser take the change in
-  document.body.style.visibility = '';
-});
 
 /* crc32.js (C) 2014-present SheetJS -- http://sheetjs.com */
 /* vim: set ts=2: */
@@ -5435,19 +5414,39 @@ function remToPx(rem) {
     return rem * parseFloat(getComputedStyle(document.documentElement).fontSize);
 }
 
+// The phone's status bar (and an installed app's title bar) takes the color of the card at the top of the
+// screen. It's checked only when something there may have changed: a move to another page (once its slide
+// ends), a card let go of after a drag, the page's look (dark mode, which page is open), the window's size,
+// and coming back to the app. It used to check 50 times a second on a phone, which kept the browser working
+// out the whole page's layout all the time; #142 (old pieces of other pages showing through) may come from that.
 function checkColor() {
   const corner = document.elementFromPoint(1,1); // null while the page isn't shown: nothing to match
   if (!corner) return;
-  let color = window.getComputedStyle(corner).getPropertyValue('--highlight-color');
-  document.querySelector("meta[name=theme-color]").setAttribute("content", color);
+  const color = window.getComputedStyle(corner).getPropertyValue('--highlight-color').trim();
+  const meta = document.querySelector("meta[name=theme-color]");
+  if (color && meta.getAttribute('content') !== color) meta.setAttribute('content', color);
 }
-
-if(window.innerWidth < 640) {
-  setInterval(checkColor, 20);
+let colorCheckQueued = false;
+function queueColorCheck() { // at most once a frame, however many things changed at once
+  if (colorCheckQueued) return;
+  colorCheckQueued = true;
+  requestAnimationFrame(() => {
+    colorCheckQueued = false;
+    checkColor();
+  });
 }
-else {
-  checkColor();
-}
+// a change of look eases over a quarter second (index.html's transitions): check again once it's done
+const queueColorCheckAfterEase = () => { queueColorCheck(); setTimeout(queueColorCheck, 350); };
+window.addEventListener('hashchange', queueColorCheckAfterEase);
+window.addEventListener('resize', queueColorCheck);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') queueColorCheck(); });
+document.addEventListener('transitionend', e => { if (e.target.classList?.contains('column')) queueColorCheck(); }); // a card done sliding
+new MutationObserver(queueColorCheckAfterEase).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] }); // dark mode
+document.addEventListener('DOMContentLoaded', () => {
+  new MutationObserver(queueColorCheckAfterEase).observe(document.body, { attributes: true, attributeFilter: ['class'] }); // which page is open
+  queueColorCheck();
+});
+checkColor();
 function capEachWord(toCapitalize, dividingChar = " ") {
   return toCapitalize.split(dividingChar).map(word => word[0].toUpperCase()+word.substr(1)).join(" ");
 }
