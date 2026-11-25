@@ -4344,7 +4344,7 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
         dragEl.classList.remove('slidout');
         dragEl.style.transform = 'translate3d(' + (dist + 25) * 4 + 'px, 8rem, 0)';
         dragEl.style.width = 'min(80%, 300px)';
-        dragEl.style.height = 'calc(100vh - 8rem)';
+        dragEl.style.height = 'calc(var(--screen-height) - 8rem)'; // as .slidout in style.css
         dragEl.style['z-index'] = dist < -100 ? '2' : '7';
       }
     } else if (navigate) {

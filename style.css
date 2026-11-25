@@ -83,6 +83,17 @@
 :root {
   --highlight-color: var(--background-color);
 }
+/* The height of the screen you can see. In Chrome on Android, 100vh is the height with the URL bar hidden,
+   so while the bar shows, the bottom of a 100vh box (the + button, the green line) is under the screen's edge.
+   100dvh is the height you can see right now; a browser too old for it keeps 100vh. */
+:root {
+  --screen-height: 100vh;
+}
+@supports (height: 100dvh) {
+  :root {
+    --screen-height: 100dvh;
+  }
+}
 /* Icons (#95): yCanta's own line drawings, in icons.svg, so they look the same on every device and follow
    dark mode. In the page one is <svg class="icon"><use href="icons.svg#edit"/></svg> (icon('edit') in lib.js).
    A ::before or ::after in this file can't use that file, so the few it needs are here too, as masks: the
@@ -292,7 +303,7 @@ html::after {
   content: '';
   display: block;
   position: fixed;
-  top: calc(100vh - 5px);
+  top: calc(var(--screen-height) - 5px);
   bottom: 0;
   left: 0;
   right: 0;
@@ -2157,7 +2168,7 @@ html.offline::after {
 }
 html.offline:has(body.present)::after {
   content: '';
-  top: calc(100vh - 5px);
+  top: calc(var(--screen-height) - 5px);
   padding: 0;
   background: none;
   border-bottom: 5px solid yellow;
@@ -3195,7 +3206,7 @@ html._admin .account-menu .admin, html.churchAdmin .account-menu .admin {
   main,
   .column {
     transform: translate3d(0, max(100vh, 800px), 0);
-    height: calc(100vh - 4rem);
+    height: calc(var(--screen-height) - 4rem);
     opacity: 0;
   }
   #lower fieldset {
@@ -3205,7 +3216,7 @@ html._admin .account-menu .admin, html.churchAdmin .account-menu .admin {
   /*SongbookList */
   .songbookList main {
     transform: translate3d(0, 4rem, 0);
-    height: calc(100vh - 4rem);
+    height: calc(var(--screen-height) - 4rem);
     opacity: 1;
   }
   .songbookList #songbookList {
@@ -3407,7 +3418,7 @@ html._admin .account-menu .admin, html.churchAdmin .account-menu .admin {
   }
   .slidout {
     transform: translate3d(0,8rem,0) !important;
-    height: calc(100vh - 8rem);
+    height: calc(var(--screen-height) - 8rem);
     transform-origin: bottom;
     z-index: 7 !important;
     width: min(80%, 300px) !important;
