@@ -1,13 +1,19 @@
 String.prototype.count=function(s1) { 
     return (this.length - this.replace(new RegExp(s1,"g"), '').length) / s1.length;
 };
-// Search text without accents, so "jesus" finds "Jesús" (issue #124). list.min.js strips them from the query.
-// Only the accents Latin letters take (U+0300 to U+036F, once NFD takes "é" apart into "e" and its accent).
-// Hindi (Devanagari) vowel signs and Arabic marks are marks too, but they're outside that range, so they
-// stay: without them the words would change (#90). The text stays taken apart (NFD), the same as
-// list.min.js leaves the query, so the two always line up.
+// Search text without accents, so "jesus" finds "Jesús" (issue #124). list.min.js folds the query with
+// this same function, so the two always line up.
+// - Latin accents go (U+0300 to U+036F, once NFD takes "é" apart into "e" and its accent).
+// - Arabic goes the way Arabic search usually works (#90): the vowel marks and shadda, sukun, tanween,
+//   the small alef, tatweel (the stretch line) and the Quran marks go; أ إ آ ٱ are searched as ا (NFD
+//   takes the first three apart into ا and a hamza or madda mark, and the mark goes), ؤ as و and ئ as ي
+//   the same way, ة as ه and ى as ي. So "محبة" finds "مَحَبَّة", and the other way around.
+// - Hindi (Devanagari) vowel signs stay: without them the words change.
+// The text stays taken apart (NFD).
+const ARABIC_MARKS = /[ؐ-ؚـً-ٰٟۖ-ۜ۟-۪ۨ-ۭ]/g;
 function stripAccents(text) {
-  return String(text ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '');
+  return String(text ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(ARABIC_MARKS, '').replace(/ٱ/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي');
 }
 
 // A song's search text (#90): its fields, each after its letters (t: title, a: author, s: scripture,

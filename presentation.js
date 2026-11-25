@@ -1603,11 +1603,17 @@ function searchDatabase(){
   }
 
   // Accents don't matter, as in the app's lists: "cancion" finds "canción" (#90). The song's search text is
-  // taken apart (NFD: "ó" is "o" and its accent), and each letter typed may have Latin accents after it in
-  // the song. Hindi and Arabic marks aren't Latin accents, so they still have to match. Each piece is
-  // escaped, so typing ( or [ searches for it instead of throwing.
-  const typed = text.normalize('NFD').replace(/[̀-ͯ]/g, '');
-  const pattern = Array.from(typed).map(ch => ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[\\u0300-\\u036f]*').join('');
+  // taken apart (NFD: "ó" is "o" and its accent), and each letter typed may have accents after it in the
+  // song. Arabic goes the way Arabic search usually works, the same as the app's lists (lib.js
+  // stripAccents): its vowel marks, shadda, sukun, tanween, the small alef, tatweel and hamza or madda over
+  // a letter don't matter (so ا also finds أ إ آ, و finds ؤ, ي finds ئ), ا finds ٱ, ه finds ة and ي finds ى.
+  // Hindi vowel signs still have to match. Each piece is escaped, so typing ( or [ searches for it instead
+  // of throwing.
+  const MARKS = '[\\u0300-\\u036f\\u0610-\\u061a\\u0640\\u064b-\\u065f\\u0670\\u06d6-\\u06dc\\u06df-\\u06e8\\u06ea-\\u06ed]*';
+  const SAME_LETTER = { 'ا': '[اٱ]', 'ه': '[هة]', 'ي': '[يى]' }; // ا ه ي
+  const typed = text.normalize('NFD').replace(new RegExp(MARKS, 'g'), '')
+    .replace(/ٱ/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي');
+  const pattern = Array.from(typed).map(ch => (SAME_LETTER[ch] || ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) + MARKS).join('');
   var re = new RegExp('(' + pattern + ')([^\0\n]*)', 'i');
   const searchText = item => (item.searchNFD ??= String((item.doc && item.doc.search) || '').normalize('NFD')); // (a follower's songs have none)
   var match_object = []
