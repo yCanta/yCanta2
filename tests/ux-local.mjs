@@ -485,75 +485,135 @@ try {
     window.church = was; return r; })()`);
   ok(JSON.stringify(mirror) === '[true,false,true,false]', "versions: a member may link only their own songs, the same as the save rule", JSON.stringify(mirror));
 
-  // a song with no versions: no chips; its Info says so and offers Link a version
-  await go(`#${vBook}&${vEn}`, `!!document.querySelector('#song .song-card .version-chips')`, 'the English song');
-  ok(await ev(`document.querySelector('#song .version-chips').hidden`), 'versions: a song with none shows no Versions row');
+  // a song with no versions: no pill after its title; its Info says so and offers Link versions
+  await go(`#${vBook}&${vEn}`, `!!document.querySelector('#song .song-card .version-pill')`, 'the English song');
+  await sleep(800);
+  ok(await ev(`document.querySelector('#song .version-pill').hidden && !document.querySelector('#song .version-chips')`), 'versions: a song with none shows no pill, and there is no Versions row');
   await click('#song info');
   await until(`/None linked/.test(document.querySelector('#dialog .version-info')?.textContent || '')`, 'the Info versions', 5000);
   ok(true, 'info: a song with no versions says "None linked"');
-  // Link a version: the songs that look like versions are offered first (same CCLI number; same title but for "(short)")
-  await click('#dialog .version-info [onclick^="pickVersions"]');
+  // Link versions: the songs that look like versions are offered first (same CCLI number; same title but for "(short)")
+  await click('#dialog .version-info [onclick^="linkVersionsDialog"]');
   await until(`!!document.querySelector('.task-dialog .version-pick')`, 'the Link versions window', 8000);
+  const titleV = await ev(`document.querySelector('.task-dialog h2').textContent`);
+  ok(titleV === `Linked versions of "${RUN} Lives"`, 'link: the window is called "Linked versions of" the song', titleV);
   const offeredV = await ev(`[...document.querySelectorAll('.task-dialog .version-pick li:not([hidden]) input')].map(i => i.value)`);
   ok(offeredV.length === 2 && offeredV.includes(vEs) && offeredV.includes(vShort), 'link: offers the songs with the same CCLI number and the same title', JSON.stringify(offeredV));
+  ok(await ev(`(() => { const s = document.querySelector('.task-dialog [type="submit"]'); return s.disabled && s.textContent === 'Save'; })()`), 'link: Save is off until a song is ticked');
   await ev(`(() => { const s = document.querySelector('.task-dialog .backup-search'); s.value = ${JSON.stringify(RUN + ' old')}; s.dispatchEvent(new Event('input')); })(), 'ok'`);
   const typedV = await ev(`[...document.querySelectorAll('.task-dialog .version-pick li:not([hidden]) input')].map(i => i.value)`);
   ok(JSON.stringify(typedV) === JSON.stringify([vDup]), 'link: typing part of a title finds that song', JSON.stringify(typedV));
   await ev(`(() => { const s = document.querySelector('.task-dialog .backup-search'); s.value = ''; s.dispatchEvent(new Event('input')); })(), 'ok'`);
   await click(`.task-dialog .version-pick input[value="${vEs}"]`);
   await click(`.task-dialog .version-pick input[value="${vShort}"]`);
+  const labelV = await ev(`document.querySelector('.task-dialog [type="submit"]').textContent`);
+  ok(labelV === 'Save: link 2', 'link: the button says what it will do, "Save: link 2"', labelV);
   await click('.task-dialog [type="submit"]');
-  await until(`/Linked 2 songs/.test(document.querySelector('.task-dialog .task-body')?.textContent || '')`, 'the link', 8000);
+  await until(`/Saved: linked 2 songs/.test(document.querySelector('.task-dialog .task-body')?.textContent || '')`, 'the link', 8000);
   await click('.task-dialog [type="submit"]'); // Close
   let groupsV = await serverGroupsUntil(g => g.length === 1 && Object.keys(g[0].songs).length === 3, 'the group on the server');
   groupsV.forEach(g => made.push(g._id));
   ok(JSON.stringify(Object.values(groupsV[0].songs)) === '["u-alice","u-alice","u-alice"]', 'link: one group record on the server, saying who added each song', JSON.stringify(groupsV[0].songs));
-  await until(`document.querySelectorAll('#dialog .version-info [onclick^="unlinkFromInfo(\\'"]').length === 2`, 'Info to list the versions', 8000);
-  ok(await ev(`!!document.querySelector('#dialog .version-info [onclick="unlinkFromInfo(window.song._id)"]')`), 'info: lists the two versions, each with Unlink, and Unlink this song');
+  // Info: the versions as plain text, one per line, and one Link versions button
+  await until(`/Lives \\(short\\)/.test(document.querySelector('#dialog .version-info')?.textContent || '')`, 'Info to list the versions', 8000);
+  const infoV = await ev(`(() => { const box = document.querySelector('#dialog .version-info');
+    return { text: box.innerText.replace(/[\\u2066-\\u2069]/g, ''), buttons: [...box.querySelectorAll('button')].map(b => b.textContent), links: box.querySelectorAll('a').length }; })()`);
+  ok(infoV.buttons.join() === 'Link versions' && !infoV.links && infoV.text.includes(`English: ${RUN} Lives (short)`) && infoV.text.includes(`Spanish (Español): ${RUN} Vive`),
+    'info: lists the versions as plain text, "Spanish (Español): ...", with one Link versions button', JSON.stringify(infoV));
   await ev(`document.querySelector('#dialog .close-x, #dialog [aria-label="Close"]')?.click(), 'ok'`);
-  // the song shows its versions with their languages; a chip opens that version beside it, and closes it again
-  await until(`document.querySelectorAll('#song .version-chips [data-version]').length === 2`, 'the Versions chips', 8000);
-  const chipsV = await ev(`[...document.querySelectorAll('#song .version-chips [data-version]')].map(c => c.dataset.version + '|' + c.textContent.replace(/[\\u2066-\\u2069]/g, '').trim())`);
-  ok(chipsV[0].startsWith(vShort + '|English') && chipsV[1].startsWith(vEs + '|Spanish (Español)'), 'song: shows its versions with their languages, "Spanish (Español)"', JSON.stringify(chipsV));
+  // a pill after the title, "2 other versions"; it (or the title) opens a menu of the versions
+  await until(`document.querySelector('#song .version-pill:not([hidden])')?.textContent.trim() === '2 other versions'`, 'the versions pill', 8000);
+  ok(true, 'song: a pill after the title says "2 other versions"');
   await iconOk('a song with versions');
-  await click(`#song .version-chips [data-version="${vEs}"]`);
+  await click('#song .version-pill');
+  await until(`!!document.getElementById('version_menu')`, 'the versions menu', 5000);
+  const menuV = await ev(`({ rows: [...document.querySelectorAll('#version_menu [data-version]')].map(b => b.dataset.version + '|' + b.textContent.replace(/[\\u2066-\\u2069]/g, '').trim()),
+    expanded: document.querySelector('#song .version-pill').getAttribute('aria-expanded'), focus: document.activeElement?.dataset.version })`);
+  ok(menuV.rows[0] === `${vShort}|English · ${RUN} Lives (short)` && menuV.rows[1] === `${vEs}|Spanish (Español) · ${RUN} Vive` && menuV.expanded === 'true' && menuV.focus === vShort,
+    'menu: the pill opens a menu of the versions with their languages, the first one ready for the keyboard', JSON.stringify(menuV));
+  await key('ArrowDown', 'ArrowDown', 40);
+  ok(await ev(`document.activeElement?.dataset.version === '${vEs}'`), 'menu: the down arrow moves to the next version');
+  await key('Escape', 'Escape', 27);
+  ok(await ev(`!document.getElementById('version_menu') && document.activeElement === document.querySelector('#song .version-pill')`), 'menu: Escape closes it, back on the pill');
+  // the title opens it too; picking a version opens it beside the song
+  await click('#song .song-card:not(.version-card) .title_link');
+  await until(`!!document.getElementById('version_menu')`, 'the menu from the title', 5000);
+  ok(true, 'menu: the title opens it too');
+  await click(`#version_menu [data-version="${vEs}"]`);
   await until(`!!document.querySelector('#song .song-card.version-card[data-id="${vEs}"]')`, 'the Spanish version beside the song', 8000);
   const besideV = await ev(`(() => { const cards = [...document.querySelectorAll('#song .content > .song-card')];
-    return { cards: cards.map(c => c.dataset.id), song: window.song._id, sel: document.querySelector('#song .version-chips [data-version="${vEs}"]').classList.contains('sel'),
+    return { cards: cards.map(c => c.dataset.id), song: window.song._id, menu: !!document.getElementById('version_menu'),
       words: cards[1]?.querySelector('line')?.textContent, keyRows: document.querySelectorAll('#keyToggle').length }; })()`);
-  ok(JSON.stringify(besideV.cards) === JSON.stringify([vEn, vEs]) && besideV.song === vEn && besideV.sel && besideV.words === 'Cristo vive, Él resucitó' && besideV.keyRows === 1,
-    'side by side: the Spanish version opens beside the song, whole, and the open song stays the same', JSON.stringify(besideV));
-  await click(`#song .version-chips [data-version="${vEs}"]`);
-  ok(await ev(`!document.querySelector('#song .version-card') && !document.querySelector('#song .version-chips .sel')`), 'side by side: the chip closes it again');
-  await click(`#song .version-chips [data-version="${vShort}"]`);
+  ok(JSON.stringify(besideV.cards) === JSON.stringify([vEn, vEs]) && besideV.song === vEn && !besideV.menu && besideV.words === 'Cristo vive, Él resucitó' && besideV.keyRows === 1,
+    'side by side: picking the Spanish version opens it beside the song, whole, and the open song stays the same', JSON.stringify(besideV));
+  // the open one is ticked in the menu, and picking it again closes it
+  await click('#song .version-pill');
+  await until(`!!document.getElementById('version_menu')`, 'the menu again', 5000);
+  const tickedV = await ev(`[...document.querySelectorAll('#version_menu [aria-checked="true"]')].map(b => b.dataset.version + '|' + !!b.querySelector('svg.icon[data-icon="check"]'))`);
+  ok(JSON.stringify(tickedV) === JSON.stringify([`${vEs}|true`]), 'menu: the open version is ticked', JSON.stringify(tickedV));
+  await iconOk('the versions menu');
+  await click(`#version_menu [data-version="${vEs}"]`);
+  ok(await ev(`!document.querySelector('#song .version-card') && !document.getElementById('version_menu')`), 'side by side: picking it again closes it');
+  // a click outside closes the menu; a version's × closes it
+  await click('#song .version-pill');
+  await until(`!!document.getElementById('version_menu')`, 'the menu once more', 5000);
+  await click('#song .song-card:not(.version-card) line');
+  ok(await ev(`!document.getElementById('version_menu')`), 'menu: a click outside closes it');
+  await click('#song .version-pill');
+  await until(`!!document.getElementById('version_menu')`, 'the menu for the short one', 5000);
+  await click(`#version_menu [data-version="${vShort}"]`);
   await until(`!!document.querySelector('#song .version-card')`, 'the short version beside the song', 8000);
   await click('#song .version-card .close-x');
   ok(await ev(`!document.querySelector('#song .version-card')`), 'side by side: its × closes it');
   // the editor doesn't show them, so nothing of them can end up in the song
   await go(`#${vBook}&${vEn}?edit`, `!!document.querySelector('#song .edit_buttons')`, 'the song editor');
-  ok(await ev(`!document.querySelector('#song .version-chips') || !document.querySelector('#song .version-chips').getClientRects().length`), 'editor: the Versions row is not in the song editor');
+  ok(await ev(`!document.querySelector('#song .version-pill')?.getClientRects().length && !document.querySelector('#song .version-card')`), 'editor: no versions pill in the song editor');
   await click('#song .edit_buttons [data-cancel]');
   await until(`!location.hash.includes('?edit') && !window.songEditing`, 'leaving the editor', 8000);
-  await go(`#${vBook}&${vEn}`, `document.querySelectorAll('#song .version-chips [data-version]').length === 2`, 'the English song again');
-  // Unlink from Info: the short one leaves the group
+  await go(`#${vBook}&${vEn}`, `document.querySelector('#song .version-pill:not([hidden])')?.textContent.trim() === '2 other versions'`, 'the English song again');
+  // a member who didn't add these songs can't untick them, or tick one of them (the save rule, as the app shows it)
   await click('#song info');
-  await until(`document.querySelectorAll('#dialog .version-info [onclick^="unlinkFromInfo(\\'"]').length === 2`, 'Info versions', 8000);
-  await click(`#dialog .version-info [onclick="unlinkFromInfo('${vShort}')"]`);
+  await until(`!!document.querySelector('#dialog .version-info [onclick^="linkVersionsDialog"]')`, 'Link versions in Info', 8000);
+  await ev(`(window.__realUser = window.user, window.__realChurch = window.church, window.user = { ...window.user, _id: 'u-someone-else' },
+    window.church = { ...window.church, editor: false, admin: false }), 'ok'`);
+  let memberV;
+  try {
+    await click('#dialog .version-info [onclick^="linkVersionsDialog"]');
+    await until(`!!document.querySelector('.task-dialog .version-pick li[data-linked]')`, 'the Link versions window, as a member', 8000);
+    memberV = await ev(`({ linked: [...document.querySelectorAll('.task-dialog .version-pick li[data-linked]')].map(li => li.querySelector('input').disabled + '|' + /An editor has to unlink this one/.test(li.textContent)),
+      offered: [...document.querySelectorAll('.task-dialog .version-pick li:not([data-linked]):not([hidden]) input')].map(i => i.disabled) })`);
+    await click('.task-dialog [data-cancel]');
+  } finally {
+    await ev(`(window.user = window.__realUser, window.church = window.__realChurch), 'ok'`);
+  }
+  ok(memberV.linked.length === 3 && memberV.linked.every(x => x === 'true|true') && memberV.offered.every(Boolean),
+    "link: a member can't untick or tick songs someone else added", JSON.stringify(memberV));
+  // Link versions: the linked songs come first, ticked, this one at the top; untick the short one to unlink it
+  await click('#dialog .version-info [onclick^="linkVersionsDialog"]');
+  await until(`!!document.querySelector('.task-dialog .version-pick li[data-linked]')`, 'the Link versions window again', 8000);
+  const linkedV = await ev(`[...document.querySelectorAll('.task-dialog .version-pick li[data-linked] input')].map(i => i.value + '|' + i.checked + '|' + i.disabled)`);
+  ok(linkedV.length === 3 && linkedV[0] === `${vEn}|true|false` && linkedV.every(x => x.endsWith('|true|false')), 'link: the linked songs come first, ticked, this song at the top', JSON.stringify(linkedV));
+  await click(`.task-dialog .version-pick input[value="${vShort}"]`);
+  const unlinkLabelV = await ev(`document.querySelector('.task-dialog [type="submit"]').textContent`);
+  ok(unlinkLabelV === 'Save: unlink 1', 'unlink: the button says "Save: unlink 1"', unlinkLabelV);
+  await click('.task-dialog [type="submit"]');
+  await until(`/Saved: unlinked one song/.test(document.querySelector('.task-dialog .task-body')?.textContent || '')`, 'the unlink', 8000);
+  await click('.task-dialog [type="submit"]'); // Close
   groupsV = await serverGroupsUntil(g => g.length === 1 && Object.keys(g[0].songs).length === 2 && !(vShort in g[0].songs), 'the unlink on the server');
-  ok(true, 'unlink: the song leaves the group on the server');
-  await until(`document.querySelectorAll('#song .version-chips [data-version]').length === 1`, 'one chip left', 8000);
-  ok(true, 'unlink: the song shows one version left');
+  ok(true, 'unlink: unticking the song takes it out of the group on the server');
+  await until(`document.querySelector('#song .version-pill')?.textContent.trim() === '1 other version'`, 'the pill after the unlink', 8000);
+  ok(true, 'unlink: the pill says "1 other version"');
   await ev(`document.querySelector('#dialog .close-x, #dialog [aria-label="Close"]')?.click(), 'ok'`);
   // two devices offline each linked the song: it says so, and Join them makes one group
   const twin = `v-${tv}-twin`;
   const twinPut = await req('PUT', `${DB}/${twin}`, { _id: twin, songs: { [vEn]: 'u-alice', [vDup]: 'u-alice' }, added: tv, addedBy: 'u-alice', edited: tv, editedBy: 'u-alice' });
   if (twinPut.status === 201) made.push(twin);
-  await until(`!!document.querySelector('#song .version-overlap [onclick^="joinVersionGroups"]')`, 'the two-groups note', 15000);
+  await until(`!!document.querySelector('#song .version-overlap:not([hidden]) [onclick^="joinVersionGroups"]')`, 'the two-groups note', 15000);
   ok(true, 'two groups: a song in two groups says so and offers to join them');
   await click('#song .version-overlap [onclick^="joinVersionGroups"]');
   groupsV = await serverGroupsUntil(g => g.length === 1 && Object.keys(g[0].songs).length === 3, 'one joined group on the server');
   ok([vEs, vEn, vDup].every(id => id in groupsV[0].songs), 'two groups: Join them leaves one group with every song, and deletes the other', JSON.stringify(groupsV.map(g => g._id)));
-  await until(`document.querySelectorAll('#song .version-chips [data-version]').length === 2 && !document.querySelector('#song .version-overlap')`, 'the chips after the join', 8000);
+  await until(`document.querySelector('#song .version-pill')?.textContent.trim() === '2 other versions' && document.querySelector('#song .version-overlap').hidden`, 'the pill after the join', 8000);
   // Find versions (editors): Song tools in the menu under your name opens its card on the home page; then each
   // suggestion on its own; Link the one with the short song
   await click('#username_legend');

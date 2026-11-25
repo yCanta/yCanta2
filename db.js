@@ -3866,7 +3866,7 @@ function fillVersionMenu() {
   const open = new Set([...document.querySelectorAll('#song .version-card')].map(el => el.dataset.id));
   versionMenu.menu.innerHTML = versionMenu.pill.versions.map(doc => `<button type="button" role="menuitemcheckbox" tabindex="-1"
       aria-checked="${open.has(doc._id)}" data-version="${escapeHtml(doc._id)}" title="${open.has(doc._id) ? 'Close this version' : 'Show this version beside the song'}">
-      <span class="am-icon" aria-hidden="true">${open.has(doc._id) ? '✓' : ''}</span>${escapeHtml(songLangLabel(doc))} · ${escapeHtml(doc.title)}</button>`).join('');
+      <span class="am-icon" aria-hidden="true">${open.has(doc._id) ? icon('check') : ''}</span>${escapeHtml(songLangLabel(doc))} · ${escapeHtml(doc.title)}</button>`).join('');
 }
 // Just under the pill, kept on the screen (it's fixed to the screen, so the song's header doesn't cut it off)
 function placeVersionMenu() {
@@ -3912,7 +3912,7 @@ function closeVersionBeside(card) {
   fillVersionMenu();
 }
 
-// The song's Info: its versions as text, one per line, and Change versions for those who may
+// The song's Info: its versions as text, one per line, and Link versions for those who may
 async function fillVersionInfo() {
   const box = document.querySelector('#dialog .version-info');
   const song = window.song;
@@ -3930,7 +3930,7 @@ async function fillVersionInfo() {
   const mayChange = !song._deleted && (window.church?.editor || canEdit(song) || groups.length > 0);
   box.innerHTML = `<br><b>Versions:</b><br>${rows.length ? rows.join('<br>') : 'None linked'}`
     + (groups.length > 1 ? `<br><small class="version-overlap">${overlapNote(song._id, groups)}</small>` : '')
-    + (mayChange ? `<br><button type="button" class="btn btn-tiny" onclick="changeVersions()">Change versions</button>` : '');
+    + (mayChange ? `<br><button type="button" class="btn btn-tiny" onclick="linkVersionsDialog()">Link versions</button>` : '');
 }
 
 const cclisNumber = doc => (doc?.cclis && !isNaN(doc.cclis) && Number(doc.cclis) > 0 ? String(Number(doc.cclis)) : '');
@@ -3938,13 +3938,13 @@ async function allLiveSongs() {
   return (await db.allDocs({ startkey: 's-', endkey: 's-￰', include_docs: true })).rows.map(row => row.doc).filter(doc => doc && !doc._deleted);
 }
 
-// Change versions: one list for linking and unlinking. The songs already linked come first, ticked; unticking
+// Link versions: one list for linking and unlinking. The songs already linked come first, ticked; unticking
 // one takes it out (this song too). Then songs that look like versions of it (the same title or CCLI number),
 // and typing finds any song by its title. A song this person may not change is shown but can't be ticked.
-async function changeVersions() {
+async function linkVersionsDialog() {
   const song = window.song;
   if (!song?._id) return;
-  const dialog = new TaskDialog(`Versions of "${song.title}"`);
+  const dialog = new TaskDialog(`Linked versions of "${song.title}"`);
   dialog.working('Reading the songs…');
   let songs;
   try {
@@ -4116,7 +4116,7 @@ async function findVersions() {
   const fresh = found.suggestions.filter(suggestion => !skipped.has(suggestion.key));
   const skippedBefore = found.suggestions.length - fresh.length;
   const aloneNote = found.alone.length
-    ? `\n\n${found.alone.length === 1 ? 'A song' : `${found.alone.length} songs`} in the Duplicate category matched no other song: ${found.alone.map(song => `"${song.title}"`).join(', ')}. To link one, open it, then its Info, then Link a version.` : '';
+    ? `\n\n${found.alone.length === 1 ? 'A song' : `${found.alone.length} songs`} in the Duplicate category matched no other song: ${found.alone.map(song => `"${song.title}"`).join(', ')}. To link one, open it, then its Info, then Link versions.` : '';
   if (!found.suggestions.length) {
     await dialog.finish(`No songs look like versions of each other that aren't linked yet.${aloneNote}`);
     return;
