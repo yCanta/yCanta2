@@ -2565,7 +2565,8 @@ async function backupDifferences(backup) {
 
 function backupItemKind(id) {
   return id.startsWith('sb-') ? 'songbook' : id.startsWith('s-') ? 'song' : id.startsWith('u-') ? 'profile'
-    : id.startsWith('cfg-') ? 'export setup' : id.startsWith('c_') ? 'comments' : id === 'categories' ? 'category list' : 'other';
+    : id.startsWith('cfg-') ? 'export setup' : id.startsWith('c_') ? 'comments' : id.startsWith('v-') ? 'versions of a song'
+    : id === 'categories' ? 'category list' : 'other';
 }
 
 // Put one doc back as it was in the backup, as a new save, so what it replaces is kept in the history

@@ -2694,7 +2694,7 @@ window.addEventListener('resize', () =>
   document.querySelectorAll('.filter-panel.open:not(.sheet)').forEach(panel => toggleSongFilterPanel(panel.id.replace('filter_panel_', ''), false)));
 // The chips under the search box: × takes one away, "Clear all" takes them all
 document.addEventListener('click', e => {
-  const row = e.target.closest('.filter-chips');
+  const row = e.target.closest('.filter-chips[data-list]'); // not a song's Versions row (#90), which looks the same
   if (!row) return;
   const name = row.dataset.list;
   const chip = e.target.closest('.filter-chip');
