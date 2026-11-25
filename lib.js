@@ -738,7 +738,7 @@ function toggleAccountMenu(open, fromKeyboard = false) {
   if (show && fromKeyboard) accountMenuItems()[0]?.focus({ preventScroll: true }); // a mouse or a tap leaves focus be
 }
 const accountMenuItems = () => [...document.querySelectorAll('#account_menu button')].filter(b => b.offsetParent);
-// The home page's cards (My Profile, Categories, Settings, Admin, Trash) open one at a time, from the menu
+// The home page's cards (My Profile, Categories, Song tools, Settings, Admin, Trash) open one at a time, from the menu
 // under your name; a closed one isn't shown at all (style.css #settings), so opening one closes the others
 // On a phone (the one-column layout, under 40rem wide like style.css's phone rules) Recently Updated Songs
 // folds up while one is open, out of its way, and opens again when it closes (unless you had folded it
@@ -792,9 +792,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (what === 'help') openHelp();
     else if (what === 'logout') okToDropCategoryEdits().then(ok => ok && dbLogout());
     else if (what === 'install') showInstallSteps();
-    else if (what === 'findVersions') findVersions(); // #90, editors
-    else if (what === 'findSpanish') findSpanishSongs(); // #90, editors
-    else openHomeCard(what);
+    else openHomeCard(what); // Song tools (#90, editors) is a card too: Find versions, Find Spanish songs
   });
   document.getElementById('username_legend').addEventListener('keydown', e => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleAccountMenu(undefined, true); }

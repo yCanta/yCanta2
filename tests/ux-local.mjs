@@ -554,10 +554,15 @@ try {
   groupsV = await serverGroupsUntil(g => g.length === 1 && Object.keys(g[0].songs).length === 3, 'one joined group on the server');
   ok([vEs, vEn, vDup].every(id => id in groupsV[0].songs), 'two groups: Join them leaves one group with every song, and deletes the other', JSON.stringify(groupsV.map(g => g._id)));
   await until(`document.querySelectorAll('#song .version-chips [data-version]').length === 2 && !document.querySelector('#song .version-overlap')`, 'the chips after the join', 8000);
-  // Find versions (editors): the menu item, then each suggestion on its own; Link the one with the short song
+  // Find versions (editors): Song tools in the menu under your name opens its card on the home page; then each
+  // suggestion on its own; Link the one with the short song
   await click('#username_legend');
-  ok(await ev(`!!document.querySelector('#account_menu [data-open="findVersions"]')?.getClientRects().length`), 'find versions: in the menu under your name, for an editor');
-  await click('#account_menu [data-open="findVersions"]');
+  ok(await ev(`!!document.querySelector('#account_menu [data-open="songTools"]')?.getClientRects().length && !document.querySelector('#account_menu [data-open="findVersions"]')`),
+    'song tools: one item in the menu under your name, for an editor');
+  await click('#account_menu [data-open="songTools"]');
+  await until(`location.hash === '#' && !document.getElementById('songTools').classList.contains('closed')`, 'the Song tools card', 8000);
+  await sleep(500);
+  await click('#songTools [onclick="findVersions()"]');
   await until(`/Duplicate category/.test(document.querySelector('.task-dialog .task-body')?.textContent || '')`, 'the Find versions window', 10000);
   await click('.task-dialog [type="submit"]'); // Start
   let foundShort = false;
@@ -613,15 +618,18 @@ try {
   ok(offeredEs.includes(esClear) && offeredEs.includes(esMixed) && !offeredEs.includes(esEnglish) && !offeredEs.includes(esDone),
     'spanish: offers the Spanish and the part Spanish songs, not the English one or one already tagged Spanish', JSON.stringify(offeredEs.filter(i => i.startsWith(`s-${ts}-`))));
   ok(!['s-eddie-1', 's-vera-1', 's-vic-1'].some(i => offeredEs.includes(i)), 'spanish: the seeded "la la la" songs are not offered');
-  // editors only: the menu item, and the helper itself
+  // editors only: Song tools (the menu item and its card), and the helper itself
   await click('#username_legend');
-  ok(await ev(`!!document.querySelector('#account_menu [data-open="findSpanish"]')?.getClientRects().length`), 'find spanish: in the menu under your name, for an editor');
+  await click('#account_menu [data-open="songTools"]');
+  await until(`location.hash === '#' && !document.getElementById('songTools').classList.contains('closed')`, 'the Song tools card', 8000);
+  await sleep(500);
+  ok(await ev(`!!document.querySelector('#songTools [onclick="findSpanishSongs()"]')?.getClientRects().length`), 'song tools: the card has Find Spanish songs, for an editor');
   const memberEs = await ev(`(async () => { const html = document.documentElement, was = window.church; html.classList.remove('churchEditor');
-    const hidden = !document.querySelector('#account_menu [data-open="findSpanish"]').getClientRects().length;
-    window.church = { ...was, editor: false }; await findSpanishSongs(); const opened = !!document.querySelector('.task-dialog');
+    const hidden = !document.querySelector('#account_menu [data-open="songTools"]').getClientRects().length && !document.getElementById('songTools').getClientRects().length;
+    window.church = { ...was, editor: false }; await findSpanishSongs(); await findVersions(); const opened = !!document.querySelector('.task-dialog');
     window.church = was; html.classList.add('churchEditor'); return { hidden, opened }; })()`);
-  ok(memberEs.hidden && !memberEs.opened, 'find spanish: hidden for a member, and opens nothing for one', JSON.stringify(memberEs));
-  await click('#account_menu [data-open="findSpanish"]');
+  ok(memberEs.hidden && !memberEs.opened, 'song tools: the menu item and the card are hidden for a member, and the helpers open nothing for one', JSON.stringify(memberEs));
+  await click('#songTools [onclick="findSpanishSongs()"]');
   await until(`!!document.querySelector('.task-dialog [data-tag-all]')`, 'the Find Spanish songs window', 10000);
   ok(/Nothing is saved unless you press Tag/.test(await ev(`document.querySelector('.task-dialog .task-body').textContent`)), 'find spanish: says nothing is saved without Tag');
   // Tag all: one confirm with the count; only this run's clear song stays ticked

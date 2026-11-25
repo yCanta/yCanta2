@@ -13,7 +13,8 @@ const HELP_SECTIONS = [
     ['Without internet', `<p>Once you've signed in with "Keep me logged in", yCanta works with no internet. Changes you make
       wait on this device and go to the server when you're back online. A yellow strip at the bottom shows when you're offline.</p>`],
     ['Your menu', `<p>Your name at the top right opens a menu: this Help, My Profile, Settings (light or dark mode, text
-      size, importing songs), Categories, the Trash, and Logout. Each one opens its card on the home page.</p>`],
+      size, importing songs), Categories, the Trash, and Logout. Each one opens its card on the home page. Editors also
+      see Song tools: Find versions, and Find Spanish songs to tag the songs in Spanish.</p>`],
   ]},
   { id: 'songs', title: 'Songs', items: [
     ['Typing a song', `<p>Open a song and choose Edit (in its menu button). Put chords on their own line, above the words they
