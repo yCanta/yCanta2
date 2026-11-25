@@ -508,8 +508,8 @@ try {
   let groupsV = await serverGroupsUntil(g => g.length === 1 && Object.keys(g[0].songs).length === 3, 'the group on the server');
   groupsV.forEach(g => made.push(g._id));
   ok(JSON.stringify(Object.values(groupsV[0].songs)) === '["u-alice","u-alice","u-alice"]', 'link: one group record on the server, saying who added each song', JSON.stringify(groupsV[0].songs));
-  await until(`document.querySelectorAll('#dialog .version-info [onclick^="unlinkFromInfo"]').length === 2`, 'Info to list the versions', 8000);
-  ok(true, 'info: lists the two versions, each with Unlink');
+  await until(`document.querySelectorAll('#dialog .version-info [onclick^="unlinkFromInfo(\\'"]').length === 2`, 'Info to list the versions', 8000);
+  ok(await ev(`!!document.querySelector('#dialog .version-info [onclick="unlinkFromInfo(window.song._id)"]')`), 'info: lists the two versions, each with Unlink, and Unlink this song');
   await ev(`document.querySelector('#dialog .close-x, #dialog [aria-label="Close"]')?.click(), 'ok'`);
   // the song shows its versions with their languages; a chip opens that version beside it, and closes it again
   await until(`document.querySelectorAll('#song .version-chips [data-version]').length === 2`, 'the Versions chips', 8000);
@@ -537,7 +537,7 @@ try {
   await go(`#${vBook}&${vEn}`, `document.querySelectorAll('#song .version-chips [data-version]').length === 2`, 'the English song again');
   // Unlink from Info: the short one leaves the group
   await click('#song info');
-  await until(`document.querySelectorAll('#dialog .version-info [onclick^="unlinkFromInfo"]').length === 2`, 'Info versions', 8000);
+  await until(`document.querySelectorAll('#dialog .version-info [onclick^="unlinkFromInfo(\\'"]').length === 2`, 'Info versions', 8000);
   await click(`#dialog .version-info [onclick="unlinkFromInfo('${vShort}')"]`);
   groupsV = await serverGroupsUntil(g => g.length === 1 && Object.keys(g[0].songs).length === 2 && !(vShort in g[0].songs), 'the unlink on the server');
   ok(true, 'unlink: the song leaves the group on the server');
