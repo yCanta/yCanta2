@@ -580,6 +580,59 @@ try {
   await ev(`document.querySelector('.task-dialog [type="submit"]')?.click(), 'ok'`); // Close
   await sleep(400);
 
+  // ---- two languages in a presentation (#90): the Spanish song with its three English versions ----
+  await go(`#${vBook}`, `window.songbook?._id === ${JSON.stringify(vBook)}`, 'the versions book');
+  await ev(`location.hash = '#${vBook}?present', 'ok'`);
+  await until(`document.getElementById('presentation')?.contentWindow?.window?.songbook?.songs?.length === 4`, 'the versions presentation', 15000);
+  const PF = `document.getElementById('presentation').contentWindow`;
+  const presKey = k => ev(`${PF}.document.dispatchEvent(new ${PF}.KeyboardEvent('keydown', { key: ${JSON.stringify(k)}, bubbles: true })), 'ok'`);
+  const sent90 = await ev(`(() => { const s = ${PF}.window.songbook.songs.find(x => x.id === ${JSON.stringify(vEs)}); return { langs: s.langs, versions: (s.versions || []).map(v => v.lang) }; })()`);
+  ok(sent90.langs.join() === 'es' && sent90.versions.join() === 'en,en,en', 'two languages: the presentation gets the Spanish song with its three English versions', JSON.stringify(sent90));
+  await presKey(' '); // the first song: the Spanish one
+  await sleep(300);
+  const slide90 = () => ev(`(() => { const s = ${PF}.document.getElementById('cur_slide'), b = s.querySelector('.second-lang');
+    return { id: ${PF}.current_song.id, lang: b ? b.lang : '', second: b ? b.textContent : '', fits: !${PF}.overflows(s), size: parseFloat(getComputedStyle(s.querySelector('.content')).fontSize) }; })()`);
+  const alone90 = await slide90();
+  await presKey('v');
+  let two90 = await slide90();
+  ok(alone90.id === vEs && !alone90.second && two90.lang === 'en' && /Christ is living/.test(two90.second) && two90.fits,
+    'v: the English version under the Spanish part, and the slide still fits', JSON.stringify([alone90, two90]));
+  await ev(`${PF}.toggleHelp(), 'ok'`);
+  await sleep(300);
+  const rows90 = await ev(`(() => { const box = ${PF}.document.getElementById('langRows');
+    return { langs: [...box.querySelectorAll('input[name="secondLang"]')].map(i => i.value + (i.checked ? '*' : '')), versions: box.querySelectorAll('input[name="secondPick"]').length,
+      key: [...${PF}.document.querySelectorAll('#helpKeys kbd')].some(k => k.textContent === 'v') }; })()`);
+  ok(rows90.langs.join() === ',en*,es','panel: a Second language row (None, English, Spanish), English picked', JSON.stringify(rows90));
+  ok(rows90.versions === 3 && rows90.key, 'panel: the three English versions to pick from, and v in the keys list', JSON.stringify(rows90));
+  await ev(`${PF}.document.querySelectorAll('#langRows input[name="secondPick"]')[1].click(), ${PF}.hideHelp(), 'ok'`);
+  const picked90 = await slide90();
+  ok(/Hallelujah/.test(picked90.second) && picked90.fits, 'panel: picking another English version shows that one', JSON.stringify(picked90));
+  const cycle90 = [];
+  for (let i = 0; i < 3; i++) { await presKey('v'); cycle90.push((await slide90()).second ? 'two' : 'one'); }
+  ok(cycle90.join() === 'two,one,two', 'v goes through the versions, then none, then back to the first', JSON.stringify(cycle90));
+  await ev(`${PF}.setSecondLang(''), 'ok'`);
+  // the words fit again when the window changes size (once, a moment later), as on a phone that's turned
+  await ev(`(() => { const f = ${PF}; f.fitCount = 0; const was = f.scaleText; f.scaleText = function () { f.fitCount++; return was.apply(this, arguments); }; return 'ok'; })()`);
+  await send('Emulation.setDeviceMetricsOverride', { width: 420, height: 800, deviceScaleFactor: 1, mobile: false });
+  await sleep(900);
+  const resized90 = await ev(`({ fits: !${PF}.overflows(${PF}.document.getElementById('cur_slide')), count: ${PF}.fitCount, width: ${PF}.document.getElementById('cur_slide').clientWidth })`);
+  await send('Emulation.clearDeviceMetricsOverride');
+  await sleep(900);
+  const back90 = await ev(`({ fits: !${PF}.overflows(${PF}.document.getElementById('cur_slide')), count: ${PF}.fitCount })`);
+  ok(resized90.width === 420 && resized90.fits && resized90.count === 1 && back90.fits && back90.count === 2, 'resize: the slide is fitted again, once each time', JSON.stringify([resized90, back90]));
+  await go(`#${vBook}`, `!document.getElementById('presentation')`, 'leaving the presentation');
+  // right to left on a slide: an Arabic title stays on the right, and long Arabic lines fit inside the slide
+  await ev(`location.hash = '#${langBook}?present', 'ok'`);
+  await until(`document.getElementById('presentation')?.contentWindow?.window?.songbook?.songs?.length === 4`, 'the languages presentation', 15000);
+  const arTitle = await ev(`${PF}.titleHtml('ترنيمة')`);
+  ok(arTitle.includes('dir="rtl"'), 'an Arabic title reads right to left, like the lines', arTitle);
+  await presKey(' ');
+  for (let i = 0; i < 5 && (await ev(`${PF}.current_song.id`)) !== arId; i++) await presKey('PageDown');
+  const arFit = await ev(`(() => { const d = ${PF}.document, s = d.getElementById('cur_slide'), box = s.getBoundingClientRect();
+    return [...s.querySelectorAll('line[dir="rtl"]')].map(l => { const r = d.createRange(); r.selectNodeContents(l); const b = r.getBoundingClientRect(); return b.left >= box.left - 1 && b.right <= box.right + 1; }); })()`);
+  ok(arFit.length === 1 && arFit.every(Boolean), "the Arabic line fits inside the slide (it used to run off the left edge)", JSON.stringify(arFit));
+  await go(`#${langBook}`, `!document.getElementById('presentation')`, 'leaving the presentation');
+
   // ---- a phone: the swipe tip, once; the + menu turns into × ----
   await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true, screenWidth: 390, screenHeight: 844 });
   await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
