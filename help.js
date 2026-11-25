@@ -53,6 +53,9 @@ Amazing grace, how sweet the sound</pre>
     ['Views', `<p><b>w</b> shows the whole song, <b>g</b> a grid of every song's parts (click a part to show it), and
       <b>t</b> a black background. The thin bar at the bottom is the song, one piece per part; the bright piece is on
       screen.</p>`],
+    ['Two languages', `<p>When a song has versions in other languages (linked in its Info), <b>v</b> or "Second language" in
+      Help & Settings shows each part in a second language under it, smaller. Parts match by name: Verse 2 with Verse 2.
+      People following on a phone can pick their own language there.</p>`],
     ['CCLI', `<p>When a presentation ends, a note lists what was on screen long enough to count for your CCLI report. Open it
       to copy the list.</p>`],
   ]},
@@ -70,7 +73,7 @@ Amazing grace, how sweet the sound</pre>
     ['Presenting', `<p><kbd>Space</kbd> the part people sing next · <kbd>→</kbd> <kbd>←</kbd> next or back a part ·
       <kbd>PgDn</kbd> <kbd>PgUp</kbd> next or previous song · <kbd>1</kbd>–<kbd>9</kbd> that verse · <kbd>c</kbd> the
       chorus · <kbd>b</kbd> <kbd>e</kbd> the bridge or the ending · <kbd>s</kbd> search (or a Bible verse) ·
-      <kbd>w</kbd> whole song · <kbd>g</kbd> grid · <kbd>C</kbd> chords · <kbd>t</kbd> black background ·
+      <kbd>w</kbd> whole song · <kbd>g</kbd> grid · <kbd>v</kbd> a second language · <kbd>C</kbd> chords · <kbd>t</kbd> black background ·
       <kbd>f</kbd> white text · <kbd>h</kbd> Help & Settings · <kbd>Esc</kbd> twice to leave. Help & Settings lists them all.</p>`],
     ['On a phone', `<p>Swipe sideways on a song for the next or previous one. Pull a column down to close it. Swipe in from
       the left edge to see the column behind. Swipe a side panel ("Add songs", Categories, Preview) to open or close it, or

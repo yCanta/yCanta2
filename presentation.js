@@ -71,6 +71,8 @@ presentation_key_map = {
                   "While sharing: show or hide the QR code on the screens (#51)" ],
   'g'         : [ function() {if(! isSearching()) toggleGrid();},
                   "Show a grid of the song's parts, or one part at a time (#51)" ],
+  'v'         : [ function() {if(! isSearching()) cycleLanguage();},
+                  "A second language under each part (a follower: its own language) (#90)" ],
   //'p'         : [ togglePresentation, "Enter/exit fullscreen presentation mode"   ],
   'F11'       : [ function(){}, "Enter/exit fullscreen presentation mode"   ],
   'Escape'    : [ escapeAction      , "Close search or help; twice to leave the presentation"   ],
@@ -210,6 +212,10 @@ document.addEventListener('DOMContentLoaded', function() {
 function presentableSongs(songs) {
   return songs.filter(song => {
     song.doc.content = song.doc.content.filter(chunk => chunk[0].type !== 'comment');
+    if (Array.isArray(song.versions)) { // its versions in other languages (#90), the same way
+      song.versions.forEach(version => { version.doc.content = version.doc.content.filter(chunk => chunk[0].type !== 'comment'); });
+      song.versions = song.versions.filter(version => version.doc.content.length);
+    }
     return song.doc.content.length != 0;
   });
 }
@@ -223,6 +229,7 @@ function updateSongbook(json) {
   const songs = presentableItems(data.songs);
   if (!window.songbook || !songs.length) return;
   window.songbook.title = data.title;
+  window.songbook.langNames = data.langNames; // (#90)
   window.document.title = "yCanta2: Presenting " + data.title;
 
   const titleSlide = document.getElementById('pres_title');
@@ -422,23 +429,35 @@ function fittedSize(item, lines, first, last) {
   return parseFloat(getComputedStyle(content.querySelector('line')).fontSize) || 0;
 }
 
-// The screen changed size (full screen, another window): the passages are packed again for it, staying on
-// the verse that was first on screen
-window.addEventListener('resize', () => {
+// The screen changed size (full screen, another window, a phone turned): the passages are packed again for
+// it, staying on the verse that was first on screen, and the slide on screen is fitted again. Once, a moment
+// after the size settles (a turn sends several resizes, and orientationchange too), and only when the slide's
+// box really changed since it was last fitted: a slide just drawn for the new size isn't fitted twice.
+function refitForSize() {
   clearTimeout(window.repackTimer);
   window.repackTimer = setTimeout(() => {
     const size = window.innerWidth + 'x' + window.innerHeight;
+    let shown = false;
     (window.songbook && window.songbook.songs || []).filter(song => song.passage && song.packedFor !== size).forEach(item => {
       const firstLine = item === current_song ? item.doc.content[item.chunk_index][1][0] : null;
       packPassage(item);
       if (firstLine) {
         const verseNumber = firstLine.replace(/<vn>(?:\d+:)?(\d+)<\/vn>.*/, '$1');
         item.chunk_index = Math.max(0, item.doc.content.findIndex(chunk => chunk[1].some(line => line.replace(/<vn>(?:\d+:)?(\d+)<\/vn>.*/, '$1') === verseNumber)));
-        if (inPresentation() && !isSearching()) showChunk('passage');
+        if (inPresentation() && !isSearching()) { showChunk('passage'); shown = true; }
       }
     });
-  }, 300);
-});
+    if (!shown && inPresentation() && slideBoxSize() !== fittedFor) scaleText();
+  }, 250);
+}
+window.addEventListener('resize', refitForSize);
+window.addEventListener('orientationchange', refitForSize);
+// The size of the box the slide's words are fitted to, and the size they were last fitted for
+let fittedFor = '';
+function slideBoxSize() {
+  const slide = document.getElementById('cur_slide');
+  return slide ? slide.clientWidth + 'x' + slide.clientHeight : '';
+}
 
 // r: the song on screen's own scripture references, as a passage
 function showSongRefs() {
@@ -685,7 +704,7 @@ function startMirror() {
     if (e.target.closest && e.target.closest('#help') && (e.key == ' ' || e.key == 'Enter')) return;
     if (e.key in mirror_key_map) mirror_key_map[e.key]();
   });
-  window.addEventListener('resize', scaleText); // moved to the projector or made full screen: fit the slide again
+  // moved to the projector or made full screen: the slide is fitted again (refitForSize, as on every screen)
   window.addEventListener('pagehide', () => { try { window.opener.setTimeout(window.opener.renderMirrors, 200); } catch (err) { /* the main window is gone */ } });
 }
 
@@ -737,9 +756,13 @@ function amDriving() {
 // The leader the person sharing handed the screens to, if any
 function handedTo() { return !isFollower() && sharing && !amDriving() ? liveNow.driver : null; }
 function liveFields() {
+  // the second language the screens show (#90): the presenter's, or the one a leader driving was handed
+  const lang = isFollower() ? (liveNow && typeof liveNow.secondLang === 'string' ? liveNow.secondLang : '') : secondLang;
+  const version = lang ? (isFollower() ? versionIn(current_song, lang, liveNow && liveNow.second) : screenSecond(current_song)) : null;
   return {
     index: window.songbook.song_index, id: current_song.id, part: current_song.chunk_index,
     title: plainText(current_song.doc.title), partName: partName(current_song, current_song.chunk_index),
+    secondLang: lang, second: version ? version.id : '',
   };
 }
 // What followers get: the songs as shown here. A passage goes as its verses, so each screen fits them its own way.
@@ -750,15 +773,24 @@ function liveSet() {
     suggest: suggestionsOn,
     join: joinShown,
     art: sharedArt(), // the built-in drawing on the main screen, if any (#133)
-    songs: window.songbook.songs.map(song => song.passage ? { id: song.id, passage: song.passage, reading: true } : {
-      id: song.id,
-      doc: { title: song.doc.title, authors: song.doc.authors, scripture_ref: song.doc.scripture_ref, key: song.doc.key,
-        copyright: song.doc.copyright, content: song.doc.content },
+    langNames: window.songbook.langNames || {}, // (#90)
+    songs: window.songbook.songs.map(song => {
+      if (song.passage) return { id: song.id, passage: song.passage, reading: true };
+      const slideDoc = doc => ({ title: doc.title, authors: doc.authors, scripture_ref: doc.scripture_ref, key: doc.key,
+        copyright: doc.copyright, content: doc.content });
+      const item = { id: song.id, doc: slideDoc(song.doc) };
+      // its languages and its versions in others (#90): new fields, so a follower on an older app shows the song as before
+      if (songVersions(song).length) {
+        item.langs = song.langs || [];
+        item.versions = song.versions.map(version => ({ id: version.id, lang: version.lang, doc: slideDoc(version.doc) }));
+      }
+      return item;
     }),
   };
 }
 function setSignature() {
-  return window.songbook.title + '|' + suggestionsOn + '|' + joinShown + '|' + sharedArt() + '|' + window.songbook.songs.map(song => song.id + ':' + (song.value ? song.value.rev : '')).join(',');
+  return window.songbook.title + '|' + suggestionsOn + '|' + joinShown + '|' + sharedArt() + '|' + window.songbook.songs.map(song => song.id + ':' + (song.value ? song.value.rev : '')
+    + songVersions(song).map(version => ';' + version.id + ':' + version.rev).join('')).join(',');
 }
 async function startShare() {
   const host = liveHost();
@@ -917,20 +949,31 @@ function liveLine(html) {
 function liveSongs(songs) {
   return (Array.isArray(songs) ? songs : []).map(song => {
     if (song.passage) return { id: String(song.id), passage: song.passage, reading: true };
-    const doc = song.doc || {};
     const list = value => (Array.isArray(value) ? value : []).map(liveText);
-    return {
-      id: String(song.id),
-      doc: {
-        title: liveText(doc.title), authors: list(doc.authors), scripture_ref: list(doc.scripture_ref), key: liveText(doc.key),
-        copyright: liveText(doc.copyright),
-        content: (Array.isArray(doc.content) ? doc.content : []).map(chunk => [
-          { type: String((chunk[0] || {}).type || 'verse').replace(/[^a-z -]/gi, '') },
-          (Array.isArray(chunk[1]) ? chunk[1] : []).map(liveLine),
-        ]),
-      },
-    };
+    const cleanDoc = (doc = {}) => ({
+      title: liveText(doc.title), authors: list(doc.authors), scripture_ref: list(doc.scripture_ref), key: liveText(doc.key),
+      copyright: liveText(doc.copyright),
+      content: (Array.isArray(doc.content) ? doc.content : []).map(chunk => [
+        { type: String((chunk[0] || {}).type || 'verse').replace(/[^a-z -]/gi, '') },
+        (Array.isArray(chunk[1]) ? chunk[1] : []).map(liveLine),
+      ]),
+    });
+    const item = { id: String(song.id), doc: cleanDoc(song.doc || {}) };
+    // its versions in other languages (#90): a language is a short code, nothing else
+    const code = value => (typeof value === 'string' && /^[a-z]{2,3}$/.test(value) ? value : null);
+    if (Array.isArray(song.versions)) {
+      item.langs = (Array.isArray(song.langs) ? song.langs : []).map(code).filter(Boolean);
+      item.versions = song.versions.filter(version => version && code(version.lang) && version.doc)
+        .map(version => ({ id: String(version.id), lang: version.lang, doc: cleanDoc(version.doc) }));
+    }
+    return item;
   });
+}
+// The languages' names from the server: text, by code (#90)
+function liveLangNames(names) {
+  const clean = {};
+  if (names && typeof names === 'object') Object.keys(names).forEach(code => { if (/^[a-z]{2,3}$/.test(code)) clean[code] = plainText(names[code]); });
+  return clean;
 }
 function followSet(set) {
   liveSuggest = !!set.suggest;
@@ -939,11 +982,13 @@ function followSet(set) {
   applyArt(followBg === 'same' ? leaderArt : followBg); // or this phone's own choice
   renderJoin();
   window.songbook.title = liveText(set.title);
+  window.songbook.langNames = liveLangNames(set.langNames); // (#90)
   window.document.title = 'yCanta2: ' + plainText(set.title);
   const titleSlide = document.getElementById('pres_title');
   if (titleSlide) titleSlide.textContent = plainText(set.title);
   const here = current_song && current_song.id;
   window.songbook.songs = presentableItems(liveSongs(set.songs));
+  renderLangRows(); // the languages in the set (#90)
   if (following && liveNow && !amDriving()) return goLive();
   // wandering or driving: stay on the same song if it's still there
   const index = Math.max(0, window.songbook.songs.findIndex(song => song.id === here));
@@ -1278,6 +1323,7 @@ function toggleHelp() {
         + '<span class="help-note">' + (main
           ? 'Behind the words on this screen. A drawing draws itself in as the song goes on; Picture uses the pictures below. Each mirror picks its own under Screens & Sharing.'
           : 'The person sharing picks one for their screen. This phone can show that, or its own.') + '</span></div>';
+      content += '<div id="langRows"></div>'; // a second language, or a follower's own (#90): renderLangRows
     }
     if (main) {
       const picture = (which, label, note) => '<div class="picture-row" id="picture-' + which + '"><span>' + label + '</span>'
@@ -1328,6 +1374,7 @@ function toggleHelp() {
         [['s'], 'then John 3:16 and Enter: Bible verses'],
         [['r'], "The verses this song's scripture references name"],
       ]),
+      [['v'], follower ? 'Language: the same as the screen, then each one there is' : 'Second language: none, then each version of this song in another language'],
       [['w'], 'Whole song, or one part'],
       [['g'], 'Grid, or one part'],
       [['C'], 'Chords on or off (capital C)'],
@@ -1358,6 +1405,7 @@ function toggleHelp() {
     renderPictures();
   }
   renderMirrors(); // the mirrors as they are now
+  renderLangRows(); // the song on screen's languages (#90)
 
   // now certain that all is inited
   slideToggle(document.getElementById('help'), 200);
@@ -1445,17 +1493,19 @@ function wholeSongHtml(song = current_song) {
   if (!song || !song.doc) return '';
   const target = song === current_song ? spaceTarget(song) : null;
   let verse = 0;
-  let html = '<stitle>' + song.doc.title + '</stitle>'
-    + '<author>' + song.doc.authors.join(', ') + '</author>'
-    + '<key>' + song.doc.key + '</key>';
+  const parts = song.doc.content.map((chunk, i) => shownPart(song, i)); // each in this screen's words, a second language under it (#90)
+  const first = parts.length ? parts[0].main.doc : song.doc;
+  let html = titleHtml(first.title)
+    + '<author>' + first.authors.join(', ') + '</author>'
+    + '<key>' + first.key + '</key>';
   song.doc.content.forEach((chunk, i) => {
     const mark = i === song.chunk_index ? ' class="current"' : i === target ? ' class="space-next"' : '';
-    html += '<chunk type="' + chunk[0].type + '"' + mark + ' data-part="' + i + '">';
+    html += '<chunk type="' + chunk[0].type + '"' + mark + ' data-part="' + i + '"' + (parts[i].main.lang ? ' lang="' + escapeText(parts[i].main.lang) + '"' : '') + '>';
     if (chunk[0].type === 'verse') html += '<span>' + (++verse) + ':</span>';
-    chunk[1].forEach(line => { html += '<line dir="' + lineDir(line) + '">' + line + '</line>'; }); // right to left where it's Arabic (#90)
+    html += linesHtml(parts[i].main.chunk) + secondHtml(parts[i].second, false); // right to left where it's Arabic (#90)
     html += '</chunk>';
   });
-  return html + '<copyright>' + song.doc.copyright + '</copyright>';
+  return html + copyrightHtml(song, parts.length ? parts[0].used : []);
 }
 function currentView() {
   return document.body.classList.contains('gridview') ? 'grid' : document.body.classList.contains('wholesong') ? 'whole' : 'part';
@@ -1491,13 +1541,13 @@ function gridHtml() {
     const open = onScreen || upNext || grid_open.has(s);
     html += '<div class="grid-song' + (onScreen ? ' on-screen' : '') + '">'
       + '<div class="grid-song-head' + (upNext && !song.doc.content.length ? ' space-next' : '') + '" data-open-song="' + s + '">'
-      + '<span class="grid-toggle' + (open ? ' open' : '') + '"></span><stitle>' + song.doc.title + '</stitle>'
+      + '<span class="grid-toggle' + (open ? ' open' : '') + '"></span>' + titleHtml(song.doc.title)
       + '<span class="grid-count">' + song.doc.content.length + (song.doc.content.length === 1 ? ' part' : ' parts') + '</span></div>';
     if (open) {
       html += '<div class="grid">' + song.doc.content.map((chunk, i) => '<div class="grid-card'
         + (onScreen && i === song.chunk_index ? ' current' : '') + ((onScreen && i === target) || (upNext && i === 0) ? ' space-next' : '')
         + '" data-song="' + s + '" data-part="' + i + '"><span class="grid-label">' + escapeText(partName(song, i)) + '</span>'
-        + chunk[1].map(line => '<line dir="' + lineDir(line) + '">' + line + '</line>').join('') + '</div>').join('') + '</div>';
+        + linesHtml(shownPart(song, i).main.chunk) + '</div>').join('') + '</div>'; // a follower's own language (#90)
     }
     html += '</div>';
   });
@@ -1601,6 +1651,153 @@ const RTL_LETTER = /[\p{Script=Arabic}\p{Script=Hebrew}\p{Script=Syriac}\p{Scrip
 function lineDir(line) {
   const first = String(line == null ? '' : line).replace(/<c>.*?<\/c>/gi, '').replace(/<[^>]*>/g, '').replace(/&[#\w]+;/g, ' ').match(/\p{L}/u);
   return first && RTL_LETTER.test(first[0]) ? 'rtl' : 'auto';
+}
+
+// ---- Two languages on a slide (#90). A song in a version group comes with its versions in other languages
+// (song.versions: { id, lang, doc }, from the app's presentationData). The presenter picks a second language
+// (v, or the panel): each part then shows that part from the song's version in that language under it,
+// smaller. Parts pair by type and number (Verse 2 with Verse 2, the first Chorus with the first Chorus); a part
+// with no match shows alone. When a language has several versions (a short and a long English one), the one
+// whose parts pair best is used, and the presenter can pick another. Mirrors show what this screen shows.
+// A follower picks its own language (kept on that device): the words in that language where the song has it,
+// else the screen's. The screens' choice goes in now:CODE (secondLang, second); a follower without this code
+// reads neither and shows the main language.
+let secondLang = ''; // the presenter's second language, '' for none (for this presentation only)
+const secondPicks = new Map(); // song id -> the version picked, when its language has several
+let followLang = 'same'; // a follower's own: 'same' as the screen, or a language code
+try { const saved = localStorage.getItem('yCantaFollowLang'); if (saved && /^(same|[a-z]{2,3})$/.test(saved)) followLang = saved; } catch (err) { /* private window */ }
+function langLabel(code) {
+  const names = window.songbook && window.songbook.langNames;
+  return (names && typeof names[code] === 'string' && names[code]) || code;
+}
+const songVersions = song => (song && !song.passage && Array.isArray(song.versions) ? song.versions : []);
+// The part of a version that goes with part `index` of the song (-1 if none): the same type, and the same
+// number of that type counting from the start
+function pairedPart(song, version, index) {
+  const chunk = song.doc.content[index];
+  if (!chunk || !version) return -1;
+  const type = chunk[0].type;
+  const n = song.doc.content.slice(0, index + 1).filter(c => c[0].type === type).length;
+  let seen = 0;
+  return version.doc.content.findIndex(c => c[0].type === type && ++seen === n);
+}
+function pairCount(song, version) {
+  return song.doc.content.filter((chunk, i) => pairedPart(song, version, i) !== -1).length;
+}
+// The song's version in a language: the one picked if it's one of them, else the one whose parts pair best
+function versionIn(song, lang, picked) {
+  const found = songVersions(song).filter(version => version.lang === lang);
+  if (!found.length) return null;
+  return found.find(version => version.id === picked)
+    || found.reduce((best, version) => (pairCount(song, version) > pairCount(song, best) ? version : best));
+}
+// The second language this screen shows with the song: the presenter's own; on a follower, the screens'
+function screenSecond(song) {
+  if (isFollower()) {
+    const lang = liveNow && typeof liveNow.secondLang === 'string' ? liveNow.secondLang : '';
+    return lang ? versionIn(song, lang, liveNow.second) : null;
+  }
+  return secondLang ? versionIn(song, secondLang, secondPicks.get(song.id)) : null;
+}
+// What part `index` of a song shows on this screen: main { doc, chunk, lang } and second (the same, or null).
+// lang is set only for words that aren't the song's own.
+function shownPart(song, index) {
+  const main = { doc: song.doc, chunk: song.doc.content[index], lang: '' };
+  if (!songVersions(song).length) return { main, second: null, used: [] };
+  if (isFollower() && followLang !== 'same') { // a follower's own language, in place of the song's
+    const version = !(song.langs || []).includes(followLang) && versionIn(song, followLang, liveNow && liveNow.second);
+    const p = version ? pairedPart(song, version, index) : -1;
+    return { main: p === -1 ? main : { doc: version.doc, chunk: version.doc.content[p], lang: version.lang }, second: null, used: version ? [version] : [] };
+  }
+  const version = screenSecond(song);
+  const p = version ? pairedPart(song, version, index) : -1;
+  return { main, second: p === -1 ? null : { doc: version.doc, chunk: version.doc.content[p], lang: version.lang }, used: version ? [version] : [] };
+}
+// A title, reading right to left when it's Arabic (#90), the same rule as the lines
+function titleHtml(title) {
+  return '<stitle dir="' + lineDir(title) + '">' + title + '</stitle>';
+}
+function linesHtml(chunk) {
+  return chunk[1].map(line => '<line dir="' + lineDir(line) + '">' + line + '</line>').join(''); // an Arabic line reads right to left (#90)
+}
+// The second language's words under a part: its title too on the song's first part
+function secondHtml(second, withTitle) {
+  if (!second) return '';
+  return '<div class="second-lang" lang="' + escapeText(second.lang) + '">' + (withTitle ? titleHtml(second.doc.title) : '')
+    + linesHtml(second.chunk) + '</div>';
+}
+// The song's copyright, and its version's when that's different (the last slide)
+function copyrightHtml(song, used) {
+  const lines = [...new Set([song.doc.copyright, ...used.map(version => version.doc.copyright)].filter(text => String(text || '').trim()))];
+  return '<copyright>' + lines.join('\n') + '</copyright>';
+}
+// The languages there are in this presentation, for the panel: the songs' own (a follower's choice) or only
+// their versions' (the presenter's second language)
+function setLanguages(withOwn) {
+  const codes = new Set();
+  (window.songbook && window.songbook.songs || []).forEach(song => {
+    if (!songVersions(song).length) return;
+    if (withOwn) (song.langs || []).forEach(code => codes.add(code));
+    songVersions(song).forEach(version => codes.add(version.lang));
+  });
+  return [...codes].sort((a, b) => langLabel(a).localeCompare(langLabel(b)));
+}
+// The presenter picks the second language (and, when it has several, which version of this song)
+function setSecondLang(lang, versionId) {
+  secondLang = lang || '';
+  if (secondLang) noteUse('second language');
+  if (versionId && current_song) secondPicks.set(current_song.id, versionId);
+  renderLangRows();
+  if (inPresentation() && current_song && !document.getElementById('pres_title')) { liveMoving = true; try { showChunk('language'); } finally { liveMoving = false; } }
+}
+// A follower picks the language it shows
+function setFollowLang(lang) {
+  followLang = lang && /^[a-z]{2,3}$/.test(lang) ? lang : 'same';
+  try { localStorage.setItem('yCantaFollowLang', followLang); } catch (err) { /* private window */ }
+  renderLangRows();
+  if (inPresentation() && current_song && !document.getElementById('pres_title')) { liveMoving = true; try { showChunk('language'); } finally { liveMoving = false; } }
+}
+// v: the presenter goes through no second language, then each of this song's versions; a follower through the
+// screen's choice, then each language
+function cycleLanguage() {
+  if (isFollower()) {
+    const options = ['same', ...setLanguages(true)];
+    return setFollowLang(options[(options.indexOf(followLang) + 1) % options.length]);
+  }
+  if (!current_song || !songVersions(current_song).length || document.getElementById('pres_title')) return; // no versions: nothing to pick
+  const options = [null, ...songVersions(current_song)];
+  const now = screenSecond(current_song);
+  const next = options[(options.indexOf(now) + 1) % options.length];
+  setSecondLang(next ? next.lang : '', next && next.id);
+}
+// The panel's language rows: the presenter's Second language (and Version), or a follower's Language
+function renderLangRows() {
+  const box = document.getElementById('langRows');
+  if (!box) return;
+  const follower = isFollower();
+  const codes = setLanguages(follower);
+  if (!codes.length) { box.innerHTML = ''; return; }
+  const radio = (name, value, label, checked, call) => '<label><input type="radio" name="' + name + '" value="' + escapeText(value) + '"'
+    + (checked ? ' checked' : '') + ' onchange="' + call + '">' + escapeText(label) + '</label>';
+  if (follower) {
+    box.innerHTML = '<div class="picture-row bg-row"><span>Language</span><span class="segmented">'
+      + radio('followLang', 'same', 'Same as the screen', followLang === 'same', 'setFollowLang(this.value)')
+      + codes.map(code => radio('followLang', code, langLabel(code), followLang === code, 'setFollowLang(this.value)')).join('') + '</span>'
+      + '<span class="help-note">The words in that language where the song has it, else the screen\'s. Only on this phone. (v)</span></div>';
+    return;
+  }
+  const song = current_song && current_song.doc && !document.getElementById('pres_title') ? current_song : null;
+  const here = song ? songVersions(song).filter(version => version.lang === secondLang) : [];
+  const shown = song ? screenSecond(song) : null;
+  let note = 'Each part in that language under it, smaller, from the song\'s version. A part with no match shows alone. (v)';
+  if (secondLang && song && !here.length) note = 'This song has no ' + langLabel(secondLang) + ' version, so it shows alone.';
+  box.innerHTML = '<div class="picture-row bg-row"><span>Second language</span><span class="segmented">'
+    + radio('secondLang', '', 'None', !secondLang, 'setSecondLang(this.value)')
+    + codes.map(code => radio('secondLang', code, langLabel(code), secondLang === code, 'setSecondLang(this.value)')).join('') + '</span>'
+    + '<span class="help-note">' + escapeText(note) + '</span></div>'
+    + (here.length > 1 ? '<div class="picture-row bg-row"><span>' + escapeText(langLabel(secondLang)) + ' version</span><span class="segmented">'
+      + here.map(version => radio('secondPick', version.id, plainText(version.doc.title) + ' (' + pairCount(song, version) + ' of ' + song.doc.content.length + ' parts match)',
+        shown === version, 'setSecondLang(secondLang, this.value)')).join('') + '</span></div>' : '');
 }
 
 function searchDatabase(){
@@ -1786,32 +1983,34 @@ function showChunk(name) {
       if(song == null) {
         song = current_song;
       }
+      // the part in the words this screen shows, and a second language under it (#90)
+      const shown = shownPart(song, song.chunk_index);
+      const doc = shown.main.doc;
 
       if(song.chunk_index == 0){ //no previous chunk
         // the song's details sit together so calm words can move them to a corner
-        content += '<stitle>'+song.doc.title+'</stitle><div class="song-info">'
-                 + '<author>'+song.doc.authors.join(', ')+'</author>'
-                 + '<scripture_ref>'+song.doc.scripture_ref.join(', ')+'</scripture_ref>'
-                 + '<key>'+song.doc.key+'</key></div>';
+        content += titleHtml(doc.title) + '<div class="song-info">'
+                 + '<author>'+doc.authors.join(', ')+'</author>'
+                 + '<scripture_ref>'+doc.scripture_ref.join(', ')+'</scripture_ref>'
+                 + '<key>'+doc.key+'</key></div>';
       }
-      
+
       let verse_number = 1;
       for(let chunk_index = 0; chunk_index < song.chunk_index; chunk_index++) {
         if(song.doc.content[chunk_index][0].type == 'verse') {
           verse_number += 1;
         }
       }
-      content += '<chunk type="' + chunk[0].type + '">';
+      content += '<chunk type="' + chunk[0].type + '"' + (shown.main.lang ? ' lang="' + escapeText(shown.main.lang) + '"' : '') + '>';
       if(chunk[0].type == 'verse'){
         content += '<span data-verse="'+verse_number+'">'+verse_number+':</span>';
       }
-      chunk[1].forEach(function(line){
-        content += '<line dir="' + lineDir(line) + '">' + line + '</line>'; // an Arabic line reads right to left (#90)
-      });
+      content += linesHtml(shown.main.chunk);
       content += '</chunk>';
+      content += secondHtml(shown.second, song.chunk_index == 0);
 
       if(song.doc.content.length == song.chunk_index + 1){ //last chunk
-        content += '<copyright>'+song.doc.copyright+'</copyright>';
+        content += copyrightHtml(song, shown.used);
       }
       return content;
     }
@@ -1891,6 +2090,7 @@ function showChunk(name) {
 
     secondary_windows = secondary_windows.filter(win => !win.closed);
     secondary_windows.forEach(updateMirror);
+    renderLangRows(); // this song's versions, in the panel (#90)
     noteFollowerMove(); // (#51)
     publishLive();
     if (name !== 'view' && name !== 'live') menuHintDone();
@@ -2183,6 +2383,7 @@ function resetText() {
 function scaleText() {
   // reset font to normal size to start
   resetText();
+  fittedFor = slideBoxSize(); // (fitted again when this changes: refitForSize)
   if (document.body.classList.contains('gridview')) return; // the grid keeps its size and scrolls (#51)
   if(! inPresentation()){
     // do nothing but reset text to 100%

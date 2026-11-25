@@ -404,6 +404,18 @@
       body.presentation key:not(:empty):before {
         content: 'Key: ';
       }
+      /* A second language under each part (#90): the same words in another language, smaller and dimmer. The
+         slide is fitted with it in, so both always fit. */
+      .second-lang {
+        clear: both;
+        font-weight: bold;
+        font-size: .8em;
+        opacity: .75;
+        margin-top: .5em;
+      }
+      body.wholesong .second-lang {
+        margin-top: .2em;
+      }
 
       html, body, #songboook {
         padding: 0px;

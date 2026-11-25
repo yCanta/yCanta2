@@ -178,12 +178,55 @@ async function presentationData(songbook) {
     return row.key != 'section' && row.doc ? { ...row, doc: displaySong(row.doc) } : null;
   }));
   const songs = items.filter(Boolean);
+  const langNames = await addPresentationVersions(songs);
   // Bible verses (#157): where the book files are (the presentation window has no address of its own to go
   // by) and the church's translation. The books the songs cite are fetched ahead, so they work offline.
   const refs = result.rows.flatMap(row => (row.doc && Array.isArray(row.doc.scripture_ref) ? row.doc.scripture_ref : []));
   Bible.prefetch(refs, translation).catch(() => {});
   const bible = { base: new URL('bible/', location.href).href, translation };
-  return { songs, title: songbook.title, bible };
+  return { songs, title: songbook.title, bible, langNames };
+}
+
+// Two languages on a slide (#90): each song gets its languages (`langs`, the church's usual one if none) and its
+// versions in other languages (`versions`: { id, rev, lang, doc }), so the presentation can show a part in a
+// second language under it. `lang` is the version's first language the song isn't in. Versions in only the
+// song's own languages (a shorter English one) are left out. Gives back the languages' names by code.
+// window.presentedVersionIds keeps which songs went along, so a change to one updates the presentation.
+async function addPresentationVersions(songs) {
+  const langsOf = doc => { const codes = songLangs(doc); return codes.length ? codes : [churchLang()]; };
+  const names = {};
+  const named = code => { names[code] = languageName(code).label; return code; };
+  const ids = new Set();
+  try {
+    await versionGroupsRead();
+    songs.forEach(song => {
+      if (!song.doc || song.reading) return;
+      groupsOfSong(song.id).forEach(group => Object.keys(group.songs).forEach(id => { if (id !== song.id) ids.add(id); }));
+    });
+  } catch (err) {
+    console.warn("Couldn't read the version groups for the presentation:", err);
+  }
+  const docs = new Map();
+  if (ids.size) {
+    (await db.allDocs({ keys: [...ids], include_docs: true })).rows
+      .forEach(row => { if (row.doc && !row.doc._deleted && row.doc._id.startsWith('s-')) docs.set(row.id, row.doc); });
+  }
+  window.presentedVersionIds = new Set(docs.keys());
+  songs.forEach(song => {
+    if (!song.doc || song.reading) return;
+    const own = langsOf(song.doc).map(named);
+    song.langs = own;
+    const others = [...new Set(groupsOfSong(song.id).flatMap(group => Object.keys(group.songs)))]
+      .filter(id => id !== song.id && docs.has(id)).map(id => docs.get(id));
+    const versions = others.map(doc => {
+      const lang = langsOf(doc).find(code => !own.includes(code));
+      if (!lang) return null;
+      const { title, authors, scripture_ref, key, copyright, content } = displaySong(doc); // what a slide shows
+      return { id: doc._id, rev: doc._rev, lang: named(lang), doc: { title, authors, scripture_ref, key, copyright, content } };
+    }).filter(Boolean).sort((a, b) => names[a.lang].localeCompare(names[b.lang]) || String(a.doc.title).localeCompare(String(b.doc.title)));
+    if (versions.length) song.versions = versions;
+  });
+  return names;
 }
 
 // A reading in a songbook (#157), as its verses: { id, reading: true, passage }, or null if they can't load
@@ -281,7 +324,9 @@ async function updatePresentation(change) {
     return; // the presentation window is gone
   }
   const bookChanged = change.id === book._id;
-  if (!bookChanged && !book.songrefs.some(ref => ref.id === change.id)) return;
+  // a version group, or a song shown as another song's second language (#90), changes the slides too
+  const versionChanged = change.id.startsWith('v-') || !!window.presentedVersionIds?.has(change.id);
+  if (!bookChanged && !versionChanged && !book.songrefs.some(ref => ref.id === change.id)) return;
   if (bookChanged && change.deleted) return; // the main page already leaves a deleted book
   if (bookChanged) {
     window.presentedSongbook = { _id: book._id, title: change.doc.title, songrefs: change.doc.songrefs };
@@ -305,6 +350,7 @@ function dbChanges() {
     if (change.id.startsWith('h-')) return; // a kept old version (#138): nothing to show
     if (change.id.startsWith('v-')) { // a version group (#90), added, changed or deleted
       versionGroupsChanged();
+      versionGroupsRead().then(() => updatePresentation(change), () => {}); // (the read just started) its songs' second languages
       return;
     }
     updatePresentation(change);
