@@ -1,6 +1,9 @@
 // Shared presentations (#51): one person drives, and other devices follow along by a short code: a TV,
 // leaders' tablets, phones. Records in the server's "ycanta_live" database:
-//   set:CODE        the title and songs, written by the person sharing when they change
+//   set:CODE        the title, the settings and the order of the songs, written by the person sharing
+//   part:CODE:N     the songs themselves, spread over a few records by song id. The server (nginx in front
+//                   of CouchDB) turns down any upload over 1 MB, and a church's whole book of 1,400+ songs is
+//                   several MB. Changing one song sends only its part again.
 //   now:CODE        the song and part on the screens, written by whoever drives: the person sharing, or a
 //                   signed-in leader they handed it to ("driver")
 //   lead:CODE:name  a signed-in leader following along, so the person sharing can hand them the screens
@@ -34,7 +37,7 @@ const Live = (() => {
     let json = null;
     try { json = await res.json(); } catch (err) { /* empty answer */ }
     if (!res.ok) {
-      const err = new Error((json && (json.reason || json.error)) || res.statusText);
+      const err = new Error(res.status === 413 ? 'The server turned it down as too big.' : (json && (json.reason || json.error)) || res.statusText);
       err.status = res.status;
       throw err;
     }
@@ -94,32 +97,91 @@ const Live = (() => {
     };
   }
 
+  // ---- The songs, spread over part:CODE:N records ----
+  const PART_AIM = 300000, PART_MAX = 700000; // bytes; the server takes up to 1 MB in one upload
+  const bytes = text => new TextEncoder().encode(text).length;
+  function bucket(id, count) { // the same song always lands in the same part
+    let h = 2166136261;
+    for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
+    return (h >>> 0) % count;
+  }
+  // { title, songs, ... } -> the set record's fields (the order, not the songs) and each part's songs
+  function splitSet(set, count) {
+    const { songs = [], ...rest } = set;
+    const parts = Array.from({ length: count }, () => ({}));
+    songs.forEach(song => { parts[bucket(String(song.id), count)][song.id] = song; });
+    return { head: { ...rest, order: songs.map(song => song.id), parts: count }, parts };
+  }
+  // Enough parts that each stays well under the server's limit
+  function partsFor(set, count = 1) {
+    let split = splitSet(set, count);
+    while (count < 500 && split.parts.some(part => bytes(JSON.stringify(part)) > PART_MAX)) split = splitSet(set, count *= 2);
+    return split;
+  }
+  const partId = n => 'part:' + code + ':' + n;
+
   // ---- Sharing (the person sharing) and driving (them, or a leader they hand it to) ----
   let code = null, owner = null, ownerTab = null, setWriter = null, nowWriter = null, sharing = false;
+  let partWriters = [], partsSent = []; // each part's writer, and the songs last sent in it (as JSON)
   const nowRecord = (fields, driver, driverTab) => ({ type: 'live-now', ...fields, owner, ownerTab, driver, driverTab, at: Date.now() });
+  const partRecord = songs => ({ type: 'live-part', owner, songs });
 
-  // Starts sharing a set ({ title, songs, bible }); gives back the code
+  // Starts sharing a set ({ title, songs, bible }); gives back the code. The set record goes up first (it
+  // claims the code), then the parts; no one can follow until the code is shown, so the order is safe.
   async function start(set) {
     me = undefined; // ask again: whoever is signed in now
     owner = await whoAmI();
     if (!owner) throw new Error('Sign in to the church server to share.');
+    const total = bytes(JSON.stringify(set.songs || []));
+    const { head, parts } = partsFor(set, Math.max(1, Math.ceil(total / PART_AIM)));
     for (let tries = 0; tries < 5; tries++) {
       const tryCode = newCode();
+      let rev;
       try {
-        const rev = (await request('PUT', 'set:' + tryCode, { type: 'live-set', owner, ...set, started: Date.now() })).rev;
-        code = tryCode;
-        sharing = true;
-        ownerTab = tab;
-        setWriter = recordWriter('set:' + code, rev);
-        nowWriter = recordWriter('now:' + code, null, current => !current.driverTab || current.driverTab === tab);
-        return code;
+        rev = (await request('PUT', 'set:' + tryCode, { type: 'live-set', owner, ...head, started: Date.now() })).rev;
       } catch (err) {
-        if (err.status !== 409) throw err; // 409: that code is taken, try another
+        if (err.status === 409) continue; // that code is taken, try another
+        throw err;
       }
+      code = tryCode;
+      try {
+        partWriters = [];
+        partsSent = [];
+        for (let n = 0; n < parts.length; n++) {
+          const partRev = (await request('PUT', partId(n), partRecord(parts[n]))).rev;
+          partWriters.push(recordWriter(partId(n), partRev));
+          partsSent.push(JSON.stringify(parts[n]));
+        }
+      } catch (err) {
+        const writers = partWriters;
+        partWriters = [];
+        await Promise.all([recordWriter('set:' + code, rev), ...writers].map(w => w.remove()));
+        code = null;
+        throw err;
+      }
+      sharing = true;
+      ownerTab = tab;
+      setWriter = recordWriter('set:' + code, rev);
+      nowWriter = recordWriter('now:' + code, null, current => !current.driverTab || current.driverTab === tab);
+      return code;
     }
     throw new Error("Couldn't find a free code. Try again.");
   }
-  function updateSet(set) { if (sharing) setWriter.write({ type: 'live-set', owner, ...set, started: Date.now() }); }
+  // The songs changed: send the parts that changed, then the set record (followers put the songs in its order)
+  async function updateSet(set) {
+    if (!sharing) return;
+    const { head, parts } = partsFor(set, partWriters.length);
+    const sends = [];
+    parts.forEach((songs, n) => {
+      const json = JSON.stringify(songs);
+      if (json === partsSent[n]) return;
+      partsSent[n] = json;
+      if (!partWriters[n]) partWriters[n] = recordWriter(partId(n)); // more parts than at the start
+      sends.push(partWriters[n].write(partRecord(songs)));
+    });
+    await Promise.all(sends);
+    if (sharing) setWriter.write({ type: 'live-set', owner, ...head, started: Date.now() });
+  }
   // The part on screen, from whoever drives
   function publish(fields) { if (nowWriter) nowWriter.write(nowRecord(fields, me, tab)); }
   // The person sharing hands the screens to a signed-in leader's page, or takes them back
@@ -138,10 +200,12 @@ const Live = (() => {
   function stopDriving() { if (!sharing) { code = null; nowWriter = null; } }
   async function stop() {
     if (!sharing) return;
-    const writers = [setWriter, nowWriter], ended = code;
+    const writers = [setWriter, nowWriter, ...partWriters], ended = code;
     sharing = false;
     code = null;
     nowWriter = null;
+    partWriters = [];
+    partsSent = [];
     await Promise.all(writers.map(w => w.remove()));
     // and the suggestions sent to it
     try {
@@ -204,12 +268,25 @@ const Live = (() => {
   // ---- Following ----
   // Calls onSet(set) and onNow(now) as they come, onLeaders([{ name, tab }]) when the signed-in leaders following
   // change, onEnd() when sharing stops, onProblem(err) when the server can't be reached (it keeps trying).
-  // Gives back { stop }.
-  async function follow(rawCode, { onSet = () => {}, onNow = () => {}, onLeaders = () => {}, onSuggestions = () => {}, onEnd = () => {}, onProblem = () => {} }) {
+  // Without onSet the songs aren't read at all (the person sharing has them already). Gives back { stop }.
+  async function follow(rawCode, { onSet, onNow = () => {}, onLeaders = () => {}, onSuggestions = () => {}, onEnd = () => {}, onProblem = () => {} }) {
     const followCode = cleanCode(rawCode);
     const setId = 'set:' + followCode, nowId = 'now:' + followCode, leadPrefix = 'lead:' + followCode + ':', sugPrefix = 'sug:' + followCode + ':';
+    const partPrefix = 'part:' + followCode + ':';
     let stopped = false, since = null, controller = null;
     const leaders = new Map(), suggestions = new Map();
+    // The set record and its parts, put back together: { title, ..., songs } in the set's order. A set from
+    // before the parts (songs in the set record) still works.
+    let head = null;
+    const parts = new Map();
+    function tellSet() {
+      if (!onSet || !head) return;
+      if (!Array.isArray(head.order)) return onSet(head);
+      const byId = {};
+      parts.forEach(part => Object.assign(byId, part.songs));
+      const { order, parts: count, ...rest } = head;
+      onSet({ ...rest, songs: order.map(id => byId[id]).filter(Boolean) });
+    }
     const tellLeaders = () => onLeaders([...leaders.values()].sort((a, b) => a.name.localeCompare(b.name)));
     const tellSuggestions = () => onSuggestions([...suggestions.values()].sort((a, b) => a.at - b.at));
     const sugFrom = doc => ({ id: doc._id, text: String(doc.text || ''), name: String(doc.name || ''), status: doc.status, by: doc.by || '', at: Number(doc.at) || 0 });
@@ -217,7 +294,12 @@ const Live = (() => {
 
     async function readAll() {
       since = (await request('GET', '')).update_seq;
-      onSet(await request('GET', setId)); // 404 here means no such share
+      head = await request('GET', setId); // 404 here means no such share
+      if (onSet) {
+        parts.clear();
+        (await request('GET', range(partPrefix))).rows.forEach(row => { if (row.doc) parts.set(row.id, row.doc); });
+        tellSet();
+      }
       try { onNow(await request('GET', nowId)); } catch (err) { if (err.status !== 404) throw err; }
       const rows = (await request('GET', range(leadPrefix))).rows;
       leaders.clear();
@@ -232,7 +314,7 @@ const Live = (() => {
       throw err;
     });
 
-    const selector = { _id: { $regex: '^(set|now):' + followCode + '$|^(lead|sug):' + followCode + ':' } };
+    const selector = { _id: { $regex: '^(set|now):' + followCode + '$|^(lead|sug' + (onSet ? '|part' : '') + '):' + followCode + ':' } };
     (async function listen() {
       while (!stopped) {
         try {
@@ -244,8 +326,12 @@ const Live = (() => {
           if (!res.ok) throw new Error('The server said ' + res.status);
           const json = await res.json();
           since = json.last_seq;
+          let setChanged = false, nowDoc = null; // the parts and the set record often come together: put them together once
           for (const row of json.results || []) {
-            if (row.id.startsWith(sugPrefix)) {
+            if (row.id.startsWith(partPrefix)) {
+              if (row.deleted) parts.delete(row.id); else parts.set(row.id, row.doc);
+              setChanged = true;
+            } else if (row.id.startsWith(sugPrefix)) {
               if (row.deleted) suggestions.delete(row.id); else suggestions.set(row.id, sugFrom(row.doc));
               tellSuggestions();
             } else if (row.id.startsWith(leadPrefix)) {
@@ -253,9 +339,11 @@ const Live = (() => {
               tellLeaders();
             } else if (row.deleted) {
               if (row.id === setId) { stopped = true; onEnd(); }
-            } else if (row.id === setId) onSet(row.doc);
-            else if (row.id === nowId) onNow(row.doc);
+            } else if (row.id === setId) { head = row.doc; setChanged = true; }
+            else if (row.id === nowId) nowDoc = row.doc;
           }
+          if (setChanged && !stopped) tellSet();
+          if (nowDoc && !stopped) onNow(nowDoc); // after the songs, so a song just added is there
         } catch (err) {
           if (stopped) break;
           if (err.name !== 'AbortError') {

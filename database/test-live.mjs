@@ -83,6 +83,27 @@ check('only the first answer counts', second.status === 403, second);
 const sugTaken = await req(as('alice'), 'DELETE', `/${DB}/${sugId}?rev=${yes.json.rev}`);
 check('someone signed in can take it away', sugTaken.status === 200, sugTaken);
 
+// The songs, in part:CODE:N records: only the person sharing
+const part = owner => ({ type: 'live-part', owner, songs: { 's-1': { id: 's-1' } } });
+const anonPart = await anonPut(`part:${code}:0`, part('alice'));
+check('no one signed in: can\'t write a part', anonPart.status === 401, anonPart);
+const veraPart = await req(as('vera'), 'PUT', `/${DB}/part:${code}:0`, part('alice'));
+check('can\'t write a part in someone else\'s name', veraPart.status === 403, veraPart);
+const partMade = await req(as('alice'), 'PUT', `/${DB}/part:${code}:0`, part('alice'));
+check('the sharer can write a part', partMade.status === 201, partMade);
+const partRead = await fetch(`${BASE}/${DB}/part:${code}:0`);
+check('anyone can read a part', partRead.status === 200, partRead.status);
+const veraChanges = await req(as('vera'), 'PUT', `/${DB}/part:${code}:0`, { ...part('alice'), _rev: partMade.json.rev });
+check('someone else can\'t change a part', veraChanges.status === 403, veraChanges);
+const partWrongType = await req(as('alice'), 'PUT', `/${DB}/part:${code}:1`, { type: 'live-set', owner: 'alice' });
+check('a part has the live-part type', partWrongType.status === 403, partWrongType);
+const partBadName = await req(as('alice'), 'PUT', `/${DB}/part:${code}:x`, part('alice'));
+check('a part is numbered', partBadName.status === 403, partBadName);
+const veraPartGone = await req(as('vera'), 'DELETE', `/${DB}/part:${code}:0?rev=${partMade.json.rev}`);
+check('someone else can\'t remove a part', veraPartGone.status === 403, veraPartGone);
+const partGone = await req(as('alice'), 'DELETE', `/${DB}/part:${code}:0?rev=${partMade.json.rev}`);
+check('the sharer can remove a part', partGone.status === 200, partGone);
+
 const wrongType = await req(as('alice'), 'PUT', `/${DB}/now:${code}`, { type: 'live-set', owner: 'alice', _rev: now.json.rev });
 check('the type must match the name', wrongType.status === 403, wrongType);
 

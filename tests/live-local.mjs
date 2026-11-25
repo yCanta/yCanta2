@@ -392,6 +392,40 @@ try {
   const goneSet = await req('alice', 'GET', `/ycanta_live/set:${code}`);
   ok(goneSet.status === 404, 'the share is gone from the server', goneSet.status);
 
+  // ---------- a whole church book: 1,500 songs, several MB ----------
+  // The live server's nginx turns down any upload over 1 MB, so the songs go up in parts (live.js)
+  await d.ev(`(() => {
+    const H = ${P}.liveHost(), real = H.fetch.bind(H);
+    H.bigPuts = [];
+    H.fetch = (url, opts = {}) => { if (opts.method === 'PUT') H.bigPuts.push({ id: decodeURIComponent(String(url).split('/ycanta_live/')[1] || ''), size: new TextEncoder().encode(opts.body || '').length }); return real(url, opts); };
+    const line = n => 'Line ' + n + ' of a long verse, with plenty of words in it so the song is a fair size ';
+    H.bigSet = { title: 'Big Book', bible: null, suggest: false, join: false, art: '', songs: Array.from({ length: 1500 }, (x, i) => ({ id: 'big-' + i,
+      doc: { title: 'Big Song ' + i, authors: ['Someone'], scripture_ref: [''], key: 'G', copyright: '',
+        content: [0, 1, 2, 3].map(v => [{ type: v === 1 ? 'chorus' : 'verse' }, Array.from({ length: 8 }, (y, n) => [line(n)])]) } })) };
+    return 'ok'; })()`);
+  const bigCode = await d.ev(`${P}.liveHost().Live.start(${P}.liveHost().bigSet)`);
+  const bigPuts = await d.ev(`${P}.liveHost().bigPuts`);
+  const bigTotal = await d.ev(`new TextEncoder().encode(JSON.stringify(${P}.liveHost().bigSet.songs)).length`);
+  const biggest = Math.max(...bigPuts.map(p => p.size));
+  ok(bigTotal > 3000000 && biggest < 1000000 && bigPuts.filter(p => p.id.startsWith('part:')).length > 1,
+    'a 1,500-song book is shared with no upload over 1 MB', { total: bigTotal, biggest, puts: bigPuts.length });
+  await f.ev(`location.hash = ${JSON.stringify(bigCode)}; 'ok'`);
+  await f.until(`document.body.classList.contains('following') && ${F}.songbook.title === 'Big Book' && ${F}.songbook.songs.filter(s => /^big-/.test(s.id)).length === 1500`, 'the follower to have all 1,500 songs', 20000);
+  const bigOrder = await f.ev(`${F}.songbook.songs.filter(s => /^big-/.test(s.id)).every((s, i) => s.id === 'big-' + i)`);
+  ok(bigOrder, 'the follower has all 1,500 songs, in order');
+  // one song changes: only its part goes up again, and the follower gets it
+  await d.ev(`(() => { const H = ${P}.liveHost(); H.bigPuts = []; H.bigSet.songs[700].doc.title = 'Big Song Changed'; return H.Live.updateSet(H.bigSet).then(() => 'ok'); })()`);
+  await sleep(300);
+  const changePuts = await d.ev(`${P}.liveHost().bigPuts.map(p => p.id.split(':')[0])`);
+  ok(changePuts.filter(k => k === 'part').length === 1 && changePuts.includes('set'), 'one changed song sends one part and the set', changePuts);
+  await f.until(`${F}.songbook.songs.some(s => s.id === 'big-700' && s.doc.title === 'Big Song Changed')`, 'the follower to get the changed song', 10000);
+  ok(true, 'the follower gets the changed song');
+  await d.ev(`${P}.liveHost().Live.stop().then(() => 'ok')`);
+  await f.until(`!document.body.classList.contains('following')`, 'the follower to end', 5000).catch(() => {});
+  const leftParts = (await req('alice', 'GET', `/ycanta_live/_all_docs?startkey=${encodeURIComponent(JSON.stringify('part:' + bigCode + ':'))}&endkey=${encodeURIComponent(JSON.stringify('part:' + bigCode + ':￰'))}`)).json;
+  ok(leftParts && leftParts.rows.length === 0, 'stopping removes every part', leftParts && leftParts.rows.length);
+  await d.ev(`(() => { const H = ${P}.liveHost(); delete H.bigSet; return 'ok'; })()`);
+
   // ---------- nothing from the server runs as page code ----------
   const bad = '<img src=x onerror="window.top.hacked=1"><script>window.top.hacked=2</script>';
   await req('alice', 'PUT', `/ycanta_live/set:${evil}`, { type: 'live-set', owner: 'alice', title: 'Evil' + bad, songs: [{ id: 's-x', doc: {

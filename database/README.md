@@ -50,9 +50,12 @@ COUCH_ADMIN_PASS=... node database/test-rule.mjs
 
 A presentation can be shared with other devices by a short code (the presentation's setup panel, then
 "Share with other devices"). Followers open `live.html` and need no account. Everything goes through one
-server-wide database, `ycanta_live`, with two small records per share: `set:CODE` (the title and songs) and
-`now:CODE` (the song and part on screen). `live-validate.js` is its save rule: anyone can read, only
-someone signed in can share, and only the person who started a share can change or end it.
+server-wide database, `ycanta_live`. Each share has `set:CODE` (the title, settings and song order),
+`part:CODE:0`, `part:CODE:1`, … (the songs, spread by song id) and `now:CODE` (the song and part on screen).
+The songs are split because nginx in front of the live server turns down any upload over 1 MB, and a whole
+church book (1,400+ songs) is several MB; each part is kept under 700 KB, and a changed song sends only its
+part again. `live-validate.js` is its save rule: anyone can read, only someone signed in can share, and only
+the person who started a share can change or end it.
 
 **On the live server** (once, in Fauxton, as a server admin):
 

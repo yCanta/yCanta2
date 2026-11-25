@@ -2,6 +2,7 @@ function (newDoc, oldDoc, userCtx) {
   // Save rule for ycanta_live, the shared presentations (#51). Anyone can read (the database has no
   // members), so a TV or a phone can follow along with no account. Only someone signed in can write:
   //   set:CODE        only the person sharing (its owner)
+  //   part:CODE:N     some of the songs; only the person sharing, like set:CODE
   //   now:CODE        the owner, or the leader the owner handed the screens to (its "driver"). That leader
   //                   can keep the screens or give them back, not pass them on. Only the owner can end it.
   //   lead:CODE:name  a signed-in leader following along; only that person
@@ -60,8 +61,8 @@ function (newDoc, oldDoc, userCtx) {
     return;
   }
 
-  if (!/^(set|now):[A-Z0-9]{4,8}$/.test(id)) {
-    throw({ forbidden: 'Shared presentation records are named set:CODE, now:CODE, lead:CODE:name or sug:CODE:id.' });
+  if (!/^(set|now):[A-Z0-9]{4,8}$/.test(id) && !/^part:[A-Z0-9]{4,8}:[0-9]{1,3}$/.test(id)) {
+    throw({ forbidden: 'Shared presentation records are named set:CODE, part:CODE:N, now:CODE, lead:CODE:name or sug:CODE:id.' });
   }
   if (oldDoc) {
     var isOwner = oldDoc.owner === userCtx.name;
@@ -89,7 +90,7 @@ function (newDoc, oldDoc, userCtx) {
       throw({ forbidden: 'A shared presentation must name you as its owner.' });
     }
   }
-  if (newDoc.type !== (id.indexOf('set:') === 0 ? 'live-set' : 'live-now')) {
+  if (newDoc.type !== (id.indexOf('set:') === 0 ? 'live-set' : id.indexOf('part:') === 0 ? 'live-part' : 'live-now')) {
     throw({ forbidden: 'This record has the wrong type.' });
   }
 }
