@@ -554,10 +554,15 @@ try {
   groupsV = await serverGroupsUntil(g => g.length === 1 && Object.keys(g[0].songs).length === 3, 'one joined group on the server');
   ok([vEs, vEn, vDup].every(id => id in groupsV[0].songs), 'two groups: Join them leaves one group with every song, and deletes the other', JSON.stringify(groupsV.map(g => g._id)));
   await until(`document.querySelectorAll('#song .version-chips [data-version]').length === 2 && !document.querySelector('#song .version-overlap')`, 'the chips after the join', 8000);
-  // Find versions (editors): the menu item, then each suggestion on its own; Link the one with the short song
+  // Find versions (editors): Song tools in the menu under your name opens its card on the home page; then each
+  // suggestion on its own; Link the one with the short song
   await click('#username_legend');
-  ok(await ev(`!!document.querySelector('#account_menu [data-open="findVersions"]')?.getClientRects().length`), 'find versions: in the menu under your name, for an editor');
-  await click('#account_menu [data-open="findVersions"]');
+  ok(await ev(`!!document.querySelector('#account_menu [data-open="songTools"]')?.getClientRects().length && !document.querySelector('#account_menu [data-open="findVersions"]')`),
+    'song tools: one item in the menu under your name, for an editor');
+  await click('#account_menu [data-open="songTools"]');
+  await until(`['', '#'].includes(location.hash) && !document.getElementById('songTools').classList.contains('closed')`, 'the Song tools card', 8000);
+  await sleep(500);
+  await click('#songTools [onclick="findVersions()"]');
   await until(`/Duplicate category/.test(document.querySelector('.task-dialog .task-body')?.textContent || '')`, 'the Find versions window', 10000);
   await click('.task-dialog [type="submit"]'); // Start
   let foundShort = false;
@@ -634,6 +639,97 @@ try {
     return [...s.querySelectorAll('line[dir="rtl"]')].map(l => { const r = d.createRange(); r.selectNodeContents(l); const b = r.getBoundingClientRect(); return b.left >= box.left - 1 && b.right <= box.right + 1; }); })()`);
   ok(arFit.length === 1 && arFit.every(Boolean), "the Arabic line fits inside the slide (it used to run off the left edge)", JSON.stringify(arFit));
   await go(`#${langBook}`, `!document.getElementById('presentation')`, 'leaving the presentation');
+  // ---- Find Spanish songs (#90): spotting Spanish from the words, then Tag all and one at a time ----
+  const looks = await ev(`(() => { const S = (title, ...parts) => ({ title, content: parts.map(p => [{ type: p[0] }, p.slice(1)]) });
+    return [
+      S('Tu Amor', ['verse', 'Señor, tu amor es grande', 'Tu gracia me sostiene cada día'], ['chorus', 'Te alabo, oh Dios, con todo mi corazón']),
+      S('Mi Rey', ['verse', 'Senor tu eres mi rey', 'Te adoro con mi vida']),
+      S('Cuan', ['verse', '<c>G</c>Cuan grande es <c>D</c>Él', '¿Quién como tú, Señor?']),
+      S('Holy', ['verse', 'You are holy, You are good', 'Your love will never fail'], ['chorus', 'Santo, santo eres tú, Señor', 'Tu amor nunca fallará']),
+      S('Lines', ['verse', 'Holy, holy, holy is the Lord', 'Santo, santo, santo es el Señor']),
+      S('Hands', ['verse', 'We lift our hands to praise Your name', 'Lord You are faithful in all of Your ways']),
+      S('Cristo Vive', ['verse', 'Christ is living, He has risen', 'Death has lost its sting today']),
+      S('Sounds', ['verse', 'la la la']),
+      S('Angels', ['verse', 'Angels we have heard on high'], ['chorus', 'Gloria in excelsis Deo', 'Gloria in excelsis Deo']),
+      S('Roi', ['verse', "Je t'aime Seigneur, tu es mon roi", 'Que ta gloire remplisse la terre']),
+    ].map(doc => { const r = spanishLook(doc); return r.look + (r.clear ? '!' : ''); }); })()`);
+  ok(JSON.stringify(looks) === JSON.stringify(['es!', 'es!', 'es!', 'es,en', 'es,en', '', '', '', '', '']),
+    'spanish: Spanish with or without accents and chords is clear; part Spanish, part English is both; English, "la la la", Latin and French are not Spanish', JSON.stringify(looks));
+  const ts = Date.now(), esClear = `s-${ts}-esclear`, esMixed = `s-${ts}-esmixed`, esEnglish = `s-${ts}-esenglish`, esDone = `s-${ts}-esdone`;
+  const songEs = (docId, title, parts, extra = {}) => req('PUT', `${DB}/${docId}`, { _id: docId, title, authors: [''], scripture_ref: [''], introduction: '',
+    key: 'G', categories: [''], cclis: false, copyright: '', yt: '', chords: '', content: parts.map(([type, ...lines]) => [{ type }, lines]),
+    added: ts, addedBy: 'u-eddie', edited: ts, editedBy: 'u-eddie', ...extra });
+  const madeEs = [
+    [esClear, await songEs(esClear, `${RUN} Grande`, [['verse', 'Señor, tu amor es grande', 'Tu gracia me sostiene'], ['chorus', 'Te alabo, oh Dios, con todo mi corazón']])],
+    [esMixed, await songEs(esMixed, `${RUN} Santo`, [['verse', 'You are holy, You are good', 'Your love will never fail'], ['chorus', 'Santo, santo eres tú, Señor', 'Tu amor nunca fallará']])],
+    [esEnglish, await songEs(esEnglish, `${RUN} Hands`, [['verse', 'We lift our hands to praise Your name', 'Lord You are faithful in all of Your ways']])],
+    [esDone, await songEs(esDone, `${RUN} Gracias`, [['verse', 'Gracias Señor por tu amor', 'Gracias por la cruz y tu bondad']], { langs: ['es'] })],
+  ];
+  madeEs.forEach(([docId, r]) => r.status === 201 && made.push(docId));
+  ok(madeEs.every(([, r]) => r.status === 201), 'spanish: test songs are made');
+  await until(`db.get('${esDone}').then(() => true, () => false)`, 'the Spanish test songs to reach this browser', 20000);
+  const offeredEs = await ev(`allLiveSongs().then(songs => spanishSuggestions(songs).map(f => f.song._id))`);
+  ok(offeredEs.includes(esClear) && offeredEs.includes(esMixed) && !offeredEs.includes(esEnglish) && !offeredEs.includes(esDone),
+    'spanish: offers the Spanish and the part Spanish songs, not the English one or one already tagged Spanish', JSON.stringify(offeredEs.filter(i => i.startsWith(`s-${ts}-`))));
+  ok(!['s-eddie-1', 's-vera-1', 's-vic-1'].some(i => offeredEs.includes(i)), 'spanish: the seeded "la la la" songs are not offered');
+  // editors only: Song tools (the menu item and its card), and the helper itself
+  await click('#username_legend');
+  await click('#account_menu [data-open="songTools"]');
+  await until(`['', '#'].includes(location.hash) && !document.getElementById('songTools').classList.contains('closed')`, 'the Song tools card', 8000);
+  await sleep(500);
+  ok(await ev(`!!document.querySelector('#songTools [onclick="findSpanishSongs()"]')?.getClientRects().length`), 'song tools: the card has Find Spanish songs, for an editor');
+  const memberEs = await ev(`(async () => { const html = document.documentElement, was = window.church; html.classList.remove('churchEditor');
+    const hidden = !document.querySelector('#account_menu [data-open="songTools"]').getClientRects().length && !document.getElementById('songTools').getClientRects().length;
+    window.church = { ...was, editor: false }; await findSpanishSongs(); await findVersions(); const opened = !!document.querySelector('.task-dialog');
+    window.church = was; html.classList.add('churchEditor'); return { hidden, opened }; })()`);
+  ok(memberEs.hidden && !memberEs.opened, 'song tools: the menu item and the card are hidden for a member, and the helpers open nothing for one', JSON.stringify(memberEs));
+  await click('#songTools [onclick="findSpanishSongs()"]');
+  await until(`!!document.querySelector('.task-dialog [data-tag-all]')`, 'the Find Spanish songs window', 10000);
+  ok(/Nothing is saved unless you press Tag/.test(await ev(`document.querySelector('.task-dialog .task-body').textContent`)), 'find spanish: says nothing is saved without Tag');
+  // Tag all: one confirm with the count; only this run's clear song stays ticked
+  await click('.task-dialog [data-tag-all]');
+  await until(`!!document.querySelector('.task-dialog .spanish-pick')`, 'the Tag all confirm', 8000);
+  const pickEs = await ev(`(() => { const boxes = [...document.querySelectorAll('.task-dialog .spanish-pick input')];
+    boxes.filter(b => b.value !== '${esClear}').forEach(b => { b.checked = false; });
+    boxes[0].closest('ul').dispatchEvent(new Event('change', { bubbles: true }));
+    return { ids: boxes.map(b => b.value), button: document.querySelector('.task-dialog [type="submit"]').textContent }; })()`);
+  ok(pickEs.ids.includes(esClear) && !pickEs.ids.includes(esMixed) && pickEs.button === 'Tag 1 song as Spanish',
+    'tag all: the confirm lists the clear Spanish song (not the part English one) and the button counts what will change', JSON.stringify(pickEs));
+  await click('.task-dialog [type="submit"]');
+  await until(`/Tagged 1 song as Spanish/.test(document.querySelector('.task-dialog .task-body')?.textContent || '')`, 'the Tag all', 15000);
+  let clearDoc = {};
+  for (let tries = 0; tries < 60 && !clearDoc.langs; tries++) { clearDoc = (await req('GET', `${DB}/${esClear}`)).json || {}; if (!clearDoc.langs) await sleep(250); }
+  const clearHistory = (await req('GET', `${DB}/_all_docs?startkey=%22h-${esClear}%7C%22&endkey=%22h-${esClear}%7C%EF%BF%B0%22`)).json?.rows || [];
+  clearHistory.forEach(row => made.push(row.id));
+  ok(JSON.stringify(clearDoc.langs) === '["es"]' && clearDoc.editedBy === 'u-alice' && clearHistory.length === 1,
+    'tag all: the song is saved as Spanish the normal way (saved by alice, the old version kept)', JSON.stringify({ langs: clearDoc.langs, by: clearDoc.editedBy, kept: clearHistory.length }));
+  // one at a time: the part English song comes with both picked and lines of each; Tag it, Skip the others
+  await click('.task-dialog [type="submit"]'); // One at a time
+  let sawMixed = null;
+  for (let step = 0; step < 40; step++) {
+    await until(`!!document.querySelector('.task-dialog [type="submit"]')`, 'a Spanish suggestion', 8000);
+    const text = await ev(`document.querySelector('.task-dialog .task-body')?.textContent || ''`);
+    if (!/ of \d+/.test(text)) break;
+    if (text.includes(`${RUN} Santo`)) {
+      sawMixed = await ev(`({ look: document.querySelector('.task-dialog input[name="look"]:checked')?.value,
+        words: document.querySelector('.task-dialog .history-version').textContent, buttons: [...document.querySelectorAll('.task-dialog .task-buttons .btn')].map(b => b.textContent) })`);
+      await click('.task-dialog [type="submit"]'); // Tag
+    } else {
+      await click('.task-dialog [data-skip]');
+    }
+    await sleep(300);
+  }
+  ok(sawMixed?.look === 'es,en' && /Your love/.test(sawMixed.words) && /Santo/.test(sawMixed.words) && JSON.stringify(sawMixed.buttons) === '["Stop","Skip","Tag"]',
+    'one at a time: the part English song shows lines of each, Spanish and English picked, and Stop, Skip, Tag', JSON.stringify(sawMixed));
+  let mixedDoc = {};
+  for (let tries = 0; tries < 60 && !mixedDoc.langs; tries++) { mixedDoc = (await req('GET', `${DB}/${esMixed}`)).json || {}; if (!mixedDoc.langs) await sleep(250); }
+  ((await req('GET', `${DB}/_all_docs?startkey=%22h-${esMixed}%7C%22&endkey=%22h-${esMixed}%7C%EF%BF%B0%22`)).json?.rows || []).forEach(row => made.push(row.id));
+  ok(JSON.stringify(mixedDoc.langs) === '["es","en"]', 'one at a time: Tag saves Spanish and English', JSON.stringify(mixedDoc.langs));
+  const endEs = await ev(`document.querySelector('.task-dialog .task-body')?.textContent || ''`);
+  ok(/^Tagged 2 songs \(1 Spanish only, 1 Spanish and English\)(, skipped \d+)?\./.test(endEs), 'one at a time: the end counts what was tagged (Tag all too) and skipped', endEs);
+  await click('.task-dialog [type="submit"]'); // Close
+  ok(await ev(`JSON.parse(localStorage.getItem('spanishSkips.' + window.dbName) || '[]').every(i => !i.startsWith('s-${ts}-'))`), 'one at a time: skips are kept on this device, tagged songs are not among them');
+  await sleep(400);
 
   // ---- a phone: the swipe tip, once; the + menu turns into × ----
   await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true, screenWidth: 390, screenHeight: 844 });

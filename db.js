@@ -4056,3 +4056,210 @@ async function findVersions() {
   await dialog.finish(summary + aloneNote);
 }
 
+// Find Spanish songs (#90, for editors, from the menu under your name). A song in Spanish counts as the church's
+// usual language until someone picks Spanish in its Language box. This looks at each song's title and words
+// (spanishLook in lib.js) and offers the ones that look Spanish, clearest first, one at a time: Tag saves its
+// languages the normal way (the old version is kept), Skip is remembered on this device. "Tag all" tags the clearly
+// Spanish ones after one confirm. Nothing is saved without a click.
+const spanishSkipsKey = () => `spanishSkips.${window.dbName || ''}`;
+function spanishSkips() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(spanishSkipsKey()) || '[]'));
+  } catch (err) {
+    return new Set();
+  }
+}
+function skipSpanish(id) {
+  const skipped = spanishSkips();
+  skipped.add(id);
+  try {
+    localStorage.setItem(spanishSkipsKey(), JSON.stringify([...skipped]));
+  } catch (err) { /* no storage: it comes back next time */ }
+}
+const SPANISH_CHOICES = { es: 'Spanish only', 'es,en': 'Spanish and English' };
+
+// Songs that may be in Spanish: no language picked yet, not in Hindi or Arabic letters, and looking Spanish.
+// Clearly Spanish first, then part Spanish and part English, then the ones that only might be.
+function spanishSuggestions(songs) {
+  const rank = found => (found.clear ? 0 : found.maybe ? 2 : 1);
+  return songs.filter(song => !savedLangs(song).length && !scriptLangs(song).length)
+    .map(song => ({ song, ...spanishLook(song) }))
+    .filter(found => found.look)
+    .sort((a, b) => rank(a) - rank(b) || b.es - a.es || String(a.song.title).localeCompare(String(b.song.title)));
+}
+
+// Save a song's languages the normal way: its newest copy, the old version kept, saved by this person.
+// False if someone tagged it Spanish in the meantime.
+async function tagSongLanguages(id, langs) {
+  const doc = await db.get(id);
+  if (savedLangs(doc).includes('es')) return false;
+  if (!canEdit(doc)) throw new Error(`You're not allowed to change "${doc.title}".`);
+  doc.langs = [...new Set([...langs, ...savedLangs(doc)])];
+  await saveWithHistory(savedByMe(doc));
+  return true;
+}
+
+// A few lines of a song's words to tell what it is: for a song that looks part Spanish, part English, a few of each
+function spanishSample(found) {
+  const lines = found.lines.filter(line => line.text.trim());
+  if (found.look === 'es,en') {
+    const es = lines.filter(line => line.lang === 'es').slice(0, 3), en = lines.filter(line => line.lang === 'en').slice(0, 3);
+    if (es.length && en.length) return lines.filter(line => es.includes(line) || en.includes(line)).map(line => line.text.trim());
+  }
+  return lines.slice(0, 4).map(line => line.text.trim());
+}
+
+async function findSpanishSongs() {
+  if (!window.church?.editor) return;
+  const dialog = new TaskDialog('Find Spanish songs');
+  if (churchLang() === 'es') {
+    await dialog.finish("This church's usual language is Spanish, so songs with no language picked already count as Spanish.");
+    return;
+  }
+  dialog.working('Looking for songs that look Spanish…');
+  let found;
+  try {
+    found = spanishSuggestions(await allLiveSongs());
+  } catch (err) {
+    await dialog.finish(`Couldn't read the songs: ${err?.message || err}`, { error: true });
+    return;
+  }
+  const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+  const tags = { es: 0, 'es,en': 0 };
+  let skips = 0, note = '', list = null;
+  const summary = () => {
+    const done = tags.es + tags['es,en'];
+    const kinds = Object.entries(tags).filter(([, n]) => n).map(([look, n]) => [n, SPANISH_CHOICES[look]]);
+    const how = kinds.length > 1 ? ` (${kinds.map(([n, label]) => `${n} ${label}`).join(', ')})` : kinds.length ? ` as ${kinds[0][1]}` : '';
+    return `Tagged ${plural(done, 'song')}${how}${skips ? `, skipped ${skips}` : ''}.`;
+  };
+  const tagged = (found, look) => { // a song tagged by someone else in the meantime counts too: it's done
+    tags[look]++;
+    found.tagged = true;
+  };
+
+  // The start: how many, then Tag all the clear ones (after a confirm), or look at them one at a time
+  while (!list) {
+    const left = found.filter(f => !f.tagged);
+    const skipped = spanishSkips();
+    const fresh = left.filter(f => !skipped.has(f.song._id));
+    const skippedBefore = left.length - fresh.length;
+    const clear = fresh.filter(f => f.clear);
+    const mixed = fresh.filter(f => !f.clear && !f.maybe && f.look === 'es,en');
+    const maybe = fresh.length - clear.length - mixed.length;
+    if (!left.length) {
+      await dialog.finish(note ? `${summary()} No other songs look Spanish.` : "No songs look Spanish that aren't tagged with a language yet.");
+      return;
+    }
+    const counts = [[clear.length, 'clearly Spanish'], [mixed.length, 'part Spanish, part English'], [maybe, 'maybe Spanish']]
+      .filter(([n]) => n).map(([n, what]) => `<li><b>${n}</b> look ${what}</li>`).join('');
+    const start = dialog.run({
+      text: note ? '' : "yCanta looks at each song's title and words for Spanish letters and marks (ñ ¿ ¡ á é í ó ú) and common Spanish words. Songs with a language picked already are left out. You'll see each song on its own and choose Spanish only, or Spanish and English. Nothing is saved unless you press Tag.",
+      html: (note ? `<p>${escapeHtml(note)}</p>` : '')
+        + (fresh.length ? `<p>Songs to look at:</p><ul>${counts}</ul>` : '<p>No new songs to look at.</p>')
+        + (skippedBefore ? `<label class="backup-all"><input type="checkbox" name="again"> Also show the ${skippedBefore} I skipped before</label>` : ''),
+      submit: 'One at a time',
+      cancel: note ? 'Close' : 'Cancel',
+      action: values => values,
+    });
+    if (clear.length) {
+      dialog.buttons.querySelector('[data-cancel]').insertAdjacentHTML('afterend',
+        `<button type="button" class="btn" data-tag-all>Tag all ${clear.length} clear ones</button>`);
+      dialog.buttons.querySelector('[data-tag-all]').addEventListener('click', () => dialog.resolveWith('all'));
+    }
+    const answer = await start;
+    if (!answer) { // closed
+      if (tags.es + tags['es,en']) notyf.success(summary());
+      return;
+    }
+    if (answer !== 'all') {
+      list = answer.again ? left : fresh;
+      if (!list.length) {
+        await dialog.finish(note ? summary() : 'No new songs to look at.');
+        return;
+      }
+      break;
+    }
+    // Tag all: one confirm that names every song, each can be unticked
+    const button = count => `Tag ${plural(count, 'song')} as Spanish`;
+    const confirm = dialog.run({
+      html: `<p><b>${plural(clear.length, 'song')}</b> will change: each gets Spanish as its language. Untick any that isn't Spanish. Each song's old version is kept.</p>
+        <ul class="backup-list spanish-pick">${clear.map(f => `<li><label><input type="checkbox" value="${escapeHtml(f.song._id)}" checked> ${escapeHtml(f.song.title)} <small>${escapeHtml(spanishSample(f)[0] || '')}</small></label></li>`).join('')}</ul>`,
+      submit: button(clear.length),
+      cancel: '',
+      working: 'Tagging…',
+      action: async () => {
+        const picked = [...dialog.body.querySelectorAll('.spanish-pick input:checked')].map(box => box.value);
+        if (!picked.length) throw new Error('Tick at least one song, or press Back.');
+        const failed = [];
+        let done = 0;
+        for (const [n, id] of picked.entries()) {
+          dialog.setBusy(`Tagging ${n + 1} of ${picked.length}…`);
+          const one = clear.find(f => f.song._id === id);
+          try {
+            if (await tagSongLanguages(id, ['es'])) done++;
+            tagged(one, 'es');
+          } catch (err) {
+            console.error(err);
+            failed.push(`"${one.song.title}": ${err?.message || err}`);
+          }
+        }
+        return { done, failed };
+      },
+    });
+    dialog.buttons.insertAdjacentHTML('afterbegin', '<button type="button" class="btn" data-back>Back</button>');
+    dialog.buttons.querySelector('[data-back]').addEventListener('click', () => dialog.resolveWith('back'));
+    const submit = dialog.buttons.querySelector('[type="submit"]');
+    dialog.body.querySelector('.spanish-pick').addEventListener('change', () => {
+      submit.textContent = button(dialog.body.querySelectorAll('.spanish-pick input:checked').length);
+    });
+    const result = await confirm;
+    if (result === null) { // closed (Esc)
+      if (tags.es + tags['es,en']) notyf.success(summary());
+      return;
+    }
+    if (result === 'back') continue;
+    note = `Tagged ${plural(result.done, 'song')} as Spanish.${result.failed.length ? ` Couldn't tag ${result.failed.join('; ')}.` : ''}`;
+  }
+
+  // One at a time
+  let stopped = false;
+  for (const [n, found] of list.entries()) {
+    const why = found.clear ? 'Looks clearly Spanish.' : found.maybe ? 'Maybe Spanish: it has only a few Spanish words.'
+      : found.look === 'es,en' ? 'Looks part Spanish, part English.' : 'Looks Spanish.';
+    const step = dialog.run({
+      html: `<p><b>${n + 1} of ${list.length}</b>: ${why} <small>(Spanish words and marks: ${found.es}, English words: ${found.en})</small></p>
+        <p><b>${escapeHtml(found.song.title)}</b></p>
+        <div class="history-version"><p>${spanishSample(found).map(escapeHtml).join('<br>')}</p></div>
+        ${Object.entries(SPANISH_CHOICES).map(([look, label]) =>
+          `<label class="backup-all"><input type="radio" name="look" value="${look}"${look === found.look ? ' checked' : ''}> ${label}</label>`).join('')}`,
+      submit: 'Tag',
+      cancel: 'Stop',
+      working: 'Saving…',
+      action: async ({ look }) => {
+        if (!SPANISH_CHOICES[look]) throw new Error('Pick Spanish only, or Spanish and English.');
+        await tagSongLanguages(found.song._id, look.split(','));
+        return look;
+      },
+    });
+    dialog.buttons.querySelector('[data-cancel]').insertAdjacentHTML('afterend', '<button type="button" class="btn" data-skip>Skip</button>');
+    dialog.buttons.querySelector('[data-skip]').addEventListener('click', () => dialog.resolveWith('skip'));
+    const result = await step;
+    if (!result) { // Stop: the window has closed
+      stopped = true;
+      break;
+    }
+    if (result === 'skip') {
+      skipSpanish(found.song._id);
+      skips++;
+    } else {
+      tagged(found, result);
+    }
+  }
+  if (stopped) {
+    if (tags.es + tags['es,en'] || skips) notyf.success(summary());
+    return;
+  }
+  await dialog.finish(`${summary()}${tags.es + tags['es,en'] ? " To undo one, open the song's Info, then Old versions." : ''}`);
+}
+

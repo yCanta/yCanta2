@@ -33,7 +33,7 @@
           <button type="button" data-open="userProfile"><svg class="icon am-icon" aria-hidden="true"><use href="icons.svg#person"/></svg>My Profile</button>
           <button type="button" data-open="appSettings"><svg class="icon am-icon" aria-hidden="true"><use href="icons.svg#settings"/></svg>Settings</button>
           <button type="button" data-open="categorySettings"><svg class="icon am-icon" aria-hidden="true"><use href="icons.svg#tag"/></svg>Categories</button>
-          <button type="button" data-open="findVersions" class="editor-only"><svg class="icon am-icon" aria-hidden="true"><use href="icons.svg#copy"/></svg>Find versions</button>
+          <button type="button" data-open="songTools" class="editor-only"><svg class="icon am-icon" aria-hidden="true"><use href="icons.svg#search"/></svg>Song tools</button>
           <button type="button" data-open="trash"><svg class="icon am-icon" aria-hidden="true"><use href="icons.svg#trash"/></svg>Trash</button>
           <button type="button" data-open="adminSettings" class="admin"><svg class="icon am-icon" aria-hidden="true"><use href="icons.svg#admin"/></svg>Admin</button>
           <hr>
@@ -117,6 +117,20 @@
               <legend onclick="toggleCategoryCard(this.parentElement)">Categories</legend>
               <div class="content">
                 <div id="category_content"></div>
+              </div>
+            </fieldset>
+            <!-- Helpers that look through all the songs and change many at once, for editors (#90) -->
+            <fieldset class="editor-only closed align-right" id="songTools">
+              <legend onclick="this.parentElement.classList.toggle('closed');">Song tools</legend>
+              <div class="content">
+                <b>Find versions</b>
+                <div>Finds songs that may be versions of each other (the same title or CCLI number, or in the Duplicate category), so you can link them.</div>
+                <button type="button" class="btn" onclick="findVersions()">Find versions</button>
+              </div>
+              <div class="content">
+                <b>Find Spanish songs</b>
+                <div>Finds songs whose words look Spanish but have no language picked, so you can tag them as Spanish.</div>
+                <button type="button" class="btn" onclick="findSpanishSongs()">Find Spanish songs</button>
               </div>
             </fieldset>
             <fieldset class="closed align-right" id="appSettings">
