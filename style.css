@@ -1419,9 +1419,20 @@ body.player-pill .subcolumn:not(.sidebar)::after {
 .version-overlap[hidden] {
   display: none; /* their own display would show them anyway */
 }
-.version-menu {
+body > .version-menu { /* "body >": over the language list's panel rules further down, which it shares */
   position: fixed; /* under the pill, placed by db.js: the song's header would cut it off */
   max-width: calc(100vw - 1rem);
+  /* It opens where it is, under the pill (Carl: it was pulled up from the bottom of the screen). The panel rules
+     put it just below the screen until db.js placed it, and the page's ease on every change (index.html) then
+     slid it up from there. Now it doesn't move: it just fades in, a few pixels down, quickly. */
+  transition: none;
+  animation: version-menu-in .15s ease-out;
+}
+@keyframes version-menu-in { from { opacity: 0; translate: 0 -.25rem; } }
+@media (prefers-reduced-motion: reduce) {
+  body > .version-menu {
+    animation: none;
+  }
 }
 .version-note,
 .version-overlap {
@@ -3253,6 +3264,7 @@ body:not(.song) .show_for_songs { /* and what's only for exporting one song */
 .account-menu .am-icon,
 .lang-suggest .am-icon,
 .version-menu .am-icon {
+  flex: none; /* the same width on a row whose words wrap */
   width: 1.2rem;
   text-align: center;
   font-weight: normal;
