@@ -4083,8 +4083,9 @@ async function findSpanishSongs() {
   let skips = 0, note = '', list = null;
   const summary = () => {
     const done = tags.es + tags['es,en'];
-    const parts = [tags.es && `${tags.es} Spanish only`, tags['es,en'] && `${tags['es,en']} Spanish and English`].filter(Boolean);
-    return `Tagged ${plural(done, 'song')}${parts.length > 1 ? ` (${parts.join(', ')})` : done ? ` as ${parts[0]}` : ''}${skips ? `, skipped ${skips}` : ''}.`;
+    const kinds = Object.entries(tags).filter(([, n]) => n).map(([look, n]) => [n, SPANISH_CHOICES[look]]);
+    const how = kinds.length > 1 ? ` (${kinds.map(([n, label]) => `${n} ${label}`).join(', ')})` : kinds.length ? ` as ${kinds[0][1]}` : '';
+    return `Tagged ${plural(done, 'song')}${how}${skips ? `, skipped ${skips}` : ''}.`;
   };
   const tagged = (found, look) => { // a song tagged by someone else in the meantime counts too: it's done
     tags[look]++;
@@ -4181,7 +4182,7 @@ async function findSpanishSongs() {
     const why = found.clear ? 'Looks clearly Spanish.' : found.maybe ? 'Maybe Spanish: it has only a few Spanish words.'
       : found.look === 'es,en' ? 'Looks part Spanish, part English.' : 'Looks Spanish.';
     const step = dialog.run({
-      html: `<p><b>${n + 1} of ${list.length}</b>: ${why} <small>(${plural(found.es, 'Spanish sign')}, ${plural(found.en, 'English word')})</small></p>
+      html: `<p><b>${n + 1} of ${list.length}</b>: ${why} <small>(Spanish words and marks: ${found.es}, English words: ${found.en})</small></p>
         <p><b>${escapeHtml(found.song.title)}</b></p>
         <div class="history-version"><p>${spanishSample(found).map(escapeHtml).join('<br>')}</p></div>
         ${Object.entries(SPANISH_CHOICES).map(([look, label]) =>
