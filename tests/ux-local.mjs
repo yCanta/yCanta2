@@ -438,6 +438,134 @@ try {
   await ev(`closeExport(), 'ok'`);
   await sleep(800);
 
+  // ---- versions of a song (#90) and side by side (#117) ----
+  // One Spanish and two English versions (same CCLI number; the same title but for "(short)"), and a song in the
+  // Duplicate category that starts with the same words as the short one
+  const tv = Date.now(), vEs = `s-${tv}-ves`, vEn = `s-${tv}-ven`, vShort = `s-${tv}-vshort`, vDup = `s-${tv}-vdup`, vBook = `sb-${tv}-versions`;
+  const songV = (id, title, lines, extra = {}) => req('PUT', `${DB}/${id}`, { _id: id, title, authors: [''], scripture_ref: [''], introduction: '',
+    key: 'G', categories: [''], cclis: false, copyright: '', yt: '', chords: '', content: [[{ type: 'verse' }, lines]],
+    added: tv, addedBy: 'u-alice', edited: tv, editedBy: 'u-alice', ...extra });
+  const madeV = [
+    [vEs, await songV(vEs, `${RUN} Vive`, ['Cristo vive, Él resucitó'], { langs: ['es'], cclis: '7012345' })],
+    [vEn, await songV(vEn, `${RUN} Lives`, ['Christ is living, He has risen'], { cclis: '7012345' })],
+    [vShort, await songV(vShort, `${RUN} Lives (short)`, ['Hallelujah, Christ is living today'])],
+    [vDup, await songV(vDup, `${RUN} Old Copy`, ['Hallelujah, Christ is living today', 'again'], { categories: ['Duplicate'] })],
+  ];
+  madeV.forEach(([docId, r]) => r.status === 201 && made.push(docId));
+  const vb = await req('PUT', `${DB}/${vBook}`, { _id: vBook, title: `${RUN} Versions`, songrefs: madeV.map(([docId]) => ({ id: docId, status: 'n' })),
+    added: tv, addedBy: 'u-alice', edited: tv, editedBy: 'u-alice' });
+  if (vb.status === 201) made.push(vBook);
+  ok(madeV.every(([, r]) => r.status === 201) && vb.status === 201, 'versions: test songs and a book are made');
+  await until(`db.get('${vBook}').then(() => true, () => false)`, 'the versions book to reach this browser', 20000);
+  const groupsOnServer = async () => ((await req('GET', `${DB}/_all_docs?include_docs=true&startkey=%22v-%22&endkey=%22v-%EF%BF%B0%22`)).json?.rows || [])
+    .map(row => row.doc).filter(doc => Object.keys(doc.songs || {}).some(id => id.startsWith(`s-${tv}-`)));
+  const serverGroupsUntil = async (test, what) => {
+    let groups = [];
+    for (let tries = 0; tries < 60; tries++) { groups = await groupsOnServer(); if (test(groups)) return groups; await sleep(250); }
+    throw new Error(`Timed out waiting for ${what}: ${JSON.stringify(groups.map(g => g.songs))}`);
+  };
+  // the save rule's "members only link their own songs", as the app checks it before it asks
+  const mirror = await ev(`(() => { const was = window.church; window.church = { editor: false };
+    const r = [groupChangeAllowed({}, { a: 'u-alice', b: 'u-alice' }), groupChangeAllowed({}, { a: 'u-alice', b: 'u-eddie' }),
+      groupChangeAllowed({ b: 'u-eddie' }, { a: 'u-alice', b: 'u-eddie' }), groupChangeAllowed({ a: 'u-alice', b: 'u-eddie' }, { a: 'u-alice' })];
+    window.church = was; return r; })()`);
+  ok(JSON.stringify(mirror) === '[true,false,true,false]', "versions: a member may link only their own songs, the same as the save rule", JSON.stringify(mirror));
+
+  // a song with no versions: no chips; its Info says so and offers Link a version
+  await go(`#${vBook}&${vEn}`, `!!document.querySelector('#song .song-card .version-chips')`, 'the English song');
+  ok(await ev(`document.querySelector('#song .version-chips').hidden`), 'versions: a song with none shows no Versions row');
+  await click('#song info');
+  await until(`/None linked/.test(document.querySelector('#dialog .version-info')?.textContent || '')`, 'the Info versions', 5000);
+  ok(true, 'info: a song with no versions says "None linked"');
+  // Link a version: the songs that look like versions are offered first (same CCLI number; same title but for "(short)")
+  await click('#dialog .version-info [onclick^="pickVersions"]');
+  await until(`!!document.querySelector('.task-dialog .version-pick')`, 'the Link versions window', 8000);
+  const offeredV = await ev(`[...document.querySelectorAll('.task-dialog .version-pick li:not([hidden]) input')].map(i => i.value)`);
+  ok(offeredV.length === 2 && offeredV.includes(vEs) && offeredV.includes(vShort), 'link: offers the songs with the same CCLI number and the same title', JSON.stringify(offeredV));
+  await ev(`(() => { const s = document.querySelector('.task-dialog .backup-search'); s.value = ${JSON.stringify(RUN + ' old')}; s.dispatchEvent(new Event('input')); })(), 'ok'`);
+  const typedV = await ev(`[...document.querySelectorAll('.task-dialog .version-pick li:not([hidden]) input')].map(i => i.value)`);
+  ok(JSON.stringify(typedV) === JSON.stringify([vDup]), 'link: typing part of a title finds that song', JSON.stringify(typedV));
+  await ev(`(() => { const s = document.querySelector('.task-dialog .backup-search'); s.value = ''; s.dispatchEvent(new Event('input')); })(), 'ok'`);
+  await click(`.task-dialog .version-pick input[value="${vEs}"]`);
+  await click(`.task-dialog .version-pick input[value="${vShort}"]`);
+  await click('.task-dialog [type="submit"]');
+  await until(`/Linked 2 songs/.test(document.querySelector('.task-dialog .task-body')?.textContent || '')`, 'the link', 8000);
+  await click('.task-dialog [type="submit"]'); // Close
+  let groupsV = await serverGroupsUntil(g => g.length === 1 && Object.keys(g[0].songs).length === 3, 'the group on the server');
+  groupsV.forEach(g => made.push(g._id));
+  ok(JSON.stringify(Object.values(groupsV[0].songs)) === '["u-alice","u-alice","u-alice"]', 'link: one group record on the server, saying who added each song', JSON.stringify(groupsV[0].songs));
+  await until(`document.querySelectorAll('#dialog .version-info [onclick^="unlinkFromInfo"]').length === 2`, 'Info to list the versions', 8000);
+  ok(true, 'info: lists the two versions, each with Unlink');
+  await ev(`document.querySelector('#dialog .close-x, #dialog [aria-label="Close"]')?.click(), 'ok'`);
+  // the song shows its versions with their languages; a chip opens that version beside it, and closes it again
+  await until(`document.querySelectorAll('#song .version-chips [data-version]').length === 2`, 'the Versions chips', 8000);
+  const chipsV = await ev(`[...document.querySelectorAll('#song .version-chips [data-version]')].map(c => c.dataset.version + '|' + c.textContent.replace(/[\\u2066-\\u2069]/g, '').trim())`);
+  ok(chipsV[0].startsWith(vShort + '|English') && chipsV[1].startsWith(vEs + '|Spanish (Español)'), 'song: shows its versions with their languages, "Spanish (Español)"', JSON.stringify(chipsV));
+  await iconOk('a song with versions');
+  await click(`#song .version-chips [data-version="${vEs}"]`);
+  await until(`!!document.querySelector('#song .song-card.version-card[data-id="${vEs}"]')`, 'the Spanish version beside the song', 8000);
+  const besideV = await ev(`(() => { const cards = [...document.querySelectorAll('#song .content > .song-card')];
+    return { cards: cards.map(c => c.dataset.id), song: window.song._id, sel: document.querySelector('#song .version-chips [data-version="${vEs}"]').classList.contains('sel'),
+      words: cards[1]?.querySelector('line')?.textContent, keyRows: document.querySelectorAll('#keyToggle').length }; })()`);
+  ok(JSON.stringify(besideV.cards) === JSON.stringify([vEn, vEs]) && besideV.song === vEn && besideV.sel && besideV.words === 'Cristo vive, Él resucitó' && besideV.keyRows === 1,
+    'side by side: the Spanish version opens beside the song, whole, and the open song stays the same', JSON.stringify(besideV));
+  await click(`#song .version-chips [data-version="${vEs}"]`);
+  ok(await ev(`!document.querySelector('#song .version-card') && !document.querySelector('#song .version-chips .sel')`), 'side by side: the chip closes it again');
+  await click(`#song .version-chips [data-version="${vShort}"]`);
+  await until(`!!document.querySelector('#song .version-card')`, 'the short version beside the song', 8000);
+  await click('#song .version-card .close-x');
+  ok(await ev(`!document.querySelector('#song .version-card')`), 'side by side: its × closes it');
+  // the editor doesn't show them, so nothing of them can end up in the song
+  await go(`#${vBook}&${vEn}?edit`, `!!document.querySelector('#song .edit_buttons')`, 'the song editor');
+  ok(await ev(`!document.querySelector('#song .version-chips') || !document.querySelector('#song .version-chips').getClientRects().length`), 'editor: the Versions row is not in the song editor');
+  await click('#song .edit_buttons [data-cancel]');
+  await until(`!location.hash.includes('?edit') && !window.songEditing`, 'leaving the editor', 8000);
+  await go(`#${vBook}&${vEn}`, `document.querySelectorAll('#song .version-chips [data-version]').length === 2`, 'the English song again');
+  // Unlink from Info: the short one leaves the group
+  await click('#song info');
+  await until(`document.querySelectorAll('#dialog .version-info [onclick^="unlinkFromInfo"]').length === 2`, 'Info versions', 8000);
+  await click(`#dialog .version-info [onclick="unlinkFromInfo('${vShort}')"]`);
+  groupsV = await serverGroupsUntil(g => g.length === 1 && Object.keys(g[0].songs).length === 2 && !(vShort in g[0].songs), 'the unlink on the server');
+  ok(true, 'unlink: the song leaves the group on the server');
+  await until(`document.querySelectorAll('#song .version-chips [data-version]').length === 1`, 'one chip left', 8000);
+  ok(true, 'unlink: the song shows one version left');
+  await ev(`document.querySelector('#dialog .close-x, #dialog [aria-label="Close"]')?.click(), 'ok'`);
+  // two devices offline each linked the song: it says so, and Join them makes one group
+  const twin = `v-${tv}-twin`;
+  const twinPut = await req('PUT', `${DB}/${twin}`, { _id: twin, songs: { [vEn]: 'u-alice', [vDup]: 'u-alice' }, added: tv, addedBy: 'u-alice', edited: tv, editedBy: 'u-alice' });
+  if (twinPut.status === 201) made.push(twin);
+  await until(`!!document.querySelector('#song .version-overlap [onclick^="joinVersionGroups"]')`, 'the two-groups note', 15000);
+  ok(true, 'two groups: a song in two groups says so and offers to join them');
+  await click('#song .version-overlap [onclick^="joinVersionGroups"]');
+  groupsV = await serverGroupsUntil(g => g.length === 1 && Object.keys(g[0].songs).length === 3, 'one joined group on the server');
+  ok([vEs, vEn, vDup].every(id => id in groupsV[0].songs), 'two groups: Join them leaves one group with every song, and deletes the other', JSON.stringify(groupsV.map(g => g._id)));
+  await until(`document.querySelectorAll('#song .version-chips [data-version]').length === 2 && !document.querySelector('#song .version-overlap')`, 'the chips after the join', 8000);
+  // Find versions (editors): the menu item, then each suggestion on its own; Link the one with the short song
+  await click('#username_legend');
+  ok(await ev(`!!document.querySelector('#account_menu [data-open="findVersions"]')?.getClientRects().length`), 'find versions: in the menu under your name, for an editor');
+  await click('#account_menu [data-open="findVersions"]');
+  await until(`/Duplicate category/.test(document.querySelector('.task-dialog .task-body')?.textContent || '')`, 'the Find versions window', 10000);
+  await click('.task-dialog [type="submit"]'); // Start
+  let foundShort = false;
+  for (let step = 0; step < 30; step++) {
+    await until(`!!document.querySelector('.task-dialog .version-pick, .task-dialog [type="submit"]')`, 'a suggestion', 8000);
+    const body = await ev(`document.querySelector('.task-dialog .task-body')?.textContent || ''`);
+    if (!/ of \d+/.test(body)) break; // the end
+    if (body.includes(`${RUN} Lives (short)`)) {
+      foundShort = true;
+      ok(/the same title/.test(body) && body.includes(`${RUN} Lives`), 'find versions: suggests the short song with the one it has the same title as', body.slice(0, 200));
+      await click('.task-dialog [type="submit"]'); // Link
+    } else {
+      await click('.task-dialog [data-skip]');
+    }
+    await sleep(400);
+  }
+  ok(foundShort, 'find versions: the short song is suggested');
+  groupsV = await serverGroupsUntil(g => g.length === 1 && vShort in g[0].songs, 'the helper link on the server');
+  ok(Object.keys(groupsV[0].songs).length === 4, 'find versions: Link joins it to the existing group (one group, four songs)', JSON.stringify(groupsV[0].songs));
+  await ev(`document.querySelector('.task-dialog [type="submit"]')?.click(), 'ok'`); // Close
+  await sleep(400);
+
   // ---- a phone: the swipe tip, once; the + menu turns into × ----
   await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true, screenWidth: 390, screenHeight: 844 });
   await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });

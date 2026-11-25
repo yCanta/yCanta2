@@ -170,6 +170,54 @@ const filterOk = !pulledIds.some(id => id.startsWith('h-')) && pulledIds.include
 filterOk ? pass++ : fail++;
 rows.push(`${filterOk ? 'PASS' : 'FAIL'}  download filter: ${pulledIds.length} docs, none h-, deleted ones included`);
 
+// --- version groups (#90): songs = { song id: who added it }; members link and unlink only their own songs
+const group = (id, songs, by = 'vera') => ({ _id: id, songs, addedBy: 'u-' + by, editedBy: 'u-' + by });
+await put('viewer links two of their own songs', true, 'vera', group('v-vera', { 's-va': 'u-vera', 's-vb': 'u-vera' }));
+await put("viewer links own song with someone else's", false, 'vera', group('v-mixed', { 's-va2': 'u-vera', 's-e9': 'u-eddie' }));
+await put("viewer links two songs that aren't theirs", false, 'vic', group('v-others', { 's-e7': 'u-eddie', 's-e8': 'u-eddie' }, 'vic'));
+await put('editor links anyone\'s songs', true, 'eddie', group('v-ed', { 's-e1': 'u-eddie', 's-v1': 'u-vic' }, 'eddie'));
+let vg = await get('v-ed');
+await put("viewer adds own song to a group of someone else's", true, 'vera', { ...vg, songs: { ...vg.songs, 's-vc': 'u-vera' } });
+vg = await get('v-ed');
+await put("viewer adds someone else's song to a group", false, 'vera', { ...vg, songs: { ...vg.songs, 's-e5': 'u-eddie' } });
+await put("viewer takes someone else's song out", false, 'vera', { ...vg, songs: { 's-e1': 'u-eddie', 's-vc': 'u-vera' } });
+await put("viewer changes who added someone else's song", false, 'vera', { ...vg, songs: { ...vg.songs, 's-v1': 'u-vera' } });
+await put('viewer hands own entry to someone else', false, 'vera', { ...vg, songs: { ...vg.songs, 's-vc': 'u-vic' } });
+await put("viewer deletes a group with others' songs", false, 'vera', { ...vg, _deleted: true });
+await put('viewer takes own song back out', true, 'vera', { ...vg, songs: { 's-e1': 'u-eddie', 's-v1': 'u-vic' } });
+vg = await get('v-ed');
+await put("song's adder takes it out, leaving one song", true, 'vic', { ...vg, songs: { 's-e1': 'u-eddie' } });
+await put('outsider links songs', false, 'olly', group('v-olly', { 's-o1': 'u-olly', 's-o2': 'u-olly' }, 'olly'));
+await put('signed-out link', false, null, group('v-anon', { 's-a1': 'u-anon', 's-a2': 'u-anon' }));
+await put('editor saves a group whose songs are a list', false, 'eddie', group('v-list', ['s-e1', 's-e2'], 'eddie'));
+await put('editor saves a group holding a songbook', false, 'eddie', group('v-book', { 's-e1': 'u-eddie', 'sb-x': 'u-eddie' }, 'eddie'));
+await put('editor saves a group with no "who added"', false, 'eddie', group('v-who', { 's-e1': 'u-eddie', 's-e2': 1 }, 'eddie'));
+// joining two groups: one gets all the songs, the other is deleted
+await put('editor starts a second group', true, 'eddie', group('v-ed2', { 's-e3': 'u-eddie', 's-va': 'u-vera' }, 'eddie'));
+const vVera = await get('v-vera'), vEd2 = await get('v-ed2');
+await put("viewer joins a group of someone else's songs into theirs", false, 'vera', { ...vVera, songs: { ...vVera.songs, ...vEd2.songs } });
+await put('editor joins two groups (one gets every song)', true, 'eddie', { ...vVera, songs: { ...vVera.songs, ...vEd2.songs } });
+await put('editor joins two groups (the other is deleted)', true, 'eddie', { ...vEd2, _deleted: true });
+const vVera2 = await get('v-vera');
+await expect("viewer deletes a group holding someone else's song the old way", false, 'vera', 'DELETE', `v-vera?rev=${vVera2._rev}`);
+await put('viewer makes another group of own songs', true, 'vera', group('v-vera3', { 's-vd': 'u-vera', 's-ve': 'u-vera' }));
+const vVera3 = await get('v-vera3');
+await expect('viewer deletes a group of only their own songs', true, 'vera', 'DELETE', `v-vera3?rev=${vVera3._rev}`);
+await put('church admin changes any group', true, 'alice', { ...(await get('v-vera')), songs: { 's-va': 'u-vera', 's-zz': 'u-nobody' } });
+// a group made offline arrives by sync (new_edits:false, so the rule sees no old version)
+const vgSync = await req(as('vic'), 'POST', `/${DB}/_bulk_docs`, { new_edits: false, docs: [
+  { ...group('v-sync-bad', { 's-v1': 'u-vic', 's-e1': 'u-eddie' }, 'vic'), _rev: '1-cccc' },
+  { ...group('v-sync-ok', { 's-v1': 'u-vic', 's-v2': 'u-vic' }, 'vic'), _rev: '1-dddd' },
+] });
+const vgBad = (await req(as('admin'), 'GET', `/${DB}/v-sync-bad`)).status, vgOk = (await req(as('admin'), 'GET', `/${DB}/v-sync-ok`)).status;
+const vgSyncGood = vgSync.status === 201 && vgOk === 200 && vgBad === 404;
+vgSyncGood ? pass++ : fail++;
+rows.push(`${vgSyncGood ? 'PASS' : 'FAIL'}  sync push of groups: own songs saved (${vgOk}), someone else's refused (${vgBad})`);
+const vgPulled = (await req(as('vera'), 'POST', `/${DB}/_changes?filter=_selector`, { selector: { _id: { $not: { $regex: '^h-' } } } })).json.results.map(r => r.id);
+const vgDown = vgPulled.includes('v-vera') && vgPulled.includes('v-ed2');
+vgDown ? pass++ : fail++;
+rows.push(`${vgDown ? 'PASS' : 'FAIL'}  version groups (and deleted ones) come down with the app's download filter`);
+
 // --- everything else
 await put('viewer saves an unknown kind of doc', false, 'vera', { _id: 'x-thing' });
 await put('editor saves an unknown kind of doc', false, 'eddie', { _id: 'x-thing' });

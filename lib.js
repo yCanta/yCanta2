@@ -792,6 +792,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (what === 'help') openHelp();
     else if (what === 'logout') okToDropCategoryEdits().then(ok => ok && dbLogout());
     else if (what === 'install') showInstallSteps();
+    else if (what === 'findVersions') findVersions(); // #90, editors
     else openHomeCard(what);
   });
   document.getElementById('username_legend').addEventListener('keydown', e => {
@@ -1911,6 +1912,28 @@ function canEdit(doc) {
   if (!doc || doc._id == 'sb-allSongs' || doc._id == 'sb-favoriteSongs') return false; // not real docs
   if (window.church?.editor) return true;
   return !!doc.addedBy && !!window.user?._id && doc.addedBy.trim() === window.user._id.trim();
+}
+
+// A change to a version group's songs (#90) that this person may make, the same as database/validate.js:
+// being in a group counts as part of each song, so editors link and unlink any song, and everyone else only
+// songs they added. before and after are a group's songs, { song id: who added it } ({} for no group).
+function groupChangeAllowed(before = {}, after = {}) {
+  if (window.church?.editor) return true;
+  const me = window.user?._id;
+  const has = (list, key) => Object.prototype.hasOwnProperty.call(list, key);
+  const mine = (list, key) => !has(list, key) || list[key] === me;
+  return [...Object.keys(before), ...Object.keys(after)].every(key =>
+    (has(before, key) === has(after, key) && before[key] === after[key]) || (mine(before, key) && mine(after, key)));
+}
+// A song's languages in words, to tell its versions apart: "Spanish (Español)", or the church's usual one
+function songLangLabel(doc) {
+  const codes = songLangs(doc);
+  return (codes.length ? codes : [churchLang()]).map(code => languageName(code).label).join(', ');
+}
+// A title to compare (Find versions): folded like the search, so accents and marks don't count, with no
+// capitals, no words in brackets ("(short)") and no punctuation
+function titleKey(title) {
+  return stripAccents(title).toLowerCase().replace(/[([{][^)\]}]*[)\]}]/g, ' ').replace(/[^\p{L}\p{M}\p{N}]+/gu, ' ').trim();
 }
 
 function searchSBfor(text) {
@@ -4928,8 +4951,10 @@ async function loadInfo(song = true) {
         window.users[window.song.editedBy] || window.song.editedBy.slice(2),
         window.song.edited,
         songLangInfo(window.song) + revisionControls + songbookContent
+          + (window.song._rev ? '<div class="left version-info"><br><b>Versions:</b><br><small>Looking…</small></div>' : '') // #90
       )
     );
+    fillVersionInfo();
     if (!versions) {
       const song = window.song;
       const found = await songVersions();

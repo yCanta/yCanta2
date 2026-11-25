@@ -1384,11 +1384,28 @@ body.player-pill .subcolumn:not(.sidebar)::after {
 
 /* An old version open beside the song: room before its words, and the one opened last marked by a bar in the
    song blue down its left side (it had a thin dark-blue line down each side, with the words touching the left) */
-.song-card.revision {
+.song-card.revision,
+.song-card.version-card { /* another version open beside it (#117) looks the same */
   padding-left: .75rem;
 }
-.song-card.current_rev {
+.song-card.current_rev,
+.song-card.version-card {
   box-shadow: inset 3px 0 0 var(--song-color);
+}
+/* The song's other versions (#90): chips under its categories, each opening that version beside it */
+.version-chips .version-label {
+  font-size: .85rem;
+  color: var(--light-text-color);
+}
+.version-note,
+.version-overlap {
+  display: block;
+  margin: 0 0 .5rem;
+  color: var(--light-text-color);
+}
+#song.edit .version-chips,
+#song.edit .version-card {
+  display: none;
 }
 
 /*CSS FOR Song Display*/
@@ -3173,10 +3190,11 @@ body:not(.song) .show_for_songs { /* and what's only for exporting one song */
 }
 /* Admin only for admins, Install only when it's offered (their own rules elsewhere would lose to the flex above) */
 html:not(._admin):not(.churchAdmin) .account-menu .admin,
+html:not(.churchEditor) .account-menu .editor-only,
 html:not(.install-offer) .account-menu .install-btn {
   display: none;
 }
-html._admin .account-menu .admin, html.churchAdmin .account-menu .admin {
+html._admin .account-menu .admin, html.churchAdmin .account-menu .admin, html.churchEditor .account-menu .editor-only {
   display: flex; /* the "admins only" rule would set it back to a plain block, out of line */
 }
 .install-offer .account-menu .install-btn {

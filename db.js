@@ -303,6 +303,10 @@ function dbChanges() {
     include_docs: true
   }).on('change', function (change) {
     if (change.id.startsWith('h-')) return; // a kept old version (#138): nothing to show
+    if (change.id.startsWith('v-')) { // a version group (#90), added, changed or deleted
+      versionGroupsChanged();
+      return;
+    }
     updatePresentation(change);
     // A song or songbook was deleted or restored: keep an open Trash current (#138)
     if (/^(s|sb)-/.test(change.id) && document.querySelector('#trash:not(.closed)')) {
@@ -2019,19 +2023,23 @@ function saveSong(song_id, songElement = document.querySelector('#song .song-car
   });
 }
 
-function loadSong(song_id, song_rev = false) {
+// beside: open another version of the open song as a card beside it (#117), leaving the open song as it is
+function loadSong(song_id, song_rev = false, { beside = false } = {}) {
   // Validate song_id format
   if (song_id && !song_id.startsWith('s-')) {
     console.error('Invalid song ID format:', song_id);
     return Promise.reject(new Error('Invalid song ID format'));
   }
+  const side = song_rev || beside; // a card beside the song: an old version or another version
 
   return new Promise(async (resolve, reject) => {
     async function createSongHtml(song, deleted = false) {
-      window.song_rev = song._rev;
-      document.querySelectorAll('.current_rev').forEach(el => el.classList.remove('current_rev'));
-      
-      if (!song_rev) {
+      if (!beside) {
+        window.song_rev = song._rev;
+        document.querySelectorAll('.current_rev').forEach(el => el.classList.remove('current_rev'));
+      }
+
+      if (!side) {
         window.song = song;
         window.song._revs_info = song._revs_info ? song._revs_info.filter(rev => rev.status === 'available') : [];
       }
@@ -2043,10 +2051,11 @@ function loadSong(song_id, song_rev = false) {
         songElClassList.push('revision', 'current_rev');
         document.body.classList.add('revision');
       }
+      if (beside) songElClassList.push('version-card');
 
       // Build float menu if not a revision
       let floatMenu = '';
-      if (!song_rev) {
+      if (!side) {
         const editable = canEdit(song) && !deleted; // a deleted song is restored, not edited (#69)
         floatMenu = `
           ${editable ? '<button data-songbook onclick="deleteSong(window.song._id)" class="float-menu-item deleteSong"><span class="float-menu-icon">' + icon('trash') + '</span>Delete</button>' : ''}
@@ -2068,9 +2077,10 @@ function loadSong(song_id, song_rev = false) {
               data-user-fav="${window.user.fav_songs.includes(song._id) ? 'true' : 'false'}">
           <div class="column_header">
             <div class="title">
-              <h3 class="song-title"><a data-song class="title_link">${shown.title}</a></h3>
+              <h3 class="song-title">${beside ? `<a class="title_link" href="#${escapeHtml(window.songbook?._id || 'sb-allSongs')}&${escapeHtml(song._id)}" title="Open this version">${shown.title}</a>` : `<a data-song class="title_link">${shown.title}</a>`}</h3>
               <span class="buttonsRight">
-                ${song_rev ? `${canEdit(window.song) ? `<button onclick="restoreSongRev('${escapeHtml(song._rev)}')" class="btn btn-tiny" title="Make this the current version">${icon('undo')} Restore</button>` : ''}<button type="button" onclick="this.closest('.song-card').remove()" class="close-x" aria-label="Close" title="Close">${icon('close')}</button>` : `
+                ${beside ? `<button type="button" onclick="closeVersionBeside(this.closest('.song-card'))" class="close-x" aria-label="Close" title="Close">${icon('close')}</button>`
+                : song_rev ? `${canEdit(window.song) ? `<button onclick="restoreSongRev('${escapeHtml(song._rev)}')" class="btn btn-tiny" title="Make this the current version">${icon('undo')} Restore</button>` : ''}<button type="button" onclick="this.closest('.song-card').remove()" class="close-x" aria-label="Close" title="Close">${icon('close')}</button>` : `
                   <span class="star" role="button" tabindex="0" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }" aria-label="Favorite song" title="Favorite" onclick="event.stopPropagation(); toggleFavorite(this.closest('.song-card').dataset.id,'fav_songs')"></span>
                   <info role="button" tabindex="0" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }" aria-label="Song info" title="Info" onclick="event.stopPropagation(); loadInfo();"></info>
                   <span class="fsButton" role="button" tabindex="0" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }" aria-label="Full width" title="Full width" onclick="toggleFullscreen(this)"></span>
@@ -2079,14 +2089,16 @@ function loadSong(song_id, song_rev = false) {
             </div>
           </div>
           <song>
+          ${beside ? `<p class="version-note"><small>${escapeHtml(songLangLabel(song))} version</small></p>` : ''}
           ${song_rev ? `<p class="rev-note">Old version${song.editedBy ? ', saved by ' + escapeHtml(window.users?.[song.editedBy] || song.editedBy.replace(/^u-/, '')) : ''}${song.edited ? ', ' + formatDate(song.edited) : ''}.</p>` : ''}
           ${deleted ? `<p class="deleted-note">Deleted${song.deletedBy ? ' by ' + escapeHtml(window.users?.[song.deletedBy] || song.deletedBy.replace(/^u-/, '')) : ''}${song.deletedAt ? ', ' + formatDate(song.deletedAt) : ''}.
             ${song.deletedAt && canEdit(song) ? `<button class="btn btn-tiny" onclick="restoreOpenSong(this)">${icon('undo')} Restore</button>` : ''}</p>` : ''}
           <authors><author>${shown.authors.join('</author>, <author>')}</author></authors>
           <scripture_ref><scrip_ref>${shown.scripture_ref.join('</scrip_ref>, <scrip_ref>')}</scrip_ref></scripture_ref>
-          ${!song_rev ? `<span id="keyToggleContainer"><span id="keyToggleFilter">` : ''}<key>${shown.key}</key>${!song_rev ? `<button id="keyToggle" type="button" aria-expanded="false" title="Change the key">Key: <b class="key-name">${shown.key}</b><span class="chevron" aria-hidden="true"></span></button><label class="switch" hidden><input type="checkbox" id="chordSwitch"><span class="switch-track" aria-hidden="true"></span>Chords</label></span></span>` : ''}
+          ${!side ? `<span id="keyToggleContainer"><span id="keyToggleFilter">` : ''}<key>${shown.key}</key>${!side ? `<button id="keyToggle" type="button" aria-expanded="false" title="Change the key">Key: <b class="key-name">${shown.key}</b><span class="chevron" aria-hidden="true"></span></button><label class="switch" hidden><input type="checkbox" id="chordSwitch"><span class="switch-track" aria-hidden="true"></span>Chords</label></span></span>` : ''}
           <categories><cat>${shown.categories.sort().join('</cat>, <cat>')}</cat></categories>
           <cclis>${(song.cclis ? (!isNaN(song.cclis) ? 'CCLI Song #: ' + shown.cclis : 'In CCLI') : '')}</cclis>
+          ${!side && song._id !== 's-new-song' ? '<div class="filter-chips version-chips" hidden></div>' : ''}
           <introduction>${shown.introduction}</introduction>
       `;
 
@@ -2103,7 +2115,13 @@ function loadSong(song_id, song_rev = false) {
 
       // Insert song HTML
       const songContainer = document.querySelector('#song .content');
-      if (song_rev && !document.querySelector(`[data-rev="${song_rev}"]`)) {
+      if (beside) {
+        if ([...songContainer.querySelectorAll(':scope > .version-card')].some(el => el.dataset.id === song._id)) {
+          resolve('song_loaded'); // already open beside it
+          return;
+        }
+        songContainer.insertAdjacentHTML('beforeend', songHtml);
+      } else if (song_rev && !document.querySelector(`[data-rev="${song_rev}"]`)) {
         songContainer.insertAdjacentHTML('beforeend', songHtml);
       } else if (!song_rev) {
         songContainer.innerHTML = songHtml;
@@ -2129,6 +2147,10 @@ function loadSong(song_id, song_rev = false) {
       // Set YouTube links
       let regex = /(https?:\/\/)?(?:www\.)?(youtu(?:\.be\/([-\w]+)|be\.com\/watch\?v=([-\w]+)))\w/g;
       const textContent = songEl.textContent;
+      if (beside) { // the open song keeps its videos, Key and Chords; this card just shows the other version
+        resolve('song_loaded');
+        return;
+      }
       window.youtube_links = textContent.match(regex) || [];
       // Every song gets ▶ (#151): one with links plays them; one without searches YouTube, marked with a badge
       if (!song_rev) {
@@ -2161,6 +2183,7 @@ function loadSong(song_id, song_rev = false) {
 
       if (!song_rev) {
         bindKeyAndChords();
+        showVersionChips(); // its other versions (#90), once they're read
       }
       if (document.getElementById('dialog').style.display === "block" && 
           document.getElementById('dialog').dataset.use === "info") {
@@ -2213,6 +2236,12 @@ function loadSong(song_id, song_rev = false) {
         await createSongHtml(song, openDelete);
       }
     } catch (err) {
+      if (beside) { // the open song stays as it is
+        if (err.status === 404) notyf.error('That version was deleted', 'red');
+        else reportDbError(err, 'open the version');
+        reject(err);
+        return;
+      }
       // A deleted song opens read-only with a Restore button, when its delete kept the song (#69)
       if (err.status === 404 && !song_rev) {
         const tombstone = await currentDoc(song_id).catch(() => null);
@@ -2705,6 +2734,10 @@ async function changeOwner(isSong) {
       if (owner === doc.addedBy) return 'same';
       doc.addedBy = owner;
       await saveWithHistory(savedByMe(doc));
+      if (isSong) { // its version group (#90) says who added each song, for the save rule
+        await readVersionGroups();
+        for (const group of groupsOfSong(id)) await db.put({ ...group, songs: { ...group.songs, [id]: owner } });
+      }
       return owner;
     },
   });
@@ -3569,5 +3602,407 @@ async function toggleFavorite(itemId, favoriteType) { // Make it more generic
   } catch (err) {
     reportDbError(err, 'change your favorites');
   }
+}
+
+// ---- Versions of a song (#90, #117) ----
+// Songs that are the same song in another language or another length are linked in a version group: a
+// record of its own, "v-<time><random>", with songs: { "<song id>": "<who added that song>" }. A record of its
+// own, not a field on each song, so that linking saves one record, and bringing back an old version of a
+// song doesn't bring back an old group. A song is in at most one group: linking a song that's already in
+// one joins the groups. Two devices offline can still put one song in two groups; the song then says so and
+// offers to join them. Who may link: database/validate.js, the same as groupChangeAllowed in lib.js.
+// Parts aren't paired: side by side shows each version whole.
+const versionGroups = { db: null, ready: null, bySong: new Map() };
+const notYoursToLink = 'Only editors can link or unlink a song someone else added.';
+
+// Read every group on this device (there are few), keeping which groups each song is in
+function readVersionGroups() {
+  versionGroups.db = db;
+  const reading = versionGroups.ready = db.allDocs({ startkey: 'v-', endkey: 'v-￰', include_docs: true }).then(result => {
+    const bySong = new Map();
+    for (const { doc } of result.rows) {
+      if (!doc?.songs || typeof doc.songs !== 'object' || Array.isArray(doc.songs)) continue;
+      for (const id of Object.keys(doc.songs)) bySong.set(id, [...(bySong.get(id) || []), doc]);
+    }
+    if (versionGroups.ready === reading) versionGroups.bySong = bySong; // not an older read that finished late
+  }).catch(err => {
+    if (versionGroups.ready === reading) versionGroups.ready = null;
+    throw err;
+  });
+  return reading;
+}
+function versionGroupsRead() {
+  return versionGroups.db === db && versionGroups.ready ? versionGroups.ready : readVersionGroups();
+}
+const groupsOfSong = id => versionGroups.bySong.get(id) || [];
+
+// A song's other versions, leaving out deleted songs, by language and then title: { groups, versions }
+async function otherVersions(songId) {
+  await versionGroupsRead();
+  const groups = groupsOfSong(songId);
+  const ids = [...new Set(groups.flatMap(group => Object.keys(group.songs)))].filter(id => id !== songId);
+  const rows = ids.length ? (await db.allDocs({ keys: ids, include_docs: true })).rows : [];
+  const versions = rows.map(row => row.doc).filter(doc => doc && !doc._deleted)
+    .sort((a, b) => songLangLabel(a).localeCompare(songLangLabel(b)) || String(a.title).localeCompare(String(b.title)));
+  return { groups, versions };
+}
+
+// What linking these songs (their docs) would do. Every group any of them is in becomes one: the one with the
+// most songs (the oldest of those) keeps them all, and the others are deleted.
+function planLink(songs) {
+  const groups = [...new Set(songs.flatMap(song => groupsOfSong(song._id)))]
+    .sort((a, b) => Object.keys(b.songs).length - Object.keys(a.songs).length || (a._id < b._id ? -1 : 1));
+  const songsOf = Object.assign({}, ...groups.map(group => group.songs));
+  for (const song of songs) if (!(song._id in songsOf)) songsOf[song._id] = song.addedBy || '';
+  const [keep, ...gone] = groups;
+  const allowed = groupChangeAllowed(keep?.songs, songsOf) && gone.every(group => groupChangeAllowed(group.songs, {}));
+  const changes = !keep || gone.length > 0 || Object.keys(songsOf).length > Object.keys(keep.songs).length;
+  return { keep, gone, songsOf, allowed, changes };
+}
+
+// Link songs as versions of each other. Changes nothing, and throws, if this person may not make all of it.
+async function linkVersions(songIds) {
+  await readVersionGroups(); // the newest
+  const songs = (await db.allDocs({ keys: [...new Set(songIds)], include_docs: true })).rows.map(row => row.doc).filter(doc => doc && !doc._deleted);
+  if (songs.length < 2 && !songs.some(song => groupsOfSong(song._id).length > 1)) throw new Error('Choose at least one other song.');
+  const { keep, gone, songsOf, allowed, changes } = planLink(songs);
+  if (!allowed) throw new Error(notYoursToLink);
+  if (!changes) return keep._id;
+  const now = Date.now();
+  const doc = keep ? { ...keep } : { _id: `v-${now}${Math.random().toString(36).slice(2, 6)}`, added: now, addedBy: window.user._id };
+  Object.assign(doc, { songs: songsOf, edited: now, editedBy: window.user._id });
+  await db.put(doc);
+  for (const group of gone) await db.put({ ...group, _deleted: true, edited: now, editedBy: window.user._id });
+  await readVersionGroups();
+  return doc._id;
+}
+
+// Take a song out of its group. A group left with one song is deleted, when this person may.
+async function unlinkVersion(songId) {
+  await readVersionGroups();
+  const changes = groupsOfSong(songId).map(group => {
+    const rest = { ...group.songs };
+    delete rest[songId];
+    return { group, rest, drop: Object.keys(rest).length < 2 && groupChangeAllowed(group.songs, {}) };
+  });
+  if (changes.some(({ group, rest }) => !groupChangeAllowed(group.songs, rest))) throw new Error(notYoursToLink);
+  const now = Date.now();
+  for (const { group, rest, drop } of changes) {
+    const doc = { ...group, songs: drop ? group.songs : rest, edited: now, editedBy: window.user._id };
+    if (drop) doc._deleted = true;
+    await db.put(doc);
+  }
+  await readVersionGroups();
+}
+function canUnlinkVersion(songId) {
+  return groupsOfSong(songId).every(group => {
+    const rest = { ...group.songs };
+    delete rest[songId];
+    return groupChangeAllowed(group.songs, rest);
+  });
+}
+
+// A group record changed (here, by sync, or deleted): read them again and show the change on the open song
+function versionGroupsChanged() {
+  readVersionGroups().then(() => {
+    showVersionChips();
+    const dialog = document.getElementById('dialog');
+    if (dialog.style.display === 'block' && dialog.dataset.use === 'info' && document.body.classList.contains('song')) fillVersionInfo();
+  }).catch(err => console.warn("Couldn't read the version groups:", err));
+}
+
+// The open song's versions, as chips under its categories: each opens that version beside it, and closes it
+// again (a chip is filled in while its version is open). A song in two groups says so.
+async function showVersionChips() {
+  const card = document.querySelector('#song .song-card:not(.version-card):not(.revision)');
+  const row = card?.querySelector('.version-chips');
+  if (!row || document.getElementById('song').classList.contains('edit')) return;
+  let found;
+  try {
+    found = await otherVersions(card.dataset.id);
+  } catch (err) {
+    console.warn("Couldn't read the song's versions:", err);
+    return;
+  }
+  if (!row.isConnected) return; // another song opened meanwhile
+  const { groups, versions } = found;
+  const open = new Set([...document.querySelectorAll('#song .version-card')].map(el => el.dataset.id));
+  row.innerHTML = (versions.length ? '<span class="version-label">Versions:</span>' : '')
+    + versions.map(doc => `<button type="button" class="filter-chip${open.has(doc._id) ? ' sel' : ''}" data-version="${escapeHtml(doc._id)}"
+        aria-pressed="${open.has(doc._id)}" title="Show this version beside the song" onclick="toggleVersionBeside(this.dataset.version)">${escapeHtml(songLangLabel(doc))} <span class="n">${escapeHtml(doc.title)}</span></button>`).join('')
+    + (groups.length > 1 ? overlapNote(card.dataset.id, groups) : '');
+  row.hidden = !row.innerHTML;
+}
+// A song in more than one group (linked on two devices at once): offer to join them
+function overlapNote(songId, groups) {
+  const allowed = planLink([...new Set(groups.flatMap(group => Object.keys(group.songs)))].map(id => ({ _id: id }))).allowed;
+  return `<small class="version-overlap">This song is in ${groups.length} version groups, linked on two devices at the same time.
+    ${allowed ? `<button type="button" class="btn btn-tiny" onclick="joinVersionGroups('${escapeHtml(songId)}')">Join them</button>` : 'An editor can join them.'}</small>`;
+}
+async function joinVersionGroups(songId) {
+  try {
+    await linkVersions([songId]);
+    notyf.success('Joined into one group of versions');
+  } catch (err) {
+    reportDbError(err, 'join the version groups');
+  }
+  versionGroupsChanged();
+}
+
+// Side by side (#117): a version opens as another card beside the song, the way an old version does
+function toggleVersionBeside(songId) {
+  const card = [...document.querySelectorAll('#song .version-card')].find(el => el.dataset.id === songId);
+  if (card) closeVersionBeside(card);
+  else loadSong(songId, false, { beside: true }).then(markOpenVersions).catch(() => {}); // already reported
+}
+function closeVersionBeside(card) {
+  card.remove();
+  markOpenVersions();
+}
+function markOpenVersions() {
+  const open = new Set([...document.querySelectorAll('#song .version-card')].map(el => el.dataset.id));
+  document.querySelectorAll('#song .version-chips [data-version]').forEach(chip => {
+    chip.classList.toggle('sel', open.has(chip.dataset.version));
+    chip.setAttribute('aria-pressed', open.has(chip.dataset.version));
+  });
+}
+
+// The song's Info: its versions, each to open beside it or unlink, and Link a version
+async function fillVersionInfo() {
+  const box = document.querySelector('#dialog .version-info');
+  const song = window.song;
+  if (!box || !song?._id?.startsWith('s-')) return;
+  let found;
+  try {
+    found = await otherVersions(song._id);
+  } catch (err) {
+    box.innerHTML = "<br><b>Versions:</b><br>Couldn't check";
+    return;
+  }
+  if (!box.isConnected || window.song !== song) return;
+  const { groups, versions } = found;
+  const sb = escapeHtml(window.songbook?._id || 'sb-allSongs');
+  const rows = versions.map(doc => {
+    const id = escapeHtml(doc._id);
+    return `${escapeHtml(songLangLabel(doc))}: <a href="#${sb}&${id}">${escapeHtml(doc.title)}</a>
+      <button type="button" class="btn btn-tiny" onclick="toggleVersionBeside('${id}')" title="Show it beside this song">Beside</button>${
+      canUnlinkVersion(doc._id) ? `<button type="button" class="btn btn-tiny" onclick="unlinkFromInfo('${id}')" title="It stays a song of its own">Unlink</button>` : ''}`;
+  });
+  const mayLink = !song._deleted && (window.church?.editor || canEdit(song) || groups.length > 0);
+  box.innerHTML = `<br><b>Versions:</b><br>${rows.length ? rows.join('<br>') : 'None linked'}`
+    + (groups.length > 1 ? `<br>${overlapNote(song._id, groups)}` : '')
+    + (mayLink ? `<br><button type="button" class="btn btn-tiny" onclick="pickVersions()">Link a version</button>` : '');
+}
+async function unlinkFromInfo(songId) {
+  try {
+    await unlinkVersion(songId);
+    notyf.success('Unlinked');
+  } catch (err) {
+    reportDbError(err, 'unlink the version');
+  }
+  document.querySelector(`#song .version-card[data-id="${CSS.escape(songId)}"]`)?.remove();
+  versionGroupsChanged();
+}
+
+const cclisNumber = doc => (doc?.cclis && !isNaN(doc.cclis) && Number(doc.cclis) > 0 ? String(Number(doc.cclis)) : '');
+async function allLiveSongs() {
+  return (await db.allDocs({ startkey: 's-', endkey: 's-￰', include_docs: true })).rows.map(row => row.doc).filter(doc => doc && !doc._deleted);
+}
+
+// Link a version: find songs to link with the open song. Songs that look like versions of it (the same title
+// or CCLI number) are offered first; typing finds any song by its title.
+async function pickVersions() {
+  const song = window.song;
+  if (!song?._id) return;
+  const dialog = new TaskDialog(`Link versions of "${song.title}"`);
+  dialog.working('Reading the songs…');
+  let songs;
+  try {
+    await readVersionGroups();
+    songs = (await allLiveSongs()).filter(doc => doc._id !== song._id);
+  } catch (err) {
+    await dialog.finish(`Couldn't read the songs: ${err?.message || err}`, { error: true });
+    return;
+  }
+  const linked = new Set(groupsOfSong(song._id).flatMap(group => Object.keys(group.songs)));
+  const title = titleKey(song.title), ccli = cclisNumber(song);
+  const rows = songs.filter(doc => !linked.has(doc._id))
+    .map(doc => ({ doc, suggest: !!((title && titleKey(doc.title) === title) || (ccli && cclisNumber(doc) === ccli)), allowed: planLink([song, doc]).allowed }))
+    .sort((a, b) => b.suggest - a.suggest || String(a.doc.title).localeCompare(String(b.doc.title)))
+    .map(({ doc, suggest, allowed }) => `<li data-search="${escapeHtml(titleKey(doc.title))}"${suggest ? ' data-suggest' : ' hidden'}><label>
+      <input type="checkbox" value="${escapeHtml(doc._id)}"${allowed ? '' : ' disabled'}> ${escapeHtml(doc.title)}
+      <small>${escapeHtml(songLangLabel(doc))}${groupsOfSong(doc._id).length ? ', has versions' : ''}${allowed ? '' : '. An editor has to link this one.'}</small></label></li>`).join('');
+  const linking = dialog.run({
+    html: `<p>Pick the songs that are "${escapeHtml(song.title)}" in another language or another length. They show beside each other, and each stays a song of its own.</p>
+      <input type="search" class="backup-search" placeholder="Find a song" aria-label="Find a song">
+      <p class="version-pick-hint"><small></small></p>
+      <ul class="backup-list version-pick">${rows}</ul>`,
+    submit: 'Link',
+    working: 'Linking…',
+    action: async () => {
+      const picked = [...dialog.body.querySelectorAll('.version-pick input:checked')].map(box => box.value);
+      if (!picked.length) throw new Error('Pick at least one song.');
+      await linkVersions([song._id, ...picked]);
+      return picked.length;
+    },
+  });
+  const search = dialog.body.querySelector('.backup-search');
+  const hint = dialog.body.querySelector('.version-pick-hint small');
+  const filter = () => {
+    const words = titleKey(search.value);
+    let shown = 0;
+    dialog.body.querySelectorAll('.version-pick li').forEach(li => {
+      li.hidden = !li.querySelector('input').checked && (words ? !li.dataset.search.includes(words) : !li.hasAttribute('data-suggest'));
+      if (!li.hidden) shown++;
+    });
+    hint.textContent = shown ? (words ? '' : 'These look like versions of it. Type to find another song.')
+      : words ? 'No song has that in its title.' : 'Type part of a title to find the song.';
+  };
+  search.addEventListener('input', filter);
+  search.addEventListener('keydown', event => { if (event.key === 'Enter') event.preventDefault(); }); // Enter doesn't link yet
+  filter();
+  const result = await linking;
+  if (!result) return;
+  versionGroupsChanged();
+  await dialog.finish(`Linked ${result === 1 ? 'the song' : `${result} songs`} as versions of "${song.title}".`);
+}
+
+// Find versions (for editors, from the menu under your name): suggests songs to link, from the Duplicate
+// category, the same title (folded like the search, so accents and marks don't count) and the same CCLI
+// number. Each set is shown on its own and linked only when the editor says so. Skipped sets are remembered
+// on this device.
+const skippedKey = () => `versionSkips.${window.dbName || ''}`;
+function skippedSuggestions() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(skippedKey()) || '[]'));
+  } catch (err) {
+    return new Set();
+  }
+}
+function skipSuggestion(key) {
+  const skipped = skippedSuggestions();
+  skipped.add(key);
+  try {
+    localStorage.setItem(skippedKey(), JSON.stringify([...skipped]));
+  } catch (err) { /* no storage: it comes back next time */ }
+}
+// The first line of a song's words, as text (no chords), and folded the same way as titles to compare
+function firstLine(doc) {
+  const first = songShape(doc).content.find(([part]) => part?.type !== 'comment')?.[1]?.[0] || '';
+  return lineText(String(first)).replace(/\s+/g, ' ').trim();
+}
+const firstLineKey = doc => titleKey(firstLine(doc));
+const markedDuplicate = song => songShape(song).categories.some(category => category.trim().toLowerCase() === 'duplicate');
+
+// Sets of songs that may be versions of each other, and the Duplicate songs that matched nothing
+function versionSuggestions(songs) {
+  const parent = new Map(songs.map(song => [song._id, song._id]));
+  const root = id => (parent.get(id) === id ? id : root(parent.get(id)));
+  const pairs = [];
+  const matchBy = (reason, keyOf) => {
+    const found = new Map();
+    for (const song of songs) {
+      const key = keyOf(song);
+      if (key) found.set(key, [...(found.get(key) || []), song._id]);
+    }
+    for (const ids of found.values()) for (const id of ids.slice(1)) pairs.push([ids[0], id, reason]);
+  };
+  matchBy('the same title', song => titleKey(song.title));
+  matchBy('the same CCLI number', cclisNumber);
+  // a song marked Duplicate also matches a song that starts with the same words
+  const duplicateLines = new Set(songs.filter(markedDuplicate).map(firstLineKey).filter(key => key.length >= 12));
+  matchBy('the same first line', song => (duplicateLines.has(firstLineKey(song)) ? firstLineKey(song) : ''));
+  for (const [a, b] of pairs) parent.set(root(a), root(b));
+
+  const sets = new Map(), reasons = new Map();
+  for (const song of songs) sets.set(root(song._id), [...(sets.get(root(song._id)) || []), song]);
+  for (const [a, , reason] of pairs) reasons.set(root(a), new Set([...(reasons.get(root(a)) || []), reason]));
+  const oneGroup = set => {
+    const group = groupsOfSong(set[0]._id);
+    return group.length === 1 && set.every(song => groupsOfSong(song._id).length === 1 && groupsOfSong(song._id)[0] === group[0]);
+  };
+  const suggestions = [...sets.entries()].filter(([, set]) => set.length > 1 && !oneGroup(set)).map(([id, set]) => {
+    const duplicate = set.some(markedDuplicate);
+    return {
+      songs: set.sort((a, b) => String(a.title).localeCompare(String(b.title))),
+      why: [...(duplicate ? ['a song in the Duplicate category'] : []), ...reasons.get(id)],
+      key: set.map(song => song._id).sort().join(' '),
+      duplicate,
+    };
+  }).sort((a, b) => b.duplicate - a.duplicate || String(a.songs[0].title).localeCompare(String(b.songs[0].title)));
+  const alone = songs.filter(song => markedDuplicate(song) && sets.get(root(song._id)).length === 1 && !groupsOfSong(song._id).length);
+  return { suggestions, alone };
+}
+
+async function findVersions() {
+  if (!window.church?.editor) return;
+  const dialog = new TaskDialog('Find versions');
+  dialog.working('Looking for songs that may be versions of each other…');
+  let found;
+  try {
+    await readVersionGroups();
+    found = versionSuggestions(await allLiveSongs());
+  } catch (err) {
+    await dialog.finish(`Couldn't read the songs: ${err?.message || err}`, { error: true });
+    return;
+  }
+  const skipped = skippedSuggestions();
+  const fresh = found.suggestions.filter(suggestion => !skipped.has(suggestion.key));
+  const skippedBefore = found.suggestions.length - fresh.length;
+  const aloneNote = found.alone.length
+    ? `\n\n${found.alone.length === 1 ? 'A song' : `${found.alone.length} songs`} in the Duplicate category matched no other song: ${found.alone.map(song => `"${song.title}"`).join(', ')}. To link one, open it, then its Info, then Link a version.` : '';
+  if (!found.suggestions.length) {
+    await dialog.finish(`No songs look like versions of each other that aren't linked yet.${aloneNote}`);
+    return;
+  }
+  const start = await dialog.run({
+    text: "yCanta looks for songs in the Duplicate category, songs with the same title (accents and marks don't count), and songs with the same CCLI number. You'll see each set of songs on its own and choose. Nothing is linked unless you press Link.",
+    html: `<p>${fresh.length ? `<b>${fresh.length}</b> set${fresh.length === 1 ? '' : 's'} to look at.` : 'No new sets to look at.'}</p>`
+      + (skippedBefore ? `<label class="backup-all"><input type="checkbox" name="again"> Also show the ${skippedBefore} I skipped before</label>` : ''),
+    submit: 'Start',
+    action: values => values,
+  });
+  if (!start) return;
+  const list = start.again ? found.suggestions : fresh;
+  let linked = 0, skips = 0, stopped = false;
+  for (const [n, suggestion] of list.entries()) {
+    const step = dialog.run({
+      html: `<p><b>${n + 1} of ${list.length}</b>: ${escapeHtml(suggestion.why.join(', '))}. Untick any song that isn't a version of the others.</p>
+        <ul class="backup-list version-pick">${suggestion.songs.map(song => {
+          const facts = [songLangLabel(song), cclisNumber(song) && `CCLI ${cclisNumber(song)}`, markedDuplicate(song) && 'in Duplicate',
+            firstLine(song) && `"${firstLine(song).slice(0, 40)}"`, groupsOfSong(song._id).length && 'has versions'].filter(Boolean);
+          return `<li><label><input type="checkbox" value="${escapeHtml(song._id)}" checked> ${escapeHtml(song.title)} <small>${escapeHtml(facts.join(', '))}</small></label></li>`;
+        }).join('')}</ul>`,
+      submit: 'Link',
+      cancel: 'Stop',
+      working: 'Linking…',
+      action: async () => {
+        const picked = [...dialog.body.querySelectorAll('.version-pick input:checked')].map(box => box.value);
+        if (picked.length < 2) throw new Error('Tick at least two songs, or press Skip.');
+        await linkVersions(picked);
+        return 'linked';
+      },
+    });
+    dialog.buttons.querySelector('[data-cancel]').insertAdjacentHTML('afterend', '<button type="button" class="btn" data-skip>Skip</button>');
+    dialog.buttons.querySelector('[data-skip]').addEventListener('click', () => dialog.resolveWith('skip'));
+    const result = await step;
+    if (!result) { // Stop: the window has closed
+      stopped = true;
+      break;
+    }
+    if (result === 'skip') {
+      skipSuggestion(suggestion.key);
+      skips++;
+    } else {
+      linked++;
+    }
+  }
+  versionGroupsChanged();
+  const summary = `Linked ${linked} set${linked === 1 ? '' : 's'} of versions${skips ? `, skipped ${skips}` : ''}.`;
+  if (stopped) {
+    if (linked || skips) notyf.success(summary);
+    return;
+  }
+  await dialog.finish(summary + aloneNote);
 }
 
