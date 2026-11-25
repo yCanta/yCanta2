@@ -560,7 +560,7 @@ try {
   ok(await ev(`!!document.querySelector('#account_menu [data-open="songTools"]')?.getClientRects().length && !document.querySelector('#account_menu [data-open="findVersions"]')`),
     'song tools: one item in the menu under your name, for an editor');
   await click('#account_menu [data-open="songTools"]');
-  await until(`location.hash === '#' && !document.getElementById('songTools').classList.contains('closed')`, 'the Song tools card', 8000);
+  await until(`['', '#'].includes(location.hash) && !document.getElementById('songTools').classList.contains('closed')`, 'the Song tools card', 8000);
   await sleep(500);
   await click('#songTools [onclick="findVersions()"]');
   await until(`/Duplicate category/.test(document.querySelector('.task-dialog .task-body')?.textContent || '')`, 'the Find versions window', 10000);
@@ -621,7 +621,7 @@ try {
   // editors only: Song tools (the menu item and its card), and the helper itself
   await click('#username_legend');
   await click('#account_menu [data-open="songTools"]');
-  await until(`location.hash === '#' && !document.getElementById('songTools').classList.contains('closed')`, 'the Song tools card', 8000);
+  await until(`['', '#'].includes(location.hash) && !document.getElementById('songTools').classList.contains('closed')`, 'the Song tools card', 8000);
   await sleep(500);
   ok(await ev(`!!document.querySelector('#songTools [onclick="findSpanishSongs()"]')?.getClientRects().length`), 'song tools: the card has Find Spanish songs, for an editor');
   const memberEs = await ev(`(async () => { const html = document.documentElement, was = window.church; html.classList.remove('churchEditor');
