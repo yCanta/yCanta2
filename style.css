@@ -126,6 +126,7 @@
 .yt-play.yt-search::after,
 li[data-song-id="reading"] > a::before,
 #keyToggle .chevron::after,
+.version-pill .chevron::after,
 .star:after,
 info:after,
 .fsButton:after,
@@ -1403,10 +1404,18 @@ body.player-pill .subcolumn:not(.sidebar)::after {
 .song-card.version-card {
   box-shadow: inset 3px 0 0 var(--song-color);
 }
-/* The song's other versions (#90): chips under its categories, each opening that version beside it */
-.version-chips .version-label {
-  font-size: .85rem;
-  color: var(--light-text-color);
+/* The song's other versions (#90): a pill after its title ("2 other versions"), opening a menu of them */
+.version-pill {
+  margin-left: .5rem;
+  vertical-align: middle;
+}
+.version-pill[hidden],
+.version-overlap[hidden] {
+  display: none; /* their own display would show them anyway */
+}
+.version-menu {
+  position: fixed; /* under the pill, placed by db.js: the song's header would cut it off */
+  max-width: calc(100vw - 1rem);
 }
 .version-note,
 .version-overlap {
@@ -1414,7 +1423,8 @@ body.player-pill .subcolumn:not(.sidebar)::after {
   margin: 0 0 .5rem;
   color: var(--light-text-color);
 }
-#song.edit .version-chips,
+#song.edit .version-pill,
+#song.edit .version-overlap,
 #song.edit .version-card {
   display: none;
 }
@@ -1606,12 +1616,14 @@ stitle, cat, author, scrip_ref, key, copyright, cclis {
 #keyToggle:hover {
   background: rgba(var(--edit-color-rgb), .9);
 }
-#keyToggle .chevron::after {
+#keyToggle .chevron::after,
+.version-pill .chevron::after {
   --ico: var(--i-chevron-down);
   margin-left: .35rem;
   font-size: .85em;
 }
-#keyToggleContainer.active #keyToggle .chevron::after {
+#keyToggleContainer.active #keyToggle .chevron::after,
+.version-pill[aria-expanded="true"] .chevron::after {
   --ico: var(--i-chevron-up);
 }
 /* the one switch (#159): a small track, blue when on, with its words beside it; the keyboard reaches it */
@@ -1759,7 +1771,8 @@ stitle, cat, author, scrip_ref, key, copyright, cclis {
 .lang-row .lang-add:focus {
   box-shadow: none !important; /* the box shows the focus (above), so not the line under the typing too (*:focus) */
 }
-.lang-row .lang-suggest {
+.lang-row .lang-suggest,
+.version-menu { /* the menu of a song's versions (db.js toggleVersionMenu) drops down the same way */
   position: absolute;
   top: calc(100% + .3rem);
   left: 0;
@@ -3197,7 +3210,8 @@ body:not(.song) .show_for_songs { /* and what's only for exporting one song */
   padding: .2rem 0;
 }
 .account-menu button,
-.lang-suggest button { /* (the song editor's language choices, #90) */
+.lang-suggest button,
+.version-menu button { /* (the song editor's language choices, #90) */
   display: flex;
   align-items: center;
   gap: .6rem;
@@ -3215,17 +3229,20 @@ body:not(.song) .show_for_songs { /* and what's only for exporting one song */
 }
 .account-menu button:hover,
 .lang-suggest button:hover,
+.version-menu button:hover,
 .lang-suggest button.active {
   background-color: var(--btn-color);
   box-shadow: var(--btn-shadow-var), inset 0 0 0 1px var(--btn-edge);
 }
 .account-menu button:focus-visible,
-.lang-suggest button:focus-visible {
+.lang-suggest button:focus-visible,
+.version-menu button:focus-visible {
   outline: 2px solid var(--song-color);
   outline-offset: -2px;
 }
 .account-menu .am-icon,
-.lang-suggest .am-icon {
+.lang-suggest .am-icon,
+.version-menu .am-icon {
   width: 1.2rem;
   text-align: center;
   font-weight: normal;

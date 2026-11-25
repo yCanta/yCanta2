@@ -2123,7 +2123,9 @@ function loadSong(song_id, song_rev = false, { beside = false } = {}) {
               data-user-fav="${window.user.fav_songs.includes(song._id) ? 'true' : 'false'}">
           <div class="column_header">
             <div class="title">
-              <h3 class="song-title">${beside ? `<a class="title_link" href="#${escapeHtml(window.songbook?._id || 'sb-allSongs')}&${escapeHtml(song._id)}" title="Open this version">${shown.title}</a>` : `<a data-song class="title_link">${shown.title}</a>`}</h3>
+              <h3 class="song-title">${beside ? `<a class="title_link" href="#${escapeHtml(window.songbook?._id || 'sb-allSongs')}&${escapeHtml(song._id)}" title="Open this version">${shown.title}</a>` : side ? `<a data-song class="title_link">${shown.title}</a>`
+                : `<a data-song class="title_link" onclick="return versionTitleClick(event)" onkeydown="versionTitleKey(event)">${shown.title}</a>${song._id !== 's-new-song'
+                  ? `<button type="button" class="filter-chip version-pill" aria-haspopup="menu" aria-expanded="false" aria-controls="version_menu" title="Versions of this song in other languages or lengths" onclick="toggleVersionMenu()" hidden><span class="version-count"></span><span class="chevron" aria-hidden="true"></span></button>` : ''}`}</h3>
               <span class="buttonsRight">
                 ${beside ? `<button type="button" onclick="closeVersionBeside(this.closest('.song-card'))" class="close-x" aria-label="Close" title="Close">${icon('close')}</button>`
                 : song_rev ? `${canEdit(window.song) ? `<button onclick="restoreSongRev('${escapeHtml(song._rev)}')" class="btn btn-tiny" title="Make this the current version">${icon('undo')} Restore</button>` : ''}<button type="button" onclick="this.closest('.song-card').remove()" class="close-x" aria-label="Close" title="Close">${icon('close')}</button>` : `
@@ -2144,7 +2146,7 @@ function loadSong(song_id, song_rev = false, { beside = false } = {}) {
           ${!side ? `<span id="keyToggleContainer"><span id="keyToggleFilter">` : ''}<key>${shown.key}</key>${!side ? `<button id="keyToggle" type="button" aria-expanded="false" title="Change the key">Key: <b class="key-name">${shown.key}</b><span class="chevron" aria-hidden="true"></span></button><label class="switch" hidden><input type="checkbox" id="chordSwitch"><span class="switch-track" aria-hidden="true"></span>Chords</label></span></span>` : ''}
           <categories><cat>${shown.categories.sort().join('</cat>, <cat>')}</cat></categories>
           <cclis>${(song.cclis ? (!isNaN(song.cclis) ? 'CCLI Song #: ' + shown.cclis : 'In CCLI') : '')}</cclis>
-          ${!side && song._id !== 's-new-song' ? '<div class="filter-chips version-chips" hidden></div>' : ''}
+          ${!side && song._id !== 's-new-song' ? '<p class="version-overlap" hidden></p>' : ''}
           <introduction>${shown.introduction}</introduction>
       `;
 
@@ -2229,7 +2231,7 @@ function loadSong(song_id, song_rev = false, { beside = false } = {}) {
 
       if (!song_rev) {
         bindKeyAndChords();
-        showVersionChips(); // its other versions (#90), once they're read
+        showVersionPill(); // its other versions (#90), once they're read
       }
       if (document.getElementById('dialog').style.display === "block" && 
           document.getElementById('dialog').dataset.use === "info") {
@@ -3752,18 +3754,19 @@ function canUnlinkVersion(songId) {
 // A group record changed (here, by sync, or deleted): read them again and show the change on the open song
 function versionGroupsChanged() {
   readVersionGroups().then(() => {
-    showVersionChips();
+    showVersionPill();
     const dialog = document.getElementById('dialog');
     if (dialog.style.display === 'block' && dialog.dataset.use === 'info' && document.body.classList.contains('song')) fillVersionInfo();
   }).catch(err => console.warn("Couldn't read the version groups:", err));
 }
 
-// The open song's versions, as chips under its categories: each opens that version beside it, and closes it
-// again (a chip is filled in while its version is open). A song in two groups says so.
-async function showVersionChips() {
+// The open song's versions: a pill after its title, "2 other versions ▾". The pill or the title opens a short
+// menu under them, one row per version; picking one opens it beside the song, and picking it again closes it.
+// A song in two groups says so under its CCLI line.
+async function showVersionPill() {
   const card = document.querySelector('#song .song-card:not(.version-card):not(.revision)');
-  const row = card?.querySelector('.version-chips');
-  if (!row || document.getElementById('song').classList.contains('edit')) return;
+  const pill = card?.querySelector('.version-pill');
+  if (!pill || document.getElementById('song').classList.contains('edit')) return;
   let found;
   try {
     found = await otherVersions(card.dataset.id);
@@ -3771,20 +3774,25 @@ async function showVersionChips() {
     console.warn("Couldn't read the song's versions:", err);
     return;
   }
-  if (!row.isConnected) return; // another song opened meanwhile
+  if (!pill.isConnected) return; // another song opened meanwhile
   const { groups, versions } = found;
-  const open = new Set([...document.querySelectorAll('#song .version-card')].map(el => el.dataset.id));
-  row.innerHTML = (versions.length ? '<span class="version-label">Versions:</span>' : '')
-    + versions.map(doc => `<button type="button" class="filter-chip${open.has(doc._id) ? ' sel' : ''}" data-version="${escapeHtml(doc._id)}"
-        aria-pressed="${open.has(doc._id)}" title="Show this version beside the song" onclick="toggleVersionBeside(this.dataset.version)">${escapeHtml(songLangLabel(doc))} <span class="n">${escapeHtml(doc.title)}</span></button>`).join('')
-    + (groups.length > 1 ? overlapNote(card.dataset.id, groups) : '');
-  row.hidden = !row.innerHTML;
+  pill.versions = versions;
+  pill.hidden = !versions.length;
+  pill.querySelector(".version-count").textContent = `${versions.length} other version${versions.length === 1 ? '' : 's'}`;
+  card.querySelector('.title_link')?.toggleAttribute('aria-haspopup', versions.length > 0);
+  if (!versions.length) closeVersionMenu();
+  else if (versionMenu?.pill === pill) fillVersionMenu(); // open: show the change
+  const overlap = card.querySelector('song > .version-overlap');
+  if (overlap) {
+    overlap.innerHTML = groups.length > 1 ? overlapNote(card.dataset.id, groups) : '';
+    overlap.hidden = groups.length < 2;
+  }
 }
 // A song in more than one group (linked on two devices at once): offer to join them
 function overlapNote(songId, groups) {
   const allowed = planLink([...new Set(groups.flatMap(group => Object.keys(group.songs)))].map(id => ({ _id: id }))).allowed;
-  return `<small class="version-overlap">This song is in ${groups.length} version groups, linked on two devices at the same time.
-    ${allowed ? `<button type="button" class="btn btn-tiny" onclick="joinVersionGroups('${escapeHtml(songId)}')">Join them</button>` : 'An editor can join them.'}</small>`;
+  return `This song is in ${groups.length} version groups, linked on two devices at the same time.
+    ${allowed ? `<button type="button" class="btn btn-tiny" onclick="joinVersionGroups('${escapeHtml(songId)}')">Join them</button>` : 'An editor can join them.'}`;
 }
 async function joinVersionGroups(songId) {
   try {
@@ -3796,25 +3804,115 @@ async function joinVersionGroups(songId) {
   versionGroupsChanged();
 }
 
+// The menu of versions, under the title. Esc, a click outside it or a scroll closes it; the arrow keys move
+// through it. Its rows look like the menu under your name.
+let versionMenu = null; // { menu, pill }
+function versionTitleKey(event) { // the title is a link: Space opens the menu too, as Enter does
+  if (event.key === ' ' && versionsOfOpenSong()) { event.preventDefault(); toggleVersionMenu(); }
+}
+function versionTitleClick(event) {
+  if (!versionsOfOpenSong() || window.songEditing) return true; // no versions: the title is just its link
+  event.preventDefault();
+  toggleVersionMenu();
+  return false;
+}
+function versionsOfOpenSong() {
+  const pill = document.querySelector('#song .song-card:not(.version-card):not(.revision) .version-pill');
+  return pill && !pill.hidden && pill.versions?.length ? pill : null;
+}
+function toggleVersionMenu() {
+  if (versionMenu) { closeVersionMenu(true); return; }
+  const pill = versionsOfOpenSong();
+  if (!pill) return;
+  const menu = document.createElement('div');
+  menu.className = 'version-menu';
+  menu.id = 'version_menu';
+  menu.setAttribute('role', 'menu');
+  menu.setAttribute('aria-label', 'Versions of this song');
+  document.body.append(menu);
+  versionMenu = { menu, pill };
+  fillVersionMenu();
+  pill.setAttribute('aria-expanded', 'true');
+  placeVersionMenu();
+  menu.addEventListener('click', event => {
+    const row = event.target.closest('[data-version]');
+    if (!row) return;
+    closeVersionMenu(event.detail === 0); // picked with a key: the keyboard goes on from the pill
+    toggleVersionBeside(row.dataset.version);
+  });
+  menu.addEventListener('keydown', event => {
+    const rows = [...menu.querySelectorAll('[data-version]')];
+    const at = rows.indexOf(document.activeElement);
+    const go = n => rows[(n + rows.length) % rows.length]?.focus();
+    if (event.key === 'ArrowDown') go(at + 1);
+    else if (event.key === 'ArrowUp') go(at - 1);
+    else if (event.key === 'Home') go(0);
+    else if (event.key === 'End') go(-1);
+    else if (event.key === 'Escape') { event.stopPropagation(); closeVersionMenu(true); }
+    else if (event.key === 'Tab') closeVersionMenu(true); // then Tab moves on from the pill, not from the page's end
+    else return;
+    if (event.key !== 'Tab') event.preventDefault();
+  });
+  setTimeout(() => { // after this click: the next one outside closes it
+    document.addEventListener('pointerdown', versionMenuOutside, true);
+    window.addEventListener('scroll', versionMenuScrolled, true);
+    window.addEventListener('resize', closeVersionMenu);
+    window.addEventListener('hashchange', closeVersionMenu); // another song, or the editor
+  });
+  menu.querySelector('[data-version]')?.focus();
+}
+function fillVersionMenu() {
+  if (!versionMenu) return;
+  const open = new Set([...document.querySelectorAll('#song .version-card')].map(el => el.dataset.id));
+  versionMenu.menu.innerHTML = versionMenu.pill.versions.map(doc => `<button type="button" role="menuitemcheckbox" tabindex="-1"
+      aria-checked="${open.has(doc._id)}" data-version="${escapeHtml(doc._id)}" title="${open.has(doc._id) ? 'Close this version' : 'Show this version beside the song'}">
+      <span class="am-icon" aria-hidden="true">${open.has(doc._id) ? '✓' : ''}</span>${escapeHtml(songLangLabel(doc))} · ${escapeHtml(doc.title)}</button>`).join('');
+}
+// Just under the pill, kept on the screen (it's fixed to the screen, so the song's header doesn't cut it off)
+function placeVersionMenu() {
+  const { menu, pill } = versionMenu;
+  const at = pill.getBoundingClientRect();
+  const left = Math.max(8, Math.min(at.left, window.innerWidth - menu.offsetWidth - 8));
+  menu.style.left = `${left}px`;
+  menu.style.top = `${at.bottom + 4}px`;
+}
+function closeVersionMenu(focusPill = false) {
+  if (!versionMenu) return;
+  const { menu, pill } = versionMenu;
+  versionMenu = null;
+  menu.remove();
+  pill.setAttribute('aria-expanded', 'false');
+  document.removeEventListener('pointerdown', versionMenuOutside, true);
+  window.removeEventListener('scroll', versionMenuScrolled, true);
+  window.removeEventListener('resize', closeVersionMenu);
+  window.removeEventListener('hashchange', closeVersionMenu);
+  if (focusPill === true && pill.isConnected) pill.focus();
+}
+function versionMenuOutside(event) {
+  if (!versionMenu || versionMenu.menu.contains(event.target)) return;
+  if (versionMenu.pill.contains(event.target) || event.target.closest?.('#song .song-card:not(.version-card) .title_link')) return; // its own click toggles it
+  closeVersionMenu();
+}
+// The page scrolled: the menu moves with the pill, and closes once the pill is off the screen
+function versionMenuScrolled(event) {
+  if (!versionMenu || versionMenu.menu.contains(event.target)) return;
+  const at = versionMenu.pill.getBoundingClientRect();
+  if (!at.height || at.bottom < 0 || at.top > window.innerHeight) closeVersionMenu();
+  else placeVersionMenu();
+}
+
 // Side by side (#117): a version opens as another card beside the song, the way an old version does
 function toggleVersionBeside(songId) {
   const card = [...document.querySelectorAll('#song .version-card')].find(el => el.dataset.id === songId);
   if (card) closeVersionBeside(card);
-  else loadSong(songId, false, { beside: true }).then(markOpenVersions).catch(() => {}); // already reported
+  else loadSong(songId, false, { beside: true }).then(fillVersionMenu).catch(() => {}); // already reported
 }
 function closeVersionBeside(card) {
   card.remove();
-  markOpenVersions();
-}
-function markOpenVersions() {
-  const open = new Set([...document.querySelectorAll('#song .version-card')].map(el => el.dataset.id));
-  document.querySelectorAll('#song .version-chips [data-version]').forEach(chip => {
-    chip.classList.toggle('sel', open.has(chip.dataset.version));
-    chip.setAttribute('aria-pressed', open.has(chip.dataset.version));
-  });
+  fillVersionMenu();
 }
 
-// The song's Info: its versions, each to open beside it or unlink, and Link a version
+// The song's Info: its versions as text, one per line, and Change versions for those who may
 async function fillVersionInfo() {
   const box = document.querySelector('#dialog .version-info');
   const song = window.song;
@@ -3828,30 +3926,11 @@ async function fillVersionInfo() {
   }
   if (!box.isConnected || window.song !== song) return;
   const { groups, versions } = found;
-  const sb = escapeHtml(window.songbook?._id || 'sb-allSongs');
-  const rows = versions.map(doc => {
-    const id = escapeHtml(doc._id);
-    return `${escapeHtml(songLangLabel(doc))}: <a href="#${sb}&${id}">${escapeHtml(doc.title)}</a>
-      <button type="button" class="btn btn-tiny" onclick="toggleVersionBeside('${id}')" title="Show it beside this song">Beside</button>${
-      canUnlinkVersion(doc._id) ? `<button type="button" class="btn btn-tiny" onclick="unlinkFromInfo('${id}')" title="It stays a song of its own">Unlink</button>` : ''}`;
-  });
-  const mayLink = !song._deleted && (window.church?.editor || canEdit(song) || groups.length > 0);
-  const unlinkSelf = rows.length && !song._deleted && canUnlinkVersion(song._id)
-    ? `<button type="button" class="btn btn-tiny" onclick="unlinkFromInfo(window.song._id)" title="Take this song out of its versions">Unlink this song</button>` : '';
+  const rows = versions.map(doc => `${escapeHtml(songLangLabel(doc))}: ${escapeHtml(doc.title)}`);
+  const mayChange = !song._deleted && (window.church?.editor || canEdit(song) || groups.length > 0);
   box.innerHTML = `<br><b>Versions:</b><br>${rows.length ? rows.join('<br>') : 'None linked'}`
-    + (groups.length > 1 ? `<br>${overlapNote(song._id, groups)}` : '')
-    + (mayLink || unlinkSelf ? '<br>' : '')
-    + (mayLink ? `<button type="button" class="btn btn-tiny" onclick="pickVersions()">Link a version</button>` : '') + unlinkSelf;
-}
-async function unlinkFromInfo(songId) {
-  try {
-    await unlinkVersion(songId);
-    notyf.success('Unlinked');
-  } catch (err) {
-    reportDbError(err, 'unlink the version');
-  }
-  document.querySelector(`#song .version-card[data-id="${CSS.escape(songId)}"]`)?.remove();
-  versionGroupsChanged();
+    + (groups.length > 1 ? `<br><small class="version-overlap">${overlapNote(song._id, groups)}</small>` : '')
+    + (mayChange ? `<br><button type="button" class="btn btn-tiny" onclick="changeVersions()">Change versions</button>` : '');
 }
 
 const cclisNumber = doc => (doc?.cclis && !isNaN(doc.cclis) && Number(doc.cclis) > 0 ? String(Number(doc.cclis)) : '');
@@ -3859,62 +3938,99 @@ async function allLiveSongs() {
   return (await db.allDocs({ startkey: 's-', endkey: 's-￰', include_docs: true })).rows.map(row => row.doc).filter(doc => doc && !doc._deleted);
 }
 
-// Link a version: find songs to link with the open song. Songs that look like versions of it (the same title
-// or CCLI number) are offered first; typing finds any song by its title.
-async function pickVersions() {
+// Change versions: one list for linking and unlinking. The songs already linked come first, ticked; unticking
+// one takes it out (this song too). Then songs that look like versions of it (the same title or CCLI number),
+// and typing finds any song by its title. A song this person may not change is shown but can't be ticked.
+async function changeVersions() {
   const song = window.song;
   if (!song?._id) return;
-  const dialog = new TaskDialog(`Link versions of "${song.title}"`);
+  const dialog = new TaskDialog(`Versions of "${song.title}"`);
   dialog.working('Reading the songs…');
   let songs;
   try {
     await readVersionGroups();
-    songs = (await allLiveSongs()).filter(doc => doc._id !== song._id);
+    songs = await allLiveSongs();
   } catch (err) {
     await dialog.finish(`Couldn't read the songs: ${err?.message || err}`, { error: true });
     return;
   }
-  const linked = new Set(groupsOfSong(song._id).flatMap(group => Object.keys(group.songs)));
+  const linkedIds = new Set(groupsOfSong(song._id).flatMap(group => Object.keys(group.songs)));
+  const byLangAndTitle = (a, b) => songLangLabel(a).localeCompare(songLangLabel(b)) || String(a.title).localeCompare(String(b.title));
+  const linked = songs.filter(doc => linkedIds.has(doc._id))
+    .sort((a, b) => (b._id === song._id) - (a._id === song._id) || byLangAndTitle(a, b)); // this song first
   const title = titleKey(song.title), ccli = cclisNumber(song);
-  const rows = songs.filter(doc => !linked.has(doc._id))
+  const linkedRows = linked.map(doc => {
+    const allowed = canUnlinkVersion(doc._id);
+    return `<li data-search="${escapeHtml(titleKey(doc.title))}" data-linked><label>
+      <input type="checkbox" value="${escapeHtml(doc._id)}" checked${allowed ? '' : ' disabled'}> ${escapeHtml(doc.title)}
+      <small>${escapeHtml(songLangLabel(doc))}${doc._id === song._id ? ', this song' : ''}${allowed ? '' : '. An editor has to unlink this one.'}</small></label></li>`;
+  });
+  const otherRows = songs.filter(doc => !linkedIds.has(doc._id) && doc._id !== song._id)
     .map(doc => ({ doc, suggest: !!((title && titleKey(doc.title) === title) || (ccli && cclisNumber(doc) === ccli)), allowed: planLink([song, doc]).allowed }))
     .sort((a, b) => b.suggest - a.suggest || String(a.doc.title).localeCompare(String(b.doc.title)))
     .map(({ doc, suggest, allowed }) => `<li data-search="${escapeHtml(titleKey(doc.title))}"${suggest ? ' data-suggest' : ' hidden'}><label>
       <input type="checkbox" value="${escapeHtml(doc._id)}"${allowed ? '' : ' disabled'}> ${escapeHtml(doc.title)}
-      <small>${escapeHtml(songLangLabel(doc))}${groupsOfSong(doc._id).length ? ', has versions' : ''}${allowed ? '' : '. An editor has to link this one.'}</small></label></li>`).join('');
-  const linking = dialog.run({
-    html: `<p>Pick the songs that are "${escapeHtml(song.title)}" in another language or another length. They show beside each other, and each stays a song of its own.</p>
-      <input type="search" class="backup-search" placeholder="Find a song" aria-label="Find a song">
+      <small>${escapeHtml(songLangLabel(doc))}${groupsOfSong(doc._id).length ? ', has versions' : ''}${allowed ? '' : '. An editor has to link this one.'}</small></label></li>`);
+  const boxes = () => [...dialog.body.querySelectorAll('.version-pick input:not([disabled])')];
+  const plan = () => ({
+    unlink: boxes().filter(box => box.closest('[data-linked]') && !box.checked).map(box => box.value),
+    link: boxes().filter(box => !box.closest('[data-linked]') && box.checked).map(box => box.value),
+  });
+  const changing = dialog.run({
+    html: `<p>Versions are "${escapeHtml(song.title)}" in another language or another length. They show beside each other, and each stays a song of its own.
+      Untick a song to unlink it; tick one to link it.</p>
+      <ul class="backup-list version-pick">${linkedRows.join('')}</ul>
+      <input type="search" class="backup-search" placeholder="Find a song to link" aria-label="Find a song to link">
       <p class="version-pick-hint"><small></small></p>
-      <ul class="backup-list version-pick">${rows}</ul>`,
-    submit: 'Link',
-    working: 'Linking…',
+      <ul class="backup-list version-pick">${otherRows.join('')}</ul>`,
+    submit: 'Save',
+    working: 'Saving…',
     action: async () => {
-      const picked = [...dialog.body.querySelectorAll('.version-pick input:checked')].map(box => box.value);
-      if (!picked.length) throw new Error('Pick at least one song.');
-      await linkVersions([song._id, ...picked]);
-      return picked.length;
+      const { unlink, link } = plan();
+      if (!unlink.length && !link.length) throw new Error('Tick or untick a song first.');
+      // The songs that stay linked, to link the new ones with (this song alone if it had no versions)
+      const stay = linked.length ? linked.map(doc => doc._id).filter(id => !unlink.includes(id)) : [song._id];
+      if (link.length && stay.length + link.length < 2) throw new Error('Tick one more song to link it with.');
+      for (const id of unlink) await unlinkVersion(id);
+      if (link.length) await linkVersions([...stay, ...link]);
+      return { unlink, link };
     },
   });
+  const save = dialog.buttons.querySelector('[type="submit"]');
+  const showSave = () => {
+    const { unlink, link } = plan();
+    const parts = [link.length && `link ${link.length}`, unlink.length && `unlink ${unlink.length}`].filter(Boolean);
+    save.textContent = parts.length ? `Save: ${parts.join(', ')}` : 'Save';
+    save.disabled = !parts.length;
+  };
   const search = dialog.body.querySelector('.backup-search');
   const hint = dialog.body.querySelector('.version-pick-hint small');
   const filter = () => {
     const words = titleKey(search.value);
     let shown = 0;
-    dialog.body.querySelectorAll('.version-pick li').forEach(li => {
+    dialog.body.querySelectorAll('.version-pick li:not([data-linked])').forEach(li => {
       li.hidden = !li.querySelector('input').checked && (words ? !li.dataset.search.includes(words) : !li.hasAttribute('data-suggest'));
       if (!li.hidden) shown++;
     });
     hint.textContent = shown ? (words ? '' : 'These look like versions of it. Type to find another song.')
-      : words ? 'No song has that in its title.' : 'Type part of a title to find the song.';
+      : words ? 'No song has that in its title.' : 'Type part of a title to find a song to link.';
   };
   search.addEventListener('input', filter);
-  search.addEventListener('keydown', event => { if (event.key === 'Enter') event.preventDefault(); }); // Enter doesn't link yet
+  search.addEventListener('keydown', event => { if (event.key === 'Enter') event.preventDefault(); }); // Enter doesn't save yet
+  dialog.body.addEventListener('change', showSave);
   filter();
-  const result = await linking;
+  showSave();
+  const result = await changing;
   if (!result) return;
+  const { unlink, link } = result;
+  // A version that's no longer one closes; if this song left its group, they all do
+  document.querySelectorAll('#song .version-card').forEach(card => {
+    if (unlink.includes(song._id) || unlink.includes(card.dataset.id)) card.remove();
+  });
   versionGroupsChanged();
-  await dialog.finish(`Linked ${result === 1 ? 'the song' : `${result} songs`} as versions of "${song.title}".`);
+  const said = [link.length && `linked ${link.length === 1 ? 'one song' : `${link.length} songs`}`,
+    unlink.length && `unlinked ${unlink.length === 1 ? 'one song' : `${unlink.length} songs`}`].filter(Boolean).join(' and ');
+  await dialog.finish(`Saved: ${said}.`);
 }
 
 // Find versions (for editors, from the menu under your name): suggests songs to link, from the Duplicate
