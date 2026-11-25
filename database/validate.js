@@ -42,6 +42,27 @@ function (newDoc, oldDoc, userCtx, secObj) {
   // Editors: the church's editors list
   var isEditor = inGroup(secObj.editors);
 
+  // Version groups (#90): "v-<id>", one record for each set of songs that are the same song in another
+  // language or length. `songs` lists each song with who added it: { "<song id>": "u-<name>" }.
+  // Being in a group counts as part of each song, so the song rule holds: editors link and unlink any song,
+  // everyone else only songs they added. (The rule can't read the songs, so it trusts the "who added" the
+  // app writes; see README.md.)
+  if (id.indexOf('v-') === 0) {
+    var after = newDoc._deleted ? {} : newDoc.songs;
+    if (!after || typeof after !== 'object' || Array.isArray(after)) no('A version group has to list its songs.');
+    var song;
+    for (song in after) {
+      if (!/^s-/.test(song) || typeof after[song] !== 'string') no('A version group lists songs, each with who added it.');
+    }
+    if (isEditor) return;
+    var was = (oldDoc && !oldDoc._deleted && oldDoc.songs) || {};
+    var mine = function (list, key) { return !list.hasOwnProperty(key) || list[key] === me; };
+    var changed = function (key) { return after.hasOwnProperty(key) !== was.hasOwnProperty(key) || after[key] !== was[key]; };
+    for (song in after) if (changed(song) && !(mine(after, song) && mine(was, song))) no('Only editors can link or unlink a song someone else added.');
+    for (song in was) if (changed(song) && !(mine(after, song) && mine(was, song))) no('Only editors can link or unlink a song someone else added.');
+    return;
+  }
+
   // Songs and songbooks: editors change any; everyone else only the ones they added
   if (/^(s|sb)-/.test(id)) {
     if (isEditor) return;

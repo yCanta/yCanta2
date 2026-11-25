@@ -80,7 +80,7 @@ async function tab(target) {
     while (Date.now() < end) { if (await ev(expr).catch(() => false)) return true; await sleep(50); }
     throw new Error(`Timed out waiting for ${what}`);
   };
-  const VK = { C: 67, w: 87, ArrowRight: 39, Enter: 13 };
+  const VK = { C: 67, w: 87, v: 86, ArrowRight: 39, Enter: 13 };
   const key = async k => {
     const base = { key: k, code: k.length === 1 ? 'Key' + k.toUpperCase() : k, windowsVirtualKeyCode: VK[k], modifiers: k === 'C' ? 8 : 0 };
     await send('Input.dispatchKeyEvent', { type: 'keyDown', ...base, text: k.length === 1 ? k : k === 'Enter' ? '\r' : undefined });
@@ -115,6 +115,12 @@ await req('alice', 'PUT', '/church_a/' + SONG, { title: 'Live Test Song', addedB
   authors: ['Test Author'], scripture_ref: [''], introduction: '', key: 'G', categories: [], cclis: false, yt: '', chords: '', copyright: '',
   content: [[{ type: 'verse' }, [['First verse']]], [{ type: 'chorus' }, [['The chorus']]], [{ type: 'verse' }, [['Second verse']]], [{ type: 'verse' }, [['Third verse']]]],
   search: 't:Live Test Song\u0000a:Test Author\u0000addedBy:alice\u0000' });
+// Its Spanish version, linked to it (#90): verse, chorus, verse, so its third verse has no match
+const SONG_ES = 's-livetest-es-' + Date.now().toString(36), GROUP = 'v-livetest-' + Date.now().toString(36);
+await req('alice', 'PUT', '/church_a/' + SONG_ES, { title: 'Canción de Prueba', langs: ['es'], addedBy: 'u-alice', editedBy: 'u-alice', added: stamp, edited: stamp,
+  authors: ['Test Author'], scripture_ref: [''], introduction: '', key: 'G', categories: [], cclis: false, yt: '', chords: '', copyright: '',
+  content: [[{ type: 'verse' }, [['Primera estrofa']]], [{ type: 'chorus' }, [['El coro']]], [{ type: 'verse' }, [['Segunda estrofa']]]] });
+await req('alice', 'PUT', '/church_a/' + GROUP, { songs: { [SONG]: 'u-alice', [SONG_ES]: 'u-alice' }, added: stamp, addedBy: 'u-alice', edited: stamp, editedBy: 'u-alice' });
 await req('alice', 'PUT', '/church_a/' + BOOK, { title: 'Live Test Book', addedBy: 'u-alice', editedBy: 'u-alice', added: stamp, edited: stamp,
   showStatus: false, showComments: true, songrefs: [{ id: SONG, status: 'n', key: 'G' }, { id: 's-vera-1', status: 'n', key: 'G' }] });
 try {
@@ -376,6 +382,42 @@ try {
   await d.until(`${P}.eval('suggestionsHere').length === 0`, 'the suggestion to go away', 5000).catch(() => {});
   ok((await d.ev(`${P}.eval('suggestionsHere').length`)) === 0, 'an added suggestion goes away');
 
+  // ---------- two languages (#90) ----------
+  await d.ev(`${P}.firstSong(), 'ok'`);
+  await f.until(`${F}.current_song.id === ${JSON.stringify(SONG)} && ${F}.current_song.chunk_index === 0`, 'the follower on the first song', 5000).catch(() => {});
+  const vers = await d.ev(`(${P}.window.songbook.songs.find(s => s.id === ${JSON.stringify(SONG)}).versions || []).map(v => v.id + ':' + v.lang).join()`);
+  ok(vers === SONG_ES + ':es', 'two languages: the song comes with its Spanish version', vers);
+  await d.ev(`${P}.document.dispatchEvent(new (${P}.KeyboardEvent)('keydown', { key: 'v', bubbles: true })), 'ok'`); // the v key
+  const secondOn = () => d.ev(`(() => { const s = ${P}.document.getElementById('cur_slide'), b = s.querySelector('.second-lang');
+    return { lang: b && b.lang, text: b && b.textContent, main: s.querySelector('chunk').textContent, fits: !${P}.overflows(s) }; })()`);
+  let two = await secondOn();
+  ok(two.lang === 'es' && /Primera estrofa/.test(two.text) && /First verse/.test(two.main) && two.fits, 'v: the Spanish verse under the English one, both fit', two);
+  await sleep(700);
+  const now2 = (await req('alice', 'GET', `/ycanta_live/now:${code}`)).json || {};
+  ok(now2.secondLang === 'es' && now2.second === SONG_ES && now2.id === SONG && now2.part === 0 && now2.title === 'Live Test Song' && now2.partName === 'Verse 1',
+    'the now record gets secondLang and second; its old fields are as before', now2);
+  const partRows = (await req('alice', 'GET', `/ycanta_live/_all_docs?include_docs=true&startkey=${encodeURIComponent(JSON.stringify('part:' + code + ':'))}&endkey=${encodeURIComponent(JSON.stringify('part:' + code + ':￰'))}`)).json.rows;
+  const sent = partRows.map(row => row.doc.songs[SONG]).find(Boolean) || {};
+  ok(sent.doc && sent.doc.title === 'Live Test Song' && sent.doc.content.length === 4 && sent.versions && sent.versions[0].id === SONG_ES && sent.versions[0].lang === 'es'
+    && sent.langs.join() === 'en', 'the shared song keeps its old fields, with langs and versions added', { title: sent.doc && sent.doc.title, langs: sent.langs, versions: sent.versions && sent.versions.length });
+  await f.until(`!!${F}.document.querySelector('#cur_slide .second-lang')`, 'the follower to show the second language', 5000).catch(() => {});
+  ok(await f.ev(`/Primera estrofa/.test(${F}.document.querySelector('#cur_slide .second-lang')?.textContent || '')`), 'a follower set to the same as the screen shows both languages');
+  // a follower picks Spanish: Spanish alone on that phone, kept there; the presenter's screen doesn't change
+  await f.ev(`${F}.toggleHelp(), 'ok'`);
+  await f.until(`!!${F}.document.querySelector('#langRows input[name="followLang"][value="es"]')`, 'the Language row', 5000).catch(() => {});
+  await f.ev(`(() => { const box = ${F}.document.querySelector('#langRows input[name="followLang"][value="es"]'); box.click(); ${F}.hideHelp(); return 'ok'; })()`);
+  const own = await f.ev(`({ text: ${F}.document.querySelector('#cur_slide .content').textContent, second: !!${F}.document.querySelector('#cur_slide .second-lang'),
+    saved: localStorage.getItem('yCantaFollowLang') })`);
+  ok(/Primera estrofa/.test(own.text) && !/First verse/.test(own.text) && !own.second && own.saved === 'es', 'a follower picks Spanish: Spanish alone, kept on that device', own);
+  two = await secondOn();
+  ok(/First verse/.test(two.main) && two.lang === 'es', "the follower's pick doesn't change the presenter's screen", two);
+  await d.ev(`${P}.gotoVerse(3), 'ok'`); // the Spanish version has no third verse
+  await f.until(`${F}.current_song.chunk_index === 3`, 'the follower on the third verse', 5000).catch(() => {});
+  ok(await f.ev(`/Third verse/.test(${F}.document.querySelector('#cur_slide .content').textContent)`), 'a part with no Spanish match shows the English part');
+  ok(!(await d.ev(`!!${P}.document.querySelector('#cur_slide .second-lang')`)), 'on the presenter too, that part shows alone');
+  await f.ev(`${F}.setFollowLang('same'), 'ok'`);
+  await d.ev(`${P}.setSecondLang(''), 'ok'`);
+
   // a songbook change reaches the follower (#147)
   const before = await f.ev(`${F}.window.songbook.songs.length`);
   await d.ev(`${P}.updateSongbook(JSON.stringify({ title: 'Live Test Book', songs: ${P}.window.songbook.songs.slice(0, 1) })), 'ok'`);
@@ -443,7 +485,7 @@ try {
   failed++;
   console.log('  FAIL', err.message);
 } finally {
-  for (const id of [SONG, BOOK]) {
+  for (const id of [SONG, BOOK, SONG_ES, GROUP]) {
     const doc = await req('alice', 'GET', '/church_a/' + id);
     if (doc.status === 200) await req('alice', 'DELETE', `/church_a/${id}?rev=${doc.json._rev}`);
   }

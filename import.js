@@ -386,18 +386,13 @@ async function importSongV2(f){
 
   // Who a song or songbook is credited to. Editors and church admins keep the original credit. Everyone
   // else may only save what they added (the server's save rules), so their imports are credited to them.
+  // (A song's old saved search text is dropped here too: it's built when the song is shown, #90.)
   function creditImport(doc, existing) {
+    if (/^s-/.test(doc._id)) delete doc.search;
     if (window.church?.editor || !/^(s|sb)-/.test(doc._id)) return;
     const me = window.user._id;
     doc.addedBy = existing ? existing.addedBy : me;
     doc.editedBy = me;
-    if (typeof doc.search === 'string') { // the song search text includes who added and edited it
-      // written the way saveSong writes it, "!addedBy" when nobody is named
-      const name = (id, label) => (id || '').slice(2).replace(/\s+/g, ' ') || `!${label}`;
-      doc.search = doc.search
-        .replace(/addedBy:[^\0]*\0/, `addedBy:${name(doc.addedBy, 'addedBy')}\0`)
-        .replace(/editedBy:[^\0]*\0/, `editedBy:${name(doc.editedBy, 'editedBy')}\0`);
-    }
   }
 
   function uploadIfNewer(doc){

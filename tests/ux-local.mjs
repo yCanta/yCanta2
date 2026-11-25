@@ -347,6 +347,294 @@ try {
   const head = await ev(`(() => ({ legend: document.getElementById('username_legend').getBoundingClientRect().bottom, main: document.querySelector('main').getBoundingClientRect().top }))()`);
   ok(head.main - head.legend >= 8, 'header: the columns start clear of the name button', JSON.stringify(head));
 
+  // ---- every alphabet (#90): search finds accented Spanish, Hindi and Arabic words; a song's languages ----
+  // Songs made on the server as an older app saved them: a "search" field that lost accents and other
+  // letters. The app builds its own from the song, so they're found anyway.
+  const t90 = Date.now(), esId = `s-${t90}-es`, hiId = `s-${t90}-hi`, arId = `s-${t90}-ar`, enId = `s-${t90}-en`, langBook = `sb-${t90}-langs`;
+  const song90 = (id, title, lines, extra = {}) => req('PUT', `${DB}/${id}`, { _id: id, title, authors: [''], scripture_ref: [''], introduction: '',
+    key: '', categories: [''], cclis: false, copyright: '', yt: '', chords: '', search: `t:${title.replace(/[^a-zA-Z0-9 ]/g, '')}\0`,
+    content: [[{ type: 'verse' }, lines]], added: t90, addedBy: 'u-alice', edited: t90, editedBy: 'u-alice', ...extra });
+  const made90 = [
+    [esId, await song90(esId, `${RUN} Canción`, ['Señor, Tú eres mi canción'])],
+    [hiId, await song90(hiId, `${RUN} यीशु`, ['प्रभु की स्तुति करो', 'ज़िंदगी में ख़ुशी'])],
+    [arId, await song90(arId, `${RUN} ترنيمة`, ['<c>C</c>يَسُوعُ رَبِّي، مَحَبَّتُهُ أَبَدِيَّةٌ', 'And an English line'])],
+    [enId, await song90(enId, `${RUN} English`, ['Amazing grace how sweet the sound'])],
+  ];
+  made90.forEach(([docId, r]) => r.status === 201 && made.push(docId));
+  const lb = await req('PUT', `${DB}/${langBook}`, { _id: langBook, title: `${RUN} Languages`, songrefs: made90.map(([docId]) => ({ id: docId, status: 'n' })),
+    added: t90, addedBy: 'u-alice', edited: t90, editedBy: 'u-alice' });
+  if (lb.status === 201) made.push(langBook);
+  ok(made90.every(([, r]) => r.status === 201) && lb.status === 201, 'languages: Spanish, Hindi, Arabic and English test songs and a book are made');
+  await until(`db.get('${langBook}').then(() => true, () => false)`, 'the language book to reach this browser', 20000);
+  await go(`#${langBook}`, `document.querySelectorAll('#songbook_content .list > li').length === 4`, 'the language book');
+  const searchFor = text => ev(`(async () => { const s = document.querySelector('#songbook_content .search'); s.value = ${JSON.stringify(text)};
+    s.dispatchEvent(new KeyboardEvent('keyup')); await new Promise(r => setTimeout(r, 300));
+    return [...document.querySelectorAll('#songbook_content .list > li .name')].map(n => n.textContent); })()`);
+  for (const [typed, want, what] of [['cancion', 'Canción', 'Spanish without accents'], ['señor tú', 'Canción', 'Spanish with accents'],
+    ['प्रभु की स्तुति', 'यीशु', 'Hindi words'], ['जिंदगी में खुशि', 'यीशु', 'Hindi typed without the nukta dots, short i for long,'],['يَسُوعُ', 'ترنيمة', 'Arabic words'], ['ربي محبته ابديه', 'ترنيمة', 'Arabic typed without marks, ا for أ and ه for ة,'], ['يَسُوعُ رَبِّي مَحَبَّتُهُ', 'ترنيمة', 'Arabic with marks'], ['t:' + RUN.toLowerCase() + ' यीशु', 'यीशु', 'a Hindi title with t:']]) {
+    const found = await searchFor(typed);
+    ok(found.length === 1 && found[0].endsWith(want), `search: ${what} ("${typed}") find the song`, JSON.stringify(found));
+  }
+  await searchFor('');
+  // the presentation's search box too
+  await ev(`location.hash = '#${langBook}?present', 'ok'`);
+  await until(`document.getElementById('presentation')?.contentWindow?.window?.songbook?.songs?.length === 4`, 'the presentation', 15000);
+  const presFind = text => ev(`(() => { const f = document.getElementById('presentation').contentWindow; f.document.querySelector('#searchbox input').value = ${JSON.stringify(text)};
+    f.searchDatabase(); return f.document.getElementById('searchresults').textContent; })()`);
+  for (const [typed, want] of [['senor tu', 'Señor Tú eres mi canción'], ['प्रभु', 'प्रभु की स्तुति करो'], ['رَبِّي', 'يَسُوعُ رَبِّي'], ['محبته ابديه', 'مَحَبَّتُهُ أَبَدِيَّةٌ'], ['जिंदगी में खुशि', 'ज़िंदगी में ख़ुशी'.normalize('NFC')]]) {
+    const shown = await presFind(typed);
+    ok(shown.includes(want), `presentation search: "${typed}" finds its line`, shown.slice(0, 200));
+  }
+  await go(`#${langBook}`, `!document.getElementById('presentation') && window.songbook?._id === ${JSON.stringify(langBook)}`, 'leaving the presentation');
+  // the Filter's Language group: English (the church's usual, for songs with none), Hindi and Arabic from their letters
+  await click('.song-filter[data-list="book"] .filter-btn');
+  await until(`document.getElementById('filter_panel_book')?.classList.contains('open')`, 'the filter panel', 5000);
+  const langChips = await ev(`[...document.querySelectorAll('#filter_panel_book .filter-chip[data-group="lang"]')].map(c => c.dataset.value + ':' + c.querySelector('.n').textContent)`);
+  ok(JSON.stringify(langChips) === JSON.stringify(['en:2', 'ar:1', 'hi:1']), 'filter: a Language group, English (no language picked) first, Hindi and Arabic seen from their letters', JSON.stringify(langChips));
+  await ev(`document.querySelector('#filter_panel_book .filter-chip[data-group="lang"][data-value="ar"]').click(), 'ok'`); // (the panel redraws on each sync change)
+  await sleep(300);
+  const arOnly = await ev(`window.songbook_list.visibleItems.map(i => i.values().name)`);
+  ok(arOnly.length === 1 && arOnly[0].endsWith('ترنيمة'), 'filter: picking Arabic leaves the Arabic song', JSON.stringify(arOnly));
+  await ev(`clearSongFilter('book'); toggleSongFilterPanel('book'), 'ok'`);
+  await sleep(400);
+  // right to left: an Arabic line turns by itself; an English line, even in the same song, doesn't
+  await go(`#${langBook}&${arId}`, `!!document.querySelector('#song .song-card line')`, 'the Arabic song');
+  const dirs = await ev(`[...document.querySelectorAll('#song .song-card line')].map(l => l.getAttribute('dir') + ':' + (l.matches(':dir(rtl)') ? 'rtl' : 'ltr'))`);
+  // (the Arabic line starts with a chord: "rtl" from its first letter that isn't a chord's, lineDir)
+  ok(JSON.stringify(dirs) === JSON.stringify(['rtl:rtl', 'auto:ltr']), 'right to left: the Arabic line (starting with a chord) reads right to left, the English line left to right', JSON.stringify(dirs));
+  await click('#song info');
+  await until(`document.getElementById('dialog').dataset.use === 'info' && !!document.querySelector('#dialog .song-langs')`, 'the Info window', 5000);
+  const infoAr = await ev(`document.querySelector('#dialog .song-langs').textContent`);
+  ok(infoAr.includes('Arabic') && infoAr.includes('from its letters'), "info: an Arabic song with no language picked says Arabic, from its letters", infoAr);
+  await ev(`document.querySelector('#dialog .close-x, #dialog [aria-label="Close"]')?.click(), 'ok'`);
+  // a song's languages: Spanish and English picked in the editor survive the save, and no search field is saved
+  await go(`#${langBook}&${esId}?edit`, `!!document.querySelector('#song .lang-row .lang-add')`, 'the Spanish song editor');
+  const hint90 = await ev(`document.querySelector('#song .lang-row [data-lang]') ? 'has a chip' : document.querySelector('#song .lang-add').placeholder`);
+  ok(hint90 === 'English (usual)', "editor: a song with no language says in its box that it counts as the church's usual (English)", hint90);
+  await click('#song .lang-add');
+  await send('Input.insertText', { text: 'espa' }); // typed: the choices under the box narrow to Spanish (Español)
+  await sleep(300);
+  const offered = await ev(`[...document.querySelectorAll('#song .lang-suggest [data-add]')].map(b => b.dataset.add + (b.classList.contains('active') ? '*' : ''))`);
+  ok(offered[0] === 'es', 'editor: typing "espa" offers Spanish first, with no choice marked until the arrow keys are used', JSON.stringify(offered));
+  await click('#song .lang-suggest [data-add="es"]');
+  await send('Input.insertText', { text: 'english' });
+  await key('Enter', 'Enter', 13);
+  const picked = await ev(`[...document.querySelectorAll('#song .lang-row [data-lang]')].map(c => c.dataset.lang)`);
+  ok(JSON.stringify(picked) === '["es","en"]', 'editor: Spanish picked from the choices, English typed and Enter', JSON.stringify(picked));
+  const langsNow = () => ev(`[...document.querySelectorAll('#song .lang-row [data-lang]')].map(c => c.dataset.lang).join()`);
+  await send('Input.insertText', { text: 'fr' });
+  await sleep(300);
+  await key('ArrowDown', 'ArrowDown', 40);
+  await key('Enter', 'Enter', 13);
+  const withFr = await langsNow();
+  await key('Backspace', 'Backspace', 8);
+  const afterBack = await langsNow();
+  ok(withFr === 'es,en,fr' && afterBack === 'es,en', 'editor: arrow down and Enter add the first choice; Backspace in the empty box takes the last one off', `${withFr} / ${afterBack}`);
+  await key('Escape', 'Escape', 27);
+  const field90 = await ev(`(() => { const box = document.querySelector('#song .lang-box').getBoundingClientRect(), row = document.querySelector('#song .lang-row').getBoundingClientRect();
+    return { closed: document.querySelector('#song .lang-suggest').hidden, inBox: document.querySelectorAll('#song .lang-box > [data-lang]').length, sameLine: Math.abs(document.querySelector('#song .lang-label').getBoundingClientRect().top - box.top) < box.height, narrow: box.width < row.width - 40 }; })()`);
+  ok(field90.closed && field90.inBox === 2 && field90.sameLine && field90.narrow, 'editor: Escape closes the choices; the chips are in the box, beside "Language:", and the box is only as wide as it needs', JSON.stringify(field90));
+  await click('#song .edit_buttons [data-save]');
+  await until(`!location.hash.includes('?edit') && !window.songEditing && !!document.querySelector('#song .song-card line')`, 'the save', 10000);
+  let saved90 = {};
+  for (let tries = 0; tries < 60 && !saved90.langs; tries++) { saved90 = (await req('GET', `${DB}/${esId}`)).json || {}; if (!saved90.langs) await sleep(250); } // synced up
+  ok(JSON.stringify(saved90.langs) === '["es","en"]' && !('search' in saved90), 'save: the song keeps its two languages, and no search field is saved', JSON.stringify({ langs: saved90.langs, search: saved90.search }));
+  await click('#song info');
+  await until(`!!document.querySelector('#dialog .song-langs')`, 'the Info window', 5000);
+  const info90 = await ev(`document.querySelector('#dialog .song-langs').textContent`);
+  ok(info90.includes('Spanish') && info90.includes('Español') && info90.includes('English'), 'info: says both languages', info90);
+  await ev(`document.querySelector('#dialog .close-x, #dialog [aria-label="Close"]')?.click(), 'ok'`);
+  // export: the book's Hindi and Arabic letters can't be printed yet
+  await go(`#${langBook}?export`, `!!document.getElementById('export_words_summary')`, 'the language book export');
+  await until(`!document.getElementById('export_script_note').hidden`, 'the export note', 8000).catch(() => {});
+  const note90 = await ev(`(() => { const n = document.getElementById('export_script_note'); return n.hidden ? '' : n.textContent; })()`);
+  ok(note90.startsWith('2 songs have Hindi or Arabic letters') && note90.includes('wrong symbols'), 'export: warns that Hindi and Arabic letters print as the wrong symbols', note90);
+  await ev(`closeExport(), 'ok'`);
+  await sleep(800);
+
+  // ---- versions of a song (#90) and side by side (#117) ----
+  // One Spanish and two English versions (same CCLI number; the same title but for "(short)"), and a song in the
+  // Duplicate category that starts with the same words as the short one
+  const tv = Date.now(), vEs = `s-${tv}-ves`, vEn = `s-${tv}-ven`, vShort = `s-${tv}-vshort`, vDup = `s-${tv}-vdup`, vBook = `sb-${tv}-versions`;
+  const songV = (id, title, lines, extra = {}) => req('PUT', `${DB}/${id}`, { _id: id, title, authors: [''], scripture_ref: [''], introduction: '',
+    key: 'G', categories: [''], cclis: false, copyright: '', yt: '', chords: '', content: [[{ type: 'verse' }, lines]],
+    added: tv, addedBy: 'u-alice', edited: tv, editedBy: 'u-alice', ...extra });
+  const madeV = [
+    [vEs, await songV(vEs, `${RUN} Vive`, ['Cristo vive, Él resucitó'], { langs: ['es'], cclis: '7012345' })],
+    [vEn, await songV(vEn, `${RUN} Lives`, ['Christ is living, He has risen'], { cclis: '7012345' })],
+    [vShort, await songV(vShort, `${RUN} Lives (short)`, ['Hallelujah, Christ is living today'])],
+    [vDup, await songV(vDup, `${RUN} Old Copy`, ['Hallelujah, Christ is living today', 'again'], { categories: ['Duplicate'] })],
+  ];
+  madeV.forEach(([docId, r]) => r.status === 201 && made.push(docId));
+  const vb = await req('PUT', `${DB}/${vBook}`, { _id: vBook, title: `${RUN} Versions`, songrefs: madeV.map(([docId]) => ({ id: docId, status: 'n' })),
+    added: tv, addedBy: 'u-alice', edited: tv, editedBy: 'u-alice' });
+  if (vb.status === 201) made.push(vBook);
+  ok(madeV.every(([, r]) => r.status === 201) && vb.status === 201, 'versions: test songs and a book are made');
+  await until(`db.get('${vBook}').then(() => true, () => false)`, 'the versions book to reach this browser', 20000);
+  const groupsOnServer = async () => ((await req('GET', `${DB}/_all_docs?include_docs=true&startkey=%22v-%22&endkey=%22v-%EF%BF%B0%22`)).json?.rows || [])
+    .map(row => row.doc).filter(doc => Object.keys(doc.songs || {}).some(id => id.startsWith(`s-${tv}-`)));
+  const serverGroupsUntil = async (test, what) => {
+    let groups = [];
+    for (let tries = 0; tries < 60; tries++) { groups = await groupsOnServer(); if (test(groups)) return groups; await sleep(250); }
+    throw new Error(`Timed out waiting for ${what}: ${JSON.stringify(groups.map(g => g.songs))}`);
+  };
+  // the save rule's "members only link their own songs", as the app checks it before it asks
+  const mirror = await ev(`(() => { const was = window.church; window.church = { editor: false };
+    const r = [groupChangeAllowed({}, { a: 'u-alice', b: 'u-alice' }), groupChangeAllowed({}, { a: 'u-alice', b: 'u-eddie' }),
+      groupChangeAllowed({ b: 'u-eddie' }, { a: 'u-alice', b: 'u-eddie' }), groupChangeAllowed({ a: 'u-alice', b: 'u-eddie' }, { a: 'u-alice' })];
+    window.church = was; return r; })()`);
+  ok(JSON.stringify(mirror) === '[true,false,true,false]', "versions: a member may link only their own songs, the same as the save rule", JSON.stringify(mirror));
+
+  // a song with no versions: no chips; its Info says so and offers Link a version
+  await go(`#${vBook}&${vEn}`, `!!document.querySelector('#song .song-card .version-chips')`, 'the English song');
+  ok(await ev(`document.querySelector('#song .version-chips').hidden`), 'versions: a song with none shows no Versions row');
+  await click('#song info');
+  await until(`/None linked/.test(document.querySelector('#dialog .version-info')?.textContent || '')`, 'the Info versions', 5000);
+  ok(true, 'info: a song with no versions says "None linked"');
+  // Link a version: the songs that look like versions are offered first (same CCLI number; same title but for "(short)")
+  await click('#dialog .version-info [onclick^="pickVersions"]');
+  await until(`!!document.querySelector('.task-dialog .version-pick')`, 'the Link versions window', 8000);
+  const offeredV = await ev(`[...document.querySelectorAll('.task-dialog .version-pick li:not([hidden]) input')].map(i => i.value)`);
+  ok(offeredV.length === 2 && offeredV.includes(vEs) && offeredV.includes(vShort), 'link: offers the songs with the same CCLI number and the same title', JSON.stringify(offeredV));
+  await ev(`(() => { const s = document.querySelector('.task-dialog .backup-search'); s.value = ${JSON.stringify(RUN + ' old')}; s.dispatchEvent(new Event('input')); })(), 'ok'`);
+  const typedV = await ev(`[...document.querySelectorAll('.task-dialog .version-pick li:not([hidden]) input')].map(i => i.value)`);
+  ok(JSON.stringify(typedV) === JSON.stringify([vDup]), 'link: typing part of a title finds that song', JSON.stringify(typedV));
+  await ev(`(() => { const s = document.querySelector('.task-dialog .backup-search'); s.value = ''; s.dispatchEvent(new Event('input')); })(), 'ok'`);
+  await click(`.task-dialog .version-pick input[value="${vEs}"]`);
+  await click(`.task-dialog .version-pick input[value="${vShort}"]`);
+  await click('.task-dialog [type="submit"]');
+  await until(`/Linked 2 songs/.test(document.querySelector('.task-dialog .task-body')?.textContent || '')`, 'the link', 8000);
+  await click('.task-dialog [type="submit"]'); // Close
+  let groupsV = await serverGroupsUntil(g => g.length === 1 && Object.keys(g[0].songs).length === 3, 'the group on the server');
+  groupsV.forEach(g => made.push(g._id));
+  ok(JSON.stringify(Object.values(groupsV[0].songs)) === '["u-alice","u-alice","u-alice"]', 'link: one group record on the server, saying who added each song', JSON.stringify(groupsV[0].songs));
+  await until(`document.querySelectorAll('#dialog .version-info [onclick^="unlinkFromInfo(\\'"]').length === 2`, 'Info to list the versions', 8000);
+  ok(await ev(`!!document.querySelector('#dialog .version-info [onclick="unlinkFromInfo(window.song._id)"]')`), 'info: lists the two versions, each with Unlink, and Unlink this song');
+  await ev(`document.querySelector('#dialog .close-x, #dialog [aria-label="Close"]')?.click(), 'ok'`);
+  // the song shows its versions with their languages; a chip opens that version beside it, and closes it again
+  await until(`document.querySelectorAll('#song .version-chips [data-version]').length === 2`, 'the Versions chips', 8000);
+  const chipsV = await ev(`[...document.querySelectorAll('#song .version-chips [data-version]')].map(c => c.dataset.version + '|' + c.textContent.replace(/[\\u2066-\\u2069]/g, '').trim())`);
+  ok(chipsV[0].startsWith(vShort + '|English') && chipsV[1].startsWith(vEs + '|Spanish (Español)'), 'song: shows its versions with their languages, "Spanish (Español)"', JSON.stringify(chipsV));
+  await iconOk('a song with versions');
+  await click(`#song .version-chips [data-version="${vEs}"]`);
+  await until(`!!document.querySelector('#song .song-card.version-card[data-id="${vEs}"]')`, 'the Spanish version beside the song', 8000);
+  const besideV = await ev(`(() => { const cards = [...document.querySelectorAll('#song .content > .song-card')];
+    return { cards: cards.map(c => c.dataset.id), song: window.song._id, sel: document.querySelector('#song .version-chips [data-version="${vEs}"]').classList.contains('sel'),
+      words: cards[1]?.querySelector('line')?.textContent, keyRows: document.querySelectorAll('#keyToggle').length }; })()`);
+  ok(JSON.stringify(besideV.cards) === JSON.stringify([vEn, vEs]) && besideV.song === vEn && besideV.sel && besideV.words === 'Cristo vive, Él resucitó' && besideV.keyRows === 1,
+    'side by side: the Spanish version opens beside the song, whole, and the open song stays the same', JSON.stringify(besideV));
+  await click(`#song .version-chips [data-version="${vEs}"]`);
+  ok(await ev(`!document.querySelector('#song .version-card') && !document.querySelector('#song .version-chips .sel')`), 'side by side: the chip closes it again');
+  await click(`#song .version-chips [data-version="${vShort}"]`);
+  await until(`!!document.querySelector('#song .version-card')`, 'the short version beside the song', 8000);
+  await click('#song .version-card .close-x');
+  ok(await ev(`!document.querySelector('#song .version-card')`), 'side by side: its × closes it');
+  // the editor doesn't show them, so nothing of them can end up in the song
+  await go(`#${vBook}&${vEn}?edit`, `!!document.querySelector('#song .edit_buttons')`, 'the song editor');
+  ok(await ev(`!document.querySelector('#song .version-chips') || !document.querySelector('#song .version-chips').getClientRects().length`), 'editor: the Versions row is not in the song editor');
+  await click('#song .edit_buttons [data-cancel]');
+  await until(`!location.hash.includes('?edit') && !window.songEditing`, 'leaving the editor', 8000);
+  await go(`#${vBook}&${vEn}`, `document.querySelectorAll('#song .version-chips [data-version]').length === 2`, 'the English song again');
+  // Unlink from Info: the short one leaves the group
+  await click('#song info');
+  await until(`document.querySelectorAll('#dialog .version-info [onclick^="unlinkFromInfo(\\'"]').length === 2`, 'Info versions', 8000);
+  await click(`#dialog .version-info [onclick="unlinkFromInfo('${vShort}')"]`);
+  groupsV = await serverGroupsUntil(g => g.length === 1 && Object.keys(g[0].songs).length === 2 && !(vShort in g[0].songs), 'the unlink on the server');
+  ok(true, 'unlink: the song leaves the group on the server');
+  await until(`document.querySelectorAll('#song .version-chips [data-version]').length === 1`, 'one chip left', 8000);
+  ok(true, 'unlink: the song shows one version left');
+  await ev(`document.querySelector('#dialog .close-x, #dialog [aria-label="Close"]')?.click(), 'ok'`);
+  // two devices offline each linked the song: it says so, and Join them makes one group
+  const twin = `v-${tv}-twin`;
+  const twinPut = await req('PUT', `${DB}/${twin}`, { _id: twin, songs: { [vEn]: 'u-alice', [vDup]: 'u-alice' }, added: tv, addedBy: 'u-alice', edited: tv, editedBy: 'u-alice' });
+  if (twinPut.status === 201) made.push(twin);
+  await until(`!!document.querySelector('#song .version-overlap [onclick^="joinVersionGroups"]')`, 'the two-groups note', 15000);
+  ok(true, 'two groups: a song in two groups says so and offers to join them');
+  await click('#song .version-overlap [onclick^="joinVersionGroups"]');
+  groupsV = await serverGroupsUntil(g => g.length === 1 && Object.keys(g[0].songs).length === 3, 'one joined group on the server');
+  ok([vEs, vEn, vDup].every(id => id in groupsV[0].songs), 'two groups: Join them leaves one group with every song, and deletes the other', JSON.stringify(groupsV.map(g => g._id)));
+  await until(`document.querySelectorAll('#song .version-chips [data-version]').length === 2 && !document.querySelector('#song .version-overlap')`, 'the chips after the join', 8000);
+  // Find versions (editors): the menu item, then each suggestion on its own; Link the one with the short song
+  await click('#username_legend');
+  ok(await ev(`!!document.querySelector('#account_menu [data-open="findVersions"]')?.getClientRects().length`), 'find versions: in the menu under your name, for an editor');
+  await click('#account_menu [data-open="findVersions"]');
+  await until(`/Duplicate category/.test(document.querySelector('.task-dialog .task-body')?.textContent || '')`, 'the Find versions window', 10000);
+  await click('.task-dialog [type="submit"]'); // Start
+  let foundShort = false;
+  for (let step = 0; step < 30; step++) {
+    await until(`!!document.querySelector('.task-dialog .version-pick, .task-dialog [type="submit"]')`, 'a suggestion', 8000);
+    const body = await ev(`document.querySelector('.task-dialog .task-body')?.textContent || ''`);
+    if (!/ of \d+/.test(body)) break; // the end
+    if (body.includes(`${RUN} Lives (short)`)) {
+      foundShort = true;
+      ok(/the same title/.test(body) && body.includes(`${RUN} Lives`), 'find versions: suggests the short song with the one it has the same title as', body.slice(0, 200));
+      await click('.task-dialog [type="submit"]'); // Link
+    } else {
+      await click('.task-dialog [data-skip]');
+    }
+    await sleep(400);
+  }
+  ok(foundShort, 'find versions: the short song is suggested');
+  groupsV = await serverGroupsUntil(g => g.length === 1 && vShort in g[0].songs, 'the helper link on the server');
+  ok(Object.keys(groupsV[0].songs).length === 4, 'find versions: Link joins it to the existing group (one group, four songs)', JSON.stringify(groupsV[0].songs));
+  await ev(`document.querySelector('.task-dialog [type="submit"]')?.click(), 'ok'`); // Close
+  await sleep(400);
+
+  // ---- two languages in a presentation (#90): the Spanish song with its three English versions ----
+  await go(`#${vBook}`, `window.songbook?._id === ${JSON.stringify(vBook)}`, 'the versions book');
+  await ev(`location.hash = '#${vBook}?present', 'ok'`);
+  await until(`document.getElementById('presentation')?.contentWindow?.window?.songbook?.songs?.length === 4`, 'the versions presentation', 15000);
+  await ev(`document.getElementById('presentation').contentWindow.presentationReady.then(() => 'ok')`); // its "Presenting" slide is up
+  const PF = `document.getElementById('presentation').contentWindow`;
+  const presKey = k => ev(`${PF}.document.dispatchEvent(new (${PF}.KeyboardEvent)('keydown', { key: ${JSON.stringify(k)}, bubbles: true })), 'ok'`);
+  const sent90 = await ev(`(() => { const s = ${PF}.window.songbook.songs.find(x => x.id === ${JSON.stringify(vEs)}); return { langs: s.langs, versions: (s.versions || []).map(v => v.lang) }; })()`);
+  ok(sent90.langs.join() === 'es' && sent90.versions.join() === 'en,en,en', 'two languages: the presentation gets the Spanish song with its three English versions', JSON.stringify(sent90));
+  await presKey(' '); // the first song: the Spanish one
+  await sleep(300);
+  const slide90 = () => ev(`(() => { const s = ${PF}.document.getElementById('cur_slide'), b = s.querySelector('.second-lang');
+    return { id: ${PF}.current_song.id, lang: b ? b.lang : '', second: b ? b.textContent : '', fits: !${PF}.overflows(s), size: parseFloat(getComputedStyle(s.querySelector('.content')).fontSize) }; })()`);
+  const alone90 = await slide90();
+  await presKey('v');
+  let two90 = await slide90();
+  ok(alone90.id === vEs && !alone90.second && two90.lang === 'en' && /Christ is living/.test(two90.second) && two90.fits,
+    'v: the English version under the Spanish part, and the slide still fits', JSON.stringify([alone90, two90]));
+  await ev(`${PF}.toggleHelp(), 'ok'`);
+  await sleep(300);
+  const rows90 = await ev(`(() => { const box = ${PF}.document.getElementById('langRows');
+    return { langs: [...box.querySelectorAll('input[name="secondLang"]')].map(i => i.value + (i.checked ? '*' : '')), versions: box.querySelectorAll('input[name="secondPick"]').length,
+      key: [...${PF}.document.querySelectorAll('#helpKeys kbd')].some(k => k.textContent === 'v') }; })()`);
+  ok(rows90.langs.join() === ',en*,es','panel: a Second language row (None, English, Spanish), English picked', JSON.stringify(rows90));
+  ok(rows90.versions === 3 && rows90.key, 'panel: the three English versions to pick from, and v in the keys list', JSON.stringify(rows90));
+  await ev(`${PF}.document.querySelectorAll('#langRows input[name="secondPick"]')[1].click(), ${PF}.hideHelp(), 'ok'`);
+  const picked90 = await slide90();
+  ok(/Hallelujah/.test(picked90.second) && picked90.fits, 'panel: picking another English version shows that one', JSON.stringify(picked90));
+  const cycle90 = [];
+  for (let i = 0; i < 3; i++) { await presKey('v'); cycle90.push((await slide90()).second ? 'two' : 'one'); }
+  ok(cycle90.join() === 'two,one,two', 'v goes through the versions, then none, then back to the first', JSON.stringify(cycle90));
+  await ev(`${PF}.setSecondLang(''), 'ok'`);
+  // the words fit again when the window changes size (once, a moment later), as on a phone that's turned
+  await ev(`(() => { const f = ${PF}; f.fitCount = 0; const was = f.scaleText; f.scaleText = function () { f.fitCount++; return was.apply(this, arguments); }; return 'ok'; })()`);
+  await send('Emulation.setDeviceMetricsOverride', { width: 420, height: 800, deviceScaleFactor: 1, mobile: false });
+  await sleep(900);
+  const resized90 = await ev(`({ fits: !${PF}.overflows(${PF}.document.getElementById('cur_slide')), count: ${PF}.fitCount, width: ${PF}.document.getElementById('cur_slide').clientWidth })`);
+  await send('Emulation.clearDeviceMetricsOverride');
+  await sleep(900);
+  const back90 = await ev(`({ fits: !${PF}.overflows(${PF}.document.getElementById('cur_slide')), count: ${PF}.fitCount })`);
+  ok(resized90.width === 420 && resized90.fits && resized90.count === 1 && back90.fits && back90.count === 2, 'resize: the slide is fitted again, once each time', JSON.stringify([resized90, back90]));
+  await go(`#${vBook}`, `!document.getElementById('presentation')`, 'leaving the presentation');
+  // right to left on a slide: an Arabic title stays on the right, and long Arabic lines fit inside the slide
+  await ev(`location.hash = '#${langBook}?present', 'ok'`);
+  await until(`document.getElementById('presentation')?.contentWindow?.window?.songbook?.songs?.length === 4`, 'the languages presentation', 15000);
+  await ev(`document.getElementById('presentation').contentWindow.presentationReady.then(() => 'ok')`);
+  const arTitle = await ev(`${PF}.titleHtml('ترنيمة')`);
+  ok(arTitle.includes('dir="rtl"'), 'an Arabic title reads right to left, like the lines', arTitle);
+  await presKey(' ');
+  for (let i = 0; i < 5 && (await ev(`${PF}.current_song.id`)) !== arId; i++) await presKey('PageDown');
+  const arFit = await ev(`(() => { const d = ${PF}.document, s = d.getElementById('cur_slide'), box = s.getBoundingClientRect();
+    return [...s.querySelectorAll('line[dir="rtl"]')].map(l => { const r = d.createRange(); r.selectNodeContents(l); const b = r.getBoundingClientRect(); return b.left >= box.left - 1 && b.right <= box.right + 1; }); })()`);
+  ok(arFit.length === 1 && arFit.every(Boolean), "the Arabic line fits inside the slide (it used to run off the left edge)", JSON.stringify(arFit));
+  await go(`#${langBook}`, `!document.getElementById('presentation')`, 'leaving the presentation');
+
   // ---- a phone: the swipe tip, once; the + menu turns into × ----
   await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true, screenWidth: 390, screenHeight: 844 });
   await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });

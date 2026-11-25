@@ -23,6 +23,14 @@ revision it says it copies, and that the person adding it is the one who replace
 can change or remove one. Devices send these up but never download them (the app's sync uses the selector
 `{"_id": {"$not": {"$regex": "^h-"}}}`); the "Old versions" window reads one doc's range from the server.
 
+**Version groups** (`v-` docs, issue #90) link songs that are the same song in another language or another length.
+Each is one record, `v-<time><random>`, with `songs: { "<song id>": "<who added that song>" }`. Being in a group counts
+as part of each song, so the song rule holds: editors link and unlink any song; everyone else only songs they added.
+A member can add their own song to a group that holds other people's songs, or take it back out, but can't start a
+group with someone else's song, take someone else's song out, or join two groups that hold other people's songs. A
+song is in at most one group: the app joins groups when a song in one is linked again, and offers to join them if two
+devices offline each made one.
+
 Anything else is refused with a message the app can show. The built-in "All Songs" and "Favorite Songs"
 songbooks (`sb-allSongs`, `sb-favoriteSongs`) can never be saved.
 
@@ -33,6 +41,9 @@ songbooks (`sb-allSongs`, `sb-favoriteSongs`) can never be saved.
   crafts such a revision can make their version of someone else's song the visible one. The original
   is kept as a conflict (`GET /db/doc?conflicts=true`), so nothing is lost and it can be put back.
   The rule stops mistakes and casual changes, not a member set on misusing their access.
+- **Who added a song, in a version group.** The rule can't read other docs, so for `v-` docs it trusts the "who
+  added" the app writes beside each song. A member using developer tools could claim someone else's song as their
+  own there and link it. That only links songs; it can't change them.
 - **Refused saves stay on the device.** The app says which item the server refused, but the refused
   version stays in that device's own copy (issue #139).
 

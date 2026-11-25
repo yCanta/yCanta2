@@ -1395,11 +1395,28 @@ body.player-pill .subcolumn:not(.sidebar)::after {
 
 /* An old version open beside the song: room before its words, and the one opened last marked by a bar in the
    song blue down its left side (it had a thin dark-blue line down each side, with the words touching the left) */
-.song-card.revision {
+.song-card.revision,
+.song-card.version-card { /* another version open beside it (#117) looks the same */
   padding-left: .75rem;
 }
-.song-card.current_rev {
+.song-card.current_rev,
+.song-card.version-card {
   box-shadow: inset 3px 0 0 var(--song-color);
+}
+/* The song's other versions (#90): chips under its categories, each opening that version beside it */
+.version-chips .version-label {
+  font-size: .85rem;
+  color: var(--light-text-color);
+}
+.version-note,
+.version-overlap {
+  display: block;
+  margin: 0 0 .5rem;
+  color: var(--light-text-color);
+}
+#song.edit .version-chips,
+#song.edit .version-card {
+  display: none;
 }
 
 /*CSS FOR Song Display*/
@@ -1506,7 +1523,7 @@ li[data-song-id="reading"] > a {
   font-style: italic;
   margin: .2rem 0 .4rem;
 }
-.ref-note .problem, .row-hint.problem {
+.ref-note .problem, .row-hint.problem, .export-help.problem {
   color: orangered;
 }
 .edit_pencil {
@@ -1700,6 +1717,70 @@ stitle, cat, author, scrip_ref, key, copyright, cclis {
 .song .edit .ccli-row cclis {
   min-width: 5rem;
   margin: 0;
+}
+/* The song's languages (#90): "Language:" and one box on the line, the same gaps as the CCLI row under it. The
+   box looks like a text box (the filter chips' thin edge) with the languages in it as chips and the typing after
+   them, and it's only as wide as what's in it. What can be added drops down right under it, as a menu: the
+   account menu's items, each with a "+", over the page like the app's other layers. */
+.song .edit .lang-row {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  margin-bottom: 1rem;
+}
+.lang-row .lang-field {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+.lang-row .lang-box {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .3rem;
+  max-width: 100%;
+  padding: .2rem .4rem;
+  border: 1px solid rgba(128, 128, 128, .45);
+  border-radius: .5rem;
+  background-color: var(--background-color);
+  cursor: text;
+}
+.lang-row .lang-box:focus-within {
+  outline: 2px solid var(--song-color);
+  outline-offset: 2px;
+}
+.lang-row .lang-add {
+  min-width: 0;
+  padding: .125rem 0;
+  border: none;
+  outline: none;
+  background: none;
+}
+.lang-row .lang-add:focus {
+  box-shadow: none !important; /* the box shows the focus (above), so not the line under the typing too (*:focus) */
+}
+.lang-row .lang-suggest {
+  position: absolute;
+  top: calc(100% + .3rem);
+  left: 0;
+  z-index: 20;
+  width: max-content;
+  max-width: 100%;
+  max-height: 16rem;
+  overflow: auto;
+  padding: .2rem;
+  border: 1px solid var(--btn-edge);
+  border-radius: .5rem;
+  background-color: var(--background-color);
+  box-shadow: var(--btn-shadow-var), var(--box-shadow-var);
+  display: flex;
+  flex-direction: column;
+}
+.lang-row .lang-suggest[hidden] {
+  display: none;
+}
+.lang-row .lang-suggest .row-hint {
+  margin: .3rem .6rem;
 }
 .song .edit .wrap:hover,
 .song .edit .wrap.previewed { /* the part the floating preview shows (#156) */
@@ -3114,7 +3195,8 @@ body:not(.song) .show_for_songs { /* and what's only for exporting one song */
   min-width: 11rem;
   padding: .2rem 0;
 }
-.account-menu button {
+.account-menu button,
+.lang-suggest button { /* (the song editor's language choices, #90) */
   display: flex;
   align-items: center;
   gap: .6rem;
@@ -3130,15 +3212,19 @@ body:not(.song) .show_for_songs { /* and what's only for exporting one song */
   text-align: left;
   cursor: pointer;
 }
-.account-menu button:hover {
+.account-menu button:hover,
+.lang-suggest button:hover,
+.lang-suggest button.active {
   background-color: var(--btn-color);
   box-shadow: var(--btn-shadow-var), inset 0 0 0 1px var(--btn-edge);
 }
-.account-menu button:focus-visible {
+.account-menu button:focus-visible,
+.lang-suggest button:focus-visible {
   outline: 2px solid var(--song-color);
   outline-offset: -2px;
 }
-.account-menu .am-icon {
+.account-menu .am-icon,
+.lang-suggest .am-icon {
   width: 1.2rem;
   text-align: center;
   font-weight: normal;
@@ -3152,10 +3238,11 @@ body:not(.song) .show_for_songs { /* and what's only for exporting one song */
 }
 /* Admin only for admins, Install only when it's offered (their own rules elsewhere would lose to the flex above) */
 html:not(._admin):not(.churchAdmin) .account-menu .admin,
+html:not(.churchEditor) .account-menu .editor-only,
 html:not(.install-offer) .account-menu .install-btn {
   display: none;
 }
-html._admin .account-menu .admin, html.churchAdmin .account-menu .admin {
+html._admin .account-menu .admin, html.churchAdmin .account-menu .admin, html.churchEditor .account-menu .editor-only {
   display: flex; /* the "admins only" rule would set it back to a plain block, out of line */
 }
 .install-offer .account-menu .install-btn {

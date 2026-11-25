@@ -1,9 +1,123 @@
 String.prototype.count=function(s1) { 
     return (this.length - this.replace(new RegExp(s1,"g"), '').length) / s1.length;
 };
-// Search text without accents, so "jesus" finds "Jesús" (issue #124). list.min.js strips them from the query.
+// Search text without accents, so "jesus" finds "Jesús" (issue #124). list.min.js folds the query with
+// this same function, so the two always line up.
+// - Latin accents go (U+0300 to U+036F, once NFD takes "é" apart into "e" and its accent).
+// - Arabic goes the way Arabic search usually works (#90): the vowel marks and shadda, sukun, tanween,
+//   the small alef, tatweel (the stretch line) and the Quran marks go; أ إ آ ٱ are searched as ا (NFD
+//   takes the first three apart into ا and a hamza or madda mark, and the mark goes), ؤ as و and ئ as ي
+//   the same way, ة as ه and ى as ي. So "محبة" finds "مَحَبَّة", and the other way around.
+// - Hindi (Devanagari) gets a light folding, as Hindi search often does (#90): the nukta dot goes, so ज
+//   finds ज़ (NFD takes a letter like क़ apart into क and the dot first); chandrabindu ँ counts as anusvara
+//   ं; the invisible joiners (ZWJ, ZWNJ) go; long and short i and u are the same (ी as ि, ू as ु, ई as इ,
+//   ऊ as उ). Every other vowel sign stays, so कम and काम are still different words.
+// The text stays taken apart (NFD).
+const ARABIC_MARKS = /[\u0610-\u061a\u0640\u064b-\u065f\u0670\u06d6-\u06dc\u06df-\u06e8\u06ea-\u06ed]/g;
 function stripAccents(text) {
-  return String(text ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '');
+  return String(text ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(ARABIC_MARKS, '').replace(/\u0671/g, '\u0627').replace(/\u0629/g, '\u0647').replace(/\u0649/g, '\u064a') // Arabic
+    .replace(/[\u093c\u200c\u200d]/g, '').replace(/\u0901/g, '\u0902') // Hindi
+    .replace(/\u0940/g, '\u093f').replace(/\u0942/g, '\u0941').replace(/\u0908/g, '\u0907').replace(/\u090a/g, '\u0909');
+}
+
+// A song's search text (#90): its fields, each after its letters (t: title, a: author, s: scripture,
+// i: introduction, k: key, c: category, cp: copyright, and so on; "!a" when it has no author), then each
+// different line of its words once, without chords or punctuation. Built from the song when it's shown,
+// not saved with it: the saved "search" field kept only a-z and 0-9, which lost Spanish accents and every
+// Hindi and Arabic word, and fixing the saved one would have meant saving every song again. Letters, marks
+// and numbers of every alphabet stay. Kept per song until the song changes, since All Songs is listed again
+// on every synced change.
+const songSearchCache = new Map(); // song id -> { rev, text }
+function songSearchText(doc) {
+  if (!doc) return '';
+  const kept = doc._id && doc._rev ? songSearchCache.get(doc._id) : null;
+  if (kept && kept.rev === doc._rev) return kept.text;
+  const song = songShape(doc);
+  const spaces = value => String(value).replace(/\s{2,}/g, ' ');
+  const list = (items, letter) => spaces(items.join(',') !== '' ? items.join(` ${letter}:`) : `!${letter}`);
+  const text = (value, letter) => spaces(value ? value : `!${letter}`);
+  const number = (value, letter) => (value ? `${letter}${value}` : `!${letter}`);
+  const person = (id, label) => text(typeof id === 'string' ? id.slice(2) : '', label); // "u-alice" -> alice
+  const lines = new Set();
+  song.content.forEach(([, chunkLines]) => chunkLines.forEach(line => {
+    const words = line
+      .replace(/<c>.*?<\/c>/gi, '') // chords
+      .replace(/<[^>]*>/g, ' ') // other markup
+      .replace(/&(amp|lt|gt|quot|apos|#39);/g, '').replace(/&[#\w]+;/g, ' ') // punctuation written as &amp; and the like goes too; &nbsp; is a space
+      .replace(/[^\p{L}\p{M}\p{N}\s:-]/gu, '') // punctuation, so "lords" finds "Lord's"
+      .replace(/\s+/g, ' ').trim();
+    if (words) lines.add(words);
+  }));
+  const fields = [
+    `t:${song.title}`, `a:${list(song.authors, 'a')}`, `s:${list(song.scripture_ref, 's')}`,
+    `i:${text(song.introduction, 'i')}`, `k:${text(song.key, 'k')}`, `c:${list(song.categories, 'c')}`,
+    `cp:${text(song.copyright, 'cp')}`, `yt:${number(doc.yt, 'yt')}`, `cclis:${number(doc.cclis, 'cclis')}`,
+    `chords:${text(doc.chords, 'chords')}`, `addedBy:${person(doc.addedBy, 'addedBy')}`, `editedBy:${person(doc.editedBy, 'editedBy')}`,
+  ];
+  const result = fields.map(field => field + '\0').join('') + [...lines].map(line => line + '\n').join('') + '\0';
+  if (doc._id && doc._rev) songSearchCache.set(doc._id, { rev: doc._rev, text: result });
+  return result;
+}
+
+// ---- A song's languages (#90): an optional `langs` list of two-letter codes on the song ("es", or
+// ["es", "en"] for a song in both). A song without one is in the church's usual language (English unless a
+// church admin picks another), except that a song written in Hindi or Arabic letters counts as Hindi or
+// Arabic. Nothing is saved for those: they're recognized from the song each time.
+// The two-letter language codes (ISO 639-1). Their names come from the browser, so there's no list to keep.
+const LANGUAGE_CODES = ('aa ab ae af ak am an ar as av ay az ba be bg bi bm bn bo br bs ca ce ch co cr cs cu cv cy da de dv dz '
+  + 'ee el en eo es et eu fa ff fi fj fo fr fy ga gd gl gn gu gv ha he hi ho hr ht hu hy hz ia id ie ig ii ik io is it iu ja '
+  + 'jv ka kg ki kj kk kl km kn ko kr ks ku kv kw ky la lb lg li ln lo lt lu lv mg mh mi mk ml mn mr ms mt my na nb nd ne '
+  + 'ng nl nn no nr nv ny oc oj om or os pa pi pl ps pt qu rm rn ro ru rw sa sc sd se sg si sk sl sm sn so sq sr ss st su '
+  + 'sv sw ta te tg th ti tk tl tn to tr ts tt tw ty ug uk ur uz ve vi vo wa wo xh yi yo za zh zu').split(' ');
+const languageNames = new Map(); // code -> { english, own, label }
+// A language's names: in English ("Spanish"), in itself ("Español"), and both for the picker
+// ("Spanish (Español)"; just "English" when they're the same). The language's own name is kept apart from
+// the text around it, so an Arabic one doesn't turn the brackets around.
+function languageName(code) {
+  if (languageNames.has(code)) return languageNames.get(code);
+  let english = code, own = '';
+  try {
+    english = new Intl.DisplayNames(['en'], { type: 'language' }).of(code) || code;
+    own = new Intl.DisplayNames([code], { type: 'language' }).of(code) || '';
+    own = own.charAt(0).toLocaleUpperCase(code) + own.slice(1); // "español" -> "Español"
+  } catch (err) { /* an old browser: the code */ }
+  const sameName = !own || own === code || own.toLowerCase() === english.toLowerCase();
+  const names = { english, own: sameName ? '' : own, label: sameName ? english : `${english} (⁨${own}⁩)` };
+  languageNames.set(code, names);
+  return names;
+}
+// The codes the picker offers: those the browser has a name for
+let languageCodes = null;
+function knownLanguageCodes() {
+  return languageCodes ||= LANGUAGE_CODES.filter(code => languageName(code).english !== code);
+}
+// The church's usual language: its "settings" doc, kept in window.churchLanguage once read
+function churchLang() { return window.churchLanguage || 'en'; }
+async function loadChurchLang() {
+  try {
+    window.churchLanguage = (await db.get('settings')).lang || 'en';
+  } catch (err) {
+    window.churchLanguage = 'en';
+  }
+  return window.churchLanguage;
+}
+// Languages its letters show, for a song with none saved: Devanagari is Hindi, Arabic letters Arabic
+function scriptLangs(doc) {
+  const words = [doc?.title, ...(Array.isArray(doc?.content) ? doc.content : []).flatMap(chunk => (Array.isArray(chunk?.[1]) ? chunk[1] : []))].join('\n');
+  const found = [];
+  if (/\p{Script=Devanagari}/u.test(words)) found.push('hi');
+  if (/\p{Script=Arabic}/u.test(words)) found.push('ar');
+  return found;
+}
+// The song's saved languages
+function savedLangs(doc) {
+  return Array.isArray(doc?.langs) ? [...new Set(doc.langs.filter(code => typeof code === 'string' && /^[a-z]{2,3}$/.test(code)))] : [];
+}
+// What language a song is in: its saved ones, else what its letters show, else none (the church's usual)
+function songLangs(doc) {
+  const saved = savedLangs(doc);
+  return saved.length ? saved : scriptLangs(doc);
 }
 function escapeRegExp(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
@@ -106,6 +220,16 @@ function songShape(doc) {
   };
 }
 
+// Which way a song line reads (#90): right to left when its first letter, not counting chords, is Arabic
+// (or Hebrew), else "auto", the browser's choice. Plain dir="auto" goes by the first letter in the line,
+// and in an Arabic line that starts with a chord that's the chord's, so the line stayed left to right.
+// (presentation.js has the same.)
+const RTL_LETTER = /[\p{Script=Arabic}\p{Script=Hebrew}\p{Script=Syriac}\p{Script=Thaana}\p{Script=Nko}]/u;
+function lineDir(line) {
+  const first = String(line ?? '').replace(/<c>.*?<\/c>/gi, '').replace(/<[^>]*>/g, '').replace(/&[#\w]+;/g, ' ').match(/\p{L}/u);
+  return first && RTL_LETTER.test(first[0]) ? 'rtl' : 'auto';
+}
+
 // A copy of a song to show: its fields as text, its lines through safeSongLine. The song itself (saved,
 // edited, kept in old versions) never changes.
 function displaySong(doc) {
@@ -117,7 +241,7 @@ function displaySong(doc) {
     title: text(doc.title), key: text(doc.key), introduction: text(doc.introduction), copyright: text(doc.copyright),
     authors: doc.authors.map(text), scripture_ref: doc.scripture_ref.map(text), categories: doc.categories.map(text),
     cclis: typeof doc.cclis === 'string' ? text(doc.cclis) : doc.cclis,
-    search: typeof doc.search === 'string' ? text(doc.search) : doc.search,
+    search: text(songSearchText(doc)), // built from the song (#90); a presentation searches it
     content: doc.content.map(chunk => [
       { ...chunk[0], type: chunk[0].type.replace(/[^a-z -]/gi, '') },
       chunk[1].map(safeSongLine),
@@ -668,6 +792,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (what === 'help') openHelp();
     else if (what === 'logout') okToDropCategoryEdits().then(ok => ok && dbLogout());
     else if (what === 'install') showInstallSteps();
+    else if (what === 'findVersions') findVersions(); // #90, editors
     else openHomeCard(what);
   });
   document.getElementById('username_legend').addEventListener('keydown', e => {
@@ -1766,11 +1891,6 @@ async function renameCategoryOnSongs(renames) {
       for (const song of songs) {
         if (changed.has(song._id)) continue; // a retry does only the ones that failed
         song.categories = [...new Set(song.categories.map(c => renames.get(c) ?? c))];
-        // the song's search text has its categories too ("c:A c:B"), so c: searches find the new name
-        if (typeof song.search === 'string') {
-          song.search = song.search.replace(/(^|\0)c:[^\0]*\0/, `$1c:${song.categories.length ? song.categories.join(' c:') : '!c'}\0`)
-            .replace(/editedBy:[^\0]*\0/, `editedBy:${window.user._id.replace(/^u-/, '')}\0`);
-        }
         song.edited = Date.now();
         song.editedBy = window.user._id;
         try {
@@ -1792,6 +1912,28 @@ function canEdit(doc) {
   if (!doc || doc._id == 'sb-allSongs' || doc._id == 'sb-favoriteSongs') return false; // not real docs
   if (window.church?.editor) return true;
   return !!doc.addedBy && !!window.user?._id && doc.addedBy.trim() === window.user._id.trim();
+}
+
+// A change to a version group's songs (#90) that this person may make, the same as database/validate.js:
+// being in a group counts as part of each song, so editors link and unlink any song, and everyone else only
+// songs they added. before and after are a group's songs, { song id: who added it } ({} for no group).
+function groupChangeAllowed(before = {}, after = {}) {
+  if (window.church?.editor) return true;
+  const me = window.user?._id;
+  const has = (list, key) => Object.prototype.hasOwnProperty.call(list, key);
+  const mine = (list, key) => !has(list, key) || list[key] === me;
+  return [...Object.keys(before), ...Object.keys(after)].every(key =>
+    (has(before, key) === has(after, key) && before[key] === after[key]) || (mine(before, key) && mine(after, key)));
+}
+// A song's languages in words, to tell its versions apart: "Spanish (Español)", or the church's usual one
+function songLangLabel(doc) {
+  const codes = songLangs(doc);
+  return (codes.length ? codes : [churchLang()]).map(code => languageName(code).label).join(', ');
+}
+// A title to compare (Find versions): folded like the search, so accents and marks don't count, with no
+// capitals, no words in brackets ("(short)") and no punctuation
+function titleKey(title) {
+  return stripAccents(title).toLowerCase().replace(/[([{][^)\]}]*[)\]}]/g, ' ').replace(/[^\p{L}\p{M}\p{N}]+/gu, ' ').trim();
 }
 
 function searchSBfor(text) {
@@ -2051,7 +2193,7 @@ function mapSongRowToValue(row) {
     id = row.doc._id;
     rev = row.doc._rev;
     title = row.doc.title ?? '(no title)';
-    search = typeof row.doc.search === 'string' ? row.doc.search : 't:' + title; // a record without one still turns up by title
+    search = songSearchText(row.doc); // built from the song, not its saved "search" (#90)
     status = status;
   }
   return { 'song-id':           id,
@@ -2144,8 +2286,8 @@ function buildSongbookList(songs, target_class='songbook_content',
 
   const values = rowsFrom(songs, mapSongRowToValue);
 
-  // The church's categories, for the song filter's Category choices
-  db.get('categories').then(categories => {
+  // The church's categories, for the song filter's Category choices, and its usual language (#90)
+  Promise.all([db.get('categories'), loadChurchLang()]).then(([categories]) => {
     window.songCategories = categories.categories || [];
     renderSongFilter(edit ? 'adder' : 'book');
   }).catch(err => reportDbError(err, 'load the category filter'));
@@ -2203,9 +2345,9 @@ const SONG_FILTER_HAS = [
 const SONG_FILTER_SORTS = [['title', 'Title'], ['added', 'Recently added'], ['edited', 'Recently edited']];
 const NO_CATEGORY = '!c';
 const songFilters = {};
-const songFilterState = name => songFilters[name] ||= { cat: new Set(), key: new Set(), has: new Set(), yt: new Set(), sort: 'title' };
+const songFilterState = name => songFilters[name] ||= { cat: new Set(), key: new Set(), lang: new Set(), has: new Set(), yt: new Set(), sort: 'title' };
 const songFilterList = name => name === 'adder' ? window.songbook_edit_togglesongs_list : window.songbook_list;
-const songFilterCount = f => f.cat.size + f.key.size + f.has.size + f.yt.size;
+const songFilterCount = f => f.cat.size + f.key.size + f.lang.size + f.has.size + f.yt.size;
 const songFilterOn = name => { const f = songFilterState(name); return songFilterCount(f) > 0 || f.sort !== 'title'; };
 const videoLabel = n => n ? String(n) : 'None';
 // Sorting only where there's no order of its own to keep: All Songs, Favorite Songs and "Add songs"
@@ -2218,6 +2360,7 @@ function songFacts(doc) {
   return {
     cats: list(doc.categories).filter(cat => typeof cat === 'string' && cat),
     key: typeof doc.key === 'string' ? doc.key : '',
+    langs: songLangs(doc), // none: the church's usual language (factLangs) (#90)
     chords: list(doc.content).some(chunk => list(chunk?.[1]).some(line => String(line).includes('<c>'))), // stops at the first
 
     yt: Number(doc.yt) || 0,
@@ -2228,11 +2371,17 @@ function songFacts(doc) {
   };
 }
 
+// A song's languages for the filter: its own, or the church's usual one (#90)
+function factLangs(facts) {
+  return facts.langs?.length ? facts.langs : [churchLang()];
+}
+
 // Does a song pass the filter? `skip` leaves one group out, to count that group's choices.
 function songFilterPasses(f, facts, skip) {
   if (!facts) return false;
   if (skip !== 'cat' && f.cat.size && ![...f.cat].some(c => c === NO_CATEGORY ? !facts.cats.length : facts.cats.includes(c))) return false;
   if (skip !== 'key' && f.key.size && !f.key.has(facts.key)) return false;
+  if (skip !== 'lang' && f.lang.size && !factLangs(facts).some(code => f.lang.has(code))) return false;
   if (skip !== 'has' && SONG_FILTER_HAS.some(([id, , test]) => f.has.has(id) && !test(facts))) return false;
   if (skip !== 'yt' && f.yt.size && !f.yt.has(videoLabel(facts.yt))) return false;
   return true;
@@ -2270,7 +2419,7 @@ function applySongFilter(name) {
 
 function clearSongFilter(name) {
   const f = songFilterState(name);
-  ['cat', 'key', 'has', 'yt'].forEach(group => f[group].clear());
+  ['cat', 'key', 'lang', 'has', 'yt'].forEach(group => f[group].clear());
   f.sort = 'title';
   f.find = '';
   applySongFilter(name);
@@ -2306,6 +2455,7 @@ function renderSongFilter(name) {
     const items = [
       ...[...f.cat].map(c => ['cat', c, c === NO_CATEGORY ? 'No category' : c]),
       ...[...f.key].map(k => ['key', k, `Key: ${k}`]),
+      ...[...f.lang].map(code => ['lang', code, languageName(code).english]),
       ...[...f.has].map(h => ['has', h, `Has ${hasLabel(h)}`]),
       ...[...f.yt].map(n => ['yt', n, n === 'None' ? 'No videos' : `Videos: ${n}`]),
     ];
@@ -2375,6 +2525,9 @@ function fillSongFilterPanel(name, panel) {
   const { f, list, songs, countWith, chip, catChip } = songFilterContext(name);
   const section = (title, html) => html ? `<div class="filter-section"><h4>${title}</h4><div class="filter-options">${html}</div></div>` : '';
   const keys = [...new Set(songs.map(facts => facts.key).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  // Language (#90): only when the songs are in more than one, the church's usual one first
+  const langs = [...new Set(songs.flatMap(factLangs))]
+    .sort((a, b) => (b === churchLang()) - (a === churchLang()) || languageName(a).english.localeCompare(languageName(b).english));
   const videos = [...new Set(songs.map(facts => videoLabel(facts.yt)))].sort((a, b) => (a === 'None' ? -1 : +a) - (b === 'None' ? -1 : +b));
   const shown = list ? list.visibleItems.filter(item => !isBookExtra(item.values()['song-id'])).length : 0;
   const finding = document.activeElement?.classList.contains('filter-find') && panel.contains(document.activeElement);
@@ -2387,6 +2540,7 @@ function fillSongFilterPanel(name, panel) {
   const scrolled = panel.scrollTop; // a redraw (a pick, or a sync change under it) keeps your place
   panel.innerHTML = `<div class="filter-grip" aria-hidden="true"></div>` + category +
     section('Key', keys.map(k => chip('key', k, k, countWith('key', facts => facts.key === k))).join('')) +
+    section('Language', langs.length > 1 ? langs.map(code => chip('lang', code, languageName(code).english, countWith('lang', facts => factLangs(facts).includes(code)))).join('') : '') +
     section('Has', SONG_FILTER_HAS.map(([id, label, test]) => chip('has', id, label, countWith('has', test))).join('')) +
     section('Video links', videos.length > 1 ? videos.map(v => chip('yt', v, v, countWith('yt', facts => videoLabel(facts.yt) === v))).join('') : '') +
     (songFilterSorts(name) ? section('Sort', SONG_FILTER_SORTS.map(([id, label]) =>
@@ -2540,7 +2694,7 @@ window.addEventListener('resize', () =>
   document.querySelectorAll('.filter-panel.open:not(.sheet)').forEach(panel => toggleSongFilterPanel(panel.id.replace('filter_panel_', ''), false)));
 // The chips under the search box: × takes one away, "Clear all" takes them all
 document.addEventListener('click', e => {
-  const row = e.target.closest('.filter-chips');
+  const row = e.target.closest('.filter-chips[data-list]'); // not a song's Versions row (#90), which looks the same
   if (!row) return;
   const name = row.dataset.list;
   const chip = e.target.closest('.filter-chip');
@@ -3211,6 +3365,143 @@ function bindKeyAndChords() {
   });
 }
 
+// ---- The song editor's language row (#90): one field. "Language:", then a box like a text box with the
+// song's languages in it as chips (× takes one off) and the typing after them. What you can add drops down
+// under the box: those already used in the church first, and as you type, any language the browser has a
+// name for whose name has what's typed. With none picked, the box says what the song counts as: the church's
+// usual language, or what its letters show.
+function langChip(code) {
+  return `<button type="button" class="filter-chip sel lang-chip" data-lang="${escapeHtml(code)}" title="Take off" aria-label="Take off ${escapeHtml(languageName(code).english)}">${escapeHtml(languageName(code).label)} <span aria-hidden="true">&times;</span></button>`;
+}
+// The languages the church's songs are in, most used first (the church's usual one counts every song with none)
+async function churchUsedLangs() {
+  const counts = new Map([[churchLang(), 0]]);
+  const rows = (await db.allDocs({ startkey: 's-', endkey: 's-￿', include_docs: true })).rows;
+  rows.forEach(row => {
+    if (!row.doc || row.doc._deleted) return;
+    const langs = songLangs(row.doc);
+    (langs.length ? langs : [churchLang()]).forEach(code => counts.set(code, (counts.get(code) || 0) + 1));
+  });
+  return [...counts].sort((a, b) => b[1] - a[1]).map(([code]) => code);
+}
+// The languages to offer for what's typed: the church's first, then the rest by name. Without anything
+// typed, only the church's. A name matches anywhere, without accents: "span", "espan" and "es" find Spanish.
+function langMatches(typedText, used, have) {
+  const typed = stripAccents(typedText.trim()).toLowerCase();
+  const rest = knownLanguageCodes().filter(code => !used.includes(code))
+    .sort((a, b) => languageName(a).english.localeCompare(languageName(b).english));
+  const has = code => {
+    const n = languageName(code);
+    return code === typed || [n.english, n.own].some(name => name && stripAccents(name).toLowerCase().includes(typed));
+  };
+  const starts = code => code === typed || [languageName(code).english, languageName(code).own].some(name => name && stripAccents(name).toLowerCase().startsWith(typed));
+  const found = (typed ? [...used, ...rest].filter(has) : used).filter(code => !have.includes(code));
+  return [...found.filter(starts), ...found.filter(code => !starts(code))]; // "fr": French before Afrikaans
+}
+// The code a typed name stands for exactly: "Spanish (Español)", "spanish", "español" or "es"
+function langFromText(text) {
+  const typed = stripAccents(text.trim()).toLowerCase();
+  if (!typed) return null;
+  return knownLanguageCodes().find(code => {
+    const n = languageName(code);
+    return [n.label, n.english, n.own, code].some(name => name && stripAccents(name).toLowerCase() === typed);
+  }) || null;
+}
+function addLangRow(songElement, doc) {
+  const categories = songElement.querySelector('categories');
+  if (!categories || songElement.querySelector('.lang-row')) return;
+  const listId = `lang_suggest_${Date.now()}`;
+  categories.insertAdjacentHTML('afterend', `<div class="lang-row">
+      <span class="lang-label">Language:</span>
+      <div class="lang-field">
+        <div class="lang-box">${savedLangs(doc).map(langChip).join('')}<input type="text" class="lang-add" aria-label="Add a language"
+          role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="${listId}" autocomplete="off" enterkeyhint="done"></div>
+        <div class="lang-suggest" id="${listId}" role="listbox" aria-label="Languages to add" hidden></div>
+      </div>
+    </div>`);
+  const row = songElement.querySelector('.lang-row');
+  const chips = row.querySelector('.lang-box');
+  const box = row.querySelector('.lang-add');
+  const suggest = row.querySelector('.lang-suggest');
+  let used = [churchLang()];
+  let active = -1; // the choice the arrow keys are on
+  const picked = () => [...chips.querySelectorAll('[data-lang]')].map(chip => chip.dataset.lang);
+  // The box's hint: with none picked, what the song counts as; with some, that more can be added. The box is
+  // as wide as its hint or what's typed.
+  const showHint = () => {
+    const seen = scriptLangs(doc);
+    box.placeholder = picked().length ? 'Add'
+      : seen.length ? `${seen.map(code => languageName(code).english).join(', ')} (from its letters)`
+      : `${languageName(churchLang()).english} (usual)`;
+    box.size = Math.max(4, (box.value || box.placeholder).length + 1);
+  };
+  const choices = () => [...suggest.querySelectorAll('[data-add]')];
+  const setActive = n => { // -1: none
+    const all = choices();
+    active = n >= 0 && n < all.length ? n : -1;
+    all.forEach((choice, i) => choice.classList.toggle('active', i === active));
+    if (active >= 0) { box.setAttribute('aria-activedescendant', all[active].id); all[active].scrollIntoView({ block: 'nearest' }); }
+    else box.removeAttribute('aria-activedescendant');
+  };
+  const closeSuggest = () => { suggest.hidden = true; box.setAttribute('aria-expanded', 'false'); setActive(-1); };
+  const showSuggest = () => {
+    const found = langMatches(box.value, used, picked()).slice(0, 12);
+    suggest.innerHTML = found.map(code => `<button type="button" role="option" tabindex="-1" id="${listId}_${escapeHtml(code)}" data-add="${escapeHtml(code)}"><span class="am-icon" aria-hidden="true">+</span>${escapeHtml(languageName(code).label)}</button>`).join('')
+      || (box.value.trim() ? '<span class="row-hint">No language has that name.</span>' : '');
+    suggest.hidden = !suggest.innerHTML;
+    box.setAttribute('aria-expanded', String(!suggest.hidden));
+    setActive(-1);
+  };
+  const add = code => {
+    if (!code) return false;
+    if (!picked().includes(code)) box.insertAdjacentHTML('beforebegin', langChip(code));
+    box.value = '';
+    showHint();
+    showSuggest();
+    return true;
+  };
+  box.addEventListener('focus', showSuggest);
+  box.addEventListener('input', () => { showHint(); showSuggest(); });
+  box.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== box) closeSuggest(); }, 150));
+  box.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { if (!suggest.hidden) { e.stopPropagation(); closeSuggest(); } return; }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (suggest.hidden) showSuggest();
+      const count = choices().length, down = e.key === 'ArrowDown';
+      if (count) setActive(active < 0 ? (down ? 0 : count - 1) : (active + (down ? 1 : -1) + count) % count); // round and round
+      return;
+    }
+    if (e.key === 'Backspace' && !box.value && picked().length) { // takes off the last language, as in other boxes like this
+      chips.querySelectorAll('[data-lang]')[picked().length - 1].remove();
+      showHint(); showSuggest();
+      return;
+    }
+    if (e.key !== 'Enter') return;
+    e.preventDefault(); // Enter adds the choice the arrows are on, the language named, or the first one offered
+    if (active >= 0) { add(choices()[active].dataset.add); return; }
+    if (!box.value.trim()) return;
+    if (!add(langFromText(box.value) || langMatches(box.value, used, picked())[0])) notyf.error(`No language is called "${box.value.trim()}".`, 'red');
+  });
+  suggest.addEventListener('mousedown', e => e.preventDefault()); // the box keeps the focus
+  suggest.addEventListener('click', e => {
+    const choice = e.target.closest('[data-add]');
+    if (choice) add(choice.dataset.add);
+    box.focus();
+  });
+  chips.addEventListener('click', e => {
+    const chip = e.target.closest('[data-lang]');
+    if (chip) { chip.remove(); showHint(); }
+    box.focus(); // a click on the box, not on a chip, goes to the typing too
+  });
+  showHint();
+  // the church's languages first, once its songs have been counted (in the background)
+  churchUsedLangs().then(found => {
+    used = found;
+    if (document.activeElement === box) showSuggest();
+  }).catch(err => console.error("Couldn't count the church's languages:", err));
+}
+
 async function editSong() {
   await loadSong(window.song._id);
   if (window.song._deleted) { // a deleted song is restored, not edited (#69); this only happens with a typed ?edit link
@@ -3294,6 +3585,10 @@ async function editSong() {
   songCategories.textContent = updateField('cat');
   songCategories.classList.add('contenteditable-disabled');
   songCategories.tabIndex = 0;
+
+  // its languages (#90), under its categories
+  await loadChurchLang();
+  addLangRow(songElement, window.song);
 
   songCategories.addEventListener('click', function() {
     const songEdit = document.getElementById('song-edit');
@@ -3389,6 +3684,7 @@ function songEditState() {
     [...card.querySelectorAll('.wrap select')].map(select => select.value),
     [...document.querySelectorAll('#categories [type="checkbox"]')].map(box => box.checked),
     !!document.getElementById('ccli-checkbox')?.checked,
+    [...card.querySelectorAll('.lang-row [data-lang]')].map(chip => chip.dataset.lang), // #90
   ]);
 }
 function songEditChanged() { return !window.songEditSnapshot || songEditState() !== window.songEditSnapshot; }
@@ -3501,7 +3797,7 @@ function previewSlideHtml(card, chunk) {
   }
   html += `<chunk type="${escapeHtml(type)}">`;
   if (type === 'verse') html += `<span>${parts.slice(0, at).filter(c => c.getAttribute('type') === 'verse').length + 1}:</span>`;
-  html += editedChunkLines(chunk) + '</chunk>';
+  html += editedChunkLines(chunk).replace(/<line>([\s\S]*?)<\/line>/g, (all, line) => `<line dir="${lineDir(line)}">${line}</line>`) + '</chunk>'; // as presented: Arabic right to left (#90)
   if (at === parts.length - 1) html += `<copyright>${text('copyright')}</copyright>`;
   return html;
 }
@@ -3511,8 +3807,10 @@ function fitPreviewSlide(win) {
   const slide = win.document.getElementById('cur_slide');
   const content = slide.querySelector('.content');
   // against the slide's own box, as presentation.js overflows() does (a phone's screen can be a fraction of
-  // a pixel, and the window's size rounds the other way)
-  const tooBig = () => slide.scrollWidth > slide.clientWidth || slide.scrollHeight > slide.clientHeight;
+  // a pixel, and the window's size rounds the other way), and each right-to-left line on its own (#90): one
+  // that's too long reaches past the LEFT edge, which the slide's scrollWidth never counts
+  const tooBig = () => slide.scrollWidth > slide.clientWidth || slide.scrollHeight > slide.clientHeight
+    || [...slide.querySelectorAll('[dir="rtl"]')].some(el => el.scrollWidth > el.clientWidth);
   let small = 50, big = 1500, percent = (big + small) / 2;
   while (big - small > 10) {
     content.style.fontSize = percent + '%';
@@ -3962,6 +4260,21 @@ function exportInfo(pages) {
   const parts = [ob.title, songs !== null && `${songs} ${songs === 1 ? 'song' : 'songs'}`];
   if (pages) parts.push(`${pages} ${pages === 1 ? 'page' : 'pages'}`);
   document.getElementById('export_info').textContent = parts.filter(Boolean).join(' · ');
+  exportScriptNote();
+}
+// The PDF's built-in fonts have no Hindi (Devanagari) or Arabic letters, so those print as the wrong symbols (#90). Until
+// it can print them, the export says which songs have them.
+function exportScriptNote() {
+  const note = document.getElementById('export_script_note');
+  const ob = window.exportObject;
+  if (!note || !ob) return;
+  const docs = Array.isArray(ob.songs) ? ob.songs.map(song => song.doc).filter(Boolean) : [ob];
+  const found = docs.filter(doc => scriptLangs(doc).length);
+  note.hidden = !found.length;
+  if (!found.length) return;
+  const names = found.slice(0, 3).map(doc => `"${doc.title}"`).join(', ') + (found.length > 3 ? ` and ${found.length - 3} more` : '');
+  note.textContent = `${found.length === 1 ? '1 song has' : `${found.length} songs have`} Hindi or Arabic letters (${names}). `
+    + "The PDF can't print those letters yet: they come out as the wrong symbols.";
 }
 // Brings the stand-ins in line with the fields: after a click, a Format, Paste, or any change
 function syncExportForm() {
@@ -4576,6 +4889,16 @@ function formatDate(date) {
   });
 }
 
+// The song's languages for its Info (#90): saved, seen from its letters, or the church's usual one
+function songLangInfo(doc) {
+  const saved = savedLangs(doc);
+  const seen = saved.length ? [] : scriptLangs(doc);
+  const names = codes => codes.map(code => escapeHtml(languageName(code).label)).join(', ');
+  const line = saved.length ? names(saved)
+    : seen.length ? `${names(seen)} (from its letters)`
+    : `${names([churchLang()])} (the church's usual)`;
+  return `<small class="song-langs">Language: ${line}</small><br>`;
+}
 async function loadInfo(song = true) {
   const dialog = document.getElementById('dialog');
   dialog.setAttribute('data-use', 'info');
@@ -4658,9 +4981,11 @@ async function loadInfo(song = true) {
         window.song.added,
         window.users[window.song.editedBy] || window.song.editedBy.slice(2),
         window.song.edited,
-        revisionControls + songbookContent
+        songLangInfo(window.song) + revisionControls + songbookContent
+          + (window.song._rev ? '<div class="left version-info"><br><b>Versions:</b><br><small>Looking…</small></div>' : '') // #90
       )
     );
+    fillVersionInfo();
     if (!versions) {
       const song = window.song;
       const found = await songVersions();
