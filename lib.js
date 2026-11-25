@@ -3342,10 +3342,11 @@ function bindKeyAndChords() {
   });
 }
 
-// ---- The song editor's language row (#90): the song's languages as chips (a click takes one off), and a
-// box to add one. Under the box, languages to pick: those already used in the church first, and as you
-// type, any language the browser has a name for whose name has what's typed. With none picked, the song is
-// in the church's usual language.
+// ---- The song editor's language row (#90): one field. "Language:", then a box like a text box with the
+// song's languages in it as chips (× takes one off) and the typing after them. What you can add drops down
+// under the box: those already used in the church first, and as you type, any language the browser has a
+// name for whose name has what's typed. With none picked, the box says what the song counts as: the church's
+// usual language, or what its letters show.
 function langChip(code) {
   return `<button type="button" class="filter-chip sel lang-chip" data-lang="${escapeHtml(code)}" title="Take off" aria-label="Take off ${escapeHtml(languageName(code).english)}">${escapeHtml(languageName(code).label)} <span aria-hidden="true">&times;</span></button>`;
 }
@@ -3386,48 +3387,76 @@ function langFromText(text) {
 function addLangRow(songElement, doc) {
   const categories = songElement.querySelector('categories');
   if (!categories || songElement.querySelector('.lang-row')) return;
+  const listId = `lang_suggest_${Date.now()}`;
   categories.insertAdjacentHTML('afterend', `<div class="lang-row">
       <span class="lang-label">Language:</span>
-      <span class="lang-chips">${savedLangs(doc).map(langChip).join('')}</span>
-      <input type="text" class="lang-add row-input" placeholder="Add a language" aria-label="Add a language" autocomplete="off" enterkeyhint="done">
-      <div class="lang-suggest" hidden></div>
-      <span class="lang-none"></span>
+      <div class="lang-field">
+        <div class="lang-box">${savedLangs(doc).map(langChip).join('')}<input type="text" class="lang-add" aria-label="Add a language"
+          role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="${listId}" autocomplete="off" enterkeyhint="done"></div>
+        <div class="lang-suggest" id="${listId}" role="listbox" aria-label="Languages to add" hidden></div>
+      </div>
     </div>`);
   const row = songElement.querySelector('.lang-row');
-  const chips = row.querySelector('.lang-chips');
+  const chips = row.querySelector('.lang-box');
   const box = row.querySelector('.lang-add');
   const suggest = row.querySelector('.lang-suggest');
-  const none = row.querySelector('.lang-none');
   let used = [churchLang()];
+  let active = -1; // the choice the arrow keys are on
   const picked = () => [...chips.querySelectorAll('[data-lang]')].map(chip => chip.dataset.lang);
-  // With none picked, what the song counts as
-  const showNone = () => {
+  // The box's hint: with none picked, what the song counts as; with some, that more can be added. The box is
+  // as wide as its hint or what's typed.
+  const showHint = () => {
     const seen = scriptLangs(doc);
-    none.hidden = picked().length > 0;
-    none.textContent = seen.length ? `None picked: ${seen.map(code => languageName(code).english).join(', ')}, from its letters.`
-      : `None picked: ${languageName(churchLang()).english}, the church's usual.`;
+    box.placeholder = picked().length ? 'Add'
+      : seen.length ? `${seen.map(code => languageName(code).english).join(', ')} (from its letters)`
+      : `${languageName(churchLang()).english} (usual)`;
+    box.size = Math.max(4, (box.value || box.placeholder).length + 1);
   };
+  const choices = () => [...suggest.querySelectorAll('[data-add]')];
+  const setActive = n => { // -1: none
+    const all = choices();
+    active = n >= 0 && n < all.length ? n : -1;
+    all.forEach((choice, i) => choice.classList.toggle('active', i === active));
+    if (active >= 0) { box.setAttribute('aria-activedescendant', all[active].id); all[active].scrollIntoView({ block: 'nearest' }); }
+    else box.removeAttribute('aria-activedescendant');
+  };
+  const closeSuggest = () => { suggest.hidden = true; box.setAttribute('aria-expanded', 'false'); setActive(-1); };
   const showSuggest = () => {
     const found = langMatches(box.value, used, picked()).slice(0, 12);
-    suggest.innerHTML = found.map(code => `<button type="button" class="filter-chip" data-add="${escapeHtml(code)}">${escapeHtml(languageName(code).label)}</button>`).join('')
-      || (box.value.trim() ? '<span class="lang-none">No language has that name.</span>' : '');
+    suggest.innerHTML = found.map(code => `<button type="button" role="option" tabindex="-1" id="${listId}_${escapeHtml(code)}" data-add="${escapeHtml(code)}"><span class="am-icon" aria-hidden="true">+</span>${escapeHtml(languageName(code).label)}</button>`).join('')
+      || (box.value.trim() ? '<span class="row-hint">No language has that name.</span>' : '');
     suggest.hidden = !suggest.innerHTML;
+    box.setAttribute('aria-expanded', String(!suggest.hidden));
+    setActive(-1);
   };
   const add = code => {
     if (!code) return false;
-    if (!picked().includes(code)) chips.insertAdjacentHTML('beforeend', langChip(code));
+    if (!picked().includes(code)) box.insertAdjacentHTML('beforebegin', langChip(code));
     box.value = '';
-    showNone();
+    showHint();
     showSuggest();
     return true;
   };
   box.addEventListener('focus', showSuggest);
-  box.addEventListener('input', showSuggest);
-  box.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== box) suggest.hidden = true; }, 150));
+  box.addEventListener('input', () => { showHint(); showSuggest(); });
+  box.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== box) closeSuggest(); }, 150));
   box.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { suggest.hidden = true; return; }
+    if (e.key === 'Escape') { if (!suggest.hidden) { e.stopPropagation(); closeSuggest(); } return; }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (suggest.hidden) showSuggest();
+      const count = choices().length, down = e.key === 'ArrowDown';
+      if (count) setActive(active < 0 ? (down ? 0 : count - 1) : (active + (down ? 1 : -1) + count) % count); // round and round
+      return;
+    }
+    if (e.key === 'Backspace' && !box.value && picked().length) { // takes off the last language, as in other boxes like this
+      chips.querySelectorAll('[data-lang]')[picked().length - 1].remove();
+      showHint(); showSuggest();
+      return;
+    }
     if (e.key !== 'Enter') return;
-    e.preventDefault(); // Enter adds the language named, or the first one offered
+    e.preventDefault(); // Enter adds the choice the arrows are on, the language named, or the first one offered
+    if (active >= 0) { add(choices()[active].dataset.add); return; }
     if (!box.value.trim()) return;
     if (!add(langFromText(box.value) || langMatches(box.value, used, picked())[0])) notyf.error(`No language is called "${box.value.trim()}".`, 'red');
   });
@@ -3439,12 +3468,10 @@ function addLangRow(songElement, doc) {
   });
   chips.addEventListener('click', e => {
     const chip = e.target.closest('[data-lang]');
-    if (!chip) return;
-    chip.remove();
-    showNone();
-    box.focus();
+    if (chip) { chip.remove(); showHint(); }
+    box.focus(); // a click on the box, not on a chip, goes to the typing too
   });
-  showNone();
+  showHint();
   // the church's languages first, once its songs have been counted (in the background)
   churchUsedLangs().then(found => {
     used = found;

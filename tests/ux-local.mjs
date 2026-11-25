@@ -409,17 +409,31 @@ try {
   await ev(`document.querySelector('#dialog .close-x, #dialog [aria-label="Close"]')?.click(), 'ok'`);
   // a song's languages: Spanish and English picked in the editor survive the save, and no search field is saved
   await go(`#${langBook}&${esId}?edit`, `!!document.querySelector('#song .lang-row .lang-add')`, 'the Spanish song editor');
-  ok(await ev(`!document.querySelector('#song .lang-row [data-lang]') && document.querySelector('#song .lang-none').textContent.includes('English')`), "editor: a song with no language says it counts as the church's usual (English)");
+  const hint90 = await ev(`document.querySelector('#song .lang-row [data-lang]') ? 'has a chip' : document.querySelector('#song .lang-add').placeholder`);
+  ok(hint90 === 'English (usual)', "editor: a song with no language says in its box that it counts as the church's usual (English)", hint90);
   await click('#song .lang-add');
   await send('Input.insertText', { text: 'espa' }); // typed: the choices under the box narrow to Spanish (Español)
   await sleep(300);
-  const offered = await ev(`[...document.querySelectorAll('#song .lang-suggest [data-add]')].map(b => b.dataset.add)`);
-  ok(offered[0] === 'es', 'editor: typing "espa" offers Spanish first', JSON.stringify(offered));
+  const offered = await ev(`[...document.querySelectorAll('#song .lang-suggest [data-add]')].map(b => b.dataset.add + (b.classList.contains('active') ? '*' : ''))`);
+  ok(offered[0] === 'es', 'editor: typing "espa" offers Spanish first, with no choice marked until the arrow keys are used', JSON.stringify(offered));
   await click('#song .lang-suggest [data-add="es"]');
   await send('Input.insertText', { text: 'english' });
   await key('Enter', 'Enter', 13);
   const picked = await ev(`[...document.querySelectorAll('#song .lang-row [data-lang]')].map(c => c.dataset.lang)`);
   ok(JSON.stringify(picked) === '["es","en"]', 'editor: Spanish picked from the choices, English typed and Enter', JSON.stringify(picked));
+  const langsNow = () => ev(`[...document.querySelectorAll('#song .lang-row [data-lang]')].map(c => c.dataset.lang).join()`);
+  await send('Input.insertText', { text: 'fr' });
+  await sleep(300);
+  await key('ArrowDown', 'ArrowDown', 40);
+  await key('Enter', 'Enter', 13);
+  const withFr = await langsNow();
+  await key('Backspace', 'Backspace', 8);
+  const afterBack = await langsNow();
+  ok(withFr === 'es,en,fr' && afterBack === 'es,en', 'editor: arrow down and Enter add the first choice; Backspace in the empty box takes the last one off', `${withFr} / ${afterBack}`);
+  await key('Escape', 'Escape', 27);
+  const field90 = await ev(`(() => { const box = document.querySelector('#song .lang-box').getBoundingClientRect(), row = document.querySelector('#song .lang-row').getBoundingClientRect();
+    return { closed: document.querySelector('#song .lang-suggest').hidden, inBox: document.querySelectorAll('#song .lang-box > [data-lang]').length, sameLine: Math.abs(document.querySelector('#song .lang-label').getBoundingClientRect().top - box.top) < box.height, narrow: box.width < row.width - 40 }; })()`);
+  ok(field90.closed && field90.inBox === 2 && field90.sameLine && field90.narrow, 'editor: Escape closes the choices; the chips are in the box, beside "Language:", and the box is only as wide as it needs', JSON.stringify(field90));
   await click('#song .edit_buttons [data-save]');
   await until(`!location.hash.includes('?edit') && !window.songEditing && !!document.querySelector('#song .song-card line')`, 'the save', 10000);
   let saved90 = {};

@@ -1690,37 +1690,69 @@ stitle, cat, author, scrip_ref, key, copyright, cclis {
   min-width: 5rem;
   margin: 0;
 }
-/* The song's languages (#90): the label, a chip for each (filter chips), and the box to add one */
+/* The song's languages (#90): "Language:" and one box on the line, the same gaps as the CCLI row under it. The
+   box looks like a text box (the filter chips' thin edge) with the languages in it as chips and the typing after
+   them, and it's only as wide as what's in it. What can be added drops down right under it, as a menu: the
+   account menu's items, each with a "+", over the page like the app's other layers. */
 .song .edit .lang-row {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: .4rem;
   margin-bottom: 1rem;
 }
-.lang-row .lang-chips {
-  display: contents;
+.lang-row .lang-field {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+.lang-row .lang-box {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .3rem;
+  max-width: 100%;
+  padding: .2rem .4rem;
+  border: 1px solid rgba(128, 128, 128, .45);
+  border-radius: .5rem;
+  background-color: var(--background-color);
+  cursor: text;
+}
+.lang-row .lang-box:focus-within {
+  outline: 2px solid var(--song-color);
+  outline-offset: 2px;
 }
 .lang-row .lang-add {
-  flex: 0 1 14rem;
+  min-width: 0;
+  padding: .125rem 0;
+  border: none;
+  outline: none;
+  background: none;
 }
-.lang-row .lang-suggest { /* languages to pick, under the box while it's in use */
-  flex-basis: 100%;
+.lang-row .lang-add:focus {
+  box-shadow: none !important; /* the box shows the focus (above), so not the line under the typing too (*:focus) */
+}
+.lang-row .lang-suggest {
+  position: absolute;
+  top: calc(100% + .3rem);
+  left: 0;
+  z-index: 20;
+  width: max-content;
+  max-width: 100%;
+  max-height: 16rem;
+  overflow: auto;
+  padding: .2rem;
+  border: 1px solid var(--btn-edge);
+  border-radius: .5rem;
+  background-color: var(--background-color);
+  box-shadow: var(--btn-shadow-var), var(--box-shadow-var);
   display: flex;
-  flex-wrap: wrap;
-  gap: .35rem;
+  flex-direction: column;
 }
 .lang-row .lang-suggest[hidden] {
   display: none;
 }
-.lang-row .lang-none {
-  flex-basis: 100%;
-  color: var(--light-text-color);
-  font-size: .85rem;
-  font-style: italic;
-}
-.lang-row .lang-none[hidden] {
-  display: none;
+.lang-row .lang-suggest .row-hint {
+  margin: .3rem .6rem;
 }
 .song .edit .wrap:hover,
 .song .edit .wrap.previewed { /* the part the floating preview shows (#156) */
@@ -3135,7 +3167,8 @@ body:not(.song) .show_for_songs { /* and what's only for exporting one song */
   min-width: 11rem;
   padding: .2rem 0;
 }
-.account-menu button {
+.account-menu button,
+.lang-suggest button { /* (the song editor's language choices, #90) */
   display: flex;
   align-items: center;
   gap: .6rem;
@@ -3151,15 +3184,19 @@ body:not(.song) .show_for_songs { /* and what's only for exporting one song */
   text-align: left;
   cursor: pointer;
 }
-.account-menu button:hover {
+.account-menu button:hover,
+.lang-suggest button:hover,
+.lang-suggest button.active {
   background-color: var(--btn-color);
   box-shadow: var(--btn-shadow-var), inset 0 0 0 1px var(--btn-edge);
 }
-.account-menu button:focus-visible {
+.account-menu button:focus-visible,
+.lang-suggest button:focus-visible {
   outline: 2px solid var(--song-color);
   outline-offset: -2px;
 }
-.account-menu .am-icon {
+.account-menu .am-icon,
+.lang-suggest .am-icon {
   width: 1.2rem;
   text-align: center;
   font-weight: normal;
