@@ -3807,8 +3807,10 @@ function fitPreviewSlide(win) {
   const slide = win.document.getElementById('cur_slide');
   const content = slide.querySelector('.content');
   // against the slide's own box, as presentation.js overflows() does (a phone's screen can be a fraction of
-  // a pixel, and the window's size rounds the other way)
-  const tooBig = () => slide.scrollWidth > slide.clientWidth || slide.scrollHeight > slide.clientHeight;
+  // a pixel, and the window's size rounds the other way), and each right-to-left line on its own (#90): one
+  // that's too long reaches past the LEFT edge, which the slide's scrollWidth never counts
+  const tooBig = () => slide.scrollWidth > slide.clientWidth || slide.scrollHeight > slide.clientHeight
+    || [...slide.querySelectorAll('[dir="rtl"]')].some(el => el.scrollWidth > el.clientWidth);
   let small = 50, big = 1500, percent = (big + small) / 2;
   while (big - small > 10) {
     content.style.fontSize = percent + '%';

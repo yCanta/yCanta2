@@ -398,8 +398,11 @@ function packPassage(item) {
 // on a phone the screen can be a fraction of a pixel (Chrome on Android, 889.7 tall), and the window's size
 // rounds down (889) while the slide's rounds up (890), so every size looked too big and the words came out
 // at the smallest size. The slide's box rounds the same way as what's in it.
+// A line read right to left (#90) that's too long reaches past the slide's LEFT edge, which the slide's own
+// scrollWidth never counts (it grows only to the right): each such line is checked on its own.
 function overflows(slide) {
-  return slide.scrollWidth > slide.clientWidth || slide.scrollHeight > slide.clientHeight;
+  return slide.scrollWidth > slide.clientWidth || slide.scrollHeight > slide.clientHeight
+    || [...slide.querySelectorAll('[dir="rtl"]')].some(el => el.scrollWidth > el.clientWidth);
 }
 
 // How big a slide's verse text would be (px), fitted to the screen the way scaleText fits a slide
