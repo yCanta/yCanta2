@@ -251,6 +251,25 @@ async function setChurchBible(select) {
   }
 }
 
+// The Admin panel's "Usual language of songs" (#90): what a song with no language picked counts as
+async function loadChurchLangSetting() {
+  const select = document.getElementById('church_lang');
+  const picked = await loadChurchLang();
+  select.innerHTML = [...knownLanguageCodes()].sort((a, b) => languageName(a).english.localeCompare(languageName(b).english))
+    .map(code => `<option value="${code}"${code === picked ? ' selected' : ''}>${escapeHtml(languageName(code).label)}</option>`).join('');
+}
+async function setChurchLang(select) {
+  try {
+    await db.upsert('settings', doc => ({ ...doc, lang: select.value }));
+    window.churchLang = select.value;
+    notyf.success(`Songs with no language picked count as ${languageName(select.value).english}.`, 'var(--song-color)');
+    renderSongFilter('book');
+  } catch (err) {
+    reportDbError(err, 'change the usual language of songs');
+    loadChurchLangSetting();
+  }
+}
+
 // A presentation that's open gets changes to its book or the book's songs right away (#147)
 let presentationUpdates = 0;
 async function updatePresentation(change) {
@@ -1913,60 +1932,16 @@ function saveSong(song_id, songElement = document.querySelector('#song .song-car
         ];
       });
 
-      // Build search field
-      const punctuation = /[^a-zA-Z0-9\s:-]/g;
-      const duplicateWhitespace = /\s{2,}/g;
-      
-      function formatArray(array, letter) {
-        return (array.join(',') !== '' ? array.join(` ${letter}:`) : `!${letter}`).replace(duplicateWhitespace, ' ');
-      }
-      
-      function formatText(text, letter) {
-        return (text ? text : `!${letter}`).replace(duplicateWhitespace, ' ');
-      }
-      
-      function formatNumber(number, letter) {
-        return (number ? `${letter}${number}` : `!${letter}`).replace(duplicateWhitespace, ' ');
-      }
-      
-      function formatSongContent(content) {
-        let song_content = '';
-        const seenLines = new Set();
-        
-        content.forEach(chunk => {
-          chunk[1].forEach(line => {
-            const cleanLine = escapeRegExp(
-              remove_chords(line)
-                .replace(duplicateWhitespace, ' ')
-                .replace(punctuation, '')
-                .trim()
-            );
-            
-            if (!seenLines.has(cleanLine)) {
-              song_content += cleanLine + '\n';
-              seenLines.add(cleanLine);
-            }
-          });
-        });
-        return song_content;
+      // Its languages (#90), from the editor's language row (a yCanta 1 file has none: the song keeps its own)
+      const langRow = songElement.querySelector('.lang-row');
+      if (langRow) {
+        const langs = [...new Set([...langRow.querySelectorAll('[data-lang]')].map(chip => chip.dataset.lang))];
+        if (langs.length) song.langs = langs;
+        else delete song.langs; // the church's usual language
       }
 
-      song.search = [
-        `t:${song.title}\0`,
-        `a:${formatArray(song.authors, 'a')}\0`,
-        `s:${formatArray(song.scripture_ref, 's')}\0`,
-        `i:${formatText(song.introduction, 'i')}\0`,
-        `k:${formatText(song.key, 'k')}\0`,
-        `c:${formatArray(song.categories, 'c')}\0`,
-        `cp:${formatText(song.copyright, 'cp')}\0`,
-        `yt:${formatNumber(song.yt, 'yt')}\0`,
-        `cclis:${formatNumber(song.cclis, 'cclis')}\0`,
-        `chords:${formatText(song.chords, 'chords')}\0`,
-        `addedBy:${formatText(song.addedBy?.slice(2) || '', 'addedBy')}\0`,
-        `editedBy:${formatText(song.editedBy?.slice(2) || '', 'editedBy')}\0`,
-        formatSongContent(song.content),
-        '\0'
-      ].join('');
+      // The search text is built when the song is shown (#90, songSearchText in lib.js), not saved
+      delete song.search;
 
       const saved = () => {
         console.log('saved:', song.title);
@@ -2119,7 +2094,7 @@ function loadSong(song_id, song_rev = false) {
       shown.content.forEach(chunk => {
         songHtml += `<chunk type="${chunk[0].type.toLowerCase()}">`;
         chunk[1].forEach(line => {
-          songHtml += `<line>${line}</line>`;
+          songHtml += `<line dir="auto">${line}</line>`; // an Arabic line reads right to left by itself (#90)
         });
         songHtml += '</chunk>';
       });
@@ -2308,6 +2283,9 @@ async function keepHistory(id, rev) {
 // every song and songbook save, so no change is missed (other docs pass straight through). A failure to keep the copy is reported but doesn't stop
 // the save: losing someone's edit would be worse than losing one old version.
 async function saveWithHistory(doc) {
+  // A song's search text is built when it's shown (#90, songSearchText in lib.js): the old saved one drops
+  // out as songs get saved (restores, owner and category changes too). Kept old versions keep theirs.
+  if (/^s-/.test(doc._id)) delete doc.search;
   if (doc._rev) {
     try {
       await keepHistory(doc._id, doc._rev);
@@ -2352,9 +2330,6 @@ async function currentDoc(id) {
 function savedByMe(doc) {
   doc.edited = Date.now();
   doc.editedBy = window.user._id;
-  if (typeof doc.search === 'string') {
-    doc.search = doc.search.replace(/editedBy:[^\0]*\0/, `editedBy:${ownName().replace(/\s+/g, ' ')}\0`);
-  }
   return doc;
 }
 async function restoreVersion(entry) {
@@ -2365,7 +2340,6 @@ async function restoreVersion(entry) {
   if (now) restored._rev = now._rev;
   if (now?.addedBy && !now._deleted) { // the words come back; who it belongs to stays (#120)
     restored.addedBy = now.addedBy;
-    if (typeof restored.search === 'string') restored.search = restored.search.replace(/addedBy:[^\0]*\0/, `addedBy:${now.addedBy.replace(/^u-/, '')}\0`);
   }
   if (!canEdit(now || restored) || !canEdit(restored)) throw new Error("You're not allowed to change this.");
   return saveWithHistory(restored); // the change feed puts a deleted one back in the open lists
@@ -2730,7 +2704,6 @@ async function changeOwner(isSong) {
       const doc = await db.get(id); // the newest, in case it changed since it was opened
       if (owner === doc.addedBy) return 'same';
       doc.addedBy = owner;
-      if (typeof doc.search === 'string') doc.search = doc.search.replace(/addedBy:[^\0]*\0/, `addedBy:${owner.replace(/^u-/, '')}\0`);
       await saveWithHistory(savedByMe(doc));
       return owner;
     },

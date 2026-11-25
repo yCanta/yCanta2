@@ -1444,7 +1444,7 @@ function wholeSongHtml(song = current_song) {
     const mark = i === song.chunk_index ? ' class="current"' : i === target ? ' class="space-next"' : '';
     html += '<chunk type="' + chunk[0].type + '"' + mark + ' data-part="' + i + '">';
     if (chunk[0].type === 'verse') html += '<span>' + (++verse) + ':</span>';
-    chunk[1].forEach(line => { html += '<line>' + line + '</line>'; });
+    chunk[1].forEach(line => { html += '<line dir="auto">' + line + '</line>'; }); // right to left where it's Arabic (#90)
     html += '</chunk>';
   });
   return html + '<copyright>' + song.doc.copyright + '</copyright>';
@@ -1489,7 +1489,7 @@ function gridHtml() {
       html += '<div class="grid">' + song.doc.content.map((chunk, i) => '<div class="grid-card'
         + (onScreen && i === song.chunk_index ? ' current' : '') + ((onScreen && i === target) || (upNext && i === 0) ? ' space-next' : '')
         + '" data-song="' + s + '" data-part="' + i + '"><span class="grid-label">' + escapeText(partName(song, i)) + '</span>'
-        + chunk[1].map(line => '<line>' + line + '</line>').join('') + '</div>').join('') + '</div>';
+        + chunk[1].map(line => '<line dir="auto">' + line + '</line>').join('') + '</div>').join('') + '</div>';
     }
     html += '</div>';
   });
@@ -1594,15 +1594,22 @@ function searchDatabase(){
     return;
   }
 
-  // Escape the text, so typing ( or [ searches for it instead of throwing
-  var re = new RegExp('(' + text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')([^\0\n]*)', 'i');
+  // Accents don't matter, as in the app's lists: "cancion" finds "canción" (#90). The song's search text is
+  // taken apart (NFD: "ó" is "o" and its accent), and each letter typed may have Latin accents after it in
+  // the song. Hindi and Arabic marks aren't Latin accents, so they still have to match. Each piece is
+  // escaped, so typing ( or [ searches for it instead of throwing.
+  const typed = text.normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const pattern = Array.from(typed).map(ch => ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[\\u0300-\\u036f]*').join('');
+  var re = new RegExp('(' + pattern + ')([^\0\n]*)', 'i');
+  const searchText = item => (item.searchNFD ??= String((item.doc && item.doc.search) || '').normalize('NFD')); // (a follower's songs have none)
   var match_object = []
   var total_matches = 0;
-  var matches = window.songbook.songs.filter(function(item) { 
+  var matches = window.songbook.songs.filter(function(item) {
       if(total_matches >= MAX_SEARCH_RESULTS){
         return false; // we only show MAX_SEARCH_RESULTS, don't waste time testing regex
       }
-      var result = re.test(item.doc.search);
+      if (!item.doc) return false; // a reading
+      var result = re.test(searchText(item));
       if(result == true){  //then test to see if we already have this line in the results
         for(var i=0; i<match_object.length; i++) {
           if(item.id == match_object[i].id){
@@ -1635,18 +1642,20 @@ function searchDatabase(){
           + '<span class="matchline">' + escapeText((Bible.translations().find(t => t.id === ref.translation) || {}).name || ref.translation)
           + ' (' + escapeText(ref.translation) + ')</span></div>'; // "Berean Standard Bible (BSB)", not just BSB
       }
-      let m = re.exec(item.doc.search);
+      const search = searchText(item);
+      let m = re.exec(search);
       let matchline_start = Math.max(
-          item.doc.search.substring(0,m.index).lastIndexOf('\n') || 0
-        , item.doc.search.substring(0,m.index).lastIndexOf('\0') || 0);
+          search.substring(0,m.index).lastIndexOf('\n') || 0
+        , search.substring(0,m.index).lastIndexOf('\0') || 0);
       let matchline_end = m.index + m[1].length + m[2].length;
+      const piece = (from, to) => search.substring(from, to).normalize('NFC'); // put back together: "ó" again
 
       return ('<div onclick="javascript:void(searchResult('+(count)+'));">'
         + '<span class="count">['+count+']</span> '
         + '<span class="song">' + item.doc.title + '</span>: '
-        + '<span class="matchline">' + item.doc.search.substring(matchline_start, m.index)
-        + '<span class="match">' + m[1] + '</span>'
-        + item.doc.search.substring(m.index + m[1].length, matchline_end) + '</span></div>');
+        + '<span class="matchline" dir="auto">' + piece(matchline_start, m.index)
+        + '<span class="match">' + piece(m.index, m.index + m[1].length) + '</span>'
+        + piece(m.index + m[1].length, matchline_end) + '</span></div>');
   });
 
   // A reference that's started but not right yet ("John 3:99"): say why, above any songs found
@@ -1770,7 +1779,7 @@ function showChunk(name) {
         content += '<span data-verse="'+verse_number+'">'+verse_number+':</span>';
       }
       chunk[1].forEach(function(line){
-        content += '<line>' + line + '</line>';
+        content += '<line dir="auto">' + line + '</line>'; // an Arabic line reads right to left by itself (#90)
       });
       content += '</chunk>';
 

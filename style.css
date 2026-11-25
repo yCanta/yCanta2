@@ -1495,7 +1495,7 @@ li[data-song-id="reading"] > a {
   font-style: italic;
   margin: .2rem 0 .4rem;
 }
-.ref-note .problem, .row-hint.problem {
+.ref-note .problem, .row-hint.problem, .export-help.problem {
   color: orangered;
 }
 .edit_pencil {
@@ -1689,6 +1689,29 @@ stitle, cat, author, scrip_ref, key, copyright, cclis {
 .song .edit .ccli-row cclis {
   min-width: 5rem;
   margin: 0;
+}
+/* The song's languages (#90): the label, a chip for each (filter chips), and the box to add one */
+.song .edit .lang-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem;
+  margin-bottom: 1rem;
+}
+.lang-row .lang-chips {
+  display: contents;
+}
+.lang-row .lang-add {
+  flex: 0 1 14rem;
+}
+.lang-row .lang-none {
+  flex-basis: 100%;
+  color: var(--light-text-color);
+  font-size: .85rem;
+  font-style: italic;
+}
+.lang-row .lang-none[hidden] {
+  display: none;
 }
 .song .edit .wrap:hover,
 .song .edit .wrap.previewed { /* the part the floating preview shows (#156) */
