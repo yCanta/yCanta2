@@ -356,7 +356,7 @@ try {
     content: [[{ type: 'verse' }, lines]], added: t90, addedBy: 'u-alice', edited: t90, editedBy: 'u-alice', ...extra });
   const made90 = [
     [esId, await song90(esId, `${RUN} Canción`, ['Señor, Tú eres mi canción'])],
-    [hiId, await song90(hiId, `${RUN} यीशु`, ['प्रभु की स्तुति करो'])],
+    [hiId, await song90(hiId, `${RUN} यीशु`, ['प्रभु की स्तुति करो', 'ज़िंदगी में ख़ुशी'])],
     [arId, await song90(arId, `${RUN} ترنيمة`, ['<c>C</c>يَسُوعُ رَبِّي، مَحَبَّتُهُ أَبَدِيَّةٌ', 'And an English line'])],
     [enId, await song90(enId, `${RUN} English`, ['Amazing grace how sweet the sound'])],
   ];
@@ -371,7 +371,7 @@ try {
     s.dispatchEvent(new KeyboardEvent('keyup')); await new Promise(r => setTimeout(r, 300));
     return [...document.querySelectorAll('#songbook_content .list > li .name')].map(n => n.textContent); })()`);
   for (const [typed, want, what] of [['cancion', 'Canción', 'Spanish without accents'], ['señor tú', 'Canción', 'Spanish with accents'],
-    ['प्रभु की स्तुति', 'यीशु', 'Hindi words'], ['يَسُوعُ', 'ترنيمة', 'Arabic words'], ['ربي محبته ابديه', 'ترنيمة', 'Arabic typed without marks, ا for أ and ه for ة,'], ['يَسُوعُ رَبِّي مَحَبَّتُهُ', 'ترنيمة', 'Arabic with marks'], ['t:' + RUN.toLowerCase() + ' यीशु', 'यीशु', 'a Hindi title with t:']]) {
+    ['प्रभु की स्तुति', 'यीशु', 'Hindi words'], ['जिंदगी में खुशि', 'यीशु', 'Hindi typed without the nukta dots, short i for long,'],['يَسُوعُ', 'ترنيمة', 'Arabic words'], ['ربي محبته ابديه', 'ترنيمة', 'Arabic typed without marks, ا for أ and ه for ة,'], ['يَسُوعُ رَبِّي مَحَبَّتُهُ', 'ترنيمة', 'Arabic with marks'], ['t:' + RUN.toLowerCase() + ' यीशु', 'यीशु', 'a Hindi title with t:']]) {
     const found = await searchFor(typed);
     ok(found.length === 1 && found[0].endsWith(want), `search: ${what} ("${typed}") find the song`, JSON.stringify(found));
   }
@@ -381,7 +381,7 @@ try {
   await until(`document.getElementById('presentation')?.contentWindow?.window?.songbook?.songs?.length === 4`, 'the presentation', 15000);
   const presFind = text => ev(`(() => { const f = document.getElementById('presentation').contentWindow; f.document.querySelector('#searchbox input').value = ${JSON.stringify(text)};
     f.searchDatabase(); return f.document.getElementById('searchresults').textContent; })()`);
-  for (const [typed, want] of [['senor tu', 'Señor Tú eres mi canción'], ['प्रभु', 'प्रभु की स्तुति करो'], ['رَبِّي', 'يَسُوعُ رَبِّي'], ['محبته ابديه', 'مَحَبَّتُهُ أَبَدِيَّةٌ']]) {
+  for (const [typed, want] of [['senor tu', 'Señor Tú eres mi canción'], ['प्रभु', 'प्रभु की स्तुति करो'], ['رَبِّي', 'يَسُوعُ رَبِّي'], ['محبته ابديه', 'مَحَبَّتُهُ أَبَدِيَّةٌ'], ['जिंदगी में खुशि', 'ज़िंदगी में ख़ुशी'.normalize('NFC')]]) {
     const shown = await presFind(typed);
     ok(shown.includes(want), `presentation search: "${typed}" finds its line`, shown.slice(0, 200));
   }

@@ -8,12 +8,17 @@ String.prototype.count=function(s1) {
 //   the small alef, tatweel (the stretch line) and the Quran marks go; أ إ آ ٱ are searched as ا (NFD
 //   takes the first three apart into ا and a hamza or madda mark, and the mark goes), ؤ as و and ئ as ي
 //   the same way, ة as ه and ى as ي. So "محبة" finds "مَحَبَّة", and the other way around.
-// - Hindi (Devanagari) vowel signs stay: without them the words change.
+// - Hindi (Devanagari) gets a light folding, as Hindi search often does (#90): the nukta dot goes, so ज
+//   finds ज़ (NFD takes a letter like क़ apart into क and the dot first); chandrabindu ँ counts as anusvara
+//   ं; the invisible joiners (ZWJ, ZWNJ) go; long and short i and u are the same (ी as ि, ू as ु, ई as इ,
+//   ऊ as उ). Every other vowel sign stays, so कम and काम are still different words.
 // The text stays taken apart (NFD).
-const ARABIC_MARKS = /[ؐ-ؚـً-ٰٟۖ-ۜ۟-۪ۨ-ۭ]/g;
+const ARABIC_MARKS = /[\u0610-\u061a\u0640\u064b-\u065f\u0670\u06d6-\u06dc\u06df-\u06e8\u06ea-\u06ed]/g;
 function stripAccents(text) {
-  return String(text ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(ARABIC_MARKS, '').replace(/ٱ/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي');
+  return String(text ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(ARABIC_MARKS, '').replace(/\u0671/g, '\u0627').replace(/\u0629/g, '\u0647').replace(/\u0649/g, '\u064a') // Arabic
+    .replace(/[\u093c\u200c\u200d]/g, '').replace(/\u0901/g, '\u0902') // Hindi
+    .replace(/\u0940/g, '\u093f').replace(/\u0942/g, '\u0941').replace(/\u0908/g, '\u0907').replace(/\u090a/g, '\u0909');
 }
 
 // A song's search text (#90): its fields, each after its letters (t: title, a: author, s: scripture,

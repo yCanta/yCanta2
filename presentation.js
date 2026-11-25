@@ -1607,12 +1607,17 @@ function searchDatabase(){
   // song. Arabic goes the way Arabic search usually works, the same as the app's lists (lib.js
   // stripAccents): its vowel marks, shadda, sukun, tanween, the small alef, tatweel and hamza or madda over
   // a letter don't matter (so ا also finds أ إ آ, و finds ؤ, ي finds ئ), ا finds ٱ, ه finds ة and ي finds ى.
-  // Hindi vowel signs still have to match. Each piece is escaped, so typing ( or [ searches for it instead
-  // of throwing.
-  const MARKS = '[\\u0300-\\u036f\\u0610-\\u061a\\u0640\\u064b-\\u065f\\u0670\\u06d6-\\u06dc\\u06df-\\u06e8\\u06ea-\\u06ed]*';
-  const SAME_LETTER = { 'ا': '[اٱ]', 'ه': '[هة]', 'ي': '[يى]' }; // ا ه ي
+  // Hindi gets the same light folding as the lists: the nukta dot and the joiners don't matter, ं finds ँ,
+  // and short i and u find long ones (ि finds ी, ु finds ू, इ finds ई, उ finds ऊ); every other vowel sign
+  // still has to match. Each piece is escaped, so typing ( or [ searches for it instead of throwing.
+  const MARKS = '[\\u0300-\\u036f\\u0610-\\u061a\\u0640\\u064b-\\u065f\\u0670\\u06d6-\\u06dc\\u06df-\\u06e8\\u06ea-\\u06ed\\u093c\\u200c\\u200d]*'; // accents, Arabic marks, the Hindi nukta and joiners
+  const SAME_LETTER = { // a letter typed finds its other forms
+    '\u0627': '[\u0627\u0671]', '\u0647': '[\u0647\u0629]', '\u064a': '[\u064a\u0649]', // Arabic: ا ه ي
+    '\u0902': '[\u0902\u0901]', '\u093f': '[\u093f\u0940]', '\u0941': '[\u0941\u0942]', '\u0907': '[\u0907\u0908]', '\u0909': '[\u0909\u090a]', // Hindi: ं ि ु इ उ
+  };
   const typed = text.normalize('NFD').replace(new RegExp(MARKS, 'g'), '')
-    .replace(/ٱ/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي');
+    .replace(/\u0671/g, '\u0627').replace(/\u0629/g, '\u0647').replace(/\u0649/g, '\u064a')
+    .replace(/\u0901/g, '\u0902').replace(/\u0940/g, '\u093f').replace(/\u0942/g, '\u0941').replace(/\u0908/g, '\u0907').replace(/\u090a/g, '\u0909');
   const pattern = Array.from(typed).map(ch => (SAME_LETTER[ch] || ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) + MARKS).join('');
   var re = new RegExp('(' + pattern + ')([^\0\n]*)', 'i');
   const searchText = item => (item.searchNFD ??= String((item.doc && item.doc.search) || '').normalize('NFD')); // (a follower's songs have none)
