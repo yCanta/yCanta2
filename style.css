@@ -1704,6 +1704,15 @@ stitle, cat, author, scrip_ref, key, copyright, cclis {
 .lang-row .lang-add {
   flex: 0 1 14rem;
 }
+.lang-row .lang-suggest { /* languages to pick, under the box while it's in use */
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+}
+.lang-row .lang-suggest[hidden] {
+  display: none;
+}
 .lang-row .lang-none {
   flex-basis: 100%;
   color: var(--light-text-color);

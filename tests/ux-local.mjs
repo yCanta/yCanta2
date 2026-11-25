@@ -427,7 +427,7 @@ try {
   await go(`#${langBook}?export`, `!!document.getElementById('export_words_summary')`, 'the language book export');
   await until(`!document.getElementById('export_script_note').hidden`, 'the export note', 8000).catch(() => {});
   const note90 = await ev(`(() => { const n = document.getElementById('export_script_note'); return n.hidden ? '' : n.textContent; })()`);
-  ok(note90.startsWith('2 songs have Hindi or Arabic letters') && note90.includes('blank'), 'export: warns that Hindi and Arabic letters print blank', note90);
+  ok(note90.startsWith('2 songs have Hindi or Arabic letters') && note90.includes('wrong symbols'), 'export: warns that Hindi and Arabic letters print as the wrong symbols', note90);
   await ev(`closeExport(), 'ok'`);
   await sleep(800);
 

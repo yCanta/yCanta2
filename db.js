@@ -261,7 +261,7 @@ async function loadChurchLangSetting() {
 async function setChurchLang(select) {
   try {
     await db.upsert('settings', doc => ({ ...doc, lang: select.value }));
-    window.churchLang = select.value;
+    window.churchLanguage = select.value;
     notyf.success(`Songs with no language picked count as ${languageName(select.value).english}.`, 'var(--song-color)');
     renderSongFilter('book');
   } catch (err) {
@@ -2094,7 +2094,7 @@ function loadSong(song_id, song_rev = false) {
       shown.content.forEach(chunk => {
         songHtml += `<chunk type="${chunk[0].type.toLowerCase()}">`;
         chunk[1].forEach(line => {
-          songHtml += `<line dir="auto">${line}</line>`; // an Arabic line reads right to left by itself (#90)
+          songHtml += `<line dir="${lineDir(line)}">${line}</line>`; // an Arabic line reads right to left (#90)
         });
         songHtml += '</chunk>';
       });

@@ -1444,7 +1444,7 @@ function wholeSongHtml(song = current_song) {
     const mark = i === song.chunk_index ? ' class="current"' : i === target ? ' class="space-next"' : '';
     html += '<chunk type="' + chunk[0].type + '"' + mark + ' data-part="' + i + '">';
     if (chunk[0].type === 'verse') html += '<span>' + (++verse) + ':</span>';
-    chunk[1].forEach(line => { html += '<line dir="auto">' + line + '</line>'; }); // right to left where it's Arabic (#90)
+    chunk[1].forEach(line => { html += '<line dir="' + lineDir(line) + '">' + line + '</line>'; }); // right to left where it's Arabic (#90)
     html += '</chunk>';
   });
   return html + '<copyright>' + song.doc.copyright + '</copyright>';
@@ -1489,7 +1489,7 @@ function gridHtml() {
       html += '<div class="grid">' + song.doc.content.map((chunk, i) => '<div class="grid-card'
         + (onScreen && i === song.chunk_index ? ' current' : '') + ((onScreen && i === target) || (upNext && i === 0) ? ' space-next' : '')
         + '" data-song="' + s + '" data-part="' + i + '"><span class="grid-label">' + escapeText(partName(song, i)) + '</span>'
-        + chunk[1].map(line => '<line dir="auto">' + line + '</line>').join('') + '</div>').join('') + '</div>';
+        + chunk[1].map(line => '<line dir="' + lineDir(line) + '">' + line + '</line>').join('') + '</div>').join('') + '</div>';
     }
     html += '</div>';
   });
@@ -1585,6 +1585,14 @@ function toggleChords(touch=false) {
     const chngChords = document.getElementById('chngChords');
     if (chngChords) chngChords.checked = !chngChords.checked;
   }
+}
+
+// Which way a song line reads (#90): right to left when its first letter, not counting chords, is Arabic
+// (or Hebrew), else "auto". A copy of lib.js lineDir: this window doesn't load lib.js.
+const RTL_LETTER = /[\p{Script=Arabic}\p{Script=Hebrew}\p{Script=Syriac}\p{Script=Thaana}\p{Script=Nko}]/u;
+function lineDir(line) {
+  const first = String(line == null ? '' : line).replace(/<c>.*?<\/c>/gi, '').replace(/<[^>]*>/g, '').replace(/&[#\w]+;/g, ' ').match(/\p{L}/u);
+  return first && RTL_LETTER.test(first[0]) ? 'rtl' : 'auto';
 }
 
 function searchDatabase(){
@@ -1779,7 +1787,7 @@ function showChunk(name) {
         content += '<span data-verse="'+verse_number+'">'+verse_number+':</span>';
       }
       chunk[1].forEach(function(line){
-        content += '<line dir="auto">' + line + '</line>'; // an Arabic line reads right to left by itself (#90)
+        content += '<line dir="' + lineDir(line) + '">' + line + '</line>'; // an Arabic line reads right to left (#90)
       });
       content += '</chunk>';
 

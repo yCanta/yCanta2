@@ -81,15 +81,15 @@ let languageCodes = null;
 function knownLanguageCodes() {
   return languageCodes ||= LANGUAGE_CODES.filter(code => languageName(code).english !== code);
 }
-// The church's usual language: its "settings" doc, kept in window.churchLang once read
-function churchLang() { return window.churchLang || 'en'; }
+// The church's usual language: its "settings" doc, kept in window.churchLanguage once read
+function churchLang() { return window.churchLanguage || 'en'; }
 async function loadChurchLang() {
   try {
-    window.churchLang = (await db.get('settings')).lang || 'en';
+    window.churchLanguage = (await db.get('settings')).lang || 'en';
   } catch (err) {
-    window.churchLang = 'en';
+    window.churchLanguage = 'en';
   }
-  return window.churchLang;
+  return window.churchLanguage;
 }
 // Languages its letters show, for a song with none saved: Devanagari is Hindi, Arabic letters Arabic
 function scriptLangs(doc) {
@@ -207,6 +207,16 @@ function songShape(doc) {
       (Array.isArray(chunk?.[1]) ? chunk[1] : chunk?.[1] == null ? [] : [chunk[1]]).map(textOf),
     ]),
   };
+}
+
+// Which way a song line reads (#90): right to left when its first letter, not counting chords, is Arabic
+// (or Hebrew), else "auto", the browser's choice. Plain dir="auto" goes by the first letter in the line,
+// and in an Arabic line that starts with a chord that's the chord's, so the line stayed left to right.
+// (presentation.js has the same.)
+const RTL_LETTER = /[\p{Script=Arabic}\p{Script=Hebrew}\p{Script=Syriac}\p{Script=Thaana}\p{Script=Nko}]/u;
+function lineDir(line) {
+  const first = String(line ?? '').replace(/<c>.*?<\/c>/gi, '').replace(/<[^>]*>/g, '').replace(/&[#\w]+;/g, ' ').match(/\p{L}/u);
+  return first && RTL_LETTER.test(first[0]) ? 'rtl' : 'auto';
 }
 
 // A copy of a song to show: its fields as text, its lines through safeSongLine. The song itself (saved,
@@ -3322,16 +3332,11 @@ function bindKeyAndChords() {
 }
 
 // ---- The song editor's language row (#90): the song's languages as chips (a click takes one off), and a
-// box to add one. The box offers every language the browser has a name for, those already used in the
-// church first; typing narrows them. With none picked, the song is in the church's usual language.
+// box to add one. Under the box, languages to pick: those already used in the church first, and as you
+// type, any language the browser has a name for whose name has what's typed. With none picked, the song is
+// in the church's usual language.
 function langChip(code) {
   return `<button type="button" class="filter-chip sel lang-chip" data-lang="${escapeHtml(code)}" title="Take off" aria-label="Take off ${escapeHtml(languageName(code).english)}">${escapeHtml(languageName(code).label)} <span aria-hidden="true">&times;</span></button>`;
-}
-// The box's choices: the languages used in the church (counted from its songs), then all the others by name
-function langOptions(used = []) {
-  const rest = knownLanguageCodes().filter(code => !used.includes(code))
-    .sort((a, b) => languageName(a).english.localeCompare(languageName(b).english));
-  return [...used, ...rest].map(code => `<option value="${escapeHtml(languageName(code).label)}"></option>`).join('');
 }
 // The languages the church's songs are in, most used first (the church's usual one counts every song with none)
 async function churchUsedLangs() {
@@ -3344,7 +3349,21 @@ async function churchUsedLangs() {
   });
   return [...counts].sort((a, b) => b[1] - a[1]).map(([code]) => code);
 }
-// The code a typed or picked name stands for: "Spanish (Español)", "spanish", "español" or "es"
+// The languages to offer for what's typed: the church's first, then the rest by name. Without anything
+// typed, only the church's. A name matches anywhere, without accents: "span", "espan" and "es" find Spanish.
+function langMatches(typedText, used, have) {
+  const typed = stripAccents(typedText.trim()).toLowerCase();
+  const rest = knownLanguageCodes().filter(code => !used.includes(code))
+    .sort((a, b) => languageName(a).english.localeCompare(languageName(b).english));
+  const has = code => {
+    const n = languageName(code);
+    return code === typed || [n.english, n.own].some(name => name && stripAccents(name).toLowerCase().includes(typed));
+  };
+  const starts = code => code === typed || [languageName(code).english, languageName(code).own].some(name => name && stripAccents(name).toLowerCase().startsWith(typed));
+  const found = (typed ? [...used, ...rest].filter(has) : used).filter(code => !have.includes(code));
+  return [...found.filter(starts), ...found.filter(code => !starts(code))]; // "fr": French before Afrikaans
+}
+// The code a typed name stands for exactly: "Spanish (Español)", "spanish", "español" or "es"
 function langFromText(text) {
   const typed = stripAccents(text.trim()).toLowerCase();
   if (!typed) return null;
@@ -3359,36 +3378,53 @@ function addLangRow(songElement, doc) {
   categories.insertAdjacentHTML('afterend', `<div class="lang-row">
       <span class="lang-label">Language:</span>
       <span class="lang-chips">${savedLangs(doc).map(langChip).join('')}</span>
-      <input type="text" class="lang-add row-input" list="lang_options" placeholder="Add a language" aria-label="Add a language" autocomplete="off" enterkeyhint="done">
-      <datalist id="lang_options">${langOptions([churchLang()])}</datalist>
+      <input type="text" class="lang-add row-input" placeholder="Add a language" aria-label="Add a language" autocomplete="off" enterkeyhint="done">
+      <div class="lang-suggest" hidden></div>
       <span class="lang-none"></span>
     </div>`);
   const row = songElement.querySelector('.lang-row');
   const chips = row.querySelector('.lang-chips');
   const box = row.querySelector('.lang-add');
+  const suggest = row.querySelector('.lang-suggest');
   const none = row.querySelector('.lang-none');
+  let used = [churchLang()];
+  const picked = () => [...chips.querySelectorAll('[data-lang]')].map(chip => chip.dataset.lang);
   // With none picked, what the song counts as
   const showNone = () => {
-    const picked = chips.querySelector('[data-lang]');
     const seen = scriptLangs(doc);
-    none.hidden = !!picked;
+    none.hidden = picked().length > 0;
     none.textContent = seen.length ? `None picked: ${seen.map(code => languageName(code).english).join(', ')}, from its letters.`
       : `None picked: ${languageName(churchLang()).english}, the church's usual.`;
   };
-  const add = () => {
-    const code = langFromText(box.value);
+  const showSuggest = () => {
+    const found = langMatches(box.value, used, picked()).slice(0, 12);
+    suggest.innerHTML = found.map(code => `<button type="button" class="filter-chip" data-add="${escapeHtml(code)}">${escapeHtml(languageName(code).label)}</button>`).join('')
+      || (box.value.trim() ? '<span class="lang-none">No language has that name.</span>' : '');
+    suggest.hidden = !suggest.innerHTML;
+  };
+  const add = code => {
     if (!code) return false;
-    if (!chips.querySelector(`[data-lang="${code}"]`)) chips.insertAdjacentHTML('beforeend', langChip(code));
+    if (!picked().includes(code)) chips.insertAdjacentHTML('beforeend', langChip(code));
     box.value = '';
     showNone();
+    showSuggest();
     return true;
   };
-  box.addEventListener('input', e => { if (!e.inputType || e.inputType === 'insertReplacementText') add(); }); // picked from the list
-  box.addEventListener('change', add);
+  box.addEventListener('focus', showSuggest);
+  box.addEventListener('input', showSuggest);
+  box.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== box) suggest.hidden = true; }, 150));
   box.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { suggest.hidden = true; return; }
     if (e.key !== 'Enter') return;
-    e.preventDefault();
-    if (!add() && box.value.trim()) notyf.error(`"${box.value.trim()}" isn't a language the list knows.`, 'red');
+    e.preventDefault(); // Enter adds the language named, or the first one offered
+    if (!box.value.trim()) return;
+    if (!add(langFromText(box.value) || langMatches(box.value, used, picked())[0])) notyf.error(`No language is called "${box.value.trim()}".`, 'red');
+  });
+  suggest.addEventListener('mousedown', e => e.preventDefault()); // the box keeps the focus
+  suggest.addEventListener('click', e => {
+    const choice = e.target.closest('[data-add]');
+    if (choice) add(choice.dataset.add);
+    box.focus();
   });
   chips.addEventListener('click', e => {
     const chip = e.target.closest('[data-lang]');
@@ -3399,8 +3435,10 @@ function addLangRow(songElement, doc) {
   });
   showNone();
   // the church's languages first, once its songs have been counted (in the background)
-  churchUsedLangs().then(used => { row.querySelector('datalist').innerHTML = langOptions(used); })
-    .catch(err => console.error("Couldn't count the church's languages:", err));
+  churchUsedLangs().then(found => {
+    used = found;
+    if (document.activeElement === box) showSuggest();
+  }).catch(err => console.error("Couldn't count the church's languages:", err));
 }
 
 async function editSong() {
@@ -3698,7 +3736,7 @@ function previewSlideHtml(card, chunk) {
   }
   html += `<chunk type="${escapeHtml(type)}">`;
   if (type === 'verse') html += `<span>${parts.slice(0, at).filter(c => c.getAttribute('type') === 'verse').length + 1}:</span>`;
-  html += editedChunkLines(chunk).replace(/<line>/g, '<line dir="auto">') + '</chunk>'; // as presented: Arabic right to left (#90)
+  html += editedChunkLines(chunk).replace(/<line>([\s\S]*?)<\/line>/g, (all, line) => `<line dir="${lineDir(line)}">${line}</line>`) + '</chunk>'; // as presented: Arabic right to left (#90)
   if (at === parts.length - 1) html += `<copyright>${text('copyright')}</copyright>`;
   return html;
 }
@@ -4159,7 +4197,7 @@ function exportInfo(pages) {
   document.getElementById('export_info').textContent = parts.filter(Boolean).join(' · ');
   exportScriptNote();
 }
-// The PDF's built-in fonts have no Hindi (Devanagari) or Arabic letters, so those print blank (#90). Until
+// The PDF's built-in fonts have no Hindi (Devanagari) or Arabic letters, so those print as the wrong symbols (#90). Until
 // it can print them, the export says which songs have them.
 function exportScriptNote() {
   const note = document.getElementById('export_script_note');
@@ -4171,7 +4209,7 @@ function exportScriptNote() {
   if (!found.length) return;
   const names = found.slice(0, 3).map(doc => `"${doc.title}"`).join(', ') + (found.length > 3 ? ` and ${found.length - 3} more` : '');
   note.textContent = `${found.length === 1 ? '1 song has' : `${found.length} songs have`} Hindi or Arabic letters (${names}). `
-    + "The PDF can't print those letters yet: they come out blank.";
+    + "The PDF can't print those letters yet: they come out as the wrong symbols.";
 }
 // Brings the stand-ins in line with the fields: after a click, a Format, Paste, or any change
 function syncExportForm() {
