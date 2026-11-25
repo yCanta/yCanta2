@@ -387,7 +387,7 @@ try {
   await f.until(`${F}.current_song.id === ${JSON.stringify(SONG)} && ${F}.current_song.chunk_index === 0`, 'the follower on the first song', 5000).catch(() => {});
   const vers = await d.ev(`(${P}.window.songbook.songs.find(s => s.id === ${JSON.stringify(SONG)}).versions || []).map(v => v.id + ':' + v.lang).join()`);
   ok(vers === SONG_ES + ':es', 'two languages: the song comes with its Spanish version', vers);
-  await d.ev(`${P}.document.dispatchEvent(new ${P}.KeyboardEvent('keydown', { key: 'v', bubbles: true })), 'ok'`); // the v key
+  await d.ev(`${P}.document.dispatchEvent(new (${P}.KeyboardEvent)('keydown', { key: 'v', bubbles: true })), 'ok'`); // the v key
   const secondOn = () => d.ev(`(() => { const s = ${P}.document.getElementById('cur_slide'), b = s.querySelector('.second-lang');
     return { lang: b && b.lang, text: b && b.textContent, main: s.querySelector('chunk').textContent, fits: !${P}.overflows(s) }; })()`);
   let two = await secondOn();

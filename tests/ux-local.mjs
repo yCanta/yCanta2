@@ -584,8 +584,9 @@ try {
   await go(`#${vBook}`, `window.songbook?._id === ${JSON.stringify(vBook)}`, 'the versions book');
   await ev(`location.hash = '#${vBook}?present', 'ok'`);
   await until(`document.getElementById('presentation')?.contentWindow?.window?.songbook?.songs?.length === 4`, 'the versions presentation', 15000);
+  await ev(`document.getElementById('presentation').contentWindow.presentationReady.then(() => 'ok')`); // its "Presenting" slide is up
   const PF = `document.getElementById('presentation').contentWindow`;
-  const presKey = k => ev(`${PF}.document.dispatchEvent(new ${PF}.KeyboardEvent('keydown', { key: ${JSON.stringify(k)}, bubbles: true })), 'ok'`);
+  const presKey = k => ev(`${PF}.document.dispatchEvent(new (${PF}.KeyboardEvent)('keydown', { key: ${JSON.stringify(k)}, bubbles: true })), 'ok'`);
   const sent90 = await ev(`(() => { const s = ${PF}.window.songbook.songs.find(x => x.id === ${JSON.stringify(vEs)}); return { langs: s.langs, versions: (s.versions || []).map(v => v.lang) }; })()`);
   ok(sent90.langs.join() === 'es' && sent90.versions.join() === 'en,en,en', 'two languages: the presentation gets the Spanish song with its three English versions', JSON.stringify(sent90));
   await presKey(' '); // the first song: the Spanish one
@@ -624,6 +625,7 @@ try {
   // right to left on a slide: an Arabic title stays on the right, and long Arabic lines fit inside the slide
   await ev(`location.hash = '#${langBook}?present', 'ok'`);
   await until(`document.getElementById('presentation')?.contentWindow?.window?.songbook?.songs?.length === 4`, 'the languages presentation', 15000);
+  await ev(`document.getElementById('presentation').contentWindow.presentationReady.then(() => 'ok')`);
   const arTitle = await ev(`${PF}.titleHtml('ترنيمة')`);
   ok(arTitle.includes('dir="rtl"'), 'an Arabic title reads right to left, like the lines', arTitle);
   await presKey(' ');
