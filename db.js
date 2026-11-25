@@ -3912,7 +3912,8 @@ function closeVersionBeside(card) {
   fillVersionMenu();
 }
 
-// The song's Info: its versions as text, one per line, and Link versions for those who may
+// The song's Info: "Versions: [Link]" (Link for those who may change the group), then its versions as text,
+// one per line, or "None yet"
 async function fillVersionInfo() {
   const box = document.querySelector('#dialog .version-info');
   const song = window.song;
@@ -3928,9 +3929,10 @@ async function fillVersionInfo() {
   const { groups, versions } = found;
   const rows = versions.map(doc => `${escapeHtml(songLangLabel(doc))}: ${escapeHtml(doc.title)}`);
   const mayChange = !song._deleted && (window.church?.editor || canEdit(song) || groups.length > 0);
-  box.innerHTML = `<br><b>Versions:</b><br>${rows.length ? rows.join('<br>') : 'None linked'}`
-    + (groups.length > 1 ? `<br><small class="version-overlap">${overlapNote(song._id, groups)}</small>` : '')
-    + (mayChange ? `<br><button type="button" class="btn btn-tiny" onclick="linkVersionsDialog()">Link versions</button>` : '');
+  const link = mayChange
+    ? `<button type="button" class="btn btn-tiny" onclick="linkVersionsDialog()" aria-label="Link versions" title="Link versions">Link</button>` : '';
+  box.innerHTML = `<br><b>Versions:</b> ${link}<br>${rows.length ? rows.join('<br>') : 'None yet'}`
+    + (groups.length > 1 ? `<br><small class="version-overlap">${overlapNote(song._id, groups)}</small>` : '');
 }
 
 const cclisNumber = doc => (doc?.cclis && !isNaN(doc.cclis) && Number(doc.cclis) > 0 ? String(Number(doc.cclis)) : '');
@@ -4116,7 +4118,7 @@ async function findVersions() {
   const fresh = found.suggestions.filter(suggestion => !skipped.has(suggestion.key));
   const skippedBefore = found.suggestions.length - fresh.length;
   const aloneNote = found.alone.length
-    ? `\n\n${found.alone.length === 1 ? 'A song' : `${found.alone.length} songs`} in the Duplicate category matched no other song: ${found.alone.map(song => `"${song.title}"`).join(', ')}. To link one, open it, then its Info, then Link versions.` : '';
+    ? `\n\n${found.alone.length === 1 ? 'A song' : `${found.alone.length} songs`} in the Duplicate category matched no other song: ${found.alone.map(song => `"${song.title}"`).join(', ')}. To link one, open it, then its Info, then Link next to Versions.` : '';
   if (!found.suggestions.length) {
     await dialog.finish(`No songs look like versions of each other that aren't linked yet.${aloneNote}`);
     return;

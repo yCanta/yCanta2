@@ -490,8 +490,11 @@ try {
   await sleep(800);
   ok(await ev(`document.querySelector('#song .version-pill').hidden && !document.querySelector('#song .version-chips')`), 'versions: a song with none shows no pill, and there is no Versions row');
   await click('#song info');
-  await until(`/None linked/.test(document.querySelector('#dialog .version-info')?.textContent || '')`, 'the Info versions', 5000);
-  ok(true, 'info: a song with no versions says "None linked"');
+  await until(`/None yet/.test(document.querySelector('#dialog .version-info')?.textContent || '')`, 'the Info versions', 5000);
+  const noneV = await ev(`(() => { const box = document.querySelector('#dialog .version-info'), b = box.querySelector('button');
+    return { line: box.innerText.trim().split('\\n')[0].trim(), name: b?.getAttribute('aria-label'), shown: b?.textContent }; })()`);
+  ok(noneV.line === 'Versions: Link' && noneV.name === 'Link versions' && noneV.shown === 'Link',
+    'info: a song with none says "Versions: [Link]", then "None yet"; the button is named Link versions', JSON.stringify(noneV));
   // Link versions: the songs that look like versions are offered first (same CCLI number; same title but for "(short)")
   await click('#dialog .version-info [onclick^="linkVersionsDialog"]');
   await until(`!!document.querySelector('.task-dialog .version-pick')`, 'the Link versions window', 8000);
@@ -514,12 +517,13 @@ try {
   let groupsV = await serverGroupsUntil(g => g.length === 1 && Object.keys(g[0].songs).length === 3, 'the group on the server');
   groupsV.forEach(g => made.push(g._id));
   ok(JSON.stringify(Object.values(groupsV[0].songs)) === '["u-alice","u-alice","u-alice"]', 'link: one group record on the server, saying who added each song', JSON.stringify(groupsV[0].songs));
-  // Info: the versions as plain text, one per line, and one Link versions button
+  // Info: "Versions: [Link]", then the versions as plain text, one per line
   await until(`/Lives \\(short\\)/.test(document.querySelector('#dialog .version-info')?.textContent || '')`, 'Info to list the versions', 8000);
   const infoV = await ev(`(() => { const box = document.querySelector('#dialog .version-info');
-    return { text: box.innerText.replace(/[\\u2066-\\u2069]/g, ''), buttons: [...box.querySelectorAll('button')].map(b => b.textContent), links: box.querySelectorAll('a').length }; })()`);
-  ok(infoV.buttons.join() === 'Link versions' && !infoV.links && infoV.text.includes(`English: ${RUN} Lives (short)`) && infoV.text.includes(`Spanish (Español): ${RUN} Vive`),
-    'info: lists the versions as plain text, "Spanish (Español): ...", with one Link versions button', JSON.stringify(infoV));
+    return { text: box.innerText.replace(/[\\u2066-\\u2069]/g, ''), buttons: [...box.querySelectorAll('button')].map(b => b.getAttribute('aria-label')), links: box.querySelectorAll('a').length }; })()`);
+  ok(infoV.buttons.join() === 'Link versions' && !infoV.links && infoV.text.trim().startsWith('Versions: Link')
+    && infoV.text.includes(`English: ${RUN} Lives (short)`) && infoV.text.includes(`Spanish (Español): ${RUN} Vive`),
+    'info: "Versions: [Link]", then the versions as plain text, "Spanish (Español): ..."', JSON.stringify(infoV));
   await ev(`document.querySelector('#dialog .close-x, #dialog [aria-label="Close"]')?.click(), 'ok'`);
   // a pill after the title, "2 other versions"; it (or the title) opens a menu of the versions
   await until(`document.querySelector('#song .version-pill:not([hidden])')?.textContent.trim() === '2 other versions'`, 'the versions pill', 8000);
