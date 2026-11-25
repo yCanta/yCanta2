@@ -1359,6 +1359,26 @@ body.player-pill .subcolumn:not(.sidebar)::after {
 #dialog .btn {
   padding: .3125rem;
 }
+/* When the Info window's words don't fit in the circle (a phone on its side, or a long song Info, #90): a box
+   rounded like the app's other windows (.task-dialog) that fits the screen. Its heading stays at the top, the
+   words scroll inside it (lib.js fitInfoWindow sets how tall), and the × has its own row under them. */
+#dialog.boxed {
+  border-radius: 1rem;
+  width: min(20rem, calc(100vw - 2rem));
+  min-height: 0;
+  max-height: none;
+  top: .5rem;
+}
+#dialog.boxed .title {
+  width: auto;
+}
+#dialog.boxed .content {
+  margin-bottom: .5rem;
+}
+#dialog.boxed .close-x {
+  position: static;
+  transform: none;
+}
 
 /*Standard Styling for columns (lib.js setBarColor follows how these stack on a phone: change it with them) */
 #songbookList {
