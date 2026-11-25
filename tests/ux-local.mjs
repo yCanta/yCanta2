@@ -391,7 +391,8 @@ try {
   await until(`document.getElementById('filter_panel_book')?.classList.contains('open')`, 'the filter panel', 5000);
   const langChips = await ev(`[...document.querySelectorAll('#filter_panel_book .filter-chip[data-group="lang"]')].map(c => c.dataset.value + ':' + c.querySelector('.n').textContent)`);
   ok(JSON.stringify(langChips) === JSON.stringify(['en:2', 'ar:1', 'hi:1']), 'filter: a Language group, English (no language picked) first, Hindi and Arabic seen from their letters', JSON.stringify(langChips));
-  await click('#filter_panel_book .filter-chip[data-group="lang"][data-value="ar"]');
+  await ev(`document.querySelector('#filter_panel_book .filter-chip[data-group="lang"][data-value="ar"]').click(), 'ok'`); // (the panel redraws on each sync change)
+  await sleep(300);
   const arOnly = await ev(`window.songbook_list.visibleItems.map(i => i.values().name)`);
   ok(arOnly.length === 1 && arOnly[0].endsWith('ترنيمة'), 'filter: picking Arabic leaves the Arabic song', JSON.stringify(arOnly));
   await ev(`clearSongFilter('book'); toggleSongFilterPanel('book'), 'ok'`);
@@ -399,20 +400,26 @@ try {
   // right to left: an Arabic line turns by itself; an English line, even in the same song, doesn't
   await go(`#${langBook}&${arId}`, `!!document.querySelector('#song .song-card line')`, 'the Arabic song');
   const dirs = await ev(`[...document.querySelectorAll('#song .song-card line')].map(l => l.getAttribute('dir') + ':' + (l.matches(':dir(rtl)') ? 'rtl' : 'ltr'))`);
-  ok(JSON.stringify(dirs) === JSON.stringify(['auto:rtl', 'auto:ltr']), 'right to left: the Arabic line reads right to left, the English line left to right', JSON.stringify(dirs));
+  // (the Arabic line starts with a chord: "rtl" from its first letter that isn't a chord's, lineDir)
+  ok(JSON.stringify(dirs) === JSON.stringify(['rtl:rtl', 'auto:ltr']), 'right to left: the Arabic line (starting with a chord) reads right to left, the English line left to right', JSON.stringify(dirs));
   await click('#song info');
   await until(`document.getElementById('dialog').dataset.use === 'info' && !!document.querySelector('#dialog .song-langs')`, 'the Info window', 5000);
-  ok((await ev(`document.querySelector('#dialog .song-langs').textContent`)).includes('Arabic (from its letters)'), "info: an Arabic song with no language picked says Arabic, from its letters");
+  const infoAr = await ev(`document.querySelector('#dialog .song-langs').textContent`);
+  ok(infoAr.includes('Arabic') && infoAr.includes('from its letters'), "info: an Arabic song with no language picked says Arabic, from its letters", infoAr);
   await ev(`document.querySelector('#dialog .close-x, #dialog [aria-label="Close"]')?.click(), 'ok'`);
   // a song's languages: Spanish and English picked in the editor survive the save, and no search field is saved
   await go(`#${langBook}&${esId}?edit`, `!!document.querySelector('#song .lang-row .lang-add')`, 'the Spanish song editor');
   ok(await ev(`!document.querySelector('#song .lang-row [data-lang]') && document.querySelector('#song .lang-none').textContent.includes('English')`), "editor: a song with no language says it counts as the church's usual (English)");
-  await ev(`(() => { const box = document.querySelector('#song .lang-add'); box.value = languageName('es').label; box.dispatchEvent(new Event('change')); })()`);
   await click('#song .lang-add');
-  await ev(`document.querySelector('#song .lang-add').value = 'english', 'ok'`);
+  await send('Input.insertText', { text: 'espa' }); // typed: the choices under the box narrow to Spanish (Español)
+  await sleep(300);
+  const offered = await ev(`[...document.querySelectorAll('#song .lang-suggest [data-add]')].map(b => b.dataset.add)`);
+  ok(offered[0] === 'es', 'editor: typing "espa" offers Spanish first', JSON.stringify(offered));
+  await click('#song .lang-suggest [data-add="es"]');
+  await send('Input.insertText', { text: 'english' });
   await key('Enter', 'Enter', 13);
   const picked = await ev(`[...document.querySelectorAll('#song .lang-row [data-lang]')].map(c => c.dataset.lang)`);
-  ok(JSON.stringify(picked) === '["es","en"]', 'editor: Spanish picked from the list, English typed', JSON.stringify(picked));
+  ok(JSON.stringify(picked) === '["es","en"]', 'editor: Spanish picked from the choices, English typed and Enter', JSON.stringify(picked));
   await click('#song .edit_buttons [data-save]');
   await until(`!location.hash.includes('?edit') && !window.songEditing && !!document.querySelector('#song .song-card line')`, 'the save', 10000);
   let saved90 = {};
