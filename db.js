@@ -3790,9 +3790,12 @@ async function fillVersionInfo() {
       canUnlinkVersion(doc._id) ? `<button type="button" class="btn btn-tiny" onclick="unlinkFromInfo('${id}')" title="It stays a song of its own">Unlink</button>` : ''}`;
   });
   const mayLink = !song._deleted && (window.church?.editor || canEdit(song) || groups.length > 0);
+  const unlinkSelf = rows.length && !song._deleted && canUnlinkVersion(song._id)
+    ? `<button type="button" class="btn btn-tiny" onclick="unlinkFromInfo(window.song._id)" title="Take this song out of its versions">Unlink this song</button>` : '';
   box.innerHTML = `<br><b>Versions:</b><br>${rows.length ? rows.join('<br>') : 'None linked'}`
     + (groups.length > 1 ? `<br>${overlapNote(song._id, groups)}` : '')
-    + (mayLink ? `<br><button type="button" class="btn btn-tiny" onclick="pickVersions()">Link a version</button>` : '');
+    + (mayLink || unlinkSelf ? '<br>' : '')
+    + (mayLink ? `<button type="button" class="btn btn-tiny" onclick="pickVersions()">Link a version</button>` : '') + unlinkSelf;
 }
 async function unlinkFromInfo(songId) {
   try {
