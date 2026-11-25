@@ -4984,10 +4984,12 @@ function songLangInfo(doc) {
     : `${names([churchLang()])} (the church's usual)`;
   return `<small class="song-langs">Language: ${line}</small><br>`;
 }
-// The Info window (#dialog) is round where all of it fits in 80% of the screen's height (Carl's design). Where it
-// doesn't (a phone on its side, or a song's Info grown long: its language, songbooks and versions, #90), it's a
-// box that fits the screen (#dialog.boxed in style.css): the heading at the top, the words scrolling, the × in a
-// row of its own. Measured again when its words change (versions fill in later) and when the screen turns.
+// The Info window (#dialog) is round on every screen (Carl's design) and never taller than 80% of the screen
+// (style.css). On a short screen, such as a phone on its side, its words scroll. They get what's left of that 80%
+// after the window's padding, the heading, the title and the room kept for the × at the bottom (the CSS alone
+// left out the heading and title, so the words ran under the × and out of the window, #90). That keeps the
+// scrolling words in the window's middle, clear of its curved top and bottom, with nothing under the ×.
+// Measured again when the words change (versions fill in later) and when the screen turns.
 let infoWindowWatched = false;
 function fitInfoWindow() {
   const dialog = document.getElementById('dialog');
@@ -4999,17 +5001,10 @@ function fitInfoWindow() {
     window.addEventListener('resize', fitInfoWindow);
   }
   if (dialog.style.display === 'none') return;
-  dialog.classList.remove('boxed');
-  content.style.maxHeight = 'none';
-  const whole = dialog.scrollHeight; // as a circle, with nothing scrolling
-  content.style.maxHeight = '';
-  if (whole <= window.innerHeight * 0.8) return;
-  dialog.classList.add('boxed');
   const px = (el, prop) => parseFloat(getComputedStyle(el)[prop]) || 0;
-  const around = px(dialog, 'paddingTop') + px(dialog, 'paddingBottom') + px(dialog, 'top') * 2
-    + dialog.querySelector('h5').offsetHeight + dialog.querySelector('.title').offsetHeight
-    + px(content, 'marginBottom') + dialog.querySelector('.center_contents').offsetHeight + 2; // + its edges
-  content.style.maxHeight = `${Math.max(64, window.innerHeight - around)}px`;
+  const around = px(dialog, 'paddingTop') + px(dialog, 'paddingBottom') + px(dialog, 'borderTopWidth') + px(dialog, 'borderBottomWidth')
+    + dialog.querySelector('h5').offsetHeight + dialog.querySelector('.title').offsetHeight + px(content, 'marginBottom');
+  content.style.maxHeight = `${Math.max(48, Math.floor(window.innerHeight * 0.8 - around))}px`;
 }
 
 async function loadInfo(song = true) {
@@ -5034,7 +5029,7 @@ async function loadInfo(song = true) {
     dialog.querySelector('.title').textContent = title;
     dialog.querySelector('.content').innerHTML = content;
     if (dialog.style.display === 'none') {
-      dialog.style.display = 'block'; // to measure it: round, or a box
+      dialog.style.display = 'block'; // to measure what its words may have
       fitInfoWindow();
       slideDown(dialog);
     } else fitInfoWindow();
