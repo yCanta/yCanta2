@@ -3806,7 +3806,9 @@ function previewSlideHtml(card, chunk) {
 function fitPreviewSlide(win) {
   const slide = win.document.getElementById('cur_slide');
   const content = slide.querySelector('.content');
-  const tooBig = () => slide.scrollWidth > win.innerWidth || slide.scrollHeight > win.innerHeight;
+  // against the slide's own box, as presentation.js overflows() does (a phone's screen can be a fraction of
+  // a pixel, and the window's size rounds the other way)
+  const tooBig = () => slide.scrollWidth > slide.clientWidth || slide.scrollHeight > slide.clientHeight;
   let small = 50, big = 1500, percent = (big + small) / 2;
   while (big - small > 10) {
     content.style.fontSize = percent + '%';
@@ -4655,7 +4657,7 @@ function makeDraggable(dragEl, dragAction, dragSide='right') {
         dragEl.classList.remove('slidout');
         dragEl.style.transform = 'translate3d(' + (dist + 25) * 4 + 'px, 8rem, 0)';
         dragEl.style.width = 'min(80%, 300px)';
-        dragEl.style.height = 'calc(100vh - 8rem)';
+        dragEl.style.height = 'calc(var(--screen-height) - 8rem)'; // as .slidout in style.css
         dragEl.style['z-index'] = dist < -100 ? '2' : '7';
       }
     } else if (navigate) {

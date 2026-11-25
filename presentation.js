@@ -387,6 +387,14 @@ function packPassage(item) {
   item.packedFor = window.innerWidth + 'x' + window.innerHeight;
 }
 
+// A slide's words reach past its edges. Measured against the slide's own box, not window.innerWidth/Height:
+// on a phone the screen can be a fraction of a pixel (Chrome on Android, 889.7 tall), and the window's size
+// rounds down (889) while the slide's rounds up (890), so every size looked too big and the words came out
+// at the smallest size. The slide's box rounds the same way as what's in it.
+function overflows(slide) {
+  return slide.scrollWidth > slide.clientWidth || slide.scrollHeight > slide.clientHeight;
+}
+
 // How big a slide's verse text would be (px), fitted to the screen the way scaleText fits a slide
 function fittedSize(item, lines, first, last) {
   let slide = document.getElementById('measure_slide');
@@ -403,7 +411,7 @@ function fittedSize(item, lines, first, last) {
   content.innerHTML = (first ? '<stitle>' + item.doc.title + '</stitle>' : '')
     + '<chunk type="bible">' + lines.join('') + '</chunk>'
     + (last ? '<copyright>' + item.doc.copyright + '</copyright>' : '');
-  const fits = () => slide.scrollWidth <= window.innerWidth && slide.scrollHeight <= window.innerHeight;
+  const fits = () => !overflows(slide);
   let small = 50, big = 1500, percent = (big + small) / 2;
   while (big - small > 10) {
     content.style.fontSize = percent + '%';
@@ -2186,31 +2194,15 @@ function scaleText() {
   document.querySelectorAll('.slide').forEach(slide => {
     const container = slide.querySelector(".content");
     container.style.marginTop = '';
-    const win_width = window.innerWidth;
-    const win_height = window.innerHeight;
 
     var small     = 50;
     var big       = 1500;
     var percent   = (big + small) / 2;
 
-    function container_height() {
-      return slide.scrollHeight;
-    }
-
-    function container_width() {
-      return slide.scrollWidth;
-    }
-
-    var oldWidth  = container_width();
-    var oldHeight = container_height();
-
-    //console.log('Starting font', container.css("font-size"));
-    //console.log('c:', container_width(), 'w:', win_width);
-
     while(big - small > 10) { // iterate till we get within 10% of ideal
       container.style.fontSize = percent + "%";
 
-      if(container_width() > win_width || container_height() > win_height){ // too big
+      if(overflows(slide)){ // too big
         big = percent;
       }
       else {
@@ -2222,7 +2214,7 @@ function scaleText() {
     container.style.fontSize = (percent - 10) + "%";
 
 
-    if(container_width() > win_width || container_height() > win_height){ // too big
+    if(overflows(slide)){ // too big
       container.style.fontSize = small + "%";
     }
 

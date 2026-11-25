@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+  <!-- FAB fit check: why the + button at the bottom of All Songs is cut off in Chrome on Android (in a browser
+       tab, with the URL bar showing) but not in Firefox. It uses the app's own style.css and the same parts as
+       the song list (main > #songList.column > .float-menu), with a long list, then shows what the page
+       measures: the screen, 100vh / 100dvh / 100svh / 100lvh, the column and the + button.
+       "Old" puts back 100vh (how v24 sizes the column); "New" is the fix (--screen-height, 100dvh).
+       Open it on the phone in a browser tab, not the installed app, and screenshot it in Old and New. -->
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>yCanta2: FAB fit check</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+      html.old { --screen-height: 100vh; }
+      #report {
+        position: fixed; left: 0; right: 0; top: 0; z-index: 50; max-height: 58%; overflow: auto;
+        background: rgba(255, 255, 240, .97); color: black; border-bottom: 2px solid #c40;
+        font: 12px/1.35 monospace; white-space: pre-wrap; padding: 6px 8px;
+      }
+      #report.small { max-height: 2.4em; }
+      #bar { position: sticky; top: 0; background: inherit; padding-bottom: 4px; }
+      #bar button { font: inherit; font-size: 14px; margin-right: 6px; }
+      #bar b { font-size: 14px; }
+      .probe { position: absolute; top: 0; left: -10px; width: 1px; visibility: hidden; }
+    </style>
+  </head>
+  <body class="songList">
+    <div class="probe" id="p-vh" style="height: 100vh"></div>
+    <div class="probe" id="p-dvh" style="height: 100dvh"></div>
+    <div class="probe" id="p-svh" style="height: 100svh"></div>
+    <div class="probe" id="p-lvh" style="height: 100lvh"></div>
+    <div class="probe" id="p-var" style="height: var(--screen-height)"></div>
+    <div class="probe" id="p-fixed" style="position: fixed; top: 0; bottom: 0"></div>
+    <main>
+      <div class="column active" id="songList">
+        <div class="float-menu">
+          <a class="float-menu-item"><span class="float-menu-icon">+</span> Add Song </a>
+        </div>
+        <div class="row">
+          <div class="subcolumn">
+            <div id="songbook_content"><ul class="list" id="list"></ul></div>
+          </div>
+        </div>
+      </div>
+    </main>
+    <div id="report"><div id="bar"><b id="mode"></b> <button id="old">Old (100vh)</button><button id="new">New (fix)</button><button id="again">Measure</button><button id="hide">Hide</button></div><div id="out">Loading…</div></div>
+    <script>
+      const list = document.getElementById('list');
+      for (let i = 1; i <= 40; i++) list.insertAdjacentHTML('beforeend', '<li><a class="link name">Song ' + i + '</a></li>');
+      const r = n => Math.round(n * 10) / 10;
+      const h = id => r(document.getElementById(id).getBoundingClientRect().height);
+      const box = el => { const b = el.getBoundingClientRect(); return 'top ' + r(b.top) + ' bottom ' + r(b.bottom) + ' (' + r(b.width) + 'x' + r(b.height) + ')'; };
+
+      function measure() {
+        const old = document.documentElement.classList.contains('old');
+        document.getElementById('mode').textContent = old ? 'OLD (100vh)' : 'NEW (fix)';
+        const vv = window.visualViewport, see = vv ? vv.height : innerHeight;
+        const col = document.getElementById('songList'), fab = document.querySelector('.float-menu-icon');
+        const fb = fab.getBoundingClientRect(), cb = col.getBoundingClientRect();
+        const ua = navigator.userAgent.match(/(Firefox|Chrome|Version)\/[\d.]+/g) || [navigator.userAgent];
+        const out = [
+          'MODE    ' + (old ? 'old: column height calc(100vh - 4rem), as in v24' : 'new: calc(var(--screen-height) - 4rem)'),
+          'BROWSER ' + ua.join(' ') + (/Android/.test(navigator.userAgent) ? ' Android' : '') + '  ' + (matchMedia('(display-mode: standalone)').matches ? 'installed app' : 'browser tab'),
+          'SCREEN  innerHeight ' + innerHeight + '  visualViewport ' + (vv ? r(vv.height) + ' (scale ' + r(vv.scale) + ')' : '-') + '  clientHeight ' + document.documentElement.clientHeight + '  dpr ' + devicePixelRatio,
+          'UNITS   100vh ' + h('p-vh') + '  100dvh ' + h('p-dvh') + '  100svh ' + h('p-svh') + '  100lvh ' + h('p-lvh') + '  fixed top0/bottom0 ' + h('p-fixed'),
+          '        --screen-height ' + h('p-var') + '  dvh supported: ' + CSS.supports('height', '100dvh'),
+          '        100vh - visible = ' + r(h('p-vh') - see) + ' px  (Chrome: its URL bar)',
+          'PAGE    html ' + r(document.documentElement.getBoundingClientRect().height) + '  body ' + r(document.body.getBoundingClientRect().height) + '  main ' + box(document.querySelector('main')),
+          'COLUMN  ' + box(col) + '  height style ' + getComputedStyle(col).height,
+          'FAB     ' + box(fab),
+          '        ' + (fb.bottom <= see + 0.5 ? 'ALL SHOWS: ' + r(see - fb.bottom) + ' px above the bottom of the screen'
+                                             : 'CUT OFF: ' + r(fb.bottom - see) + ' px of ' + r(fb.height) + ' is under the bottom of the screen'),
+          '        column bottom is ' + r(cb.bottom - see) + ' px past the bottom of the screen',
+        ];
+        document.getElementById('out').textContent = out.join('\n');
+      }
+      const setMode = old => { document.documentElement.classList.toggle('old', old); requestAnimationFrame(() => requestAnimationFrame(measure)); };
+      document.getElementById('old').onclick = () => setMode(true);
+      document.getElementById('new').onclick = () => setMode(false);
+      document.getElementById('again').onclick = measure;
+      document.getElementById('hide').onclick = e => { const rep = document.getElementById('report'); rep.classList.toggle('small'); e.target.textContent = rep.classList.contains('small') ? 'Show' : 'Hide'; };
+      window.addEventListener('resize', measure);
+      if (window.visualViewport) visualViewport.addEventListener('resize', measure);
+      setMode(location.hash === '#old');
+    </script>
+  </body>
+</html>
