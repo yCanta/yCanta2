@@ -683,11 +683,15 @@ try {
   await ev(`${PF}.setSecondLang(''), 'ok'`);
   // the words fit again when the window changes size (once, a moment later), as on a phone that's turned
   await ev(`(() => { const f = ${PF}; f.fitCount = 0; const was = f.scaleText; f.scaleText = function () { f.fitCount++; return was.apply(this, arguments); }; return 'ok'; })()`);
+  // wait for the frame to take the new size and fit once (a fixed 900 ms was sometimes too short), then
+  // a little longer, so a second fit for the same resize would still be counted
   await send('Emulation.setDeviceMetricsOverride', { width: 420, height: 800, deviceScaleFactor: 1, mobile: false });
-  await sleep(900);
+  await until(`${PF}.document.getElementById('cur_slide').clientWidth === 420 && ${PF}.fitCount >= 1`, 'the slide to fit the narrow window', 8000).catch(() => {});
+  await sleep(600);
   const resized90 = await ev(`({ fits: !${PF}.overflows(${PF}.document.getElementById('cur_slide')), count: ${PF}.fitCount, width: ${PF}.document.getElementById('cur_slide').clientWidth })`);
   await send('Emulation.clearDeviceMetricsOverride');
-  await sleep(900);
+  await until(`${PF}.document.getElementById('cur_slide').clientWidth !== 420 && ${PF}.fitCount >= 2`, 'the slide to fit the full window', 8000).catch(() => {});
+  await sleep(600);
   const back90 = await ev(`({ fits: !${PF}.overflows(${PF}.document.getElementById('cur_slide')), count: ${PF}.fitCount })`);
   ok(resized90.width === 420 && resized90.fits && resized90.count === 1 && back90.fits && back90.count === 2, 'resize: the slide is fitted again, once each time', JSON.stringify([resized90, back90]));
   await go(`#${vBook}`, `!document.getElementById('presentation')`, 'leaving the presentation');
