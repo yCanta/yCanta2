@@ -1396,9 +1396,15 @@ body.player-pill .subcolumn:not(.sidebar)::after {
 
 /* An old version open beside the song: room before its words, and the one opened last marked by a bar in the
    song blue down its left side (it had a thin dark-blue line down each side, with the words touching the left) */
-.song-card.revision,
-.song-card.version-card { /* another version open beside it (#117) looks the same */
+/* (the room is inside the card, on its header and its words, so it doesn't make the card wider than the song
+   beside it: the cards share the width evenly, .song-card below) */
+.song-card.revision > song,
+.song-card.version-card > song { /* another version open beside it (#117) looks the same */
   padding-left: .75rem;
+}
+#song .subcolumn .song-card.revision > .column_header,
+#song .subcolumn .song-card.version-card > .column_header { /* (over #song .subcolumn:first-child .column_header) */
+  padding-left: 1.75rem; /* its own 1rem, and the same .75rem */
 }
 .song-card.current_rev,
 .song-card.version-card {
@@ -1911,9 +1917,13 @@ info:after {
 .sidebar .buttonsRight > .fsButton { /* the Preview's full screen, in line with Download */
   height: 1.5rem;
 }
-/* Each song shown (db.js loadSong): its header, then <song>. Old versions open as more cards beside it. */
+/* Each song shown (db.js loadSong): its header, then <song>. Old versions and other versions (#117) open as more
+   cards beside it, and they all share the width evenly: two cards half each, three a third each (Carl: "Column
+   widths should equal"; sized by their words, the song took two thirds). A long word or title wraps. */
 .song-card {
-  flex-grow: 1;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow-wrap: break-word;
   margin-bottom: 1rem;
 }
 .song-card > song {
