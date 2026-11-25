@@ -3123,7 +3123,8 @@ body:not(.song) .show_for_songs { /* and what's only for exporting one song */
   font-style: italic;
 }
 /* Restore from a backup (restoreFromBackup in db.js) */
-.task-dialog input[type="checkbox"] {
+.task-dialog input[type="checkbox"],
+.task-dialog input[type="radio"] {
   display: inline-block;
   width: auto;
   margin: 0 .5rem 0 0;

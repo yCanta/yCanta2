@@ -793,6 +793,7 @@ document.addEventListener('DOMContentLoaded', () => {
     else if (what === 'logout') okToDropCategoryEdits().then(ok => ok && dbLogout());
     else if (what === 'install') showInstallSteps();
     else if (what === 'findVersions') findVersions(); // #90, editors
+    else if (what === 'findSpanish') findSpanishSongs(); // #90, editors
     else openHomeCard(what);
   });
   document.getElementById('username_legend').addEventListener('keydown', e => {
@@ -1934,6 +1935,92 @@ function songLangLabel(doc) {
 // capitals, no words in brackets ("(short)") and no punctuation
 function titleKey(title) {
   return stripAccents(title).toLowerCase().replace(/[([{][^)\]}]*[)\]}]/g, ' ').replace(/[^\p{L}\p{M}\p{N}]+/gu, ' ').trim();
+}
+
+// ---- Find Spanish songs (#90): how Spanish a song looks, from its title and words ----
+// Words are compared without accents ("señor" as "senor"), so a song typed without them is found too. Words
+// that are the same in both languages ("a", "no", "me", "sin", "son") count for neither.
+const SPANISH_WORDS = new Set(('de la el los las del lo le les se su sus mi mis tu tus te ti nos nuestro nuestra nuestros '
+  + 'que y en con por para como cuando donde porque pero mas muy ya hoy aqui alli hay todo todos toda todas siempre nunca '
+  + 'una uno unos al es eres soy esta estas estoy estan estamos somos ser fue sera tengo tiene ver yo ella ellos '
+  + 'dios senor cristo espiritu santo santa santos gloria aleluya alabar alabo alabamos alabad alabanza alabanzas adorar adoro '
+  + 'adoramos adoracion cantar canto cantamos cantare cancion bendito bendita bendice bendicion bendigo gracia gracias corazon '
+  + 'alma rey reino cielo cielos tierra padre hijo sangre cruz salvador nombre poder poderoso quiero quiere digno fiel fuerza '
+  + 'paz gozo luz camino verdad dia noche mundo mano manos ojos voz palabra ven viene vive vivir eterno eterna grande grandeza '
+  + 'majestad misericordia perdon salvacion esperanza fe senal amado amigo cuan').split(' '));
+const ENGLISH_WORDS = new Set(("the and you your yours i i'm im my mine is are was were be been of to in we our us he his him "
+  + 'she her they them their it its this that these those with for from all will shall can not love lord god king holy '
+  + 'praise grace glory heart name worship sing song come give thank thanks forever ever always never there here who what '
+  + 'when where how why so just only now let lift high above over through into upon every everything nothing life light '
+  + 'way truth savior saviour christ spirit power blood cross father heaven earth world amazing great good mercy hope faith '
+  + 'peace joy hands eyes voice word day night have has had do does know see need want am').split(' '));
+// Latin in an English song ("Gloria in excelsis Deo") is not Spanish: a line with one of these counts for neither
+const LATIN_WORDS = /\b(excelsis|deo|dei|domine|dominus|agnus|sanctus|nobis|pacem|benedictus|venite|adoremus|fideles)\b/i;
+// French and Portuguese share many Spanish words: their own letters and words count against Spanish
+const OTHER_LETTERS = /[àèêçãõâôûëïœ]/i;
+const OTHER_WORDS = new Set('et est je vous nous avec pour dans mon ma nao voce meu minha teu seu sao com'.split(' '));
+// Every line of a song as words, for spanishLook: no chords or markup, lower case, keeping accents
+function looseWords(line) {
+  const text = String(line ?? '').replace(/<c>.*?<\/c>/gi, ' ').replace(/<[^>]*>/g, ' ').replace(/&(amp|lt|gt|quot|apos|#39);/g, ' ').replace(/&[#\w]+;/g, ' ');
+  const words = (text.toLowerCase().match(/[\p{L}\p{M}']+/gu) || []).map(word => word.replace(/^'+|'+$/g, '')).filter(Boolean);
+  // sung sounds ("la la la", "na na") aren't words: a short word said again right after itself goes, every time
+  return words.filter((word, n) => !(word.length <= 2 && (words[n - 1] === word || words[n + 1] === word)));
+}
+// The Spanish and English signs in one line: { es, en, other, text }
+function lineLanguageSigns(line) {
+  const words = looseWords(line);
+  const text = words.join(' ');
+  const signs = { es: 0, en: 0, other: 0, text };
+  if (!words.length || LATIN_WORDS.test(text)) return signs;
+  if (/[¿¡]/.test(line)) signs.es += 2; // only Spanish opens a question or a shout upside down
+  for (const word of words) {
+    const plain = stripAccents(word).normalize('NFC');
+    if (OTHER_LETTERS.test(word) || OTHER_WORDS.has(plain)) signs.other++;
+    else if (SPANISH_WORDS.has(plain) || /[ñáéíóú]/.test(word)) signs.es++;
+    else if (ENGLISH_WORDS.has(plain)) signs.en++;
+  }
+  return signs;
+}
+// How Spanish a song looks, from its title and words. Each part (verse, chorus...) is Spanish, English, both or
+// neither by its words. look: 'es' (Spanish only), 'es,en' (some parts Spanish, some English, or parts in both),
+// or '' (not Spanish). clear: Spanish only beyond doubt (the "Tag all" button). maybe: only a few signs.
+// es and en: the Spanish and English words found; lines: each line of words with the language it looks like.
+// The title counts for Spanish (a Spanish title) but not for English, since a Spanish song often has an English title.
+function spanishLook(doc) {
+  const song = songShape(doc);
+  let es = 0, en = 0, other = 0, esParts = 0, enParts = 0;
+  const lines = [];
+  for (const [part, partLines] of song.content) {
+    if (part.type === 'comment') continue;
+    const sum = { es: 0, en: 0 };
+    for (const line of partLines) {
+      const signs = lineLanguageSigns(line);
+      if (!signs.text) continue;
+      sum.es += signs.es;
+      sum.en += signs.en;
+      other += signs.other;
+      const lang = signs.es >= 2 && signs.es >= 2 * signs.en ? 'es' : signs.en >= 2 && signs.en >= 2 * signs.es ? 'en' : '';
+      lines.push({ text: lineText(line), lang });
+    }
+    es += sum.es;
+    en += sum.en;
+    if (sum.es >= 2 && sum.es >= sum.en / 3) esParts++;
+    if (sum.en >= 2 && sum.en >= sum.es / 3) enParts++;
+  }
+  const title = lineLanguageSigns(song.title);
+  es += title.es;
+  other += title.other;
+  const share = es / Math.max(1, es + en);
+  let look = '';
+  if (other * 2 >= es) look = ''; // French or Portuguese, more likely
+  else if (esParts && enParts) look = 'es,en';
+  else if (esParts && share >= 0.6) look = 'es';
+  else if (es >= 4 && share >= 0.25) look = share >= 0.7 ? 'es' : 'es,en';
+  return {
+    look, es, en, lines,
+    clear: look === 'es' && esParts > 0 && es >= 6 && share >= 0.85,
+    maybe: !!look && !esParts,
+  };
 }
 
 function searchSBfor(text) {
