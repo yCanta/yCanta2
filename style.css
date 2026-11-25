@@ -1402,9 +1402,17 @@ body.player-pill .subcolumn:not(.sidebar)::after {
 .song-card.version-card > song { /* another version open beside it (#117) looks the same */
   padding-left: .75rem;
 }
+/* A card's header reaches 1rem past its card on each side (.column_header). A card beside another starts its
+   header at its own edge instead, so it doesn't lie over the last 1rem of the card before it, where that card's
+   ☆ ⓘ ⤢ or × are (they were covered, and couldn't be clicked). */
 #song .subcolumn .song-card.revision > .column_header,
 #song .subcolumn .song-card.version-card > .column_header { /* (over #song .subcolumn:first-child .column_header) */
-  padding-left: 1.75rem; /* its own 1rem, and the same .75rem */
+  margin-left: 0;
+  padding-left: .75rem; /* the same .75rem as its words */
+}
+/* The title gives way (it wraps) so the header's buttons stay inside a narrow card */
+#song .song-card .title > .song-title {
+  min-width: 0;
 }
 .song-card.current_rev,
 .song-card.version-card {
