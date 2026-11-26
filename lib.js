@@ -316,11 +316,12 @@ function showError(message, { stay = false } = {}) {
 // (The floating #dialog is a different thing: song info and the YouTube player, beside the page.)
 //
 // new TaskDialog(title, { movable: true }) is one that works with songs shown behind it (Find versions, Link
-// versions, #90 #117): the page isn't dimmed, its title bar drags it aside (sortable.js dragDialog), and on a
-// phone held upright, where it covers the songs, Peek shrinks it to a bar at the bottom so they can be scrolled;
-// a tap on the bar brings it back. Keyboard focus stays in it, and Esc and Cancel work, as in the others.
+// versions, Find Spanish songs, #90 #117): it doesn't lock or dim the page, so the songs behind it can be scrolled
+// and read, and its title bar drags it aside (sortable.js dragDialog). On a phone held upright, where it covers the
+// songs, Peek shrinks it to a bar at the bottom; a tap on the bar brings it back. Esc (in it) and Cancel close it.
 class TaskDialog {
   constructor(title, { movable = false } = {}) {
+    this.movable = movable;
     const titleId = 'task-title-' + Math.random().toString(36).slice(2);
     this.dialog = document.createElement('dialog');
     this.dialog.className = 'task-dialog';
@@ -348,14 +349,10 @@ class TaskDialog {
     // Esc: cancel, unless something is in progress
     this.dialog.addEventListener('cancel', event => { if (this.busy) event.preventDefault(); });
     this.dialog.addEventListener('close', () => {
-      if (this.switching) { // Peek, or back from it: the same window, shown another way
-        this.switching = false;
-        return;
-      }
       // Browsers close a dialog on a second Esc even when the first was refused: while something is
       // in progress, open it again, so the person still sees how it ends
       if (this.busy) {
-        this.dialog.showModal();
+        this.open();
         return;
       }
       this.resolveWith(null);
@@ -363,26 +360,35 @@ class TaskDialog {
       this.dialog.remove();
     });
     document.body.append(this.dialog);
-    this.dialog.showModal();
     if (movable) {
       this.dialog.classList.add('movable');
+      // shown without locking the page (the browser only closes that kind on Esc by itself if it's modal)
+      this.dialog.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && !event.defaultPrevented && !this.busy) {
+          event.preventDefault();
+          this.close();
+        }
+      });
       this.unhookDrag = dragDialog(this.dialog, null, null, this.dialog.querySelector('.task-grab'));
       this.dialog.querySelector('.task-peek').addEventListener('click', event => { event.stopPropagation(); this.peek(true); });
       this.dialog.addEventListener('click', () => { if (this.peeking) this.peek(false); });
     }
+    this.open();
   }
 
-  // Peek: a bar at the bottom, shown without blocking the page, so the songs behind it can be scrolled
+  // A movable one leaves the page usable behind it (the songs scroll); the others lock it until they close
+  open() {
+    if (this.movable) this.dialog.show();
+    else this.dialog.showModal();
+  }
+
+  // Peek: a bar at the bottom, so the songs behind it can be seen whole
   peek(on) {
     if (!!this.peeking === on || !this.dialog.open) return;
     this.peeking = on;
-    this.switching = true; // its close event (it comes later) isn't the window closing
-    this.dialog.close();
     this.dialog.classList.toggle('peeking', on);
-    if (on) this.dialog.show();
-    else {
+    if (!on) {
       this.dialog.style.transform = ''; // back in the middle, wherever it had been dragged to
-      this.dialog.showModal();
       this.dialog.querySelector('.task-peek').focus();
     }
   }

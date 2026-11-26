@@ -737,11 +737,13 @@ button.inline-icon:focus-visible {
 .task-dialog::backdrop {
   background: rgba(0, 0, 0, .45);
 }
-/* One that works with songs shown behind it (TaskDialog { movable }: Find versions, Link versions, #90 #117): the
-   page isn't dimmed, and its title bar drags it aside (sortable.js dragDialog moves it from the top left corner,
-   so it starts there, moved to the middle) */
+/* One that works with songs shown behind it (TaskDialog { movable }: Find versions, Link versions, Find Spanish
+   songs, #90 #117): the page isn't dimmed or locked (the songs scroll), and its title bar drags it aside
+   (sortable.js dragDialog moves it from the top left corner, so it starts there, moved to the middle). It isn't
+   the browser's modal kind, so it sits over the page itself: above the round buttons (100) */
 .task-dialog.movable {
   position: fixed;
+  z-index: 1000;
   margin: 0;
   inset: 0 auto auto 0;
   transform: translate3d(calc(50vw - 50%), calc(50dvh - 50%), 0);

@@ -3967,6 +3967,8 @@ async function openSong(id) {
 async function showSideBySide(ids) {
   await openSong(ids[0]);
   await showBeside(ids.slice(1));
+  // from the top of the songs (the column kept the last song's place, so a new one could open at its end)
+  document.querySelector('#song .song-card')?.closest('.subcolumn')?.scrollTo(0, 0);
 }
 async function putSongColumnBack(was) {
   if (location.hash !== was.hash) {
@@ -4297,7 +4299,7 @@ function spanishSample(found) {
 
 async function findSpanishSongs() {
   if (!window.church?.editor) return;
-  const dialog = new TaskDialog('Find Spanish songs');
+  const dialog = new TaskDialog('Find Spanish songs', { movable: true });
   if (churchLang() === 'es') {
     await dialog.finish("This church's usual language is Spanish, so songs with no language picked already count as Spanish.");
     return;
@@ -4408,9 +4410,12 @@ async function findSpanishSongs() {
     note = `Tagged ${plural(result.done, 'song')} as Spanish.${result.failed.length ? ` Couldn't tag ${result.failed.join('; ')}.` : ''}`;
   }
 
-  // One at a time
+  // One at a time. Each song opens behind the window, to read all of it; then the column goes back as it was
   let stopped = false;
+  const was = songColumnNow();
+  let showing = Promise.resolve();
   for (const [n, found] of list.entries()) {
+    showing = showing.then(() => showSideBySide([found.song._id])).catch(err => console.warn("Couldn't show the song:", err));
     const why = found.clear ? 'Looks clearly Spanish.' : found.maybe ? 'Maybe Spanish: it has only a few Spanish words.'
       : found.look === 'es,en' ? 'Looks part Spanish, part English.' : 'Looks Spanish.';
     const step = dialog.run({
@@ -4442,6 +4447,8 @@ async function findSpanishSongs() {
       tagged(found, result);
     }
   }
+  await showing;
+  await putSongColumnBack(was);
   if (stopped) {
     if (tags.es + tags['es,en'] || skips) notyf.success(summary());
     return;
