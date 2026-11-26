@@ -440,9 +440,14 @@ html._admin .admin, html.churchAdmin .admin {display: revert;}
   align-items: center;
   gap: .75rem;
 }
-/* Admin's users list, folded shut behind its bar (the export page's folded cards, .export-more) */
-.people-fold .people-body {
+/* Admin's users list and Delete DB, folded shut behind their bars (the export page's folded cards, .export-more) */
+.people-fold .people-body,
+.delete-db-fold .people-body {
   padding: .5rem 1rem;
+}
+.delete-db-fold .export-more-summary { /* the note wraps to the card's width instead of stretching it */
+  width: 0;
+  min-width: 100%;
 }
 /* name | password | level | remove. The rows share the list's columns (subgrid), so the level menus
    line up in every row whichever buttons a row has. */

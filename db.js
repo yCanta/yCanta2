@@ -1435,6 +1435,17 @@ async function loadAllUsers(fresh = false) {
   filterChurchPeople(people.length > 5 ? peopleSearch : '');
 }
 
+// Admin's "Delete from this device" fold: shut each time Admin opens, and its note says what Delete DB does here.
+// It takes this device's copy away (destroyDb); the server keeps a church's songs, but a church that's only on
+// this device has no other copy.
+function deleteDbNote() {
+  const fold = document.querySelector('#adminSettings .delete-db-fold');
+  if (!fold) return;
+  fold.open = false;
+  document.getElementById('delete_db_note').textContent = remoteDb
+    ? "Takes this church's songs off this device. They stay on the server."
+    : 'This church is only on this device: its songs are deleted for good.';
+}
 // The Admin list's search box: show only names containing what's typed (any case). Kept while the
 // list redraws after a change.
 let peopleSearch = '';
