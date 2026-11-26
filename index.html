@@ -184,6 +184,13 @@
                 <label for="church_lang"><b>Usual language of songs</b></label>
                 <div><select id="church_lang" onchange="setChurchLang(this)"></select></div>
               </div>
+              <!-- The nightly backups (db.js restoreFromBackup), folded shut like the users list -->
+              <details class="export-more backup-fold">
+                <summary><span class="export-more-title">Backups</span> <small class="export-more-summary">A copy of this church is saved every night. Put back songs, songbooks or lists from one.</small></summary>
+                <div class="people-body">
+                  <button class="btn btn-small" onclick="restoreFromBackup()"><svg class="icon" aria-hidden="true"><use href="icons.svg#undo"/></svg> Restore from a backup</button>
+                </div>
+              </details>
               <!-- Folded shut, like the users list: it takes this church off this device (db.js deleteDbNote) -->
               <details class="export-more delete-db-fold">
                 <summary><span class="export-more-title">Delete from this device</span> <small class="export-more-summary" id="delete_db_note"></small></summary>

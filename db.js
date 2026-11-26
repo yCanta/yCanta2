@@ -1417,7 +1417,6 @@ async function loadAllUsers(fresh = false) {
   if (!people.length) html += '<p>Nobody is on the list yet.</p>';
   else html += '<p class="people-none" hidden>No one matches that search.</p>';
   html += '</div></details>';
-  html +='<p class="backup-tools"><button class="btn btn-small" onclick="restoreFromBackup()">' + icon('undo') + ' Restore from a backup</button></p>';
   if (window.church.serverAdmin) {
     const rules = await saveRulesStatus();
     const rulesLine = {
@@ -1435,10 +1434,16 @@ async function loadAllUsers(fresh = false) {
   filterChurchPeople(people.length > 5 ? peopleSearch : '');
 }
 
-// Admin's "Delete from this device" fold: shut each time Admin opens, and its note says what Delete DB does here.
-// It takes this device's copy away (destroyDb); the server keeps a church's songs, but a church that's only on
+// Admin's folds at the bottom, Backups and "Delete from this device": shut each time Admin opens. Backups is for a
+// church on the server (the nightly backups are of the server's copy). Delete's note says what Delete DB does here:
+// it takes this device's copy away (destroyDb); the server keeps a church's songs, but a church that's only on
 // this device has no other copy.
 function deleteDbNote() {
+  const backups = document.querySelector('#adminSettings .backup-fold');
+  if (backups) {
+    backups.open = false;
+    backups.hidden = !remoteDb;
+  }
   const fold = document.querySelector('#adminSettings .delete-db-fold');
   if (!fold) return;
   fold.open = false;

@@ -442,9 +442,14 @@ html._admin .admin, html.churchAdmin .admin {display: revert;}
 }
 /* Admin's users list and Delete DB, folded shut behind their bars (the export page's folded cards, .export-more) */
 .people-fold .people-body,
+.backup-fold .people-body,
 .delete-db-fold .people-body {
   padding: .5rem 1rem;
 }
+.backup-fold[hidden] {
+  display: none;
+}
+.backup-fold .export-more-summary,
 .delete-db-fold .export-more-summary { /* the note wraps to the card's width instead of stretching it */
   width: 0;
   min-width: 100%;
