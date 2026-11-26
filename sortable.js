@@ -142,14 +142,18 @@ function dragDialog(dialogEl = document.getElementById('dialog'), onSettle = nul
       // its buttons and menus are controls, not handles (a tap that wobbles shouldn't fling it away)
       if (this.el.id !== 'dialog' && e.target.closest('button, select, label')) return;
 
-      this.positions = [];
-      this.preEvent = '';
-      this.dragging = true;
       // did it start in a part of the dialog that scrolls (its text)? that part keeps scrolling by touch
       this.fromScroller = false;
       for (let node = e.target; node && node !== this.el; node = node.parentElement) {
         if (node.scrollHeight > node.clientHeight && /(auto|scroll)/.test(getComputedStyle(node).overflowY)) { this.fromScroller = true; break; }
       }
+      // a finger there scrolls the text and doesn't drag the window too (it used to do both at once);
+      // the heading, title and edges still drag it, and a mouse drags it from anywhere
+      if (this.fromScroller && e.type === 'touchstart') return;
+
+      this.positions = [];
+      this.preEvent = '';
+      this.dragging = true;
       this.decelerating = false;
 
       this.bounds.x = document.body.clientWidth;
