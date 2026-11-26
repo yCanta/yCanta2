@@ -1357,8 +1357,12 @@ function setPersonLevel(sec, name, level) {
 
 const levelLabels = { viewer: 'User', editor: 'Editor', admin: 'Church admin' };
 
-// The Admin panel: this church's people
-async function loadAllUsers() {
+// The Admin panel: this church's people. The list is folded shut behind a bar that says who's there (its Remove,
+// Reset password and level menus are a click away, not out in the open), and a click on the bar opens it. It starts
+// shut each time Admin is opened (fresh), and stays as it was while it redraws after a change.
+let peopleOpen = false;
+async function loadAllUsers(fresh = false) {
+  if (fresh) peopleOpen = false;
   const box = document.getElementById('all_users');
   if (!remoteDb) {
     box.innerHTML = '<p>This database is only on this device, so there are no people to manage.</p>';
@@ -1385,7 +1389,15 @@ async function loadAllUsers() {
   const serverAdmins = window.church.serverAdmin ? await getServerAdminNames() : null;
   const canReset = (name, level) => name !== me && (level !== 'admin' || (serverAdmins && !serverAdmins.includes(name)));
 
-  let html = `<div class="people-header"><b>Users in this church</b><button class="btn btn-small" onclick="addChurchPerson()">+ Add</button></div>`;
+  // the bar: how many, and how many at each level ("5 people: 1 church admin, 1 editor, 3 users")
+  const counts = Object.entries(levelLabels).reverse()
+    .map(([level, label]) => [people.filter(person => person[1] === level).length, label.toLowerCase()])
+    .filter(([n]) => n).map(([n, label]) => `${n} ${label}${n === 1 ? '' : 's'}`);
+  const summary = people.length ? `${people.length} ${people.length === 1 ? 'person' : 'people'}: ${counts.join(', ')}` : 'Nobody yet';
+  let html = `<details class="export-more people-fold"${peopleOpen ? ' open' : ''} ontoggle="peopleOpen = this.open">
+    <summary><span class="export-more-title">Users in this church</span> <small class="export-more-summary">${escapeHtml(summary)}</small></summary>
+    <div class="people-body">`;
+  html += `<div class="people-header"><button class="btn btn-small" onclick="addChurchPerson()">+ Add</button></div>`;
   if (people.length > 5) {
     html += `<input type="search" class="people-search" placeholder="Search users" aria-label="Search users" value="${escapeHtml(peopleSearch)}" oninput="filterChurchPeople(this.value)">`;
   }
@@ -1404,6 +1416,7 @@ async function loadAllUsers() {
   }).join('') + '</ul>';
   if (!people.length) html += '<p>Nobody is on the list yet.</p>';
   else html += '<p class="people-none" hidden>No one matches that search.</p>';
+  html += '</div></details>';
   html +='<p class="backup-tools"><button class="btn btn-small" onclick="restoreFromBackup()">' + icon('undo') + ' Restore from a backup</button></p>';
   if (window.church.serverAdmin) {
     const rules = await saveRulesStatus();

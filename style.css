@@ -440,6 +440,10 @@ html._admin .admin, html.churchAdmin .admin {display: revert;}
   align-items: center;
   gap: .75rem;
 }
+/* Admin's users list, folded shut behind its bar (the export page's folded cards, .export-more) */
+.people-fold .people-body {
+  padding: .5rem 1rem;
+}
 /* name | password | level | remove. The rows share the list's columns (subgrid), so the level menus
    line up in every row whichever buttons a row has. */
 #all_users .people-list {
@@ -3029,7 +3033,7 @@ input.seg-field {
   min-width: 5rem;
 }
 /* The folded cards under the main one (Words & titles, Page & printing, Index): each bar says what's set
-   inside, and any of them can be open at once */
+   inside, and any of them can be open at once. Admin's users list folds the same way (.people-fold) */
 .export-more {
   margin-bottom: .75rem;
 }
