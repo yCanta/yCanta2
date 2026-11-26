@@ -314,14 +314,22 @@ function showError(message, { stay = false } = {}) {
 //   await d.finish('Added.');             // shows the result until they close it
 //
 // (The floating #dialog is a different thing: song info and the YouTube player, beside the page.)
+//
+// new TaskDialog(title, { movable: true }) is one that works with songs shown behind it (Find versions, Link
+// versions, #90 #117): the page isn't dimmed, its title bar drags it aside (sortable.js dragDialog), and on a
+// phone held upright, where it covers the songs, Peek shrinks it to a bar at the bottom so they can be scrolled;
+// a tap on the bar brings it back. Keyboard focus stays in it, and Esc and Cancel work, as in the others.
 class TaskDialog {
-  constructor(title) {
+  constructor(title, { movable = false } = {}) {
     const titleId = 'task-title-' + Math.random().toString(36).slice(2);
     this.dialog = document.createElement('dialog');
     this.dialog.className = 'task-dialog';
     this.dialog.setAttribute('aria-labelledby', titleId);
+    const heading = `<h2 id="${titleId}">${escapeHtml(title)}</h2>`;
     this.dialog.innerHTML = `<form method="dialog">
-        <h2 id="${titleId}">${escapeHtml(title)}</h2>
+        ${movable ? `<div class="task-grab" title="Drag to move it aside"><span class="task-grip" aria-hidden="true">${icon('drag')}</span>${heading}
+          <button type="button" class="btn btn-tiny task-peek" title="Shrink it to see the songs behind it">Peek</button>
+          <small class="task-back">Tap to bring it back</small></div>` : heading}
         <fieldset>
           <div class="task-body"></div>
           <p class="task-error" role="alert" hidden></p>
@@ -340,6 +348,10 @@ class TaskDialog {
     // Esc: cancel, unless something is in progress
     this.dialog.addEventListener('cancel', event => { if (this.busy) event.preventDefault(); });
     this.dialog.addEventListener('close', () => {
+      if (this.switching) { // Peek, or back from it: the same window, shown another way
+        this.switching = false;
+        return;
+      }
       // Browsers close a dialog on a second Esc even when the first was refused: while something is
       // in progress, open it again, so the person still sees how it ends
       if (this.busy) {
@@ -347,10 +359,32 @@ class TaskDialog {
         return;
       }
       this.resolveWith(null);
+      this.unhookDrag?.();
       this.dialog.remove();
     });
     document.body.append(this.dialog);
     this.dialog.showModal();
+    if (movable) {
+      this.dialog.classList.add('movable');
+      this.unhookDrag = dragDialog(this.dialog, null, null, this.dialog.querySelector('.task-grab'));
+      this.dialog.querySelector('.task-peek').addEventListener('click', event => { event.stopPropagation(); this.peek(true); });
+      this.dialog.addEventListener('click', () => { if (this.peeking) this.peek(false); });
+    }
+  }
+
+  // Peek: a bar at the bottom, shown without blocking the page, so the songs behind it can be scrolled
+  peek(on) {
+    if (!!this.peeking === on || !this.dialog.open) return;
+    this.peeking = on;
+    this.switching = true; // its close event (it comes later) isn't the window closing
+    this.dialog.close();
+    this.dialog.classList.toggle('peeking', on);
+    if (on) this.dialog.show();
+    else {
+      this.dialog.style.transform = ''; // back in the middle, wherever it had been dragged to
+      this.dialog.showModal();
+      this.dialog.querySelector('.task-peek').focus();
+    }
   }
 
   resolveWith(value) {

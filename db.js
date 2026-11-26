@@ -3912,7 +3912,7 @@ function closeVersionBeside(card) {
   fillVersionMenu();
 }
 
-// The song's Info: "Versions: [Link]" (Link for those who may change the group), then its versions as text,
+// The song's Info: "Versions: [Edit]" (Edit for those who may change the group), then its versions as text,
 // one per line, or "None yet"
 async function fillVersionInfo() {
   const box = document.querySelector('#dialog .version-info');
@@ -3930,7 +3930,7 @@ async function fillVersionInfo() {
   const rows = versions.map(doc => `${escapeHtml(songLangLabel(doc))}: ${escapeHtml(doc.title)}`);
   const mayChange = !song._deleted && (window.church?.editor || canEdit(song) || groups.length > 0);
   const link = mayChange
-    ? `<button type="button" class="btn btn-tiny" onclick="linkVersionsDialog()" aria-label="Link versions" title="Link versions">Link</button>` : '';
+    ? `<button type="button" class="btn btn-tiny" onclick="linkVersionsDialog()" aria-label="Edit versions" title="Edit versions">Edit</button>` : '';
   box.innerHTML = `<br><b>Versions:</b> ${link}<br>${rows.length ? rows.join('<br>') : 'None yet'}`
     + (groups.length > 1 ? `<br><small class="version-overlap">${overlapNote(song._id, groups)}</small>` : '');
 }
@@ -3940,13 +3940,73 @@ async function allLiveSongs() {
   return (await db.allDocs({ startkey: 's-', endkey: 's-￰', include_docs: true })).rows.map(row => row.doc).filter(doc => doc && !doc._deleted);
 }
 
+// While linking (#90 #117), the songs being looked at show side by side in the song column, behind the window:
+// the first as the open song, the rest beside it (the cards an open version uses). Afterwards the column is put
+// back as it was. The column now: its address, the open song, and the versions open beside it.
+const wait = ms => new Promise(done => setTimeout(done, ms));
+function songColumnNow() {
+  return { hash: location.hash, song: window.song?._id, beside: [...document.querySelectorAll('#song .version-card')].map(card => card.dataset.id) };
+}
+// Just these songs open beside the open song (in this order), the others closed
+async function showBeside(ids) {
+  document.querySelectorAll('#song .version-card').forEach(card => { if (!ids.includes(card.dataset.id)) card.remove(); });
+  for (const id of ids) await loadSong(id, false, { beside: true }).catch(() => {}); // already open: nothing happens
+  fillVersionMenu();
+}
+async function openSong(id) {
+  const shownNow = document.querySelector('#song .song-card:not(.version-card)');
+  if (window.song?._id === id && shownNow && location.hash.includes(`&${id}`)) return;
+  location.replace(`#${window.songbook?._id || 'sb-allSongs'}&${id}`); // no new step in the browser's Back
+  // until it's drawn again (the song from before may still be there: it was the last one open)
+  for (let i = 0; i < 50; i++) {
+    const card = document.querySelector('#song .song-card:not(.version-card)');
+    if (window.song?._id === id && card && card !== shownNow) break;
+    await wait(100);
+  }
+}
+async function showSideBySide(ids) {
+  await openSong(ids[0]);
+  await showBeside(ids.slice(1));
+}
+async function putSongColumnBack(was) {
+  if (location.hash !== was.hash) {
+    location.replace(was.hash || '#');
+    if (was.song && was.hash.includes(`&${was.song}`)) await openSong(was.song); // (a song was open, not the home page)
+    else await wait(300);
+  }
+  await showBeside(was.beside);
+}
+// A ticked song opens beside the open song, an unticked one closes (the boxes in a .version-pick list)
+function besideFollowsTicks(body, openId) {
+  body.addEventListener('change', event => {
+    const box = event.target.closest('.version-pick input[type="checkbox"]');
+    if (!box || box.value === openId) return;
+    const card = [...document.querySelectorAll('#song .version-card')].find(el => el.dataset.id === box.value);
+    if (box.checked && !card) loadSong(box.value, false, { beside: true }).then(fillVersionMenu).catch(() => {});
+    else if (!box.checked && card) closeVersionBeside(card);
+  });
+}
+
 // Link versions: one list for linking and unlinking. The songs already linked come first, ticked; unticking
 // one takes it out (this song too). Then songs that look like versions of it (the same title or CCLI number),
 // and typing finds any song by its title. A song this person may not change is shown but can't be ticked.
+// A song ticked here opens beside this one, to compare them; Cancel or Save puts the column back as it was.
 async function linkVersionsDialog() {
   const song = window.song;
   if (!song?._id) return;
-  const dialog = new TaskDialog(`Linked versions of "${song.title}"`);
+  const was = songColumnNow();
+  const info = document.getElementById('dialog'); // the Info window steps aside while this is open
+  const infoOpen = info.style.display !== 'none';
+  info.style.display = 'none';
+  try {
+    await linkVersionsWindow(song, was);
+  } finally {
+    if (infoOpen && window.song === song) info.style.display = 'block';
+    versionGroupsChanged();
+  }
+}
+async function linkVersionsWindow(song, was) {
+  const dialog = new TaskDialog(`Linked versions of "${song.title}"`, { movable: true });
   dialog.working('Reading the songs…');
   let songs;
   try {
@@ -4020,15 +4080,15 @@ async function linkVersionsDialog() {
   search.addEventListener('input', filter);
   search.addEventListener('keydown', event => { if (event.key === 'Enter') event.preventDefault(); }); // Enter doesn't save yet
   dialog.body.addEventListener('change', showSave);
+  besideFollowsTicks(dialog.body, song._id);
   filter();
   showSave();
   const result = await changing;
+  // The column as it was, but a version that's no longer one stays closed (all of them if this song left its group)
+  const unlinked = result?.unlink || [];
+  await showBeside(unlinked.includes(song._id) ? [] : was.beside.filter(id => !unlinked.includes(id)));
   if (!result) return;
   const { unlink, link } = result;
-  // A version that's no longer one closes; if this song left its group, they all do
-  document.querySelectorAll('#song .version-card').forEach(card => {
-    if (unlink.includes(song._id) || unlink.includes(card.dataset.id)) card.remove();
-  });
   versionGroupsChanged();
   const said = [link.length && `linked ${link.length === 1 ? 'one song' : `${link.length} songs`}`,
     unlink.length && `unlinked ${unlink.length === 1 ? 'one song' : `${unlink.length} songs`}`].filter(Boolean).join(' and ');
@@ -4104,7 +4164,7 @@ function versionSuggestions(songs) {
 
 async function findVersions() {
   if (!window.church?.editor) return;
-  const dialog = new TaskDialog('Find versions');
+  const dialog = new TaskDialog('Find versions', { movable: true });
   dialog.working('Looking for songs that may be versions of each other…');
   let found;
   try {
@@ -4118,7 +4178,7 @@ async function findVersions() {
   const fresh = found.suggestions.filter(suggestion => !skipped.has(suggestion.key));
   const skippedBefore = found.suggestions.length - fresh.length;
   const aloneNote = found.alone.length
-    ? `\n\n${found.alone.length === 1 ? 'A song' : `${found.alone.length} songs`} in the Duplicate category matched no other song: ${found.alone.map(song => `"${song.title}"`).join(', ')}. To link one, open it, then its Info, then Link next to Versions.` : '';
+    ? `\n\n${found.alone.length === 1 ? 'A song' : `${found.alone.length} songs`} in the Duplicate category matched no other song: ${found.alone.map(song => `"${song.title}"`).join(', ')}. To link one, open it, then its Info, then Edit next to Versions.` : '';
   if (!found.suggestions.length) {
     await dialog.finish(`No songs look like versions of each other that aren't linked yet.${aloneNote}`);
     return;
@@ -4133,7 +4193,12 @@ async function findVersions() {
   if (!start) return;
   const list = start.again ? found.suggestions : fresh;
   let linked = 0, skips = 0, stopped = false;
+  // Each set's songs show side by side behind the window, to compare them; then the column goes back as it was
+  const was = songColumnNow();
+  let showing = Promise.resolve();
   for (const [n, suggestion] of list.entries()) {
+    const ids = suggestion.songs.map(song => song._id);
+    showing = showing.then(() => showSideBySide(ids)).catch(err => console.warn("Couldn't show the songs:", err));
     const step = dialog.run({
       html: `<p><b>${n + 1} of ${list.length}</b>: ${escapeHtml(suggestion.why.join(', '))}. Untick any song that isn't a version of the others.</p>
         <ul class="backup-list version-pick">${suggestion.songs.map(song => {
@@ -4153,6 +4218,7 @@ async function findVersions() {
     });
     dialog.buttons.querySelector('[data-cancel]').insertAdjacentHTML('afterend', '<button type="button" class="btn" data-skip>Skip</button>');
     dialog.buttons.querySelector('[data-skip]').addEventListener('click', () => dialog.resolveWith('skip'));
+    besideFollowsTicks(dialog.body, ids[0]);
     const result = await step;
     if (!result) { // Stop: the window has closed
       stopped = true;
@@ -4165,6 +4231,8 @@ async function findVersions() {
       linked++;
     }
   }
+  await showing;
+  await putSongColumnBack(was);
   versionGroupsChanged();
   const summary = `Linked ${linked} set${linked === 1 ? '' : 's'} of versions${skips ? `, skipped ${skips}` : ''}.`;
   if (stopped) {

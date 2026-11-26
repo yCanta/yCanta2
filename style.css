@@ -737,6 +737,75 @@ button.inline-icon:focus-visible {
 .task-dialog::backdrop {
   background: rgba(0, 0, 0, .45);
 }
+/* One that works with songs shown behind it (TaskDialog { movable }: Find versions, Link versions, #90 #117): the
+   page isn't dimmed, and its title bar drags it aside (sortable.js dragDialog moves it from the top left corner,
+   so it starts there, moved to the middle) */
+.task-dialog.movable {
+  position: fixed;
+  margin: 0;
+  inset: 0 auto auto 0;
+  transform: translate3d(calc(50vw - 50%), calc(50dvh - 50%), 0);
+  transition: none; /* it follows the finger (the page eases every change) */
+}
+.task-dialog.movable::backdrop {
+  background: transparent;
+}
+.task-dialog.movable:focus { /* dragging it focuses it: it keeps its own shadow, not the page's focus line (*:focus) */
+  box-shadow: 0 10px 40px rgba(0, 0, 0, .35) !important;
+}
+.task-grab {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin: -.5rem 0 1rem;
+  cursor: grab;
+  touch-action: none; /* a finger on it moves the window, not the page */
+  user-select: none;
+  -webkit-user-select: none;
+}
+.task-dialog .task-grab h2 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+.task-grip {
+  color: var(--light-text-color);
+}
+.task-peek,
+.task-back {
+  display: none;
+}
+@media (max-width: 39.99rem) { /* a phone held upright: it covers the songs, so it can shrink out of the way */
+  .task-dialog.movable .task-peek {
+    display: inline-block;
+  }
+}
+/* Peek: a bar along the bottom; a tap on it brings the window back */
+.task-dialog.movable.peeking {
+  inset: auto 0 0 0;
+  transform: none !important; /* (over where it was dragged to) */
+  width: 100%;
+  max-width: none;
+  padding: .75rem 1rem;
+  border-radius: 1rem 1rem 0 0;
+  cursor: pointer;
+}
+.task-dialog.peeking fieldset,
+.task-dialog.peeking .task-grip,
+.task-dialog.peeking .task-peek {
+  display: none !important;
+}
+.task-dialog.peeking .task-grab {
+  margin: 0;
+  cursor: pointer;
+}
+.task-dialog.peeking .task-grab h2 {
+  font-size: 1rem;
+}
+.task-dialog.peeking .task-back {
+  display: inline;
+  color: var(--light-text-color);
+}
 /* A card in the bottom right corner (lib.js cornerCard), and any note a click acts on (Undo, Reload, try again,
    a note that opens something): the pointing hand, as on a link */
 .corner-card,

@@ -25,7 +25,9 @@ target.addEventListener("drop", (e) => {
 // when it comes to rest after a drag or a fling (the player tucks into a tab when flung off the side).
 // onFling(x, y), if given, is called as a fling starts with where it would come to rest; if it returns
 // true, it has handled the fling (the player tucks right away instead of coasting to the edge first).
-function dragDialog(dialogEl = document.getElementById('dialog'), onSettle = null, onFling = null) {
+// handle, if given, is the only part that starts a drag (a TaskDialog's grab bar, so its boxes and search still
+// work). Returns a function that unhooks it, for a window that goes away.
+function dragDialog(dialogEl = document.getElementById('dialog'), onSettle = null, onFling = null, handle = null) {
   function AnimationLoop(){
     var animations = [],
         animating = true,
@@ -139,6 +141,8 @@ function dragDialog(dialogEl = document.getElementById('dialog'), onSettle = nul
       //document.documentElement.classList.add('no-overscroll');
       // the player drags only as a floating window, not as the docked pill or the tucked tab
       if (this.el.dataset.look && this.el.dataset.look !== 'dialog') return;
+      // a TaskDialog shrunk to its Peek bar: a tap there brings it back, it doesn't drag
+      if (this.el.classList.contains('peeking')) return;
       // its buttons and menus are controls, not handles (a tap that wobbles shouldn't fling it away)
       if (this.el.id !== 'dialog' && e.target.closest('button, select, label')) return;
 
@@ -254,15 +258,24 @@ function dragDialog(dialogEl = document.getElementById('dialog'), onSettle = nul
       
       if ( this.el ) {
         //this.start();           //I don't want this running to start.
-        this.el.addEventListener('mousedown',this.start.bind(this));
-        this.el.addEventListener('touchstart',this.start.bind(this));
-        document.addEventListener('mousemove',this.move.bind(this));
-        document.addEventListener('touchmove',this.move.bind(this), { passive: false }); // so move() can stop the page scrolling
-        document.addEventListener('mouseup',this.end.bind(this)); 
-        document.addEventListener('touchend',this.end.bind(this)); 
+        const grab = handle || this.el;
+        const start = this.start.bind(this), move = this.move.bind(this), end = this.end.bind(this);
+        grab.addEventListener('mousedown', start);
+        grab.addEventListener('touchstart', start);
+        document.addEventListener('mousemove', move);
+        document.addEventListener('touchmove', move, { passive: false }); // so move() can stop the page scrolling
+        document.addEventListener('mouseup', end);
+        document.addEventListener('touchend', end);
         this.end();
+        return () => {
+          document.removeEventListener('mousemove', move);
+          document.removeEventListener('touchmove', move, { passive: false });
+          document.removeEventListener('mouseup', end);
+          document.removeEventListener('touchend', end);
+          loop.stop();
+        };
       }
     }
   };
-  drag.register(dialogEl);
+  return drag.register(dialogEl);
 }
