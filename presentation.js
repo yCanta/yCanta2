@@ -1748,10 +1748,38 @@ function setLanguages(withOwn) {
 // The presenter picks the second language (and, when it has several, which version of this song)
 function setSecondLang(lang, versionId) {
   secondLang = lang || '';
-  if (secondLang) noteUse('second language');
+  if (secondLang) { noteUse('second language'); hideLangHint(); }
   if (versionId && current_song) secondPicks.set(current_song.id, versionId);
   renderLangRows();
   if (inPresentation() && current_song && !document.getElementById('pres_title')) { liveMoving = true; try { showChunk('language'); } finally { liveMoving = false; } }
+}
+// A quiet note the first time a song that's also in other languages comes up (#90): "Also in Arabic, Spanish · v",
+// small in the bottom corner for a few seconds, then gone. Only on the presenter's own screen (a mirror, a follower and
+// the shared screens never show it), and not while a second language is on. A click on it opens the Menu.
+const langHinted = new Set();
+let langHintTimer = null;
+function hintLanguages() {
+  if (!document.getElementById('menuButton') || isFollower() || isMirror() || secondLang) return;
+  if (!current_song || document.getElementById('pres_title') || langHinted.has(current_song.id)) return;
+  const codes = [...new Set(songVersions(current_song).map(version => version.lang))];
+  if (!codes.length) return;
+  langHinted.add(current_song.id);
+  let hint = document.getElementById('langHint');
+  if (!hint) {
+    document.body.insertAdjacentHTML('beforeend', '<button type="button" id="langHint" title="Second language (v)"></button>');
+    hint = document.getElementById('langHint');
+    hint.addEventListener('click', () => { hideLangHint(); toggleHelp(); });
+  }
+  // the English name only ("Arabic", not "Arabic (العربية)"): it's a short note
+  hint.textContent = 'Also in ' + codes.map(code => langLabel(code).replace(/\s*\(.*\)$/, '')).join(', ') + ' · v';
+  hint.classList.add('show');
+  clearTimeout(langHintTimer);
+  langHintTimer = setTimeout(hideLangHint, 6000);
+}
+function hideLangHint() {
+  clearTimeout(langHintTimer);
+  const hint = document.getElementById('langHint');
+  if (hint) hint.classList.remove('show');
 }
 // A follower picks the language it shows
 function setFollowLang(lang) {
@@ -2094,6 +2122,7 @@ function showChunk(name) {
     secondary_windows = secondary_windows.filter(win => !win.closed);
     secondary_windows.forEach(updateMirror);
     renderLangRows(); // this song's versions, in the panel (#90)
+    hintLanguages(); // and, the first time, a quiet note that it's in other languages too
     noteFollowerMove(); // (#51)
     publishLive();
     if (name !== 'view' && name !== 'live') menuHintDone();

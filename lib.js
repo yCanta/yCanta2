@@ -3658,6 +3658,8 @@ async function editSong() {
     
     chunk.innerHTML = content;
     chunk.classList.add('pre');
+    setChunkDir(chunk);
+    isolateRtlChords(chunk);
 
     // Create wrapper and select element
     const wrapper = document.createElement('div');
@@ -3800,6 +3802,35 @@ async function editSong() {
   }
   window.songEditSnapshot = songEditState(); // leaving without a change doesn't ask
 }
+// A part in Arabic (or another right-to-left language) reads right to left in the editor too (#90), as it does when
+// the song is read: its first line of words decides, the way lineDir does for a line. Its chord lines then line up
+// from the right, so a chord sits over the word it belongs to (the first letter of a line is on the right). Only
+// how it looks: the saved words are the same.
+function setChunkDir(chunk) {
+  const words = chunk.textContent.split('\n').find(line => line.trim() && !isChord(line));
+  if (words && lineDir(words) === 'rtl') chunk.dir = 'rtl';
+  else chunk.removeAttribute('dir');
+}
+// In a right-to-left part, the browser keeps a chord line's chords together as one left-to-right group ("G    D" with
+// G on the left), since spaces between two Latin letters go their way. Each chord in its own <span dir="ltr"> stands
+// alone, so the first chord is on the right, over the first word. The spans are only for showing: saving takes tags
+// out (editedChunkLines), and the words are the same. Done when the editor opens and when a part is left, not while
+// typing (it would move the cursor).
+function isolateRtlChords(chunk) {
+  if (chunk.dir !== 'rtl') return;
+  const lines = chunk.innerHTML.replace(/<br\s*\/?>/gi, '\n').replace(/<\/(div|p)>/gi, '\n').replace(/<[^>]+>/g, '').split('\n');
+  const html = lines.map(line => (isChord(line) ? line.replace(/\S+/g, chord => `<span dir="ltr">${chord}</span>`) : line)).join('\n');
+  if (html !== chunk.innerHTML) chunk.innerHTML = html;
+}
+// as it's typed: a new part, or words typed into an empty one
+document.addEventListener('input', e => {
+  const chunk = e.target.closest?.('#song chunk.pre');
+  if (chunk) setChunkDir(chunk);
+});
+document.addEventListener('focusout', e => {
+  const chunk = e.target.closest?.('#song chunk.pre');
+  if (chunk) isolateRtlChords(chunk);
+});
 // What the song editor holds, to tell whether anything changed before warning about leaving
 function songEditState() {
   const card = document.querySelector('#song .song-card');
