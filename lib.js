@@ -318,7 +318,7 @@ function showError(message, { stay = false } = {}) {
 // new TaskDialog(title, { movable: true }) is one that works with songs shown behind it (Find versions, Link
 // versions, Find Spanish songs, #90 #117): it doesn't lock or dim the page, so the songs behind it can be scrolled
 // and read, and its title bar drags it aside (sortable.js dragDialog). On a phone held upright, where it covers the
-// songs, Peek shrinks it to a bar at the bottom; a tap on the bar brings it back. Esc (in it) and Cancel close it.
+// songs, Minimize shrinks it to a bar at the bottom; a tap on the bar opens it again. Esc (in it) and Cancel close it.
 class TaskDialog {
   constructor(title, { movable = false } = {}) {
     this.movable = movable;
@@ -329,8 +329,8 @@ class TaskDialog {
     const heading = `<h2 id="${titleId}">${escapeHtml(title)}</h2>`;
     this.dialog.innerHTML = `<form method="dialog">
         ${movable ? `<div class="task-grab" title="Drag to move it aside"><span class="task-grip" aria-hidden="true">${icon('drag')}</span>${heading}
-          <button type="button" class="btn btn-tiny task-peek" title="Shrink it to see the songs behind it">Peek</button>
-          <small class="task-back">Tap to bring it back</small></div>` : heading}
+          <button type="button" class="btn btn-tiny task-min" title="Minimize it to the bottom, to see the songs behind it">${icon('chevron-down')} Minimize</button>
+          <small class="task-back">Tap to open it again ${icon('chevron-up')}</small></div>` : heading}
         <fieldset>
           <div class="task-body"></div>
           <p class="task-error" role="alert" hidden></p>
@@ -370,8 +370,8 @@ class TaskDialog {
         }
       });
       this.unhookDrag = dragDialog(this.dialog, null, null, this.dialog.querySelector('.task-grab'));
-      this.dialog.querySelector('.task-peek').addEventListener('click', event => { event.stopPropagation(); this.peek(true); });
-      this.dialog.addEventListener('click', () => { if (this.peeking) this.peek(false); });
+      this.dialog.querySelector('.task-min').addEventListener('click', event => { event.stopPropagation(); this.minimize(true); });
+      this.dialog.addEventListener('click', () => { if (this.minimized) this.minimize(false); });
     }
     this.open();
   }
@@ -382,14 +382,14 @@ class TaskDialog {
     else this.dialog.showModal();
   }
 
-  // Peek: a bar at the bottom, so the songs behind it can be seen whole
-  peek(on) {
-    if (!!this.peeking === on || !this.dialog.open) return;
-    this.peeking = on;
-    this.dialog.classList.toggle('peeking', on);
+  // Minimize: a bar at the bottom (like the player's Minimize), so the songs behind it can be seen whole
+  minimize(on) {
+    if (!!this.minimized === on || !this.dialog.open) return;
+    this.minimized = on;
+    this.dialog.classList.toggle('minimized', on);
     if (!on) {
       this.dialog.style.transform = ''; // back in the middle, wherever it had been dragged to
-      this.dialog.querySelector('.task-peek').focus();
+      this.dialog.querySelector('.task-min').focus();
     }
   }
 

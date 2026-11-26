@@ -141,8 +141,8 @@ function dragDialog(dialogEl = document.getElementById('dialog'), onSettle = nul
       //document.documentElement.classList.add('no-overscroll');
       // the player drags only as a floating window, not as the docked pill or the tucked tab
       if (this.el.dataset.look && this.el.dataset.look !== 'dialog') return;
-      // a TaskDialog shrunk to its Peek bar: a tap there brings it back, it doesn't drag
-      if (this.el.classList.contains('peeking')) return;
+      // a TaskDialog minimized to its bar: a tap there opens it again, it doesn't drag
+      if (this.el.classList.contains('minimized')) return;
       // its buttons and menus are controls, not handles (a tap that wobbles shouldn't fling it away)
       if (this.el.id !== 'dialog' && e.target.closest('button, select, label')) return;
 
